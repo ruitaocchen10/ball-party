@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ball Party — three neutral dark directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* ─── page shell ─── */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:#1b1c1e;color:#e6e4e0;font-family:"Inter",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:56px 24px 96px}
+.masthead{border-bottom:1px solid #35373a;padding-bottom:28px}
+.masthead h1{font-size:clamp(28px,4.6vw,42px);font-weight:800;letter-spacing:-.025em;margin:0 0 10px}
+.masthead p{margin:0;max-width:66ch;color:#a5a29c;font-size:15px;line-height:1.6}
+.dir{padding:56px 0;border-bottom:1px solid #35373a}
+.dir-no{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.14em;color:#7d7a74;
+  text-transform:uppercase;margin-bottom:10px}
+.dir h2{font-size:clamp(24px,3.6vw,34px);font-weight:800;letter-spacing:-.025em;margin:0 0 12px}
+.premise{max-width:66ch;color:#bdb9b2;line-height:1.65;margin:0 0 24px;font-size:15px}
+.premise b{color:#f0ede8;font-weight:700}
+.rule{max-width:66ch;margin:0 0 26px;padding:12px 16px;border-left:2px solid #4a4c50;
+  background:#232426;font-size:14px;line-height:1.6;color:#bdb9b2}
+.rule b{color:#f0ede8;font-weight:700}
+.spec{display:flex;flex-wrap:wrap;gap:34px;margin-bottom:34px;padding:18px 20px;background:#232426;
+  border:1px solid #35373a;border-radius:4px}
+.spec h3{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:#7d7a74;margin:0 0 10px;font-weight:500}
+.swatches{display:flex;gap:9px;margin-bottom:36px}
+.sw{width:78px;height:34px;position:relative;border-radius:2px;border:1px solid rgba(255,255,255,.09)}
+.sw span{position:absolute;top:41px;left:0;width:78px;font-family:"JetBrains Mono",monospace;
+  font-size:9px;line-height:1.4;color:#7d7a74}
+.typespec p{margin:0 0 5px;line-height:1.25}
+.screens{display:flex;gap:26px;overflow-x:auto;padding-bottom:14px;scrollbar-width:thin}
+.slot{flex:0 0 auto;width:302px;margin:0}
+.slot figcaption{margin-top:14px;font-size:13px;line-height:1.55;color:#a5a29c}
+.slot figcaption b{display:block;color:#e6e4e0;font-weight:700;font-size:12px;letter-spacing:.09em;
+  text-transform:uppercase;margin-bottom:5px;font-family:"JetBrains Mono",monospace}
+.phone{width:302px;height:620px;border-radius:38px;padding:9px;background:#0b0b0c;
+  box-shadow:0 0 0 1px #3c3e41,0 22px 44px rgba(0,0,0,.5)}
+.screen{width:100%;height:100%;border-radius:30px;overflow:hidden;position:relative;
+  display:flex;flex-direction:column}
+.verdict{padding:52px 0 0}
+.verdict h2{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0 0 14px}
+.verdict p{max-width:66ch;color:#bdb9b2;line-height:1.65;font-size:15px;margin:0 0 14px}
+.verdict b{color:#f0ede8}
+
+/* ─── shared dial ─── */
+.dial{display:block;width:100%}
+.dial .needle{stroke-width:3;stroke-linecap:round}
+.dial .tick{stroke-width:1}
+.dial .wedgelabel{font-size:12px;font-weight:600;text-anchor:middle;dominant-baseline:middle;
+  font-family:"JetBrains Mono",monospace}
+
+/* every screen inherits these token names; only the values change */
+.screen{background:var(--bg);color:var(--fg)}
+.btn{display:block;width:100%;min-height:48px;border:0;cursor:pointer;font:inherit;
+  transition:background-color .18s ease,opacity .18s ease}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ═══════ 1 · GRAPHITE — flat, typographic, amber on time + points ═══════ */
+.gr{--bg:#0B0B0C;--fg:#FAFAFA;--fg2:#A1A1AA;--fg3:#71717A;--line:rgba(255,255,255,.10);
+  --accent:#FFB000;--on-accent:#0B0B0C;
+  font-family:"Inter",sans-serif;letter-spacing:-.011em}
+.gr .pad{padding:0 22px}
+.gr .top{display:flex;align-items:baseline;justify-content:space-between;padding:20px 22px 16px}
+.gr .brand{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--fg3)}
+.gr .clock{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:19px;
+  font-variant-numeric:tabular-nums;color:var(--accent)}
+.gr .body{flex:1;display:flex;flex-direction:column;min-height:0;padding-bottom:20px}
+.gr .lbl{font-size:11px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--fg3)}
+.gr .code{font-size:66px;font-weight:800;letter-spacing:-.045em;line-height:1;margin-top:6px}
+.gr .h1{font-size:27px;font-weight:600;line-height:1.14;letter-spacing:-.024em;margin-top:7px}
+.gr .clue{font-size:33px;font-weight:800;letter-spacing:-.03em;line-height:1;margin-top:5px}
+.gr .row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;
+  border-top:1px solid var(--line)}
+.gr .row .nm{font-size:16px;font-weight:500}
+.gr .row .st{font-size:12px;color:var(--fg3);font-weight:500}
+.gr .score{display:flex;gap:26px;border-top:1px solid var(--line);padding-top:13px;margin-top:auto}
+.gr .score .t{font-size:11px;color:var(--fg3);font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase}
+.gr .score .v{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:23px;margin-top:3px;
+  font-variant-numeric:tabular-nums}
+.gr .btn{background:var(--fg);color:var(--bg);font-size:15px;font-weight:600;letter-spacing:-.01em;
+  margin-top:16px}
+.gr .btn:hover{background:#E4E4E7}
+.gr .delta{font-size:88px;font-weight:800;letter-spacing:-.05em;line-height:.9;color:var(--accent);
+  font-variant-numeric:tabular-nums}
+.gr .scale{display:flex;justify-content:space-between;font-size:11px;color:var(--fg3);
+  font-weight:500;margin-top:-2px}
+.gr .dial .bed{fill:none;stroke:var(--line);stroke-width:1.5}
+.gr .dial .tick{stroke:rgba(255,255,255,.16)}
+.gr .dial .needle{stroke:var(--fg)}
+.gr .dial .pivot{fill:var(--fg)}
+.gr .dial .w2{fill:#232326}.gr .dial .w3{fill:#3A3A3F}.gr .dial .w4{fill:var(--accent)}
+.gr .dial .wedgelabel{fill:#A1A1AA}.gr .dial .wl4{fill:var(--on-accent)}
+
+/* ═══════ 2 · CARBON — layered surfaces, blue on interaction only ═══════ */
+.cb{--bg:#0E1013;--surface:#171A1F;--surface2:#1E222A;--fg:#F2F4F7;--fg2:#9BA3AF;--fg3:#6E7681;
+  --line:rgba(255,255,255,.08);--accent:#4C8DFF;--on-accent:#06101F;
+  font-family:"Manrope",sans-serif}
+.cb .top{display:flex;align-items:center;gap:10px;padding:16px 16px 12px}
+.cb .brand{font-size:13px;font-weight:800;letter-spacing:-.01em}
+.cb .meta{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--fg3);
+  font-variant-numeric:tabular-nums}
+.cb .body{flex:1;display:flex;flex-direction:column;min-height:0;padding:0 16px 16px;gap:11px}
+.cb .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.cb .lbl{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--fg3)}
+.cb .code{font-size:48px;font-weight:800;letter-spacing:-.04em;line-height:1;margin-top:7px}
+.cb .h1{font-size:21px;font-weight:800;line-height:1.2;letter-spacing:-.018em;margin-top:6px}
+.cb .clue{display:inline-block;margin-top:11px;background:var(--surface2);border-radius:8px;
+  padding:9px 13px;font-size:18px;font-weight:800;letter-spacing:-.015em}
+.cb .p{display:flex;align-items:center;gap:11px;padding:9px 0}
+.cb .p+.p{border-top:1px solid var(--line)}
+.cb .av{width:32px;height:32px;border-radius:50%;background:var(--surface2);display:flex;
+  align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--fg2);
+  flex:0 0 auto}
+.cb .p .nm{flex:1;font-size:15px;font-weight:700}
+.cb .p .st{font-size:11px;color:var(--fg3);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.cb .tally{display:flex;gap:11px}
+.cb .tally .card{flex:1;padding:12px 13px}
+.cb .tally .t{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--fg3);white-space:nowrap}
+.cb .tally .v{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:24px;margin-top:4px;
+  font-variant-numeric:tabular-nums}
+.cb .btn{background:var(--accent);color:var(--on-accent);border-radius:11px;font-size:15px;
+  font-weight:800;letter-spacing:-.01em}
+.cb .btn:hover{background:#639BFF}
+.cb .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+.cb .delta{font-size:64px;font-weight:800;letter-spacing:-.045em;line-height:.94;
+  font-variant-numeric:tabular-nums}
+.cb .scale{display:flex;justify-content:space-between;font-size:10px;color:var(--fg3);
+  font-weight:700;letter-spacing:.05em;margin-top:-2px}
+.cb .dial .bed{fill:#12151A;stroke:var(--line);stroke-width:1.5}
+.cb .dial .tick{stroke:rgba(255,255,255,.13)}
+.cb .dial .needle{stroke:var(--accent)}
+.cb .dial .pivot{fill:var(--accent)}
+.cb .dial .w2{fill:#1E222A}.cb .dial .w3{fill:#2E3441}.cb .dial .w4{fill:#E8ECF2}
+.cb .dial .wedgelabel{fill:#9BA3AF}.cb .dial .wl4{fill:#0E1013}
+
+/* ═══════ 3 · SLATE — ruled and tabular, red on live state only ═══════ */
+.sl{--bg:#101113;--fg:#EDEDEF;--fg2:#9C9FA6;--fg3:#6F737B;--line:rgba(255,255,255,.13);
+  --accent:#E5484D;--on-accent:#FFFFFF;
+  font-family:"IBM Plex Sans",sans-serif}
+.sl .top{display:flex;align-items:center;gap:8px;padding:15px 18px 13px;
+  border-bottom:1px solid var(--line)}
+.sl .brand{font-size:12px;font-weight:600;letter-spacing:.13em;text-transform:uppercase}
+.sl .live{display:inline-flex;align-items:center;gap:5px;font-family:"IBM Plex Mono",monospace;
+  font-size:10px;font-weight:500;letter-spacing:.11em;text-transform:uppercase;color:var(--accent)}
+.sl .live i{width:6px;height:6px;border-radius:50%;background:var(--accent);
+  animation:blip 1.8s ease-in-out infinite}
+@keyframes blip{0%,100%{opacity:1}50%{opacity:.3}}
+.sl .meta{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--fg3);
+  font-variant-numeric:tabular-nums}
+.sl .meta.urgent{color:var(--accent);font-weight:600}
+.sl .body{flex:1;display:flex;flex-direction:column;min-height:0;padding:0 18px 18px}
+.sl .sec{padding:15px 0 13px;border-bottom:1px solid var(--line)}
+.sl .lbl{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--fg3)}
+.sl .code{font-family:"IBM Plex Mono",monospace;font-size:52px;font-weight:600;letter-spacing:.02em;
+  line-height:1;margin-top:8px}
+.sl .h1{font-size:20px;font-weight:600;line-height:1.24;margin-top:6px;letter-spacing:-.01em}
+.sl .clue{margin-top:11px;border:1px solid var(--line);padding:9px 12px;display:flex;
+  align-items:baseline;gap:10px}
+.sl .clue .k{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--fg3)}
+.sl .clue .v{font-size:19px;font-weight:600;letter-spacing:-.01em}
+.sl table{width:100%;border-collapse:collapse}
+.sl th{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.12em;color:var(--fg3);
+  text-transform:uppercase;text-align:right;padding:0 0 7px;font-weight:400;
+  border-bottom:1px solid var(--line)}
+.sl th:first-child{text-align:left}
+.sl td{font-family:"IBM Plex Mono",monospace;font-size:12px;text-align:right;padding:9px 0;
+  border-bottom:1px solid rgba(255,255,255,.07);font-variant-numeric:tabular-nums;color:var(--fg2)}
+.sl td:first-child{text-align:left;font-family:"IBM Plex Sans",sans-serif;font-weight:600;
+  font-size:13px;color:var(--fg)}
+.sl td.tot{color:var(--fg);font-weight:600}
+.sl .btn{background:transparent;border:1px solid var(--fg);color:var(--fg);font-size:14px;
+  font-weight:600;font-family:"IBM Plex Sans",sans-serif;margin-top:auto}
+.sl .btn:hover{background:var(--fg);color:var(--bg)}
+.sl .delta{font-family:"IBM Plex Mono",monospace;font-size:56px;font-weight:600;line-height:1;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.sl .scale{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;
+  font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);margin-top:-2px}
+.sl .dial .bed{fill:none;stroke:var(--line);stroke-width:1}
+.sl .dial .tick{stroke:rgba(255,255,255,.18)}
+.sl .dial .needle{stroke:var(--fg)}
+.sl .dial .pivot{fill:var(--fg)}
+.sl .dial .w2{fill:#1B1D20}.sl .dial .w3{fill:#33363C}.sl .dial .w4{fill:#EDEDEF}
+.sl .dial .wedgelabel{fill:#9C9FA6}.sl .dial .wl4{fill:#101113}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <h1>Ball Party — three neutral dark directions</h1>
+  <p>Restrained: a neutral dark base, a grey text ramp, and exactly one accent hue each. What
+     changes between them is <em>form</em> — flat versus layered versus ruled — and <em>where the
+     one accent is allowed to appear</em>. Same three screens and same state throughout: room
+     BLTZ, round 3 of 8, Kayla is the psychic, clue “Gronk”, the needle lands in a 3. Contrast
+     checked per theme: body text ≥ 4.5:1, secondary ≥ 3:1, targets ≥ 48px, tabular numerals on
+     every score and clock.</p>
+</header>
+
+<!-- ═══════ 1 ═══════ -->
+<section class="dir">
+  <div class="dir-no">Direction 07</div>
+  <h2>Graphite</h2>
+  <p class="premise">Flat and typographic. No cards, no fills, no shadows — hierarchy comes only
+    from type scale, weight, and a single hairline rule. It’s the least decorated of the three
+    and the fastest to build, because there is almost nothing to build.</p>
+  <div class="rule"><b>Accent rule:</b> amber appears on the clock and the points, and nowhere
+    else. Those are the two things that create tension in every one of your four games, so the
+    one colour in the product is reserved for time and score.</div>
+
+  <div class="spec">
+    <div>
+      <h3>Tokens</h3>
+      <div class="swatches">
+        <div class="sw" style="background:#0B0B0C"><span>#0B0B0C bg</span></div>
+        <div class="sw" style="background:#FAFAFA"><span>#FAFAFA fg</span></div>
+        <div class="sw" style="background:#A1A1AA"><span>#A1A1AA fg-2</span></div>
+        <div class="sw" style="background:#71717A"><span>#71717A fg-3</span></div>
+        <div class="sw" style="background:#FFB000"><span>#FFB000 accent</span></div>
+      </div>
+    </div>
+    <div class="typespec">
+      <h3>Type</h3>
+      <p style="font-family:'Inter';font-weight:800;font-size:26px;letter-spacing:-.03em">Inter 800 · tight tracking, large sizes</p>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:14px">JetBrains Mono · every score, every clock</p>
+    </div>
+  </div>
+
+  <div class="screens">
+
+    <figure class="slot">
+      <div class="phone"><div class="screen gr">
+        <div class="top"><span class="brand">Ball Party</span><span class="clock">4 / 4</span></div>
+        <div class="body pad">
+          <div class="lbl">Join code</div>
+          <div class="code">BLTZ</div>
+          <div class="lbl" style="margin-top:30px">In the room</div>
+          <div style="margin-top:8px">
+            <div class="row"><span class="nm">Kayla</span><span class="st">Ready</span></div>
+            <div class="row"><span class="nm">Devin</span><span class="st">Ready</span></div>
+            <div class="row"><span class="nm">Jordan</span><span class="st">Ready</span></div>
+            <div class="row"><span class="nm">Sam</span><span class="st">Ready</span></div>
+          </div>
+          <div style="margin-top:auto">
+            <div class="lbl">8 rounds · first to 30</div>
+            <button class="btn">Start the game</button>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Lobby</b>The join code is the largest thing on the screen because for ten
+        seconds it is the only thing anyone needs. Everything else is a list.</figcaption>
+    </figure>
+
+    <figure class="slot">
+      <div class="phone"><div class="screen gr">
+        <div class="top"><span class="brand">Round 3 of 8</span><span class="clock">0:04</span></div>
+        <div class="body pad">
+          <div class="lbl">Kayla is the psychic</div>
+          <div class="h1">A player you’d want to party with</div>
+          <div class="lbl" style="margin-top:18px">Clue</div>
+          <div class="clue">Gronk</div>
+          <svg class="dial" viewBox="18 24 284 160" style="margin-top:10px" aria-label="Wavelength dial, target hidden">
+            <path class="bed" d="M26 168 A134 134 0 0 1 294 168 L220 168 A60 60 0 0 0 100 168 Z"/>
+            <g class="ticks">
+              <line class="tick" x1="26" y1="168" x2="35" y2="168"/><line class="tick" x1="34.1" y1="122.2" x2="42.5" y2="125.2"/>
+              <line class="tick" x1="57.4" y1="81.9" x2="64.2" y2="87.7"/><line class="tick" x1="93" y1="52" x2="97.5" y2="59.7"/>
+              <line class="tick" x1="136.7" y1="36" x2="138.3" y2="44.9"/><line class="tick" x1="183.3" y1="36" x2="181.7" y2="44.9"/>
+              <line class="tick" x1="227" y1="52" x2="222.5" y2="59.7"/><line class="tick" x1="262.6" y1="81.9" x2="255.8" y2="87.7"/>
+              <line class="tick" x1="285.9" y1="122.2" x2="277.5" y2="125.2"/><line class="tick" x1="294" y1="168" x2="285" y2="168"/>
+            </g>
+            <line class="needle" x1="160" y1="168" x2="118.3" y2="47"/>
+            <circle class="pivot" cx="160" cy="168" r="8"/>
+          </svg>
+          <div class="scale"><span>Less likely</span><span>More likely</span></div>
+          <div class="score">
+            <div><div class="t">Kay · Sam</div><div class="v">14</div></div>
+            <div><div class="t">Jor · Dev</div><div class="v">11</div></div>
+          </div>
+          <button class="btn">Lock in the guess</button>
+        </div>
+      </div></div>
+      <figcaption><b>Guessing round</b>The clock is the only coloured thing on screen, so it reads
+        from arm’s length without a single graphic device around it.</figcaption>
+    </figure>
+
+    <figure class="slot">
+      <div class="phone"><div class="screen gr">
+        <div class="top"><span class="brand">Round 3 of 8</span><span class="clock">End</span></div>
+        <div class="body pad">
+          <div class="lbl">Jordan lands in the three</div>
+          <div class="delta">+3</div>
+          <svg class="dial" viewBox="18 24 284 160" style="margin-top:14px" aria-label="Wavelength dial, target revealed">
+            <path class="bed" d="M26 168 A134 134 0 0 1 294 168 L220 168 A60 60 0 0 0 100 168 Z"/>
+            <path class="w2" d="M108.6 137.1 L45.1 99.0 A134 134 0 0 1 65.2 73.2 L117.6 125.6 A60 60 0 0 0 108.6 137.1 Z"/>
+            <path class="w3" d="M117.6 125.6 L65.2 73.2 A134 134 0 0 1 87.0 55.6 L127.3 117.7 A60 60 0 0 0 117.6 125.6 Z"/>
+            <path class="w4" d="M127.3 117.7 L87.0 55.6 A134 134 0 0 1 107.6 44.7 L136.6 112.8 A60 60 0 0 0 127.3 117.7 Z"/>
+            <path class="w3" d="M136.6 112.8 L107.6 44.7 A134 134 0 0 1 134.4 36.5 L148.6 109.1 A60 60 0 0 0 136.6 112.8 Z"/>
+            <path class="w2" d="M148.6 109.1 L134.4 36.5 A134 134 0 0 1 167.0 34.2 L163.1 108.1 A60 60 0 0 0 148.6 109.1 Z"/>
+            <text class="wedgelabel" x="83.6" y="108.3">2</text><text class="wedgelabel" x="99" y="92.6">3</text>
+            <text class="wedgelabel wl4" x="114.5" y="82.4">4</text><text class="wedgelabel" x="131.6" y="75.2">3</text>
+            <text class="wedgelabel" x="153.2" y="71.2">2</text>
+            <line class="needle" x1="160" y1="168" x2="118.3" y2="47"/>
+            <circle class="pivot" cx="160" cy="168" r="8"/>
+          </svg>
+          <div class="scale"><span>Less likely</span><span>More likely</span></div>
+          <div class="score">
+            <div><div class="t">Kay · Sam</div><div class="v">14</div></div>
+            <div><div class="t">Jor · Dev</div><div class="v">14</div></div>
+          </div>
+          <button class="btn">Next round</button>
+        </div>
+      </div></div>
+      <figcaption><b>Scoring moment</b>The bullseye wedge is the one amber shape on the board, so
+        the reveal explains itself: the colour you’ve been watching on the clock is where the
+        points were.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ═══════ 2 ═══════ -->
+<section class="dir">
+  <div class="dir-no">Direction 08</div>
+  <h2>Carbon</h2>
+  <p class="premise">Layered surfaces on a cool near-black — cards, hairline borders, 14px radii, a
+    consistent two-step elevation scale. This is the one that looks like a shipped product app
+    rather than a design exercise, and it is the most forgiving as screens get busier, because new
+    content gets a surface instead of more type contrast.</p>
+  <div class="rule"><b>Accent rule:</b> blue means “you can touch this”. The needle you drag and
+    the primary button are blue; nothing decorative ever is. The bullseye is plain white, so the
+    reveal reads as information rather than as another button.</div>
+
+  <div class="spec">
+    <div>
+      <h3>Tokens</h3>
+      <div class="swatches">
+        <div class="sw" style="background:#0E1013"><span>#0E1013 bg</span></div>
+        <div class="sw" style="background:#171A1F"><span>#171A1F surface</span></div>
+        <div class="sw" style="background:#1E222A"><span>#1E222A surface-2</span></div>
+        <div class="sw" style="background:#F2F4F7"><span>#F2F4F7 fg</span></div>
+        <div class="sw" style="background:#9BA3AF"><span>#9BA3AF fg-2</span></div>
+        <div class="sw" style="background:#4C8DFF"><span>#4C8DFF accent</span></div>
+      </div>
+    </div>
+    <div class="typespec">
+      <h3>Type</h3>
+      <p style="font-family:'Manrope';font-weight:800;font-size:25px;letter-spacing:-.02em">Manrope 800 · a little rounder than Inter</p>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:14px">JetBrains Mono · scores and clocks only</p>
+    </div>
+  </div>
+
+  <div class="screens">
+
+    <figure class="slot">
+      <div class="phone"><div class="screen cb">
+        <div class="top"><span class="brand">Ball Party</span><span class="meta">4 / 4 in</span></div>
+        <div class="body">
+          <div class="card">
+            <div class="lbl">Join code</div>
+            <div class="code">BLTZ</div>
+          </div>
+          <div class="card">
+            <div class="lbl" style="margin-bottom:5px">In the room</div>
+            <div class="p"><span class="av">K</span><span class="nm">Kayla</span><span class="st">Ready</span></div>
+            <div class="p"><span class="av">D</span><span class="nm">Devin</span><span class="st">Ready</span></div>
+            <div class="p"><span class="av">J</span><span class="nm">Jordan</span><span class="st">Ready</span></div>
+            <div class="p"><span class="av">S</span><span class="nm">Sam</span><span class="st">Ready</span></div>
+          </div>
+          <div style="margin-top:auto">
+            <div class="lbl" style="text-align:center;margin-bottom:11px">8 rounds · first to 30</div>
+            <button class="btn">Start the game</button>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Lobby</b>Two surfaces, one job each. The blue button is the only saturated
+        thing on the screen, which is the whole point of the rule.</figcaption>
+    </figure>
+
+    <figure class="slot">
+      <div class="phone"><div class="screen cb">
+        <div class="top"><span class="brand">Round 3 of 8</span><span class="meta">0:04</span></div>
+        <div class="body">
+          <div class="card">
+            <div class="lbl">Kayla is the psychic</div>
+            <div class="h1">A player you’d want to party with</div>
+            <div><span class="clue">Gronk</span></div>
+          </div>
+          <div class="card" style="padding:14px 12px 12px">
+            <svg class="dial" viewBox="18 24 284 160" aria-label="Wavelength dial, target hidden">
+              <path class="bed" d="M26 168 A134 134 0 0 1 294 168 L220 168 A60 60 0 0 0 100 168 Z"/>
+              <g class="ticks">
+                <line class="tick" x1="26" y1="168" x2="35" y2="168"/><line class="tick" x1="34.1" y1="122.2" x2="42.5" y2="125.2"/>
+                <line class="tick" x1="57.4" y1="81.9" x2="64.2" y2="87.7"/><line class="tick" x1="93" y1="52" x2="97.5" y2="59.7"/>
+                <line class="tick" x1="136.7" y1="36" x2="138.3" y2="44.9"/><line class="tick" x1="183.3" y1="36" x2="181.7" y2="44.9"/>
+                <line class="tick" x1="227" y1="52" x2="222.5" y2="59.7"/><line class="tick" x1="262.6" y1="81.9" x2="255.8" y2="87.7"/>
+                <line class="tick" x1="285.9" y1="122.2" x2="277.5" y2="125.2"/><line class="tick" x1="294" y1="168" x2="285" y2="168"/>
+              </g>
+              <line class="needle" x1="160" y1="168" x2="118.3" y2="47"/>
+              <circle class="pivot" cx="160" cy="168" r="8"/>
+            </svg>
+            <div class="scale"><span>Less likely</span><span>More likely</span></div>
+          </div>
+          <div class="tally">
+            <div class="card"><div class="t">Kay · Sam</div><div class="v">14</div></div>
+            <div class="card"><div class="t">Jor · Dev</div><div class="v">11</div></div>
+          </div>
+          <button class="btn" style="margin-top:auto">Lock in the guess</button>
+        </div>
+      </div></div>
+      <figcaption><b>Guessing round</b>The dial gets its own surface, so the board is an object you
+        act on rather than a drawing floating in the page. Blue needle, blue button, nothing
+        else.</figcaption>
+    </figure>
+
+    <figure class="slot">
+      <div class="phone"><div class="screen cb">
+        <div class="top"><span class="brand">Round 3 of 8</span><span class="meta">End</span></div>
+        <div class="body">
+          <div class="card" style="text-align:center">
+            <div class="lbl">Jordan lands in the three</div>
+            <div class="delta">+3</div>
+          </div>
+          <div class="card" style="padding:14px 12px 12px">
+            <svg class="dial" viewBox="18 24 284 160" aria-label="Wavelength dial, target revealed">
+              <path class="bed" d="M26 168 A134 134 0 0 1 294 168 L220 168 A60 60 0 0 0 100 168 Z"/>
+              <path class="w2" d="M108.6 137.1 L45.1 99.0 A134 134 0 0 1 65.2 73.2 L117.6 125.6 A60 60 0 0 0 108.6 137.1 Z"/>
+              <path class="w3" d="M117.6 125.6 L65.2 73.2 A134 134 0 0 1 87.0 55.6 L127.3 117.7 A60 60 0 0 0 117.6 125.6 Z"/>
+              <path class="w4" d="M127.3 117.7 L87.0 55.6 A134 134 0 0 1 107.6 44.7 L136.6 112.8 A60 60 0 0 0 127.3 117.7 Z"/>
+              <path class="w3" d="M136.6 112.8 L107.6 44.7 A134 134 0 0 1 134.4 36.5 L148.6 109.1 A60 60 0 0 0 136.6 112.8 Z"/>
+              <path class="w2" d="M148.6 109.1 L134.4 36.5 A134 134 0 0 1 167.0 34.2 L163.1 108.1 A60 60 0 0 0 148.6 109.1 Z"/>
+              <text class="wedgelabel" x="83.6" y="108.3">2</text><text class="wedgelabel" x="99" y="92.6">3</text>
+              <text class="wedgelabel wl4" x="114.5" y="82.4">4</text><text class="wedgelabel" x="131.6" y="75.2">3</text>
+              <text class="wedgelabel" x="153.2" y="71.2">2</text>
+              <line class="needle" x1="160" y1="168" x2="118.3" y2="47"/>
+              <circle class="pivot" cx="160" cy="168" r="8"/>
+            </svg>
+            <div class="scale"><span>Less likely</span><span>More likely</span></div>
+          </div>
+          <div class="tally">
+            <div class="card"><div class="t">Kay · Sam</div><div class="v">14</div></div>
+            <div class="card"><div class="t">Jor · Dev</div><div class="v">14</div></div>
+          </div>
+          <button class="btn" style="margin-top:auto">Next round</button>
+        </div>
+      </div></div>
+      <figcaption><b>Scoring moment</b>The score is white, not blue — it isn’t something you can
+        tap. Holding that line is what keeps the accent meaningful once the app has twenty
+        screens.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ═══════ 3 ═══════ -->
+<section class="dir">
+  <div class="dir-no">Direction 09</div>
+  <h2>Slate</h2>
+  <p class="premise">Ruled and tabular. Nothing is filled; hairline rules do all the separating,
+    corners are square, and numbers live in a monospace column that lines up. It reads as a
+    results service — the closest of the three to something a person who actually follows sport
+    would trust.</p>
+  <div class="rule"><b>Accent rule:</b> red only ever means live or urgent — the on-air dot, and
+    the clock once it drops under five seconds. It never marks a score, a button, or a heading, so
+    when red appears something is genuinely happening.</div>
+
+  <div class="spec">
+    <div>
+      <h3>Tokens</h3>
+      <div class="swatches">
+        <div class="sw" style="background:#101113"><span>#101113 bg</span></div>
+        <div class="sw" style="background:#EDEDEF"><span>#EDEDEF fg</span></div>
+        <div class="sw" style="background:#9C9FA6"><span>#9C9FA6 fg-2</span></div>
+        <div class="sw" style="background:#6F737B"><span>#6F737B fg-3</span></div>
+        <div class="sw" style="background:#E5484D"><span>#E5484D accent</span></div>
+      </div>
+    </div>
+    <div class="typespec">
+      <h3>Type</h3>
+      <p style="font-family:'IBM Plex Sans';font-weight:600;font-size:24px">IBM Plex Sans 600 · plain, engineered</p>
+      <p style="font-family:'IBM Plex Mono',monospace;font-size:14px">IBM Plex Mono · codes, scores, every table column</p>
+    </div>
+  </div>
+
+  <div class="screens">
+
+    <figure class="slot">
+      <div class="phone"><div class="screen sl">
+        <div class="top"><span class="brand">Ball Party</span><span class="meta">Room open</span></div>
+        <div class="body">
+          <div class="sec">
+            <div class="lbl">Join code</div>
+            <div class="code">BLTZ</div>
+          </div>
+          <div class="sec">
+            <div class="lbl" style="margin-bottom:11px">In the room · 4 of 4</div>
+            <table>
+              <thead><tr><th>Player</th><th>GP</th><th>Avg</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>Kayla</td><td>12</td><td>3.1</td><td class="tot">Ready</td></tr>
+                <tr><td>Devin</td><td>2</td><td>2.4</td><td class="tot">Ready</td></tr>
+                <tr><td>Jordan</td><td>31</td><td>3.4</td><td class="tot">Ready</td></tr>
+                <tr><td>Sam</td><td>7</td><td>2.9</td><td class="tot">Ready</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="sec" style="border-bottom:0">
+            <div class="lbl">8 rounds · teams drawn at random · first to 30</div>
+          </div>
+          <button class="btn">Start the game</button>
+        </div>
+      </div></div>
+      <figcaption><b>Lobby</b>The lobby is a table, which means it can carry each player’s record
+        without needing any new layout. Nothing is red because nothing is live yet.</figcaption>
+    </figure>
+
+    <figure class="slot">
+      <div class="phone"><div class="screen sl">
+        <div class="top"><span class="live"><i></i>Live</span><span class="brand">R3 / 8</span>
+          <span class="meta urgent">0:04</span></div>
+        <div class="body">
+          <div class="sec">
+            <div class="lbl">Spectrum · Kayla is the psychic</div>
+            <div class="h1">A player you’d want to party with</div>
+            <div class="clue"><span class="k">Clue</span><span class="v">Gronk</span></div>
+          </div>
+          <div style="padding-top:12px">
+            <svg class="dial" viewBox="18 24 284 160" aria-label="Wavelength dial, target hidden">
+              <path class="bed" d="M26 168 A134 134 0 0 1 294 168 L220 168 A60 60 0 0 0 100 168 Z"/>
+              <g class="ticks">
+                <line class="tick" x1="26" y1="168" x2="35" y2="168"/><line class="tick" x1="34.1" y1="122.2" x2="42.5" y2="125.2"/>
+                <line class="tick" x1="57.4" y1="81.9" x2="64.2" y2="87.7"/><line class="tick" x1="93" y1="52" x2="97.5" y2="59.7"/>
+                <line class="tick" x1="136.7" y1="36" x2="138.3" y2="44.9"/><line class="tick" x1="183.3" y1="36" x2="181.7" y2="44.9"/>
+                <line class="tick" x1="227" y1="52" x2="222.5" y2="59.7"/><line class="tick" x1="262.6" y1="81.9" x2="255.8" y2="87.7"/>
+                <line class="tick" x1="285.9" y1="122.2" x2="277.5" y2="125.2"/><line class="tick" x1="294" y1="168" x2="285" y2="168"/>
+              </g>
+              <line class="needle" x1="160" y1="168" x2="118.3" y2="47"/>
+              <circle class="pivot" cx="160" cy="168" r="8"/>
+            </svg>
+            <div class="scale"><span>Less likely</span><span>More likely</span></div>
+          </div>
+          <div class="sec" style="border-bottom:0;padding-bottom:0">
+            <table>
+              <thead><tr><th>Team</th><th>R1</th><th>R2</th><th>Tot</th></tr></thead>
+              <tbody>
+                <tr><td>Kay · Sam</td><td>4</td><td>7</td><td class="tot">14</td></tr>
+                <tr><td>Jor · Dev</td><td>6</td><td>5</td><td class="tot">11</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <button class="btn">Lock in the guess</button>
+        </div>
+      </div></div>
+      <figcaption><b>Guessing round</b>The clock turns red under five seconds and the live dot
+        pulses — the only two red things in the product. The table below stays legible the whole
+        time, which is what the idle players read.</figcaption>
+    </figure>
+
+    <figure class="slot">
+      <div class="phone"><div class="screen sl">
+        <div class="top"><span class="brand">Result · R3</span><span class="meta">Next: Devin</span></div>
+        <div class="body">
+          <div class="sec">
+            <div class="lbl">Jordan lands in the three</div>
+            <div class="delta">+3</div>
+          </div>
+          <div style="padding-top:12px">
+            <svg class="dial" viewBox="18 24 284 160" aria-label="Wavelength dial, target revealed">
+              <path class="bed" d="M26 168 A134 134 0 0 1 294 168 L220 168 A60 60 0 0 0 100 168 Z"/>
+              <path class="w2" d="M108.6 137.1 L45.1 99.0 A134 134 0 0 1 65.2 73.2 L117.6 125.6 A60 60 0 0 0 108.6 137.1 Z"/>
+              <path class="w3" d="M117.6 125.6 L65.2 73.2 A134 134 0 0 1 87.0 55.6 L127.3 117.7 A60 60 0 0 0 117.6 125.6 Z"/>
+              <path class="w4" d="M127.3 117.7 L87.0 55.6 A134 134 0 0 1 107.6 44.7 L136.6 112.8 A60 60 0 0 0 127.3 117.7 Z"/>
+              <path class="w3" d="M136.6 112.8 L107.6 44.7 A134 134 0 0 1 134.4 36.5 L148.6 109.1 A60 60 0 0 0 136.6 112.8 Z"/>
+              <path class="w2" d="M148.6 109.1 L134.4 36.5 A134 134 0 0 1 167.0 34.2 L163.1 108.1 A60 60 0 0 0 148.6 109.1 Z"/>
+              <text class="wedgelabel" x="83.6" y="108.3">2</text><text class="wedgelabel" x="99" y="92.6">3</text>
+              <text class="wedgelabel wl4" x="114.5" y="82.4">4</text><text class="wedgelabel" x="131.6" y="75.2">3</text>
+              <text class="wedgelabel" x="153.2" y="71.2">2</text>
+              <line class="needle" x1="160" y1="168" x2="118.3" y2="47"/>
+              <circle class="pivot" cx="160" cy="168" r="8"/>
+            </svg>
+            <div class="scale"><span>Less likely</span><span>More likely</span></div>
+          </div>
+          <div class="sec" style="border-bottom:0;padding-bottom:0">
+            <table>
+              <thead><tr><th>Team</th><th>R1</th><th>R2</th><th>R3</th><th>Tot</th></tr></thead>
+              <tbody>
+                <tr><td>Kay · Sam</td><td>4</td><td>7</td><td>3</td><td class="tot">14</td></tr>
+                <tr><td>Jor · Dev</td><td>6</td><td>5</td><td>3</td><td class="tot">14</td></tr>
+              </tbody>
+            </table>
+            <div class="lbl" style="margin-top:11px">Tied at the half · first to 30</div>
+          </div>
+          <button class="btn">Next round</button>
+        </div>
+      </div></div>
+      <figcaption><b>Scoring moment</b>No red here at all — the round is over, so nothing is
+        urgent. The by-round table is the celebration, which is either exactly right for your
+        audience or far too cold.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section class="verdict">
+  <h2>Reading the three</h2>
+  <p><b>Carbon</b> is what I’d build. Surfaces absorb complexity that flat layouts can’t — when the
+    auction needs a bid list and a timer and six lots on one screen, Graphite starts fighting
+    itself and Carbon just adds a card. The accent rule (blue = touchable) is also the one of the
+    three that keeps working as the product grows, because it’s a functional rule rather than an
+    aesthetic one.</p>
+  <p><b>Graphite</b> is the most confident-looking and the cheapest to ship, and it would be the
+    right pick if you want to get all four games playable before you think about visual identity.
+    Its ceiling is lower: everything is type, so a dense screen has nowhere to go.</p>
+  <p><b>Slate</b> is the most distinctive of the three and the coldest. The tables are a real
+    advantage — player records in the lobby, by-round scoring, arcade leaderboards all come free —
+    but nothing about it says “party”. Worth choosing deliberately, not by default.</p>
+  <p>All three share the same token names (<code>--bg</code>, <code>--fg</code>, <code>--fg2</code>,
+    <code>--line</code>, <code>--accent</code>), so they’re swappable — you can build against one
+    and re-skin later by changing five values.</p>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,14 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Alfa_Slab_One, Karla, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Karla reads; Alfa Slab is the card-back voice and is only ever used large;
+// Roboto Mono carries every stat line, budget, and clock.
+const karla = Karla({
+  variable: "--font-karla",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Alfa Slab One ships a single weight, so next/font requires it explicitly.
+const alfaSlabOne = Alfa_Slab_One({
+  variable: "--font-alfa-slab",
+  subsets: ["latin"],
+  weight: "400",
+});
+
+const robotoMono = Roboto_Mono({
+  variable: "--font-roboto-mono",
   subsets: ["latin"],
 });
 
@@ -21,9 +30,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${karla.variable} ${alfaSlabOne.variable} ${robotoMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }

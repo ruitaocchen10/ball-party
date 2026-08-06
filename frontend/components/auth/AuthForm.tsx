@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { Button } from "@/components/ui/Button";
 import { signInWithEmail, signUpWithEmail } from "@/lib/auth/actions";
 import {
   DISPLAY_NAME_MAX,
@@ -15,20 +16,18 @@ import {
 
 import { GoogleButton } from "./GoogleButton";
 
+// Fields are wells cut into the table, not cards — three cream blocks would
+// blow out a screen whose whole premise is that light is rare.
 const FIELD =
-  "h-11 w-full rounded-lg border border-black/15 bg-transparent px-3 text-sm outline-none placeholder:text-black/35 focus:border-black/40 dark:border-white/20 dark:placeholder:text-white/35 dark:focus:border-white/50";
+  "h-12 w-full rounded border border-line bg-table-raised px-3 text-sm text-fg outline-none placeholder:text-fg-muted focus:border-stock";
 
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
 
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="h-11 w-full rounded-lg bg-foreground text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-60"
-    >
+    <Button type="submit" disabled={pending}>
       {pending ? "Working…" : label}
-    </button>
+    </Button>
   );
 }
 
@@ -41,24 +40,24 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <header className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {isSignup ? "Create your account" : "Sign in to Ball Party"}
+      <header className="flex flex-col gap-2">
+        <h1 className="font-slab text-3xl leading-none -skew-x-7 uppercase">
+          {isSignup ? "Deal me in" : "Ball Party"}
         </h1>
-        <p className="text-sm text-black/55 dark:text-white/55">
+        <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
           {isSignup
-            ? "You'll need an account to host or join a room."
-            : "Welcome back."}
+            ? "You need a card to sit at the table"
+            : "Sign in to take your seat"}
         </p>
       </header>
 
       {/* Sibling, not nested — forms can't contain forms. */}
       <GoogleButton next={next} label={isSignup ? "Sign up with Google" : "Sign in with Google"} />
 
-      <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-black/40 dark:text-white/40">
-        <span className="h-px flex-1 bg-black/10 dark:bg-white/15" />
+      <div className="flex items-center gap-3 font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
+        <span className="h-px flex-1 bg-line" />
         or
-        <span className="h-px flex-1 bg-black/10 dark:bg-white/15" />
+        <span className="h-px flex-1 bg-line" />
       </div>
 
       <form action={formAction} className="flex flex-col gap-3">
@@ -105,8 +104,10 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
           />
         </label>
 
+        {/* The one place red isn't about hidden information. Inventing a second
+            alarm colour would cost more than reusing this one. */}
         {state.error && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          <p role="alert" className="text-sm text-hidden-text">
             {state.error}
           </p>
         )}
@@ -116,11 +117,11 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
         </div>
       </form>
 
-      <p className="text-sm text-black/55 dark:text-white/55">
+      <p className="text-sm text-fg-muted">
         {isSignup ? "Already have an account? " : "New here? "}
         <Link
           href={isSignup ? "/login" : "/signup"}
-          className="font-medium text-foreground underline underline-offset-4 decoration-black/30 dark:decoration-white/30"
+          className="font-medium text-fg underline decoration-line underline-offset-4 hover:decoration-fg"
         >
           {isSignup ? "Sign in" : "Create an account"}
         </Link>

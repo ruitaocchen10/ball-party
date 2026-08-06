@@ -4,6 +4,9 @@ import { useFormStatus } from "react-dom";
 
 import { signInWithGoogle } from "@/lib/auth/actions";
 
+// Deliberately the ghost variant, hand-rolled rather than <Button> because it
+// needs the mark inline and sentence case: Google's brand guidelines don't
+// survive being set in uppercase slab.
 function Button({ label }: { label: string }) {
   const { pending } = useFormStatus();
 
@@ -11,7 +14,7 @@ function Button({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-black/15 bg-white px-4 text-sm font-medium text-black transition-colors hover:bg-black/[.03] disabled:opacity-60 dark:border-white/20 dark:bg-transparent dark:text-white dark:hover:bg-white/[.06]"
+      className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 rounded border border-line px-4 text-sm font-medium text-fg transition-colors hover:bg-table-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stock disabled:cursor-not-allowed disabled:opacity-60"
     >
       <GoogleMark />
       {pending ? "Redirecting…" : label}
