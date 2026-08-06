@@ -1,7 +1,8 @@
 # Architecture
 
-App-wide technical decisions shared by every game in [`games/`](./games/).
-Game-specific rules live in their own docs.
+App-wide technical decisions shared by every game in [`games/`](../games/).
+Game-specific rules live in their own docs. Session and lobby structure lives in
+[`lobbies/`](./lobbies/lobbies.md).
 
 ### Shape of the problem
 
