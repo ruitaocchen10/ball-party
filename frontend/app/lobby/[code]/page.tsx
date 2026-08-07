@@ -1,10 +1,11 @@
 import Link from "next/link";
 
-import { Sidebar } from "@/components/layout/Sidebar";
+import { TopBar } from "@/components/layout/TopBar";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
 import { LobbyRealtime } from "@/components/lobby/LobbyRealtime";
+import { GAMES } from "@/lib/games/catalog";
 import { closeLobby, joinLobby, leaveLobby } from "@/lib/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,8 +20,13 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
 
-  const { error } = await props.searchParams;
+  const { error, game: gameParam } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
+
+  // Set by the home grid when the room was opened from a specific game tile.
+  // A note to the person who clicked, nothing more — see createLobby.
+  const slug = Array.isArray(gameParam) ? gameParam[0] : gameParam;
+  const picked = GAMES.find((g) => g.slug === slug && g.status === "live") ?? null;
 
   // Mirrors the rule in lib/supabase/proxy.ts: an anonymous JWT is signed out,
   // not a user. Both places have to agree or this route becomes the one way in.
@@ -49,7 +55,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     );
   }
 
-  // The sidebar shows who you are on every screen, so the viewer's own name is
+  // The top bar shows who you are on every screen, so the viewer's own name is
   // needed here whether or not they turn out to be in this room.
   const { data: viewer } = await supabase
     .from("profiles")
@@ -102,6 +108,14 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   return (
     <Shell code={code} error={errorText} displayName={displayName}>
       <LobbyRealtime lobbyId={lobby.id} />
+
+      {picked ? (
+        <p className="-mt-2 font-mono text-[10px] leading-[1.6] tracking-[0.13em] text-fg-muted uppercase">
+          Your pick: <span className="text-fg">{picked.name.join(" ")}</span>
+          <br />
+          Choose it when you start a run
+        </p>
+      ) : null}
 
       <Label>
         {members.length} of {CAPACITY} players
@@ -188,26 +202,24 @@ function Shell({
 }) {
   return (
     <>
-      <Sidebar displayName={displayName} />
-      <div className="flex flex-1 flex-col lg:ml-64">
-        <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-14">
-          <header className="flex flex-col gap-2">
-            <Label>Join code</Label>
-            <h1 className="font-mono text-5xl font-semibold tracking-[0.16em] text-fg">{code}</h1>
-          </header>
+      <TopBar displayName={displayName} />
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-14">
+        <header className="flex flex-col gap-2">
+          <Label>Join code</Label>
+          <h1 className="font-mono text-5xl font-semibold tracking-[0.16em] text-fg">{code}</h1>
+        </header>
 
-          {error ? (
-            <p
-              role="alert"
-              className="rounded border border-hidden/40 bg-hidden/10 px-3.5 py-2.5 text-sm text-hidden-text"
-            >
-              {error}
-            </p>
-          ) : null}
+        {error ? (
+          <p
+            role="alert"
+            className="rounded border border-hidden/40 bg-hidden/10 px-3.5 py-2.5 text-sm text-hidden-text"
+          >
+            {error}
+          </p>
+        ) : null}
 
-          {children}
-        </main>
-      </div>
+        {children}
+      </main>
     </>
   );
 }

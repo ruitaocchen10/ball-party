@@ -29,6 +29,7 @@
   /* the one accent */
   --hidden: #c9382c; /* as a surface: concealed values, unfilled spots */
   --hidden-text: #e86759; /* same red lifted to stay legible on the background */
+  --hidden-ink: #a8291f; /* same red darkened to stay legible ON a cream panel */
 
   /* text on the background */
   --fg: #e8e3d6;
@@ -45,6 +46,7 @@
   --color-panel-muted: var(--panel-muted);
   --color-hidden: var(--hidden);
   --color-hidden-text: var(--hidden-text);
+  --color-hidden-ink: var(--hidden-ink);
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
   --color-line: var(--line);
@@ -58,6 +60,10 @@
   --shadow-card:
     0 10px 24px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.7);
   --shadow-concealed: 0 10px 24px rgb(0 0 0 / 0.5);
+
+  /* A panel you can press. Same light, one step closer to it. */
+  --shadow-card-hover:
+    0 16px 34px rgb(0 0 0 / 0.62), inset 0 1px 0 rgb(255 255 255 / 0.8);
 
   --radius-card: 5px;
 }

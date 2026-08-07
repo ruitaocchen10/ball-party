@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { GAMES } from "@/lib/games/catalog";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -29,7 +30,23 @@ function normalizeCode(value: FormDataEntryValue | null): string {
   return String(value ?? "").trim().toUpperCase();
 }
 
-export async function createLobby() {
+/**
+ * A room, optionally opened with a game in mind.
+ *
+ * The slug rides along in the URL rather than in a column because a lobby has
+ * no mode — the game is chosen per run, from inside the room (see
+ * docs/architecture/lobbies). So this is a note to the person who clicked,
+ * carried as far as the room and no further: it is not shared with the other
+ * players, and it is gone the moment they navigate away. When runs are built
+ * the choice becomes a row on `runs` and this hint goes away.
+ *
+ * Unrecognised slugs are dropped rather than echoed — the room URL is a thing
+ * people paste to each other, so nothing arbitrary gets to ride in it.
+ */
+export async function createLobby(formData?: FormData) {
+  const slug = String(formData?.get("game") ?? "");
+  const game = GAMES.find((g) => g.slug === slug && g.status === "live");
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_lobby");
 
@@ -37,7 +54,7 @@ export async function createLobby() {
   if (error) redirect(withError("/", error));
 
   revalidatePath("/", "layout");
-  redirect(`/lobby/${data.code}`);
+  redirect(game ? `/lobby/${data.code}?game=${game.slug}` : `/lobby/${data.code}`);
 }
 
 /**

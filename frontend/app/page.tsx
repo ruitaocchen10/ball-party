@@ -1,9 +1,15 @@
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { CurrentRoom, type RoomSummary } from "@/components/home/CurrentRoom";
 import { GameGrid } from "@/components/home/GameGrid";
+import { JoinRoom } from "@/components/home/JoinRoom";
 import { GAMES } from "@/lib/games/catalog";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { TopBar } from "@/components/layout/TopBar";
 import { createLobby } from "@/lib/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
+
+// The request-scoped client, carrying the generated Database types with it —
+// a bare SupabaseClient would erase them and untype every nested select below.
+type Client = Awaited<ReturnType<typeof createClient>>;
 
 export default async function Home(props: PageProps<"/">) {
   const supabase = await createClient();
@@ -14,54 +20,96 @@ export default async function Home(props: PageProps<"/">) {
   // Mirrors lib/supabase/proxy.ts: an anonymous JWT is signed out, not a user.
   const signedIn = Boolean(claims) && claims?.is_anonymous !== true;
 
-  const { data: profile } = signedIn
-    ? await supabase.from("profiles").select("display_name").eq("id", claims!.sub).single()
-    : { data: null };
+  // Independent of each other, so they go together rather than in sequence.
+  const [profileResult, room] = signedIn
+    ? await Promise.all([
+        supabase.from("profiles").select("display_name").eq("id", claims!.sub).single(),
+        currentRoom(supabase, claims!.sub),
+      ])
+    : [{ data: null }, null];
 
-  const displayName = profile?.display_name ?? (signedIn ? (claims!.email as string) : null);
+  const displayName = profileResult.data?.display_name ?? (signedIn ? (claims!.email as string) : null);
 
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
 
+  const live = GAMES.filter((game) => game.status === "live").length;
+  const upcoming = GAMES.length - live;
+
   return (
     <>
-      <Sidebar displayName={displayName} />
+      <TopBar displayName={displayName} />
 
-      <div className="flex flex-1 flex-col lg:ml-64">
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-16 sm:px-6">
-          {errorText ? (
-            <p
-              role="alert"
-              className="mt-6 rounded border border-hidden/40 bg-hidden/10 px-3.5 py-2.5 text-sm text-hidden-text"
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-16 sm:px-6">
+        {errorText ? (
+          <p
+            role="alert"
+            className="mt-6 rounded border border-hidden/40 bg-hidden/10 px-3.5 py-2.5 text-sm text-hidden-text"
+          >
+            {errorText}
+          </p>
+        ) : null}
+
+        {signedIn ? (
+          <>
+            {room ? <CurrentRoom room={room} /> : null}
+            <ActionStrip hasRoom={room !== null} />
+          </>
+        ) : (
+          <Hero />
+        )}
+
+        <section aria-labelledby="games-heading">
+          <div className="mt-9 mb-4 flex items-baseline gap-3.5">
+            <h2
+              id="games-heading"
+              className="font-slab text-base leading-none -skew-x-7 uppercase sm:text-lg"
             >
-              {errorText}
-            </p>
-          ) : null}
+              Games
+            </h2>
+            <span aria-hidden className="h-px flex-1 bg-line" />
+            <span className="font-mono text-[9px] tracking-[0.15em] text-fg-muted uppercase">
+              {live} live · {upcoming} in development
+            </span>
+          </div>
 
-          {signedIn ? <ActionStrip name={displayName} /> : <Hero />}
+          <GameGrid signedIn={signedIn} />
+        </section>
 
-          <section aria-labelledby="games-heading">
-            <div className="mt-9 mb-4 flex items-baseline gap-3.5">
-              <h2
-                id="games-heading"
-                className="font-slab text-base leading-none -skew-x-7 uppercase sm:text-lg"
-              >
-                Games
-              </h2>
-              <span aria-hidden className="h-px flex-1 bg-line" />
-              <span className="font-mono text-[9px] tracking-[0.15em] text-fg-muted uppercase">
-                3 live · 1 in development
-              </span>
-            </div>
-
-            <GameGrid signedIn={signedIn} />
-          </section>
-
-          {signedIn ? null : <HowItWorks />}
-        </main>
-      </div>
+        {signedIn ? null : <HowItWorks />}
+      </main>
     </>
   );
+}
+
+/**
+ * The one room the viewer is currently in, or null.
+ *
+ * No filter on membership is needed: RLS only returns lobbies where
+ * is_lobby_member() holds for the caller, and a player is in exactly one at a
+ * time. `closed_at` is the filter that matters — since migration 0006 a
+ * host-closed room keeps its members attached, so without it a dead room would
+ * keep showing up here forever.
+ */
+async function currentRoom(supabase: Client, userId: string): Promise<RoomSummary | null> {
+  const { data: lobby } = await supabase
+    .from("lobbies")
+    .select("code, host_id, lobby_members(user_id, joined_at, left_at, profiles(display_name))")
+    .is("closed_at", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (!lobby) return null;
+
+  const players = lobby.lobby_members
+    .filter((member) => member.left_at === null)
+    .sort((a, b) => a.joined_at.localeCompare(b.joined_at))
+    .map((member) => ({
+      id: member.user_id,
+      name: member.profiles?.display_name ?? "Unknown player",
+    }));
+
+  return { code: lobby.code, players, hostId: lobby.host_id, youId: userId };
 }
 
 /**
@@ -100,6 +148,15 @@ function Hero() {
         <p className="mt-4 font-mono text-[9px] tracking-[0.13em] text-fg-muted uppercase">
           Sign-in takes about ten seconds · Google or email
         </p>
+
+        {/* The room page opens for people without accounts, so someone who was
+            texted a bare code — no link — needs a door here too. */}
+        <div className="mt-7 border-t border-line pt-5">
+          <p className="mb-2.5 font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
+            Already have a code?
+          </p>
+          <JoinRoom className="w-full sm:w-fit" />
+        </div>
       </div>
 
       <Fan />
@@ -149,27 +206,122 @@ function Fan() {
   );
 }
 
-/** Signed in. No pitch needed — one action, and the games below it. */
-function ActionStrip({ name }: { name: string | null }) {
+/**
+ * Signed in: the heading, and the two ways into a room.
+ *
+ * Both ways in are panels rather than controls in a row. The heading used to
+ * read "signed in as <name>" with the actions squeezed beside it — the largest
+ * type on the page spending itself on a fact the top bar already carries, and
+ * the two things you actually came to do reading as toolbar furniture.
+ *
+ * Hosting is the cream panel because cream is what this product gives the thing
+ * that matters. Joining is the same size on a dark one: equal standing, clear
+ * emphasis. Neither carries the red edge — a room you have not opened yet is
+ * not concealed information, and red means one thing here.
+ *
+ * When you are already in a room the whole section steps down: the panel above
+ * is the important object, so the heading shrinks and says what these two
+ * buttons will cost you.
+ */
+function ActionStrip({ hasRoom }: { hasRoom: boolean }) {
+  const Heading = hasRoom ? "h2" : "h1";
+
   return (
-    <section className="flex flex-col gap-5 border-b border-line pt-7 pb-7 sm:flex-row sm:items-center">
-      <div>
-        <span className="block font-slab text-2xl leading-none -skew-x-7 uppercase">
-          Signed in as {name}
-        </span>
-        <span className="mt-2 block font-mono text-[10px] tracking-[0.14em] text-fg-muted uppercase">
-          Start a room, or join one with a code
-        </span>
+    <section className={hasRoom ? "pt-6" : "pt-10 lg:pt-14"}>
+      <Heading
+        className={`font-slab leading-[1.02] -skew-x-7 uppercase ${
+          hasRoom ? "text-2xl sm:text-3xl" : "text-[34px] sm:text-[43px]"
+        }`}
+      >
+        {hasRoom ? (
+          "Start something else"
+        ) : (
+          <>
+            What are we
+            <br />
+            playing?
+          </>
+        )}
+      </Heading>
+
+      <p
+        className={`max-w-[48ch] text-[15px] leading-[1.6] text-[#bdb9b2] ${
+          hasRoom ? "mt-2.5" : "mt-3.5"
+        }`}
+      >
+        {hasRoom
+          ? "Heads up — starting or joining another room leaves the one above."
+          : "Two ways in. Everything else happens once people are in the room."}
+      </p>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:gap-4">
+        <WayIn
+          kicker="You host"
+          title="Start a room"
+          body="Opens a five-character code. Send it to three friends and pick a game once they're in."
+          lit
+        >
+          <form action={createLobby}>
+            <Button type="submit" variant="ink" fullWidth={false} className="px-7">
+              Start a room
+            </Button>
+          </form>
+        </WayIn>
+
+        <WayIn
+          kicker="Someone else hosts"
+          title="Join with a code"
+          body="Got five characters by text? Type them here — you'll land straight in their room."
+        >
+          <JoinRoom className="w-full" inPanel />
+        </WayIn>
       </div>
-
-      <div className="flex-1" />
-
-      <form action={createLobby} className="sm:shrink-0">
-        <Button type="submit" fullWidth={false} className="w-full px-7 sm:w-auto">
-          Start a room
-        </Button>
-      </form>
     </section>
+  );
+}
+
+/** One of the two panels. `lit` is the cream one — there is only ever one. */
+function WayIn({
+  kicker,
+  title,
+  body,
+  lit = false,
+  children,
+}: {
+  kicker: string;
+  title: string;
+  body: string;
+  lit?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`flex flex-col rounded-card p-4 sm:p-[18px] ${
+        lit
+          ? "bg-panel text-panel-fg shadow-card"
+          : "bg-surface-raised ring-1 ring-line ring-inset"
+      }`}
+    >
+      <p
+        className={`font-mono text-[10px] tracking-[0.16em] uppercase ${
+          lit ? "text-hidden-ink" : "text-hidden-text"
+        }`}
+      >
+        {kicker}
+      </p>
+      <h3 className="mt-2.5 font-slab text-xl leading-none -skew-x-7 uppercase sm:text-[22px]">
+        {title}
+      </h3>
+      <p
+        className={`mt-2.5 text-[13.5px] leading-[1.5] ${lit ? "text-[#4c4739]" : "text-[#a5a29c]"}`}
+      >
+        {body}
+      </p>
+
+      {/* Pinned to the bottom so the two controls line up when the copy above
+          them wraps to different heights. */}
+      <div className="mt-4 pt-1 sm:mt-auto">{children}</div>
+    </div>
   );
 }
 

@@ -31,6 +31,12 @@ export type Game = {
   status: GameStatus;
   /** Whether one person alone gets anything out of it. */
   solo: boolean;
+  /**
+   * The one game the home grid gives a double-width tile to. Exactly one live
+   * game should carry it — the grid places it explicitly and lets the rest
+   * flow around it, so two would collide.
+   */
+  featured: boolean;
 };
 
 export const GAMES: readonly Game[] = [
@@ -44,6 +50,7 @@ export const GAMES: readonly Game[] = [
     duration: "3–6 min",
     status: "live",
     solo: true,
+    featured: false,
   },
   {
     slug: "auction-team-builder",
@@ -55,6 +62,7 @@ export const GAMES: readonly Game[] = [
     duration: "10–14 min",
     status: "live",
     solo: false,
+    featured: true,
   },
   {
     slug: "wavelength",
@@ -66,6 +74,7 @@ export const GAMES: readonly Game[] = [
     duration: "8–12 min",
     status: "live",
     solo: false,
+    featured: false,
   },
   {
     slug: "in-development",
@@ -77,5 +86,6 @@ export const GAMES: readonly Game[] = [
     duration: "",
     status: "development",
     solo: false,
+    featured: false,
   },
 ] as const;
