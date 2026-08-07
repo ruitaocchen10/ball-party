@@ -16,10 +16,10 @@ import {
 
 import { GoogleButton } from "./GoogleButton";
 
-// Fields are wells cut into the table, not cards — three cream blocks would
+// Fields are wells cut into the background, not panels — three cream blocks would
 // blow out a screen whose whole premise is that light is rare.
 const FIELD =
-  "h-12 w-full rounded border border-line bg-table-raised px-3 text-sm text-fg outline-none placeholder:text-fg-muted focus:border-stock";
+  "h-12 w-full rounded border border-line bg-surface-raised px-3 text-sm text-fg outline-none placeholder:text-fg-muted focus:border-panel";
 
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -42,12 +42,12 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
     <div className="flex w-full flex-col gap-6">
       <header className="flex flex-col gap-2">
         <h1 className="font-slab text-3xl leading-none -skew-x-7 uppercase">
-          {isSignup ? "Deal me in" : "Ball Party"}
+          {isSignup ? "Get in the game" : "Ball Party"}
         </h1>
         <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
           {isSignup
-            ? "You need a card to sit at the table"
-            : "Sign in to take your seat"}
+            ? "Takes about ten seconds"
+            : "Sign in to start or join a room"}
         </p>
       </header>
 

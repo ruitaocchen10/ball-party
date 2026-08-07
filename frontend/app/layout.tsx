@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Alfa_Slab_One, Karla, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 
-// Karla reads; Alfa Slab is the card-back voice and is only ever used large;
+// Karla reads; Alfa Slab is the display voice and is only ever used large;
 // Roboto Mono carries every stat line, budget, and clock.
 const karla = Karla({
   variable: "--font-karla",

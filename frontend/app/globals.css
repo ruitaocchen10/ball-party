@@ -1,49 +1,48 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────────────────
-   The Card Table — dark
-   Reference mockups: docs/design/card-table-dark.html
+   Ball Party — dark
 
    Three rules the tokens exist to enforce:
-     1. The table is dark. Cards are the only light surfaces, so if something
-        matters it goes on a card and everything else is table.
-     2. Red is the back of a card. Anything hidden is red — the unopened pack,
-        the face-down Wavelength target, the auction's concealed points. When a
-        thing is revealed it turns cream.
-     3. Dark only. This is a table under a lamp; there is no light variant, so
-        there is no prefers-color-scheme branch to keep in sync.
+     1. The background is dark. Panels are the only light surfaces, so if
+        something matters it goes on a panel and everything else is background.
+     2. Red means concealed. Anything one player knows and another doesn't is
+        red — the unrevealed Wavelength target, a lot's fantasy points during
+        bidding, an unfilled spot. When a thing is revealed it turns cream.
+     3. Dark only. There is no light variant, so there is no
+        prefers-color-scheme branch to keep in sync.
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
   color-scheme: dark;
 
-  /* the table */
-  --table: #111311; /* near-black, faint green cast — felt under a low lamp */
-  --table-raised: #191c18; /* inset wells: inputs, bid bars */
+  /* the background */
+  --surface: #111311; /* near-black with a faint green cast */
+  --surface-raised: #191c18; /* inset wells: inputs, bid bars */
 
-  /* the cards */
-  --stock: #f4efe4;
-  --stock-shade: #e7e0cf; /* revealed panels printed on a card */
-  --ink: #17150f;
-  --pencil: #6b665a; /* secondary text on a card */
+  /* the panels */
+  --panel: #f4efe4;
+  --panel-shade: #e7e0cf; /* a subdued band inside a panel */
+  --panel-fg: #17150f;
+  --panel-muted: #6b665a; /* secondary text on a panel */
 
   /* the one accent */
-  --hidden: #c9382c; /* as a surface: card backs, concealed values */
-  --hidden-text: #e86759; /* same red lifted to stay legible on the table */
+  --hidden: #c9382c; /* as a surface: concealed values, unfilled spots */
+  --hidden-text: #e86759; /* same red lifted to stay legible on the background */
 
-  /* text on the table */
+  /* text on the background */
   --fg: #e8e3d6;
   --fg-muted: #8f8b7f;
   --line: rgb(232 227 214 / 0.13);
 }
 
 @theme inline {
-  --color-table: var(--table);
-  --color-table-raised: var(--table-raised);
-  --color-stock: var(--stock);
-  --color-stock-shade: var(--stock-shade);
-  --color-ink: var(--ink);
-  --color-pencil: var(--pencil);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-panel: var(--panel);
+  --color-panel-shade: var(--panel-shade);
+  --color-panel-fg: var(--panel-fg);
+  --color-panel-muted: var(--panel-muted);
   --color-hidden: var(--hidden);
   --color-hidden-text: var(--hidden-text);
   --color-fg: var(--fg);
@@ -54,18 +53,18 @@
   --font-slab: var(--font-alfa-slab);
   --font-mono: var(--font-roboto-mono);
 
-  /* Cards are lit objects: a drop shadow plus a 1px top highlight. The
-     highlight is why they read as stock rather than as pale rectangles. */
+  /* Panels are lit objects: a drop shadow plus a 1px top highlight. The
+     highlight is why they read as raised rather than as pale rectangles. */
   --shadow-card:
     0 10px 24px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.7);
-  --shadow-back: 0 10px 24px rgb(0 0 0 / 0.5);
+  --shadow-concealed: 0 10px 24px rgb(0 0 0 / 0.5);
 
   --radius-card: 5px;
 }
 
 body {
-  background-color: var(--table);
-  /* the lamp: one soft pool from above, fixed so it doesn't scroll away */
+  background-color: var(--surface);
+  /* one soft pool of light from above, fixed so it doesn't scroll away */
   background-image: radial-gradient(
     120% 62% at 50% -10%,
     rgb(232 227 214 / 0.075),
@@ -77,9 +76,9 @@ body {
 }
 
 @layer components {
-  /* The diagonal weave on the back of a card. Applied by <CardBack>, and by
-     any surface standing in for one (the pack, a concealed value band). */
-  .pattern-back {
+  /* The diagonal weave that marks concealed information. Applied by
+     <Concealed>, and by any surface standing in for it. */
+  .pattern-concealed {
     background-image: repeating-linear-gradient(
       45deg,
       rgb(0 0 0 / 0.16) 0 6px,
