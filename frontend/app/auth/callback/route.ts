@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { safeNextPath } from "@/lib/auth/next";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -10,8 +11,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
 
   const code = searchParams.get("code");
-  const rawNext = searchParams.get("next") ?? "/";
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  const next = safeNextPath(searchParams.get("next"), origin);
 
   // The user hit "Cancel" on Google's consent screen, or the provider failed.
   const providerError = searchParams.get("error_description") ?? searchParams.get("error");

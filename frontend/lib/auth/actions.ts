@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { safeNextPath } from "@/lib/auth/next";
 import { createClient } from "@/lib/supabase/server";
 import {
   DISPLAY_NAME_MAX,
@@ -11,16 +12,6 @@ import {
   PASSWORD_MIN,
   type AuthState,
 } from "@/lib/auth/types";
-
-/**
- * Only ever redirect to a path on our own origin. Without this, `?next=` is an
- * open redirect: an attacker sends a login link that hands the freshly
- * authenticated user off to a site they control.
- */
-function safeNext(value: unknown): string {
-  const next = typeof value === "string" ? value : "/";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
-}
 
 /**
  * Absolute base URL for email and OAuth redirects. Prefer the configured value
@@ -43,7 +34,7 @@ export async function signInWithEmail(
 ): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const next = safeNext(formData.get("next"));
+  const next = safeNextPath(formData.get("next"));
 
   if (!email || !password) {
     return { error: "Enter your email and password." };
@@ -74,6 +65,7 @@ export async function signUpWithEmail(
   const displayName = String(formData.get("display_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const next = safeNextPath(formData.get("next"));
 
   if (displayName.length < DISPLAY_NAME_MIN || displayName.length > DISPLAY_NAME_MAX) {
     return {
@@ -94,7 +86,12 @@ export async function signUpWithEmail(
     options: {
       // Read by the handle_new_user trigger to seed public.profiles.
       data: { display_name: displayName },
-      emailRedirectTo: `${await siteUrl()}/auth/confirm`,
+      // The destination, not the confirm route. Supabase renders this as
+      // `{{ .RedirectTo }}` in the email template, and /auth/confirm reduces it
+      // back to a path after verifying the token. Sending the confirm route
+      // here instead is how an invited player used to lose the room they were
+      // invited to and land on the home page.
+      emailRedirectTo: `${await siteUrl()}${next}`,
     },
   });
 
@@ -109,7 +106,7 @@ export async function signUpWithEmail(
 }
 
 export async function signInWithGoogle(formData: FormData) {
-  const next = safeNext(formData.get("next"));
+  const next = safeNextPath(formData.get("next"));
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
