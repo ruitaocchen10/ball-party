@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ball Party — Layout C, the slim top bar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Karla:wght@400;500;700;800&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ─────────── page shell (matches card-table-dark.html) ─────────── */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:#1b1c1e;color:#e6e4e0;font-family:"Karla",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:56px 24px 96px}
+.masthead{border-bottom:1px solid #35373a;padding-bottom:26px;margin-bottom:34px}
+.masthead .kicker{font-family:"Roboto Mono",monospace;font-size:12px;letter-spacing:.15em;
+  text-transform:uppercase;color:#7d7a74;margin-bottom:10px}
+.masthead h1{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-origin:left;
+  text-transform:uppercase;font-size:clamp(28px,4.6vw,44px);line-height:1;margin:0 0 16px;
+  font-weight:400}
+.masthead p{margin:0 0 12px;max-width:66ch;color:#bdb9b2;font-size:15px;line-height:1.65}
+.masthead p b{color:#f0ede8;font-weight:700}
+.rule{max-width:66ch;margin:22px 0 0;padding:14px 18px;border-left:3px solid #C9382C;
+  background:#232426;font-size:15px;line-height:1.65;color:#bdb9b2}
+.rule b{color:#f0ede8;font-weight:700}
+
+.sec{margin:52px 0 0}
+.sec > h2{font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.19em;
+  text-transform:uppercase;color:#7d7a74;margin:0 0 4px;font-weight:500}
+.sec > .cap{margin:0 0 20px;max-width:74ch;color:#a5a29c;font-size:14px;line-height:1.6}
+.sec > .cap b{color:#e6e4e0;font-weight:700}
+
+/* browser frame */
+.browser{border-radius:10px;overflow:hidden;background:#0b0b0c;
+  box-shadow:0 0 0 1px #3c3e41,0 22px 44px rgba(0,0,0,.5)}
+.chrome{display:flex;align-items:center;gap:8px;padding:10px 13px;background:#232426;
+  border-bottom:1px solid #35373a}
+.chrome i{width:10px;height:10px;border-radius:50%;background:#3c3e41;display:block}
+.chrome .url{margin-left:10px;flex:1;height:22px;border-radius:11px;background:#1b1c1e;
+  display:flex;align-items:center;padding:0 11px;font-family:"Roboto Mono",monospace;
+  font-size:10px;color:#7d7a74;letter-spacing:.04em}
+
+/* phone frame */
+.phones{display:flex;gap:26px;flex-wrap:wrap}
+.slot{flex:0 0 auto;width:302px;margin:0}
+.slot figcaption{margin-top:14px;font-size:13px;line-height:1.55;color:#a5a29c}
+.slot figcaption b{display:block;color:#e6e4e0;font-weight:700;font-size:12px;letter-spacing:.09em;
+  text-transform:uppercase;margin-bottom:5px;font-family:"Roboto Mono",monospace}
+.phone{width:302px;height:620px;border-radius:38px;padding:9px;background:#0b0b0c;
+  box-shadow:0 0 0 1px #3c3e41,0 22px 44px rgba(0,0,0,.5)}
+.screen{width:100%;height:100%;border-radius:30px;overflow:hidden;position:relative;
+  display:flex;flex-direction:column}
+
+.notes{padding:44px 0 0;border-top:1px solid #35373a;margin-top:56px}
+.notes h2{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-origin:left;
+  text-transform:uppercase;font-size:22px;margin:0 0 16px;font-weight:400}
+.notes h3{font-family:"Roboto Mono",monospace;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:#C9382C;margin:28px 0 9px;font-weight:500}
+.notes p{max-width:70ch;color:#bdb9b2;line-height:1.68;font-size:15px;margin:0 0 14px}
+.notes b{color:#f0ede8}
+.notes code{font-family:"Roboto Mono",monospace;font-size:13px;color:#d6d2c8}
+
+/* ═══════════════════════════════════════════════════════════════
+   THE TABLE — same tokens as app/globals.css
+   ═══════════════════════════════════════════════════════════════ */
+.tb{
+  --surface:#111311;
+  --surface-raised:#191C18;
+  --panel:#F4EFE4;
+  --panel-shade:#E7E0CF;
+  --panel-fg:#17150F;
+  --panel-muted:#6B665A;
+  --hidden:#C9382C;
+  --hidden-text:#E86759;
+  --fg:#E8E3D6;
+  --fg2:#8F8B7F;
+  --line:rgba(232,227,214,.13);
+  background:var(--surface);color:var(--fg);font-family:"Karla",sans-serif;
+  background-image:radial-gradient(120% 62% at 50% -10%,rgba(232,227,214,.075),transparent 64%);
+}
+.tb .slab{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);text-transform:uppercase;
+  font-weight:400;display:inline-block}
+.tb .mono{font-family:"Roboto Mono",monospace}
+
+/* ─────────── THE BAR ─────────── */
+.bar{display:flex;align-items:center;gap:22px;height:58px;padding:0 22px;
+  border-bottom:1px solid var(--line);background:rgba(17,19,17,.92)}
+.bar .mark{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);text-transform:uppercase;
+  font-weight:400;font-size:17px;line-height:1;color:var(--fg);letter-spacing:.01em;
+  flex:0 0 auto}
+.bar nav{display:flex;gap:20px;align-items:center}
+.bar nav a{font-family:"Roboto Mono",monospace;font-size:10px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--fg2);text-decoration:none;padding:19px 0 18px;
+  border-bottom:2px solid transparent;margin-bottom:-1px}
+.bar nav a:hover{color:var(--fg)}
+.bar nav a.on{color:var(--fg);border-bottom-color:var(--hidden)}
+.bar .grow{flex:1}
+
+/* the join well — always in the bar, on every page */
+.joinbar{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.joinbar .lab{font-family:"Roboto Mono",monospace;font-size:9px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--fg2)}
+.joinbar input{width:108px;height:32px;border-radius:3px;border:1px solid var(--line);
+  background:var(--surface-raised);color:var(--fg);font-family:"Roboto Mono",monospace;font-size:13px;
+  letter-spacing:.24em;text-transform:uppercase;padding:0 10px;outline:none}
+.joinbar input::placeholder{color:#54524b}
+.joinbar input:focus{border-color:var(--panel)}
+.joinbar button{height:32px;padding:0 13px;border:0;border-radius:3px;cursor:pointer;
+  background:var(--panel);color:var(--panel-fg);font-family:"Roboto Mono",monospace;font-size:10px;
+  font-weight:700;letter-spacing:.13em;text-transform:uppercase}
+
+.bar .sep{width:1px;height:24px;background:var(--line);flex:0 0 auto}
+
+/* identity, right end */
+.who{display:flex;align-items:center;gap:9px;flex:0 0 auto}
+.who .chip{width:28px;height:28px;border-radius:3px;background:var(--panel);color:var(--panel-fg);
+  display:flex;align-items:center;justify-content:center;font-family:"Alfa Slab One",serif;
+  transform:skewX(-7deg);font-size:12px;line-height:1;
+  box-shadow:0 4px 10px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.7)}
+.who .nm{font-family:"Roboto Mono",monospace;font-size:10px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--fg)}
+.who .car{color:var(--fg2);font-size:9px}
+.signin{font-family:"Roboto Mono",monospace;font-size:10px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--fg2);text-decoration:none}
+.signin:hover{color:var(--fg)}
+.signup{height:32px;padding:0 15px;border:0;border-radius:3px;cursor:pointer;background:var(--panel);
+  color:var(--panel-fg);font-family:"Roboto Mono",monospace;font-size:10px;font-weight:700;
+  letter-spacing:.13em;text-transform:uppercase;display:flex;align-items:center}
+
+/* ─────────── PAGE BODY ─────────── */
+.page{padding:0 22px 34px}
+.inner{max-width:1000px;margin:0 auto}
+
+/* hero — signed out */
+.hero{padding:56px 0 46px;display:grid;grid-template-columns:1.15fr .85fr;gap:56px;
+  align-items:center}
+.hero .k{font-family:"Roboto Mono",monospace;font-size:10px;letter-spacing:.19em;
+  text-transform:uppercase;color:var(--hidden-text);margin-bottom:14px}
+.hero h1{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-origin:left;
+  text-transform:uppercase;font-weight:400;font-size:46px;line-height:1.02;margin:0 0 18px;
+  letter-spacing:-.005em}
+.hero p{margin:0 0 26px;max-width:44ch;color:#bdb9b2;font-size:16px;line-height:1.6}
+.hero .acts{display:flex;gap:11px;align-items:center}
+.btn{height:50px;padding:0 26px;border:0;border-radius:4px;cursor:pointer;background:var(--panel);
+  color:var(--panel-fg);font-family:"Alfa Slab One",serif;transform:skewX(-7deg);text-transform:uppercase;
+  font-weight:400;font-size:15px;letter-spacing:.04em;display:inline-flex;align-items:center}
+.btn.ghost{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+.hero .fine{font-family:"Roboto Mono",monospace;font-size:9px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--fg2);margin-top:15px}
+
+/* the fan of cards in the hero */
+.fan{position:relative;height:210px}
+.fan .fc{position:absolute;width:132px;height:184px;border-radius:5px;background:var(--panel);
+  box-shadow:0 14px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.7);overflow:hidden}
+.fan .fc .tbar{height:5px;background:var(--hidden)}
+.fan .fc .t{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);text-transform:uppercase;
+  color:var(--panel-fg);font-size:15px;line-height:1.06;padding:11px 11px 0}
+.fan .fc .m{font-family:"Roboto Mono",monospace;font-size:8px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--panel-muted);padding:7px 11px 0}
+.fan .bk{position:absolute;width:132px;height:184px;border-radius:5px;background:var(--hidden);
+  background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.16) 0 6px,transparent 6px 12px);
+  box-shadow:0 14px 30px rgba(0,0,0,.5)}
+.fan .bk::after{content:"";position:absolute;inset:5px;border:1px solid rgba(244,239,228,.34);
+  border-radius:3px}
+.fan .p1{left:2px;top:20px;transform:rotate(-9deg)}
+.fan .p2{left:104px;top:6px;transform:rotate(-2deg)}
+.fan .p3{left:206px;top:16px;transform:rotate(6deg)}
+.fan .p4{left:300px;top:34px;transform:rotate(13deg)}
+
+/* signed-in action strip, replaces the hero */
+.strip{display:flex;align-items:center;gap:18px;padding:26px 0 30px;border-bottom:1px solid var(--line)}
+.strip .greet .g1{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);text-transform:uppercase;
+  font-weight:400;font-size:27px;line-height:1;display:block}
+.strip .greet .g2{font-family:"Roboto Mono",monospace;font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--fg2);margin-top:8px;display:block}
+.strip .grow{flex:1}
+.resume{display:flex;align-items:center;gap:11px;background:var(--surface-raised);
+  border:1px solid var(--line);border-radius:4px;padding:9px 13px}
+.resume .dot{width:7px;height:7px;border-radius:50%;background:var(--hidden-text);flex:0 0 auto}
+.resume .r1{font-family:"Roboto Mono",monospace;font-size:10px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--fg)}
+.resume .r2{font-family:"Roboto Mono",monospace;font-size:9px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--fg2);margin-top:3px}
+
+/* section head */
+.shead{display:flex;align-items:baseline;gap:14px;margin:38px 0 16px}
+.shead h2{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-origin:left;
+  text-transform:uppercase;font-weight:400;font-size:19px;margin:0;line-height:1}
+.shead .hr{flex:1;height:1px;background:var(--line)}
+.shead .cnt{font-family:"Roboto Mono",monospace;font-size:9px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--fg2)}
+
+/* ─────────── THE GAME GRID ─────────── */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.g{border-radius:5px;overflow:hidden;background:var(--panel);color:var(--panel-fg);
+  box-shadow:0 10px 24px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.7);
+  display:flex;flex-direction:column}
+.g .tbar{height:5px;background:var(--hidden);flex:0 0 auto}
+.g .pad{padding:13px 14px 12px;flex:1;display:flex;flex-direction:column}
+.g .tag{font-family:"Roboto Mono",monospace;font-size:8px;letter-spacing:.17em;
+  text-transform:uppercase;color:var(--hidden);margin-bottom:7px}
+.g h3{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-origin:left;
+  text-transform:uppercase;font-weight:400;font-size:20px;line-height:1.04;margin:0 0 9px}
+.g p{margin:0 0 14px;font-size:12.5px;line-height:1.5;color:#4c4739}
+.g .foot{margin-top:auto;border-top:1px dashed #C7BFAC;padding-top:9px;display:flex;
+  align-items:center;justify-content:space-between;gap:8px}
+.g .meta{font-family:"Roboto Mono",monospace;font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--panel-muted);line-height:1.5}
+.g .cta{font-family:"Roboto Mono",monospace;font-size:9px;font-weight:700;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--panel-fg);border:1px solid #C7BFAC;border-radius:3px;
+  padding:5px 9px;white-space:nowrap;cursor:pointer;background:transparent}
+.g .cta.locked{color:var(--panel-muted);border-style:dashed;cursor:default}
+
+/* a game still in development */
+.g.dev{background:var(--hidden);color:var(--panel);
+  background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.16) 0 6px,transparent 6px 12px);
+  box-shadow:0 10px 24px rgba(0,0,0,.5);position:relative}
+.g.dev::after{content:"";position:absolute;inset:6px;border:1px solid rgba(244,239,228,.32);
+  border-radius:3px;pointer-events:none}
+.g.dev .pad{align-items:center;justify-content:center;text-align:center;padding:30px 14px}
+.g.dev h3{color:var(--panel);opacity:.95;font-size:17px;margin:0 0 10px}
+.g.dev .meta{color:rgba(244,239,228,.8);letter-spacing:.15em;font-size:9px}
+
+/* party-mode explainer strip */
+.party{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
+.party .b{border:1px solid var(--line);border-radius:4px;padding:15px 16px 16px;background:var(--surface-raised)}
+.party .b .n{font-family:"Roboto Mono",monospace;font-size:9px;letter-spacing:.17em;
+  color:var(--hidden-text);text-transform:uppercase;margin-bottom:9px}
+.party .b h4{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-origin:left;
+  text-transform:uppercase;font-weight:400;font-size:15px;margin:0 0 7px;line-height:1.1}
+.party .b p{margin:0;font-size:12.5px;line-height:1.55;color:#a5a29c}
+
+/* ─────────── MOBILE VARIANTS ─────────── */
+.m .bar{height:52px;padding:0 14px;gap:12px}
+.m .bar .mark{font-size:15px}
+.m .bar .burger{display:flex;flex-direction:column;gap:3.5px;flex:0 0 auto;cursor:pointer}
+.m .bar .burger i{display:block;width:16px;height:1.5px;background:var(--fg2)}
+.m .joinbar input{width:78px;height:29px;font-size:12px;letter-spacing:.18em;padding:0 8px}
+.m .joinbar button{height:29px;padding:0 9px;font-size:9px}
+.m .who .chip{width:25px;height:25px;font-size:11px}
+.m .page{padding:0 14px 18px;overflow:hidden}
+.m .hero{display:block;padding:26px 0 22px}
+.m .hero h1{font-size:29px;margin-bottom:12px}
+.m .hero p{font-size:13.5px;margin-bottom:18px;line-height:1.55}
+.m .hero .acts{display:flex;flex-direction:column;align-items:stretch;gap:9px}
+.m .btn{width:100%;justify-content:center;height:46px;font-size:14px}
+.m .shead{margin:22px 0 11px}
+.m .shead h2{font-size:16px}
+.m .grid{grid-template-columns:1fr 1fr;gap:11px}
+.m .g h3{font-size:15px}
+.m .g p{display:none}
+.m .g .pad{padding:11px 11px 10px}
+.m .g .foot{flex-direction:column;align-items:flex-start;gap:7px}
+.m .g.dev .pad{padding:22px 11px}
+
+/* mobile: in-room page, bar keeps the join well */
+.room{padding:20px 14px}
+.room .code{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);text-transform:uppercase;
+  font-size:40px;line-height:1;letter-spacing:.06em}
+.room .lbl{font-family:"Roboto Mono",monospace;font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--fg2);margin-top:9px}
+.room ul{list-style:none;margin:20px 0 0;padding:0;display:flex;flex-direction:column;gap:9px}
+.room .player{background:var(--panel);color:var(--panel-fg);border-radius:5px;padding:10px 12px 11px;
+  display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  box-shadow:0 10px 24px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.7)}
+.room .player .n{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);text-transform:uppercase;
+  font-size:18px;line-height:1}
+.room .player .r{font-family:"Roboto Mono",monospace;font-size:9px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--panel-muted)}
+.room .empty{background:var(--hidden);border-radius:5px;height:44px;display:flex;align-items:center;
+  justify-content:center;position:relative;
+  background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.16) 0 6px,transparent 6px 12px);
+  box-shadow:0 10px 24px rgba(0,0,0,.5)}
+.room .empty span{font-family:"Roboto Mono",monospace;font-size:9px;letter-spacing:.15em;
+  text-transform:uppercase;color:rgba(244,239,228,.85)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="masthead">
+  <div class="kicker">Ball Party · layout study</div>
+  <h1>Layout C — the slim top bar</h1>
+  <p>The web-platform model. A persistent bar carries <b>identity and the join code on every
+  page</b>, and the home screen is a game grid. This is the Jackbox / skribbl shape: a code from a
+  friend works from wherever you already are, and a stranger who lands on <code>/</code> sees the
+  actual games rather than copy about them.</p>
+  <p>Same page for signed-out and signed-in — <b>the actions are gated, not the screen</b>. Both
+  states are shown below so the delta is visible.</p>
+  <div class="rule"><b>The one rule this layout has to respect:</b> the bar is background, never
+  panel. Panels are the only light surface in the product, so chrome that isn't a panel stays dark
+  — which is also why the join field reads as an inset well rather than a control on a panel.</div>
+</div>
+
+<!-- ══════════ 1. DESKTOP, SIGNED OUT ══════════ -->
+<div class="sec">
+  <h2>01 — Desktop · signed out</h2>
+  <p class="cap">A first-time visitor at <b>/</b>. The bar still offers the join field, because the
+  most likely reason a stranger is here is that someone read them a code out loud. Primary CTA is
+  the table; the grid below is the pitch.</p>
+
+  <div class="browser">
+    <div class="chrome"><i></i><i></i><i></i><div class="url">ballparty.app</div></div>
+    <div class="tb">
+      <div class="bar">
+        <div class="mark">Ball Party</div>
+        <nav>
+          <a href="#" class="on">Games</a>
+          <a href="#">Party mode</a>
+          <a href="#">How it works</a>
+        </nav>
+        <div class="grow"></div>
+        <div class="joinbar">
+          <span class="lab">Join</span>
+          <input value="" placeholder="K7M2Q">
+          <button>Go</button>
+        </div>
+        <div class="sep"></div>
+        <div class="who">
+          <a href="#" class="signin">Sign in</a>
+          <div class="signup">Sign up</div>
+        </div>
+      </div>
+
+      <div class="page"><div class="inner">
+        <div class="hero">
+          <div>
+            <div class="k">4 players · 5–15 minutes · nothing to install</div>
+            <h1>Find out who<br>actually knows<br>ball.</h1>
+            <p>Start a room, send the code to three friends, and settle it. Points stay hidden
+            until they don't.</p>
+            <div class="acts">
+              <div class="btn">Start a room</div>
+              <div class="btn ghost">See the games</div>
+            </div>
+            <div class="fine">Sign-in takes about ten seconds · Google or email</div>
+          </div>
+          <div class="fan">
+            <div class="fc p1"><div class="tbar"></div><div class="t">Higher<br>or lower</div><div class="m">1–4 players</div></div>
+            <div class="fc p2"><div class="tbar"></div><div class="t">Auction<br>team build</div><div class="m">4 players</div></div>
+            <div class="fc p3"><div class="tbar"></div><div class="t">2v2<br>Wavelength</div><div class="m">4 players</div></div>
+            <div class="bk p4"></div>
+          </div>
+        </div>
+
+        <div class="shead">
+          <h2>Games</h2><div class="hr"></div><span class="cnt">3 live · 1 in development</span>
+        </div>
+
+        <div class="grid">
+          <div class="g">
+            <div class="tbar"></div>
+            <div class="pad">
+              <div class="tag">Solo or group</div>
+              <h3>Higher<br>or lower</h3>
+              <p>Two stat lines, one call. Keep the streak alive or hand it over.</p>
+              <div class="foot">
+                <span class="meta">1–4 players<br>3–6 min</span>
+                <span class="cta locked">Sign in</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="g">
+            <div class="tbar"></div>
+            <div class="pad">
+              <div class="tag">Group · hidden points</div>
+              <h3>Auction<br>team builder</h3>
+              <p>Bid on mystery player-weeks. Fantasy points stay hidden until the bidding closes.</p>
+              <div class="foot">
+                <span class="meta">4 players<br>10–14 min</span>
+                <span class="cta locked">Sign in</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="g">
+            <div class="tbar"></div>
+            <div class="pad">
+              <div class="tag">2v2 · hidden target</div>
+              <h3>2v2<br>Wavelength</h3>
+              <p>One clue, one dial, one partner who carves up a fuzzy scale differently than you do.</p>
+              <div class="foot">
+                <span class="meta">4 players<br>8–12 min</span>
+                <span class="cta locked">Sign in</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="g dev">
+            <div class="pad">
+              <h3>In<br>development</h3>
+              <div class="meta">Coming soon</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="shead">
+          <h2>Two ways to play</h2><div class="hr"></div>
+        </div>
+        <div class="party">
+          <div class="b">
+            <div class="n">01 · the room</div>
+            <h4>Open a room</h4>
+            <p>One code, four players, no mode yet. The room is durable — it survives whatever
+            you decide to play.</p>
+          </div>
+          <div class="b">
+            <div class="n">02 · arcade</div>
+            <h4>One game, quick</h4>
+            <p>Pick a single game from inside the room. Everyone's still here after, so pick another.</p>
+          </div>
+          <div class="b">
+            <div class="n">03 · party</div>
+            <h4>Race to the score</h4>
+            <p>Minigames back to back, points carry, first to the target wins.</p>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 2. DESKTOP, SIGNED IN ══════════ -->
+<div class="sec">
+  <h2>02 — Desktop · signed in</h2>
+  <p class="cap">Same route, same grid, same bar. The hero collapses into an action strip, the
+  locked CTAs turn live, and the bar's right end swaps sign-in for identity. <b>Nothing about the
+  page's structure changes</b> — that's the argument for not building a separate landing page.</p>
+
+  <div class="browser">
+    <div class="chrome"><i></i><i></i><i></i><div class="url">ballparty.app</div></div>
+    <div class="tb">
+      <div class="bar">
+        <div class="mark">Ball Party</div>
+        <nav>
+          <a href="#" class="on">Games</a>
+          <a href="#">Party mode</a>
+          <a href="#">How it works</a>
+        </nav>
+        <div class="grow"></div>
+        <div class="joinbar">
+          <span class="lab">Join</span>
+          <input value="" placeholder="K7M2Q">
+          <button>Go</button>
+        </div>
+        <div class="sep"></div>
+        <div class="who">
+          <div class="chip">RC</div>
+          <span class="nm">Ruitao</span>
+          <span class="car">▾</span>
+        </div>
+      </div>
+
+      <div class="page"><div class="inner">
+        <div class="strip">
+          <div class="greet">
+            <span class="g1">Signed in as Ruitao</span>
+            <span class="g2">12 runs · best night 34 pts</span>
+          </div>
+          <div class="grow"></div>
+          <div class="resume">
+            <span class="dot"></span>
+            <div>
+              <div class="r1">K7M2Q · 3 of 4 players</div>
+              <div class="r2">Your room, still open</div>
+            </div>
+          </div>
+          <div class="btn ghost">Rejoin</div>
+          <div class="btn">Start a room</div>
+        </div>
+
+        <div class="shead">
+          <h2>Games</h2><div class="hr"></div><span class="cnt">3 live · 1 in development</span>
+        </div>
+
+        <div class="grid">
+          <div class="g">
+            <div class="tbar"></div>
+            <div class="pad">
+              <div class="tag">Solo or group</div>
+              <h3>Higher<br>or lower</h3>
+              <p>Two stat lines, one call. Keep the streak alive or hand it over.</p>
+              <div class="foot">
+                <span class="meta">Best streak 11<br>3–6 min</span>
+                <span class="cta">Play solo</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="g">
+            <div class="tbar"></div>
+            <div class="pad">
+              <div class="tag">Group · hidden points</div>
+              <h3>Auction<br>team builder</h3>
+              <p>Bid on mystery player-weeks. Fantasy points stay hidden until the bidding closes.</p>
+              <div class="foot">
+                <span class="meta">Needs 4<br>10–14 min</span>
+                <span class="cta">Start a room</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="g">
+            <div class="tbar"></div>
+            <div class="pad">
+              <div class="tag">2v2 · hidden target</div>
+              <h3>2v2<br>Wavelength</h3>
+              <p>One clue, one dial, one partner who carves up a fuzzy scale differently than you do.</p>
+              <div class="foot">
+                <span class="meta">Needs 4<br>8–12 min</span>
+                <span class="cta">Start a room</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="g dev">
+            <div class="pad">
+              <h3>In<br>development</h3>
+              <div class="meta">Coming soon</div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 3. MOBILE ══════════ -->
+<div class="sec">
+  <h2>03 — Mobile · where this layout is weakest, and how it survives</h2>
+  <p class="cap">The nav links collapse behind a burger; <b>the join field never does</b> — it is
+  the one control worth its width on a 390px screen. Game cards drop their description and go two
+  up. This is the honest cost of C: on a phone the bar spends 52px on chrome that Layout A spends
+  on the table.</p>
+
+  <div class="phones">
+    <figure class="slot">
+      <div class="phone"><div class="screen tb m">
+        <div class="bar">
+          <div class="burger"><i></i><i></i><i></i></div>
+          <div class="mark">Ball Party</div>
+          <div class="grow"></div>
+          <div class="joinbar">
+            <input value="" placeholder="K7M2Q">
+            <button>Go</button>
+          </div>
+        </div>
+        <div class="page">
+          <div class="hero">
+            <div class="k">4 players · 5–15 min</div>
+            <h1>Find out who<br>actually knows<br>ball.</h1>
+            <p>Start a room, send the code to three friends, and settle it.</p>
+            <div class="acts">
+              <div class="btn">Start a room</div>
+              <div class="btn ghost">See the games</div>
+            </div>
+          </div>
+          <div class="shead"><h2>Games</h2><div class="hr"></div></div>
+          <div class="grid">
+            <div class="g"><div class="tbar"></div><div class="pad">
+              <div class="tag">Solo</div><h3>Higher<br>or lower</h3>
+              <div class="foot"><span class="meta">1–4 · 3–6 min</span><span class="cta locked">Sign in</span></div>
+            </div></div>
+            <div class="g"><div class="tbar"></div><div class="pad">
+              <div class="tag">Group</div><h3>Auction<br>team build</h3>
+              <div class="foot"><span class="meta">4 · 10–14 min</span><span class="cta locked">Sign in</span></div>
+            </div></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Mobile · signed out</b>Nav behind the burger, join field still first-class.
+      Everything above the fold is the pitch plus one way in.</figcaption>
+    </figure>
+
+    <figure class="slot">
+      <div class="phone"><div class="screen tb m">
+        <div class="bar">
+          <div class="burger"><i></i><i></i><i></i></div>
+          <div class="mark">Ball Party</div>
+          <div class="grow"></div>
+          <div class="joinbar">
+            <input value="" placeholder="K7M2Q">
+            <button>Go</button>
+          </div>
+          <div class="who"><div class="chip">RC</div></div>
+        </div>
+        <div class="page">
+          <div class="hero" style="padding:20px 0 14px">
+            <div class="k">Signed in as Ruitao</div>
+            <h1 style="font-size:24px">Start a room<br>or join one.</h1>
+            <div class="acts"><div class="btn">Start a room</div></div>
+          </div>
+          <div class="shead"><h2>Games</h2><div class="hr"></div></div>
+          <div class="grid">
+            <div class="g"><div class="tbar"></div><div class="pad">
+              <div class="tag">Solo</div><h3>Higher<br>or lower</h3>
+              <div class="foot"><span class="meta">Streak 11</span><span class="cta">Play solo</span></div>
+            </div></div>
+            <div class="g"><div class="tbar"></div><div class="pad">
+              <div class="tag">Group</div><h3>Auction<br>team build</h3>
+              <div class="foot"><span class="meta">Needs 4</span><span class="cta">Start</span></div>
+            </div></div>
+            <div class="g"><div class="tbar"></div><div class="pad">
+              <div class="tag">2v2</div><h3>2v2<br>Wavelength</h3>
+              <div class="foot"><span class="meta">Needs 4</span><span class="cta">Start</span></div>
+            </div></div>
+            <div class="g dev"><div class="pad">
+              <h3>In dev</h3><div class="meta">Soon</div>
+            </div></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Mobile · signed in</b>Same grid, live CTAs, identity chip in the bar. The hero
+      shrinks to a single action.</figcaption>
+    </figure>
+
+    <figure class="slot">
+      <div class="phone"><div class="screen tb m">
+        <div class="bar">
+          <div class="burger"><i></i><i></i><i></i></div>
+          <div class="mark">Ball Party</div>
+          <div class="grow"></div>
+          <div class="joinbar">
+            <input value="K7M2Q" placeholder="K7M2Q">
+            <button>Go</button>
+          </div>
+          <div class="who"><div class="chip">RC</div></div>
+        </div>
+        <div class="room">
+          <div class="code">K7M2Q</div>
+          <div class="lbl">3 of 4 players · you are the host</div>
+          <ul>
+            <li class="player"><span class="n">Ruitao</span><span class="r">host · you</span></li>
+            <li class="player"><span class="n">Kayla</span><span class="r">in</span></li>
+            <li class="player"><span class="n">Devon</span><span class="r">in</span></li>
+            <li class="empty"><span>Open spot</span></li>
+          </ul>
+          <div style="margin-top:20px"><div class="btn" style="width:100%;justify-content:center">Start a run</div></div>
+          <div class="lbl" style="text-align:center;margin-top:11px">Arcade or party — you pick next</div>
+        </div>
+      </div></div>
+      <figcaption><b>Mobile · inside a room</b>The bar persists and still holds a code field, so a
+      second code from another friend works without backing out. Game choice happens
+      <i>here</i>, behind "Start a run" — not on the home grid.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<!-- ══════════ NOTES ══════════ -->
+<div class="notes">
+  <h2>What this mockup commits to</h2>
+
+  <h3>The join field lives in the bar, not on the home page</h3>
+  <p>This is the whole reason to pick C over A. A code arrives by text while you're mid-solo-game or
+  reading a game's rules page, and it works from there. It also means the home hero doesn't have to
+  carry two competing primary actions — home is <b>start</b>, the bar is <b>join</b>.</p>
+
+  <h3>Signed-out is the same page with dead CTAs</h3>
+  <p>Compare frames 01 and 02: identical grid, identical bar, identical section order. The delta is
+  the hero-vs-strip swap and <code>Sign in</code> in place of <code>Play solo</code> / <code>Start a
+  room</code>. One route, one component tree, one set of styles to keep honest. A separate
+  marketing page would double all three for a product with three games.</p>
+
+  <h3>The grid is a shop window, not the play surface</h3>
+  <p>Three of four games need four people, so their card CTA is <b>Start a room</b> — it creates a
+  room seeded with that game, it does not start a match. Real game selection still happens inside
+  the room at "Start a run", exactly as <code>lobbies.md</code> specifies. Only <b>Higher or
+  lower</b> gets a true <code>Play solo</code>, because it's the only one that means anything alone.
+  If you ever add a game that reads as playable solo but isn't, this grid starts lying.</p>
+
+  <h3>Unbuilt games are concealed, not greyed out</h3>
+  <p>The fourth tile carries the red weave rather than a greyed-out ghost card. Red means not yet
+  revealed everywhere else in the product, so it should mean that here too. It also makes a thin
+  catalogue look deliberate rather than unfinished.</p>
+
+  <h3>What C costs you</h3>
+  <p>52px of permanent chrome on a phone, a burger menu you now have to design and test, and a home
+  screen that leads with browsing when the product's real first move is making a room. If the
+  analytics come back saying almost nobody touches the nav links, that's the signal to fall back to
+  Layout A and keep only the bar's join field.</p>
+
+  <h3>Not shown, and worth deciding next</h3>
+  <p>Signed-out <code>/lobby/[code]</code> — the page most new users will actually land on. It
+  should render the room (names, players in, spots left) with sign-in as the single action, and
+  <code>proxy.ts</code> currently redirects it to <code>/login</code> instead.</p>
+</div>
+
+</div>
+</body>
+</html>

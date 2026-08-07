@@ -1,8 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-/** Paths reachable while signed out. Everything else redirects to /login. */
-const PUBLIC_PATHS = ["/login", "/signup", "/check-email", "/auth"];
+/**
+ * Paths reachable while signed out. Everything else redirects to /login.
+ *
+ * `/` and `/lobby` are public because they are the two ways anyone arrives:
+ * the home screen for a stranger, an invite link for a friend. Both render
+ * their own signed-out state with the actions gated, which is why there is no
+ * separate marketing page to keep in sync. RLS still returns nothing about a
+ * room to someone who is not a member of it.
+ */
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/check-email", "/auth", "/lobby"];
 
 /** Signed-in users bounced off these back to the app. */
 const AUTH_ONLY_PATHS = ["/login", "/signup"];
