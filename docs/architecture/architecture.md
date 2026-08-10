@@ -19,11 +19,27 @@ built on asymmetric information.** That combination is what drives the stack:
 **Database layer — Supabase.** Postgres for state, Realtime for fanout, RLS for
 hidden information, Auth available if wanted.
 
-**Game logic — TypeScript, in Edge Functions.** The client calls a function, the
-function validates the move and writes to Postgres, Realtime fans the change
-out. No game rule is ever enforced client-side.
+**Game logic — server-authoritative, in Postgres.** The client calls a function,
+the function validates the move and writes, Realtime fans the change out. No
+game rule is ever enforced client-side.
 
-**Web UI layer - Next.js deployed in Vercel**
+Concretely: `security definer` RPCs, the pattern the lobby write API already
+uses (`0005`). Edge Functions were the original plan and remain the right home
+for logic that has to leave the database — an external API, long-running work —
+but nothing here needs that yet, and the auction argues against them. Resolving
+a bid is a read-modify-write across five tables that has to be atomic, and a
+plpgsql function body is already a transaction. `supabase-js` has no
+transaction API, so an Edge Function would either hand-roll BEGIN/COMMIT over a
+direct connection or wrap the critical section in an RPC and become a proxy
+that added a network hop. That hop is not free when a 10s action timer has to
+budget for it.
+
+**Web UI layer — Next.js deployed in Vercel.** Durable, navigational actions —
+create a room, join by code — are server actions ending in a redirect. A move
+inside a match is not that shape: it is a client component calling `rpc()`
+straight from the browser, keeping Vercel out of the hot path. Safe because the
+RPC derives identity from `auth.uid()` and validates the move itself, which is
+what made it trustworthy in the first place — never the server action.
 
 ## Modules
 
@@ -64,8 +80,9 @@ first and almost none of the second.
 both land here, so this is where the design risk concentrates — get the
 projection wrong and information leaks through the Realtime payload, not through
 the UI. Per-action timers live here too: a deadline the client owns isn't a
-rule. Worth settling early whether an Edge Function round-trip per action is
-fast enough for the timer-driven games, since the answer shapes this module.
+rule, so a deadline is a column and expiry is an RPC any participant may call.
+The auction settles that shape first — see its pacing section — and the other
+timer-driven games should lift it rather than reinvent it.
 
 **Content is the sleeper.** All four games consume sports data and none of them
 own it. Untouched so far and likely the longest pole.

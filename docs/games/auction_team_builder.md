@@ -45,7 +45,9 @@ it's upstream of the pool build.
 
 **Bidding** — turn-based ascending auction, one lot at a time:
 
-- The right to open at $0 rotates each lot
+- The right to open at $0 rotates each lot, to the next *eligible* player
+- Eligibility is having an open roster slot the lot can fill — see lot
+  scheduling, which depends on it
 - Play goes around the circle; each player either raises or passes
 - **Passing drops you from that lot permanently**
 - Player is assigned when everyone else has passed, or no one else can bid
@@ -59,6 +61,34 @@ and no last-click-wins latency disputes.
 - Hard 10s timer per action
 - Fixed increment buttons (+$1 / +$5) so bidding is one tap
 - Timeout = auto-pass
+
+**Who fires the timeout.** Not the player on the clock — that is the one client
+that cannot be trusted with it, since closing the tab is precisely the case the
+timer exists for. So the deadline is a `turn_deadline` column on the match, and
+expiry is an RPC any participant may call: it locks the match, re-checks
+`now() >= turn_deadline` in server time, and either applies the auto-pass or
+does nothing.
+
+Client clocks decide when to ask, never what is true. Idempotency is free — the
+first caller advances the turn and sets the next deadline in the future, so
+every other caller no-ops. A turn hangs only if all four clients are gone, and
+a 30s `pg_cron` sweep clears those so an abandoned match doesn't sit `playing`
+forever. The sweep is a janitor, not the mechanism: on a match anyone is
+watching, it never fires first.
+
+Three details that are easy to get wrong:
+
+- **Auto-pass reuses the pass path.** Timeout sets a flag for the UI and runs
+  identical code. Two paths that both resolve a lot will drift.
+- **The visible countdown ends early** — clients count to 9.5s against a real
+  10s deadline, so a bid sent at the last moment isn't killed by network
+  latency. The slack sits behind the clock rather than in front of it, which
+  keeps zero meaning zero.
+- **Non-acting clients fire with jitter** (+300-800ms), so the player on the
+  clock gets first crack and four clients don't stampede every turn.
+
+Server `now()` ships alongside match state, so a client can offset its own
+clock rather than trust it.
 
 **Era range** — 2010-2025, flat. 16 seasons, all inside plausible memory for
 anyone who's followed fantasy in the last decade. Recall is the floor that
@@ -95,20 +125,45 @@ everyone's running total plus remaining budget is always on screen.
   points — a deficit that feels fatal usually isn't.
 - Spreading the payoff across the round matters more now that bidding is blind.
 
+**Table size** — four players. The board is dealt for N and the no-stranding
+proof holds for any N, but four is the game: it is what the budget, the twenty
+lots and the tier quota were tuned against.
+
+N exists for one reason. A game hardcoded to four cannot be tested without four
+signed-in browsers, which puts every bidding, timer and reveal bug behind a
+four-window setup for the whole build. Two and three players deal a real board
+and play an honest game — but they are a development affordance, not a designed
+mode, and nothing in the UI offers them.
+
 **Lot scheduling** — get a list of players up front, then randomize how they come
 out. The position counts need to be exact, but that's provably safe in ~15 lines:
 
 ```
-4 players × [QB, RB, WR, TE]  →  4 QB, 4 RB, 4 WR, 4 TE   (16 base)
-4 players × [FLEX]            →  4 more from {RB, WR, TE}  (4 flex)
+N players × [QB, RB, WR, TE]  →  N of each                 (4N base)
+N players × [FLEX]            →  N more from {RB, WR, TE}  (N flex)
 ```
 
-Deal the 16 base lots shuffled, then the 4 flex lots last. While base lots run,
-the number of QB lots remaining always exactly equals the number of players
-still missing a QB — so every lot always has at least one eligible bidder and
-nobody can be stranded. The final 4 flex lots are ones everyone is eligible for
-by definition. The flex round at the end becomes a natural climax where all the
-leftover budget collides.
+Deal the 4N base lots shuffled, then the N flex lots last. At a full table that
+is the intended 16 + 4 = 20.
+
+**A base lot may only be bid on by players whose natural slot is still open.**
+FLEX is eligible during the flex round and nowhere else. That rule is what makes
+the schedule safe: the number of RB lots remaining then always exactly equals
+the number of players still missing an RB, so every lot has at least one
+eligible bidder and nobody can be stranded.
+
+Without it the proof holds for QB alone. A quarterback fits only the QB slot, so
+QB is safe however FLEX behaves — but an RB lot could be taken into somebody's
+FLEX, and then the RB lots run out while a player still needs one. Restricting
+FLEX to the flex round costs nothing and is what the scheduling argument was
+always quietly assuming.
+
+The final N flex lots are ones everyone is eligible for by definition, so the
+flex round stays the natural climax where all the leftover budget collides.
+
+Budget cannot strand anyone either: opening is at $0, so an eligible player can
+always take a lot for free. Eligibility is the only thing a roster slot can turn
+on.
 
 **Player pool** — quota-based, tiered on season positional finish:
 
@@ -118,6 +173,10 @@ leftover budget collides.
   8 · SOLID
   5 · DEEP
 ```
+
+Below a full table the same 7:8:5 is spread across 5N lots by largest remainder,
+ties to star: N=3 gives 5/6/4, N=2 gives 4/4/2. Deterministic, so a board is
+reproducible from its seed.
 
 The deep-cut tier is doing real work — it's what gives the star cards something
 to be expensive _relative to_. If every card is a star, every card is expensive,
@@ -177,4 +236,10 @@ scoreboard. The game itself is identical in both — only the wrapper differs.
 
 - [ ] **Party point mapping** — how does auction placement convert to party
       points? Cross-cutting; see `app.md`.
-- [ ] **Tie-breaks and disconnects**
+- [ ] **Tie-breaks** — two players finishing on the same total.
+
+**Disconnects** fall out of the pacing rules above rather than needing their own
+answer. A player who drops auto-passes every remaining lot, keeps their budget
+and whatever they already won, and the round runs on at full speed without them.
+A player who drops while holding the high bid still wins that lot — they
+committed, and being absent doesn't undo it.

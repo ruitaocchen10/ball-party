@@ -1,0 +1,210 @@
+-- Shared fixtures for the pgTAP suites. Included with \ir, not run on its own —
+-- it lives under support/ so `supabase test db supabase/tests` does not try to
+-- treat it as a test file.
+--
+-- The suites run partly as `authenticated` so that RLS is exercised the way a
+-- player experiences it, and partly as the owner so fixtures can be built.
+-- tests.act_as and tests.act_as_admin switch between the two.
+
+create schema tests;
+create table tests.fx  (k text primary key, v uuid);
+create table tests.num (k text primary key, v int);
+
+-- A real account, through the same auth.users trigger the app uses, so the
+-- profile row these tests need exists for the same reason it does in production.
+create function tests.mkuser(p_name text) returns uuid
+language plpgsql security definer as $$
+declare
+  v_id uuid := gen_random_uuid();
+begin
+  insert into auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at,
+    raw_app_meta_data, raw_user_meta_data
+  )
+  values (
+    v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+    p_name || '-' || substr(v_id::text, 1, 8) || '@example.test', '',
+    now(), now(), now(),
+    '{}'::jsonb, jsonb_build_object('display_name', p_name)
+  );
+  return v_id;
+end $$;
+
+-- Become a signed-in player: the JWT claims auth.uid() reads, plus the role
+-- that RLS is evaluated against.
+create function tests.act_as(p_id uuid) returns void
+language plpgsql as $$
+begin
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', p_id::text, 'role', 'authenticated', 'is_anonymous', false)::text,
+    true
+  );
+  perform set_config('role', 'authenticated', true);
+end $$;
+
+create function tests.act_as_admin() returns void
+language plpgsql as $$
+begin
+  perform set_config('role', 'postgres', true);
+  perform set_config('request.jwt.claims', '', true);
+end $$;
+
+-- A lobby with n members, host first. Returns the lobby id.
+create function tests.mklobby(p_users uuid[]) returns uuid
+language plpgsql as $$
+declare
+  v_code  text;
+  v_id    uuid;
+  v_other uuid;
+begin
+  perform tests.act_as(p_users[1]);
+  select id, code into v_id, v_code from public.create_lobby();
+
+  foreach v_other in array p_users[2:] loop
+    perform tests.act_as(v_other);
+    perform public.join_lobby(v_code);
+  end loop;
+
+  perform tests.act_as(p_users[1]);
+  return v_id;
+end $$;
+
+-- n fresh players in a fresh room, with a run started and its match dealt into
+-- setup. Returns the match id. Leaves the session acting as the host.
+create function tests.mkmatch(p_n int, out match_id uuid) returns uuid
+language plpgsql as $$
+declare
+  v_users uuid[] := '{}';
+  v_lobby uuid;
+  v_i     int;
+begin
+  perform tests.act_as_admin();
+  for v_i in 1 .. p_n loop
+    v_users := v_users || tests.mkuser('p' || v_i);
+  end loop;
+
+  v_lobby := tests.mklobby(v_users);
+
+  perform tests.act_as(v_users[1]);
+  select id into match_id
+    from public.start_run(v_lobby, 'arcade', 'auction_team_builder');
+end $$;
+
+-- A dealt board from a fixed seed, so composition and play can be asserted
+-- exactly. Goes through the private dealer rather than start_auction because
+-- the seed is deliberately not an argument of the public entry point.
+create function tests.deal(p_n int, p_seed double precision, out match_id uuid)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.mkmatch(p_n);
+  perform tests.act_as_admin();
+  perform private.deal_auction_board(match_id, p_seed);
+end $$;
+
+-- A dealt board with its first lot opened, ready to be bid on.
+create function tests.deal_and_open(p_n int, p_seed double precision, out match_id uuid)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.deal(p_n, p_seed);
+  perform tests.act_as_admin();
+  update public.matches set status = 'playing', started_at = now() where id = match_id;
+  perform private.auction_advance(match_id);
+end $$;
+
+-- Whoever is on the clock right now.
+create function tests.on_clock(p_match_id uuid) returns uuid
+language sql stable as $$
+  select ap.user_id
+    from public.auction_matches am
+    join public.auction_players ap
+      on ap.match_id = am.match_id and ap.seat = am.turn_seat
+   where am.match_id = p_match_id;
+$$;
+
+-- The standing price on the lot currently open.
+create function tests.price(p_match_id uuid) returns int
+language sql stable as $$
+  select coalesce(max(b.price), 0)
+    from public.auction_bids b
+    join public.auction_matches am on am.match_id = b.match_id
+   where b.match_id = p_match_id and b.seq = am.current_lot and b.action = 'raise';
+$$;
+
+-- Play a dealt board to completion with a scripted strategy.
+--
+--   pass    everybody always passes
+--   raise   everybody raises by 1 whenever they can afford it
+--   random  a coin flip per move, deterministic in the match and the seed
+--
+-- The property under test has to hold regardless of how people bid, which is
+-- why the strategy is a parameter rather than a fixed script.
+create function tests.play_out(p_match_id uuid, p_strategy text, p_seed int default 1)
+returns int
+language plpgsql as $$
+declare
+  v_seat   smallint;
+  v_actor  uuid;
+  v_budget int;
+  v_price  int;
+  v_moves  int := 0;
+  v_raise  boolean;
+begin
+  loop
+    perform tests.act_as_admin();
+    select turn_seat into v_seat from public.auction_matches where match_id = p_match_id;
+    exit when v_seat is null;
+
+    v_moves := v_moves + 1;
+    if v_moves > 5000 then
+      raise exception 'play_out did not terminate after % moves', v_moves;
+    end if;
+
+    select ap.user_id, ap.budget into v_actor, v_budget
+      from public.auction_players ap
+     where ap.match_id = p_match_id and ap.seat = v_seat;
+
+    v_price := tests.price(p_match_id);
+
+    if p_strategy = 'pass' then
+      v_raise := false;
+    elsif p_strategy = 'raise' then
+      v_raise := v_budget >= v_price + 1;
+    elsif p_strategy = 'random' then
+      v_raise := v_budget >= v_price + 1
+             and (get_byte(decode(md5(p_match_id::text || v_moves || p_seed), 'hex'), 0) % 2) = 0;
+    else
+      raise exception 'unknown strategy %', p_strategy;
+    end if;
+
+    perform tests.act_as(v_actor);
+    if v_raise then
+      perform public.place_bid(p_match_id, 1);
+    else
+      perform public.pass_lot(p_match_id);
+    end if;
+  end loop;
+
+  perform tests.act_as_admin();
+  return v_moves;
+end $$;
+
+-- Every seat, every slot. Returns the cases where somebody finished short —
+-- empty means nobody was stranded.
+create function tests.stranded(p_match_id uuid) returns text[]
+language sql stable as $$
+  select coalesce(array_agg(ap.seat || ':' || s.slot order by ap.seat, s.slot), '{}'::text[])
+    from public.auction_players ap
+    cross join unnest(array['QB','RB','WR','TE','FLEX']) s(slot)
+   where ap.match_id = p_match_id
+     and not exists (
+       select 1 from public.auction_lots l
+        where l.match_id = p_match_id and l.winner_id = ap.user_id and l.slot = s.slot);
+$$;
+
+grant usage on schema tests to authenticated;
+grant execute on all functions in schema tests to authenticated;
+grant all on all tables in schema tests to authenticated;

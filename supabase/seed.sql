@@ -1,0 +1,13 @@
+-- Local development only. Never applied to a deployed environment: `db reset`
+-- runs this after the migrations, and nothing else does.
+--
+-- The hosted project grants every table in `public` to anon and authenticated
+-- by default, leaving RLS as the only gate. A local CLI stack no longer sets
+-- those default privileges, so without this the app and the tests would hit
+-- "permission denied" locally for tables that work fine in production — a
+-- difference in environment defaults masquerading as a bug in the code.
+--
+-- SELECT only. The app never writes through PostgREST: every mutation goes
+-- through a `security definer` RPC, so the write half of the hosted grant is
+-- surface this does not need to reproduce.
+grant select on all tables in schema public to anon, authenticated;
