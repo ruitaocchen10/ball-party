@@ -162,6 +162,8 @@ export type Database = {
           lot_count: number
           match_id: string
           opener_seat: number
+          phase: string
+          phase_deadline: string | null
           turn_deadline: string | null
           turn_seat: number | null
         }
@@ -170,6 +172,8 @@ export type Database = {
           lot_count: number
           match_id: string
           opener_seat?: number
+          phase?: string
+          phase_deadline?: string | null
           turn_deadline?: string | null
           turn_seat?: number | null
         }
@@ -178,6 +182,8 @@ export type Database = {
           lot_count?: number
           match_id?: string
           opener_seat?: number
+          phase?: string
+          phase_deadline?: string | null
           turn_deadline?: string | null
           turn_seat?: number | null
         }
@@ -546,7 +552,7 @@ export type Database = {
         }
       }
       place_bid: {
-        Args: { p_increment: number; p_match_id: string }
+        Args: { p_amount: number; p_match_id: string }
         Returns: Database["public"]["CompositeTypes"]["auction_turn"]
         SetofOptions: {
           from: "*"
@@ -602,6 +608,8 @@ export type Database = {
         opener_seat: number | null
         turn_deadline: string | null
         server_now: string | null
+        phase: string | null
+        phase_deadline: string | null
       }
     }
   }
@@ -736,4 +744,3 @@ export const Constants = {
     },
   },
 } as const
-

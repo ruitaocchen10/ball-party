@@ -113,6 +113,9 @@ begin
   perform tests.act_as_admin();
   update public.matches set status = 'playing', started_at = now() where id = match_id;
   perform private.auction_advance(match_id);
+  update public.auction_matches am set phase_deadline = now() - interval '1 second'
+   where am.match_id = deal_and_open.match_id;
+  perform private.auction_expire(match_id);
 end $$;
 
 -- Whoever is on the clock right now.
@@ -156,7 +159,14 @@ begin
   loop
     perform tests.act_as_admin();
     select turn_seat into v_seat from public.auction_matches where match_id = p_match_id;
-    exit when v_seat is null;
+    if v_seat is null then
+      if exists (select 1 from public.auction_matches where match_id = p_match_id and phase in ('lot_preview', 'sold')) then
+        update public.auction_matches set phase_deadline = now() - interval '1 second' where match_id = p_match_id;
+        perform private.auction_expire(p_match_id);
+        continue;
+      end if;
+      exit;
+    end if;
 
     v_moves := v_moves + 1;
     if v_moves > 5000 then

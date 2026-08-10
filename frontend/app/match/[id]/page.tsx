@@ -108,6 +108,8 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     turnSeat: state.turn_seat,
     openerSeat: state.opener_seat ?? 0,
     turnDeadline: state.turn_deadline,
+    phase: (state.phase ?? "lot_preview") as Turn["phase"],
+    phaseDeadline: state.phase_deadline,
   };
 
   const players: Player[] = (seatsResult.data ?? []).map(({ profiles, ...seat }) => ({

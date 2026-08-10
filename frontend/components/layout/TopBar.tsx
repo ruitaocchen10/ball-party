@@ -22,7 +22,7 @@ import { AccountMenu } from "@/components/layout/AccountMenu";
 export function TopBar({ displayName }: { displayName?: string | null }) {
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-surface/92 backdrop-blur-sm">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-x-5 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-x-5 px-4 sm:px-6">
         <Brand />
         <div className="flex-1" />
         <Account displayName={displayName} />

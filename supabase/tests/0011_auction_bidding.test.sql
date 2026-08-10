@@ -94,17 +94,17 @@ select throws_ok(
   'nor pass'
 );
 
--- Increments are rejected rather than clamped.
+-- Exact whole-dollar amounts are accepted rather than clamped.
+select tests.act_as(tests.on_clock((select v from tests.fx where k = 'm')));
+select lives_ok(
+  format($$ select public.place_bid(%L, 3) $$, (select v from tests.fx where k = 'm')),
+  'an exact whole-dollar bid is accepted'
+);
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'm')));
 select throws_ok(
-  format($$ select public.place_bid(%L, 3) $$, (select v from tests.fx where k = 'm')),
-  'P0001', 'bad_increment',
-  'an increment that is not 1 or 5 is refused'
-);
-select throws_ok(
   format($$ select public.place_bid(%L, 0) $$, (select v from tests.fx where k = 'm')),
-  'P0001', 'bad_increment',
-  'and so is zero'
+  'P0001', 'bid_not_increasing',
+  'and a non-increasing amount is refused'
 );
 
 -- Passing is final.
@@ -149,15 +149,15 @@ insert into tests.fx (k, v) select 'opener', tests.on_clock((select v from tests
 
 select tests.act_as((select v from tests.fx where k = 'opener'));
 select lives_ok(
-  format($$ select public.place_bid(%L, 5) $$, (select v from tests.fx where k = 'mb')),
+  format($$ select public.place_bid(%L, 10) $$, (select v from tests.fx where k = 'mb')),
   'the opener can raise'
 );
 
 select tests.act_as_admin();
 select is(
   tests.price((select v from tests.fx where k = 'mb')),
-  5,
-  'the price is the opening 0 plus the increment'
+  10,
+  'the price is the exact amount the opener submitted'
 );
 
 select isnt(
@@ -179,7 +179,7 @@ select throws_ok(
   'a raise past the budget is refused'
 );
 select lives_ok(
-  format($$ select public.place_bid(%L, 1) $$, (select v from tests.fx where k = 'mb')),
+  format($$ select public.place_bid(%L, 6) $$, (select v from tests.fx where k = 'mb')),
   'a raise to exactly the budget is allowed'
 );
 
@@ -252,8 +252,8 @@ select ok(
 select is(
   (select current_lot::int from public.auction_matches
     where match_id = (select v from tests.fx where k = 'mr')),
-  2,
-  'play moves on to the next lot'
+  1,
+  'the resolved lot remains current during its sold acknowledgement'
 );
 
 -- --------------------------------------------------------------- the timer --

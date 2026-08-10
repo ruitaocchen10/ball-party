@@ -24,7 +24,16 @@ export type Turn = {
   turnSeat: number | null;
   openerSeat: number;
   turnDeadline: string | null;
+  phase: "lot_preview" | "bidding" | "sold";
+  phaseDeadline: string | null;
 };
+
+export type AuctionPhase = "lot_preview" | "bidding_self" | "bidding_other" | "sold";
+
+export function viewerPhase(turn: Turn, viewerSeat: number | null): AuctionPhase {
+  if (turn.phase === "lot_preview" || turn.phase === "sold") return turn.phase;
+  return turn.turnSeat === viewerSeat ? "bidding_self" : "bidding_other";
+}
 
 export const SLOTS = ["QB", "RB", "WR", "TE", "FLEX"] as const;
 export type Slot = (typeof SLOTS)[number];
