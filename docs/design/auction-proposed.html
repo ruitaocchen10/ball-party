@@ -234,7 +234,7 @@ h2.section{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-or
 
 /* ── the controls ────────────────────────────────────────────────────── */
 .app .controls{flex:0 0 auto;margin:0 -18px;border-top:1px solid var(--line);
-  background:var(--surface-raised);padding:9px 18px 13px}
+  background:var(--surface-raised);padding:9px 18px 13px;position:relative}
 .app .btns{display:flex;gap:8px}
 .app .btn{min-height:48px;width:100%;border-radius:4px;padding:0 16px;border:0;
   font-family:"Alfa Slab One",serif;font-size:15px;letter-spacing:.04em;transform:skewX(-7deg);
@@ -249,6 +249,23 @@ h2.section{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-or
 .app .status{margin:9px 0 0;min-height:17px;font-size:12px;line-height:17px;color:var(--fg-muted)}
 .app .status.err{color:var(--hidden-text)}
 .app .status .ok{color:var(--fg)}
+.app .pass-link{float:right;border:0;padding:0;background:none;color:var(--fg-muted);font:inherit;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+/* The custom amount replaces the control surface, not a live market row.
+   Price and seconds therefore remain readable while the clock continues. */
+.app .custom-bid{display:none;position:absolute;z-index:3;left:18px;right:18px;bottom:0;
+  border-radius:5px;padding:12px;background:var(--panel);color:var(--panel-fg);box-shadow:var(--shadow-card)}
+.app .custom-bid.open{display:block}
+.app .custom-bid .lab{display:block;margin-bottom:7px;font-family:"Roboto Mono",monospace;font-size:10px;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--panel-muted)}
+.app .custom-bid .entry{display:flex;gap:7px;align-items:stretch}
+.app .custom-bid input{min-width:0;width:100%;border:1px solid #a9a18e;border-radius:3px;padding:0 9px;
+  background:#fffdf7;color:var(--panel-fg);font:700 18px "Roboto Mono",monospace}
+.app .custom-bid button{border:0;border-radius:3px;padding:0 12px;background:var(--panel-fg);color:var(--panel);
+  font:400 13px "Alfa Slab One",serif;text-transform:uppercase;cursor:pointer}
+.app .custom-bid button.cancel{background:none;color:var(--panel-muted);font-family:"Karla",system-ui,sans-serif;
+  font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.app .custom-bid small{display:block;margin-top:7px;color:var(--panel-muted);font-size:11px}
 
 /* ── THE TABLE ───────────────────────────────────────────────────────── */
 .app .tablehead{display:none}
@@ -501,9 +518,12 @@ h2.section{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-or
             <div class="btns">
               <button class="btn">+$1</button>
               <button class="btn">+$5</button>
-              <button class="btn ghost">Pass</button>
+              <button class="btn">Custom</button>
             </div>
-            <p class="status"><span class="ok">Fills your open RB.</span></p>
+            <div class="custom-bid open" role="dialog" aria-labelledby="custom-bid-title" aria-describedby="custom-bid-limits">
+              <span class="lab" id="custom-bid-title">Custom bid</span><div class="entry"><input type="number" value="8" min="8" max="52" step="1" inputmode="numeric" aria-label="Bid amount in dollars" aria-describedby="custom-bid-limits"><button>Bid $8</button><button class="cancel">Cancel</button></div><small id="custom-bid-limits">Minimum bid is $8. Your maximum is $52.</small>
+            </div>
+            <p class="status"><span class="ok">Fills your open RB.</span><button class="pass-link">Pass</button></p>
           </div>
         </section>
         <aside class="table" aria-label="The table">
@@ -580,7 +600,7 @@ h2.section{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-or
         </aside>
       </div>
     </div></div>
-    <figcaption><b>1 &middot; Your turn</b> The Lot owns the top of the screen and does not move. When the turn is yours the market row goes cream-edged, the price steps to <code>38px</code> and the clock becomes <b>a number you can read</b> rather than a 4px bar you have to interpret. The line under the buttons says what winning would actually do for you.</figcaption>
+    <figcaption><b>1 &middot; Your turn, with a custom bid open</b> The Lot owns the top of the screen and does not move. <b>Custom</b> opens a compact amount popover over the controls instead of adding a row; it states the minimum, your maximum, and sends the exact amount. Pass becomes a quiet inline action, leaving the three primary slots for <code>+$1</code>, <code>+$5</code>, and Custom.</figcaption>
   </figure>
   <figure class="slot">
     <div class="phone"><div class="app">
@@ -1206,9 +1226,12 @@ h2.section{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-or
             <div class="btns">
               <button class="btn">+$1</button>
               <button class="btn">+$5</button>
-              <button class="btn ghost">Pass</button>
+              <button class="btn">Custom</button>
             </div>
-            <p class="status"><span class="ok">Fills your open RB.</span></p>
+            <div class="custom-bid open" role="dialog" aria-labelledby="desktop-custom-bid-title" aria-describedby="desktop-custom-bid-limits">
+              <span class="lab" id="desktop-custom-bid-title">Custom bid</span><div class="entry"><input type="number" value="8" min="8" max="52" step="1" inputmode="numeric" aria-label="Bid amount in dollars" aria-describedby="desktop-custom-bid-limits"><button>Bid $8</button><button class="cancel">Cancel</button></div><small id="desktop-custom-bid-limits">Minimum bid is $8. Your maximum is $52.</small>
+            </div>
+            <p class="status"><span class="ok">Fills your open RB.</span><button class="pass-link">Pass</button></p>
           </div>
         </section>
         <aside class="table" aria-label="The table">
@@ -1663,6 +1686,9 @@ h2.section{font-family:"Alfa Slab One",serif;transform:skewX(-7deg);transform-or
 
   <h3>11 · New — selecting a player has a visible destination</h3>
   <p><b>Frame 3, W3.</b> When the server accepts the winning bid, freeze the settled price and present &ldquo;Sold to [player] for $[price]&rdquo; for <code>1.2s</code>. Highlight the winner&rsquo;s seat and pulse the newly filled roster slot together. The next preview begins only after that acknowledgement. The animation is never run while the bidding timer is live, and <code>prefers-reduced-motion</code> keeps the winner and slot highlighted without motion.</p>
+
+  <h3>12 · New — bid an exact amount</h3>
+  <p><b>Frame 1, W1.</b> Custom bid opens a non-modal popover that replaces the fixed control surface, never the price or seconds. It pre-fills the current minimum, accepts whole-dollar input between the stated minimum and affordable maximum, and exposes those limits to assistive technology. Submitting follows the same server-confirmed path as a <code>+$1</code> or <code>+$5</code> bid. A rejected amount leaves the popover and auction state open; its helper becomes a polite validation message while retaining the limits. Escape, Cancel, a turn change, or a sold lot closes the popover and returns focus to Custom.</p>
 
   <h3>State contract</h3>
   <p>The UI has four explicit states: <code>lot_preview</code> (timer off), <code>bidding_self</code> (you are the active bidder), <code>bidding_other</code> (another player is active), and <code>sold</code> (timer off). The handoff from sold to the next preview is internal, not a fifth visible state. <b>Active bidder</b> is who may take the next bidding action; <b>high bidder</b> is who would win if the clock expired. A rejected or late bid leaves the client in its last server-confirmed bidding state, shows the error in the reserved status line, and must never play the sold animation.</p>
