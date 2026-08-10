@@ -151,8 +151,8 @@ select ok(
 select is(
   (select array_agg(distinct budget) from public.auction_players
     where match_id = (select v from tests.fx where k = 'm4')),
-  array[50],
-  'everyone starts on $50'
+  array[20],
+  'everyone starts on $20'
 );
 
 -- --------------------------------------------------------- reproducibility --

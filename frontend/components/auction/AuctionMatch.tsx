@@ -52,9 +52,37 @@ import { createClient, createRealtimeClient } from "@/lib/supabase/client";
  * what everybody is reasoning about.
  */
 
-/** The server's real deadline is ten seconds; the visible clock stops short. */
+/** The server's real deadline is longer than the visible clock, which stops
+ *  short so a bid sent as the bar empties still has real deadline behind it.
+ *  These mirror the intervals in the migrations; the server remains the only
+ *  thing that decides when a phase is actually over. */
 const VISIBLE_SLACK_MS = 500;
 const TICK_MS = 100;
+const DURATION_MS: Record<Turn["phase"], number> = {
+  lot_preview: 5_000,
+  bidding: 20_000,
+  sold: 5_000,
+};
+
+/**
+ * Expiry is asked for repeatedly, not once.
+ *
+ * The previous version fired exactly one request per state and latched. If that
+ * one attempt no-opped -- and for the timer-only phases it fired at exactly the
+ * deadline with no slack, so any client whose clock ran a millisecond fast got
+ * a no-op -- then nobody ever asked again and the auction sat there until the
+ * janitor swept it a minute later. Three lots in one playtest took 81s, 127s
+ * and 271s that way, one of them with no player actions at all.
+ *
+ * Asking again is free: the server re-checks in its own time under the match
+ * lock and does nothing if it disagrees.
+ */
+const RETRY_MS = 1_000;
+
+/** How far past a deadline the screen has to look before it stops believing
+ *  itself and refetches. Well behind RETRY_MS, so this only runs when expiry
+ *  has already failed to move things along. */
+const STALE_MS = 4_000;
 
 /**
  * The auction RPCs raise short machine-readable strings — see
@@ -134,6 +162,43 @@ export function AuctionMatch({
     });
   }, []);
 
+  /**
+   * Everything the screen holds, read again from the server.
+   *
+   * Realtime is the fast path, not the only path. The previous version applied
+   * events and never checked its work, so a single dropped or missed payload
+   * left the screen permanently wrong with nothing to say so — which is exactly
+   * what playtesting hit. This is the reconciliation the old design was
+   * missing; the callers below decide when it is worth running.
+   */
+  const refetch = useCallback(async () => {
+    const supabase = getClient();
+    const [state, lotRows, seatRows, bidRows, standingRows] = await Promise.all([
+      supabase.rpc("auction_state", { p_match_id: matchId }),
+      supabase.from("auction_lots").select("*").eq("match_id", matchId).order("seq"),
+      supabase
+        .from("auction_players")
+        .select("*, profiles(display_name)")
+        .eq("match_id", matchId)
+        .order("seat"),
+      supabase.from("auction_bids").select("*").eq("match_id", matchId).order("bid_seq"),
+      supabase.from("match_players").select("*").eq("match_id", matchId),
+    ]);
+
+    if (state.data) applyTurn(state.data as AuctionTurnRow);
+    if (lotRows.data) setLots(lotRows.data);
+    if (bidRows.data) setBids(bidRows.data);
+    if (standingRows.data) setStandings(standingRows.data);
+    if (seatRows.data) {
+      setPlayers(
+        seatRows.data.map(({ profiles, ...seat }) => ({
+          ...seat,
+          display_name: profiles?.display_name ?? "Unknown player",
+        })),
+      );
+    }
+  }, [getClient, matchId, applyTurn]);
+
   // Realtime applies payloads to client state directly rather than refreshing
   // the server render — see LobbyRealtime for why the lobby does the opposite.
   useEffect(() => {
@@ -209,7 +274,12 @@ export function AuctionMatch({
             setStandings((prev) => [...prev.filter((s) => s.user_id !== row.user_id), row]);
           },
         )
-        .subscribe();
+        // A rejoin is precisely when this client may have missed something, so
+        // the state is read again rather than assumed to have kept up. Fires on
+        // the first join too, which is a cheap duplicate of the server render.
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") void refetch();
+        });
 
       cleanup = () => {
         void supabase.removeChannel(channel);
@@ -220,7 +290,7 @@ export function AuctionMatch({
       cancelled = true;
       cleanup?.();
     };
-  }, [matchId, applyTurn]);
+  }, [matchId, applyTurn, refetch]);
 
   // The bar should move, so this ticks rather than counting seconds.
   useEffect(() => {
@@ -259,21 +329,24 @@ export function AuctionMatch({
   // clock gets first crack at acting, and the jitter stops four clients
   // stampeding the endpoint every single turn. Being wrong is free: the server
   // re-checks in its own time and does nothing if it disagrees.
-  const fired = useRef<string | null>(null);
+  // Jitter now applies to every phase, not just bidding. The timer-only phases
+  // used to fire at exactly the deadline across every client at once, which
+  // both stampeded the endpoint and handed a marginally fast clock a guaranteed
+  // no-op — and a no-op used to be final.
+  const attempted = useRef(0);
   const jitter = useRef(0);
   useEffect(() => {
     jitter.current = 300 + Math.random() * 500;
-  }, [turn.currentLot, turn.turnSeat, turn.turnDeadline]);
+    attempted.current = 0;
+  }, [turn.currentLot, turn.turnSeat, turn.turnDeadline, turn.phase, turn.phaseDeadline]);
 
   useEffect(() => {
     const activeDeadline = deadline ?? phaseDeadline;
     if (activeDeadline === null || finished || now === 0) return;
     if (turn.phase === "bidding" && me && turn.turnSeat === me.seat) return;
-    if (now < activeDeadline + (turn.phase === "bidding" ? jitter.current : 0)) return;
-
-    const key = `${turn.currentLot}:${turn.phase}:${turn.turnSeat}:${turn.turnDeadline}:${turn.phaseDeadline}`;
-    if (fired.current === key) return;
-    fired.current = key;
+    if (now < activeDeadline + jitter.current) return;
+    if (now - attempted.current < RETRY_MS) return;
+    attempted.current = now;
 
     void getClient()
       .rpc("expire_turn", { p_match_id: matchId })
@@ -286,12 +359,34 @@ export function AuctionMatch({
     matchId,
     getClient,
     applyTurn,
-    turn.currentLot,
     turn.turnSeat,
-    turn.turnDeadline,
     turn.phase,
-    turn.phaseDeadline,
   ]);
+
+  // The watchdog. Expiry above is the mechanism; this is the admission that it
+  // might not have worked — because this tab was backgrounded and its interval
+  // throttled, because a realtime payload never arrived, or because the player
+  // on the clock is the one client that deliberately never fires expiry. It
+  // only runs once a deadline is well past, so a healthy game never reaches it.
+  const reconciled = useRef(0);
+  useEffect(() => {
+    const activeDeadline = deadline ?? phaseDeadline;
+    if (activeDeadline === null || finished || now === 0) return;
+    if (now < activeDeadline + STALE_MS) return;
+    if (now - reconciled.current < STALE_MS) return;
+    reconciled.current = now;
+    void refetch();
+  }, [now, deadline, phaseDeadline, finished, refetch]);
+
+  // Coming back to a tab is the other moment this screen is likely to be wrong:
+  // background throttling means the clock above may have barely run at all.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refetch();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refetch]);
 
   if (finished) {
     return (
@@ -631,8 +726,18 @@ function BidBar({
     else surface.current?.focus();
   }, [custom]);
   const seconds = remainingMs === null ? null : Math.ceil(remainingMs / 1000);
-  const fraction = remainingMs === null ? 0 : Math.min(1, remainingMs / (phase === "bidding_self" || phase === "bidding_other" ? 10_000 - VISIBLE_SLACK_MS : phase === "sold" ? 1_200 : 3_000));
-  const urgent = seconds !== null && seconds <= 3 && (phase === "bidding_self" || phase === "bidding_other");
+  const live = phase === "bidding_self" || phase === "bidding_other";
+  const fraction =
+    remainingMs === null
+      ? 0
+      : Math.min(
+          1,
+          remainingMs /
+            (live
+              ? DURATION_MS.bidding - VISIBLE_SLACK_MS
+              : DURATION_MS[phase === "sold" ? "sold" : "lot_preview"]),
+        );
+  const urgent = seconds !== null && seconds <= 3 && live;
   const invalid = !Number.isInteger(Number(amount)) || Number(amount) < minimum || Number(amount) > budget;
 
   return (

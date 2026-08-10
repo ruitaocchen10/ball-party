@@ -20,7 +20,7 @@ export function players(over: Partial<Player>[] = []): Player[] {
     match_id: MATCH,
     user_id: seat.user_id,
     seat: seat.seat,
-    budget: 50,
+    budget: 20,
     display_name: seat.display_name,
     ...over[i],
   }));
@@ -117,13 +117,35 @@ export function turn(
  */
 type RpcResult = { data: unknown; error: { message: string } | null };
 
+/**
+ * A chainable stand-in for a PostgREST query builder. Every terminal resolves
+ * to no rows, which the component treats as "nothing to apply" — so the
+ * reconciliation refetch runs without inventing state the suite did not set up.
+ */
+function query(table: string) {
+  // The table is carried on the object so a failing assertion names it.
+  const q: Record<string, unknown> = { table };
+  for (const method of ["select", "eq", "order", "limit", "maybeSingle", "single"]) {
+    q[method] = () => q;
+  }
+  q.then = (resolve: (value: { data: null; error: null }) => unknown) =>
+    Promise.resolve({ data: null, error: null }).then(resolve);
+  return q;
+}
+
 export function supabaseMock() {
   const rpc = vi.fn(async (): Promise<RpcResult> => ({ data: null, error: null }));
+  const from = vi.fn((table: string) => query(table));
   const client = {
     rpc,
+    from,
     channel: () => client,
     on: () => client,
-    subscribe: () => client,
+    // The component passes a status callback; SUBSCRIBED triggers its refetch.
+    subscribe: (onStatus?: (status: string) => void) => {
+      onStatus?.("SUBSCRIBED");
+      return client;
+    },
     removeChannel: vi.fn(),
     realtime: { setAuth: vi.fn() },
     auth: { getSession: async () => ({ data: { session: null } }) },

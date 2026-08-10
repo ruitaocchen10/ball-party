@@ -25,7 +25,7 @@ Name, position, year, and matchup are shown. The stat line and fantasy points
 are hidden. Skill = recalling/estimating how that player performed in that era
 and matchup.
 
-**Budget** — $50 each.
+**Budget** — $20 each.
 
 **Roster** — 5 slots: QB, RB, WR, TE, FLEX.
 
@@ -56,11 +56,21 @@ Turn-based (not free-for-all) is deliberate — only one player can act at any
 moment, so there are no race conditions, no simultaneous-submit reconciliation,
 and no last-click-wins latency disputes.
 
-**Pacing** — bidding sped up to keep the round tight:
+**Pacing** — retuned after playtesting:
 
-- Hard 10s timer per action
-- Fixed increment buttons (+$1 / +$5) so bidding is one tap
+- Hard 20s timer per action
+- A 5s preview before every lot, and a 5s sold acknowledgement after it
+- Fixed increment buttons (+$1 / +$5) so bidding is one tap, plus an exact
+  custom bid for anything else
 - Timeout = auto-pass
+
+These went up, not down. The first playtest read as slow, but the measurements
+said otherwise: a lot nobody bid on resolved in 5-6s and a lot that ran its full
+turn took 16s, both correct. What actually hurt were three lots in the same game
+taking 81s, 127s and 271s — one of them with no player actions at all, which no
+turn timer explains. That was a stalled phase transition, not pacing. With the
+stalls fixed, ten seconds turned out to be too short to price a lot you have
+never seen, and 1.2s too short to read the number you just paid for.
 
 **Who fires the timeout.** Not the player on the clock — that is the one client
 that cannot be trusted with it, since closing the tab is precisely the case the
@@ -76,16 +86,35 @@ a 30s `pg_cron` sweep clears those so an abandoned match doesn't sit `playing`
 forever. The sweep is a janitor, not the mechanism: on a match anyone is
 watching, it never fires first.
 
+**Clients ask repeatedly, not once.** The first version fired one expiry request
+per state and latched, so a single no-op meant nobody ever asked again — and for
+the timer-only phases it fired at exactly the deadline with no slack, handing any
+client whose clock ran a millisecond fast a guaranteed no-op. That is what turned
+a 6-second lot into a 127-second one. Asking again costs nothing, because the
+server re-checks under the match lock and does nothing if it disagrees.
+
+**The janitor's grace is split by phase.** A minute of grace on a live turn
+protects a real person whose network hiccupped; cutting their decision short
+because a packet was late is the failure worth paying a minute to avoid. A
+preview or a sold acknowledgement holds no decision and no person — it is a
+timer that has already run out — so those are swept after two seconds.
+
 Three details that are easy to get wrong:
 
 - **Auto-pass reuses the pass path.** Timeout sets a flag for the UI and runs
   identical code. Two paths that both resolve a lot will drift.
-- **The visible countdown ends early** — clients count to 9.5s against a real
-  10s deadline, so a bid sent at the last moment isn't killed by network
+- **The visible countdown ends early** — clients count to 19.5s against a real
+  20s deadline, so a bid sent at the last moment isn't killed by network
   latency. The slack sits behind the clock rather than in front of it, which
   keeps zero meaning zero.
-- **Non-acting clients fire with jitter** (+300-800ms), so the player on the
-  clock gets first crack and four clients don't stampede every turn.
+- **Non-acting clients fire with jitter** (+300-800ms) in every phase, so the
+  player on the clock gets first crack, four clients don't stampede, and a
+  slightly fast clock doesn't spend its attempt on a certain no-op.
+- **The screen reconciles rather than trusting realtime.** Payloads are applied
+  as they arrive, but a deadline that stays past, a tab returning to the
+  foreground, and a channel rejoin each trigger a full re-read. Realtime is the
+  fast path, not the only one: a single dropped payload used to leave the screen
+  permanently wrong with nothing to say so.
 
 Server `now()` ships alongside match state, so a client can offset its own
 clock rather than trust it.

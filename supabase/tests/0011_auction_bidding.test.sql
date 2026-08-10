@@ -221,11 +221,16 @@ select is(
   'at the $0 it opened at, since nobody raised — an empty wallet costs contested lots, never slots'
 );
 
+-- Read against the starting purse rather than a literal: the lot went for $0,
+-- so "charged exactly the price" means the budget is untouched, whatever the
+-- table currently deals.
 select is(
   (select budget from public.auction_players
     where match_id = (select v from tests.fx where k = 'mr')
       and user_id = (select v from tests.fx where k = 'winner')),
-  50,
+  (select column_default::int from information_schema.columns
+    where table_schema = 'public' and table_name = 'auction_players'
+      and column_name = 'budget'),
   'and resolution charges exactly the price and no more'
 );
 

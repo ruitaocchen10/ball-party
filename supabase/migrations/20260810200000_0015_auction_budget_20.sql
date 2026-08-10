@@ -1,0 +1,12 @@
+-- The starting budget drops from $50 to $20.
+--
+-- Twenty lots and a $50 purse left most seats never feeling the ceiling: a
+-- player could win their five slots and still be sitting on money, which is
+-- exactly the state in which a bid stops being a decision. At $20 the average
+-- slot is worth ~$4, so the two raises the rules allow ($1 and $5) are both
+-- meaningful moves and overpaying early actually costs a later lot.
+--
+-- Only the default changes. Matches already dealt keep the budgets they were
+-- dealt with, since rewriting a live board's purse mid-round would invalidate
+-- every bid already placed against it.
+alter table public.auction_players alter column budget set default 20;

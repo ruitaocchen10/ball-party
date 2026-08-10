@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { MATCH, bid, board, lot, players, standing, turn } from "@/test/factories";
 import { renderMatch } from "@/test/render";
@@ -149,8 +149,8 @@ describe("bidding", () => {
   it("closes a raise the viewer cannot afford", () => {
     renderMatch({
       turn: turn("bidding", { turnSeat: 0 }),
-      bids: [bid({ price: 48 })],
-      seats: players([{ budget: 49 }]),
+      bids: [bid({ price: 18 })],
+      seats: players([{ budget: 19 }]),
     });
 
     expect(screen.getByRole("button", { name: "+$1" })).toBeEnabled();
@@ -184,8 +184,8 @@ describe("the custom bid", () => {
 
     expect(field).toHaveValue(8);
     expect(field).toHaveAttribute("min", "8");
-    expect(field).toHaveAttribute("max", "50");
-    expect(screen.getByText(/Minimum is \$8\. Your maximum is \$50\./)).toBeInTheDocument();
+    expect(field).toHaveAttribute("max", "20");
+    expect(screen.getByText(/Minimum is \$8\. Your maximum is \$20\./)).toBeInTheDocument();
   });
 
   it("takes focus when it opens", async () => {
@@ -212,9 +212,9 @@ describe("the custom bid", () => {
     const { user } = await open();
     const field = screen.getByRole("spinbutton", { name: /custom bid/i });
     await user.clear(field);
-    await user.type(field, "51");
+    await user.type(field, "21");
 
-    expect(screen.getByRole("button", { name: /Bid \$51/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Bid \$21/ })).toBeDisabled();
   });
 
   it("refuses a fractional amount before it ever reaches the server", async () => {
@@ -230,12 +230,12 @@ describe("the custom bid", () => {
     const { user, supabase } = await open();
     const field = screen.getByRole("spinbutton", { name: /custom bid/i });
     await user.clear(field);
-    await user.type(field, "23");
-    await user.click(screen.getByRole("button", { name: /Bid \$23/ }));
+    await user.type(field, "13");
+    await user.click(screen.getByRole("button", { name: /Bid \$13/ }));
 
     expect(supabase.rpc).toHaveBeenCalledWith("place_bid", {
       p_match_id: MATCH,
-      p_amount: 23,
+      p_amount: 13,
     });
   });
 
@@ -261,11 +261,11 @@ describe("the table", () => {
     renderMatch({
       turn: turn("bidding", { turnSeat: 1 }),
       lots: board([{ winner_id: "u1", slot: "RB", points: 18.5, price: 9 }]),
-      seats: players([{}, { budget: 41 }]),
+      seats: players([{}, { budget: 11 }]),
     });
 
     const table = screen.getByRole("complementary", { name: "The table" });
-    expect(within(table).getByText("$41", { exact: false })).toBeInTheDocument();
+    expect(within(table).getByText("$11", { exact: false })).toBeInTheDocument();
     expect(within(table).getByText(/18\.5 pts/)).toBeInTheDocument();
   });
 
@@ -360,5 +360,122 @@ describe("the shape of the screen", () => {
 
     expect(screen.getByText("Ava wins")).toBeInTheDocument();
     expect(screen.getByText(/Saquon Barkley/)).toBeInTheDocument();
+  });
+});
+
+
+/**
+ * The screen's two self-healing loops, both added after a playtest where three
+ * lots in one game took 81s, 127s and 271s — one of them with no player actions
+ * at all. Expiry used to fire once per state and latch, so a single no-op meant
+ * nobody ever asked again and the auction waited on the janitor. Realtime had
+ * the same shape of bug: events were applied and never checked.
+ */
+describe("keeping the screen honest", () => {
+  // Date has to be faked as well as the interval: the component derives `now`
+  // from Date.now() plus its measured server offset, so a fake interval driving
+  // a real clock advances the ticks without advancing the time they read.
+  const withFakeTimers = async (body: () => Promise<void>) => {
+    vi.useFakeTimers({
+      toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "Date"],
+    });
+    try {
+      await body();
+    } finally {
+      vi.useRealTimers();
+    }
+  };
+
+  /** Lets the mount-time subscribe (and its one refetch) settle. */
+  const settle = async () => {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+  };
+
+  /**
+   * Advances in separate flushes rather than one big jump. React batches every
+   * state update inside a single act() into one render, so advancing four
+   * seconds at once would show the effect exactly one value of `now` — which
+   * says nothing about behaviour that is defined per tick.
+   */
+  const advance = async (ms: number, step = 500) => {
+    for (let elapsed = 0; elapsed < ms; elapsed += step) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(step);
+      });
+    }
+  };
+
+  const expiries = (supabase: { rpc: { mock: { calls: unknown[][] } } }) =>
+    supabase.rpc.mock.calls.filter(([fn]) => fn === "expire_turn");
+
+  it("keeps asking the server to expire a passed deadline rather than asking once", async () => {
+    await withFakeTimers(async () => {
+      const { supabase } = renderMatch({ turn: turn("lot_preview", { deadlineMs: -200 }) });
+      await advance(4_000);
+      // One attempt per RETRY_MS while the deadline stays past.
+      expect(expiries(supabase).length).toBeGreaterThan(1);
+    });
+  });
+
+  it("never asks on behalf of the player on the clock, who is the one client that cannot be trusted with it", async () => {
+    await withFakeTimers(async () => {
+      const { supabase } = renderMatch({
+        turn: turn("bidding", { turnSeat: 0, deadlineMs: -2_000 }),
+      });
+      await advance(4_000);
+      expect(expiries(supabase)).toHaveLength(0);
+    });
+  });
+
+  it("still asks while waiting on somebody else's turn", async () => {
+    await withFakeTimers(async () => {
+      const { supabase } = renderMatch({
+        turn: turn("bidding", { turnSeat: 1, deadlineMs: -2_000 }),
+      });
+      await advance(4_000);
+      expect(expiries(supabase).length).toBeGreaterThan(0);
+    });
+  });
+
+  it("re-reads the board once a deadline is far enough past to distrust the screen", async () => {
+    await withFakeTimers(async () => {
+      const { supabase } = renderMatch({ turn: turn("sold", { deadlineMs: -100 }) });
+      await settle();
+      supabase.from.mockClear();
+      await advance(6_000);
+      expect(supabase.from.mock.calls.map(([table]) => table)).toContain("auction_lots");
+    });
+  });
+
+  it("leaves a healthy screen alone", async () => {
+    await withFakeTimers(async () => {
+      const { supabase } = renderMatch({ turn: turn("bidding", { turnSeat: 1, deadlineMs: 20_000 }) });
+      await settle();
+      supabase.from.mockClear();
+      await advance(3_000);
+      expect(supabase.from).not.toHaveBeenCalled();
+      expect(expiries(supabase)).toHaveLength(0);
+    });
+  });
+
+  it("re-reads the board when the tab comes back, since a backgrounded clock barely ran", async () => {
+    const { supabase } = renderMatch({ turn: turn("bidding", { turnSeat: 1 }) });
+    await waitFor(() => expect(supabase.from).toHaveBeenCalled());
+    supabase.from.mockClear();
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(supabase.from.mock.calls.map(([table]) => table)).toContain("auction_players");
+  });
+
+  it("re-reads the board when the realtime channel joins, which is when missed events are known to exist", async () => {
+    // The mock reports SUBSCRIBED as soon as the component subscribes.
+    const { supabase } = renderMatch({ turn: turn("lot_preview") });
+    await waitFor(() =>
+      expect(supabase.from.mock.calls.map(([table]) => table)).toContain("auction_bids"),
+    );
   });
 });
