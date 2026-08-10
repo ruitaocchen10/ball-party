@@ -116,7 +116,7 @@ function GameCard({
           <p className="font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
             {meta}
           </p>
-          <Action game={game} signedIn={signedIn} stretch={!featured} />
+          <Action signedIn={signedIn} stretch={!featured} />
         </div>
       </div>
     </article>
@@ -147,15 +147,7 @@ const ACTION =
  */
 const OVERLAY = "absolute inset-0 cursor-pointer";
 
-function Action({
-  game,
-  signedIn,
-  stretch,
-}: {
-  game: Game;
-  signedIn: boolean;
-  stretch: boolean;
-}) {
+function Action({ signedIn, stretch }: { signedIn: boolean; stretch: boolean }) {
   const width = stretch ? "w-full justify-center" : "";
 
   if (!signedIn) {
@@ -171,7 +163,6 @@ function Action({
 
   return (
     <form action={createLobby} className={stretch ? "contents" : ""}>
-      <input type="hidden" name="game" value={game.slug} />
       <button type="submit" aria-hidden tabIndex={-1} className={OVERLAY} />
       <button type="submit" className={`${ACTION} ${width}`}>
         Start a room

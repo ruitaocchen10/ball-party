@@ -6,9 +6,9 @@
  * changes. It moves to the database when games gain state the platform has to
  * read — availability by region, say, or per-player unlocks.
  *
- * TODO: `status` is a display placeholder. No game is implemented yet, so
- * "live" here means "documented and next up", not "playable". Flip these to the
- * truth as each game ships.
+ * `status` means playable, not planned. The auction is the one game that is
+ * actually built end to end; the other three are documented and unbuilt, and
+ * saying otherwise on the home screen would be the product lying about itself.
  */
 export type GameStatus = "live" | "development";
 
@@ -48,7 +48,7 @@ export const GAMES: readonly Game[] = [
     tagline: "Two stat lines, one call. Keep the streak alive or hand it over.",
     players: "1–4 players",
     duration: "3–6 min",
-    status: "live",
+    status: "development",
     solo: true,
     featured: false,
   },
@@ -72,18 +72,6 @@ export const GAMES: readonly Game[] = [
     tagline: "One clue, one dial, one partner who carves up a fuzzy scale differently than you do.",
     players: "4 players",
     duration: "8–12 min",
-    status: "live",
-    solo: false,
-    featured: false,
-  },
-  {
-    slug: "in-development",
-    name: ["In", "development"],
-    shortName: ["In dev"],
-    kind: "",
-    tagline: "",
-    players: "Coming soon",
-    duration: "",
     status: "development",
     solo: false,
     featured: false,

@@ -12,8 +12,221 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.15"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      auction_bids: {
+        Row: {
+          action: string
+          bid_seq: number
+          by_timeout: boolean
+          created_at: string
+          match_id: string
+          price: number | null
+          seq: number
+          user_id: string
+        }
+        Insert: {
+          action: string
+          bid_seq: number
+          by_timeout?: boolean
+          created_at?: string
+          match_id: string
+          price?: number | null
+          seq: number
+          user_id: string
+        }
+        Update: {
+          action?: string
+          bid_seq?: number
+          by_timeout?: boolean
+          created_at?: string
+          match_id?: string
+          price?: number | null
+          seq?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_bids_match_id_seq_fkey"
+            columns: ["match_id", "seq"]
+            isOneToOne: false
+            referencedRelation: "auction_lots"
+            referencedColumns: ["match_id", "seq"]
+          },
+          {
+            foreignKeyName: "auction_bids_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auction_lots: {
+        Row: {
+          display_name: string
+          is_flex: boolean
+          match_id: string
+          opponent: string
+          player_id: string
+          points: number | null
+          position: string
+          price: number | null
+          resolved_at: string | null
+          season: number
+          seq: number
+          slot: string | null
+          team: string
+          week: number
+          winner_id: string | null
+        }
+        Insert: {
+          display_name: string
+          is_flex: boolean
+          match_id: string
+          opponent: string
+          player_id: string
+          points?: number | null
+          position: string
+          price?: number | null
+          resolved_at?: string | null
+          season: number
+          seq: number
+          slot?: string | null
+          team: string
+          week: number
+          winner_id?: string | null
+        }
+        Update: {
+          display_name?: string
+          is_flex?: boolean
+          match_id?: string
+          opponent?: string
+          player_id?: string
+          points?: number | null
+          position?: string
+          price?: number | null
+          resolved_at?: string | null
+          season?: number
+          seq?: number
+          slot?: string | null
+          team?: string
+          week?: number
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_lots_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auction_lots_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auction_matches: {
+        Row: {
+          current_lot: number
+          lot_count: number
+          match_id: string
+          opener_seat: number
+          turn_deadline: string | null
+          turn_seat: number | null
+        }
+        Insert: {
+          current_lot?: number
+          lot_count: number
+          match_id: string
+          opener_seat?: number
+          turn_deadline?: string | null
+          turn_seat?: number | null
+        }
+        Update: {
+          current_lot?: number
+          lot_count?: number
+          match_id?: string
+          opener_seat?: number
+          turn_deadline?: string | null
+          turn_seat?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_matches_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auction_players: {
+        Row: {
+          budget: number
+          match_id: string
+          seat: number
+          user_id: string
+        }
+        Insert: {
+          budget?: number
+          match_id: string
+          seat: number
+          user_id: string
+        }
+        Update: {
+          budget?: number
+          match_id?: string
+          seat?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auction_players_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lobbies: {
         Row: {
           closed_at: string | null
@@ -268,6 +481,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auction_state: {
+        Args: { p_match_id: string }
+        Returns: Database["public"]["CompositeTypes"]["auction_turn"]
+        SetofOptions: {
+          from: "*"
+          to: "auction_turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       create_lobby: {
         Args: never
@@ -281,6 +504,16 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "lobbies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      expire_turn: {
+        Args: { p_match_id: string }
+        Returns: Database["public"]["CompositeTypes"]["auction_turn"]
+        SetofOptions: {
+          from: "*"
+          to: "auction_turn"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -302,6 +535,58 @@ export type Database = {
         }
       }
       leave_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
+      pass_lot: {
+        Args: { p_match_id: string }
+        Returns: Database["public"]["CompositeTypes"]["auction_turn"]
+        SetofOptions: {
+          from: "*"
+          to: "auction_turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      place_bid: {
+        Args: { p_increment: number; p_match_id: string }
+        Returns: Database["public"]["CompositeTypes"]["auction_turn"]
+        SetofOptions: {
+          from: "*"
+          to: "auction_turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      start_auction: {
+        Args: { p_match_id: string }
+        Returns: Database["public"]["CompositeTypes"]["auction_turn"]
+        SetofOptions: {
+          from: "*"
+          to: "auction_turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      start_run: {
+        Args: {
+          p_game: string
+          p_lobby_id: string
+          p_mode: Database["public"]["Enums"]["run_mode"]
+        }
+        Returns: {
+          ended_at: string | null
+          game: string
+          id: string
+          run_id: string
+          seq: number
+          started_at: string | null
+          status: Database["public"]["Enums"]["match_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       match_status: "setup" | "playing" | "complete" | "abandoned"
@@ -309,7 +594,15 @@ export type Database = {
       run_status: "active" | "finished" | "abandoned"
     }
     CompositeTypes: {
-      [_ in never]: never
+      auction_turn: {
+        match_id: string | null
+        lot_count: number | null
+        current_lot: number | null
+        turn_seat: number | null
+        opener_seat: number | null
+        turn_deadline: string | null
+        server_now: string | null
+      }
     }
   }
 }
@@ -432,6 +725,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       match_status: ["setup", "playing", "complete", "abandoned"],
@@ -440,3 +736,4 @@ export const Constants = {
     },
   },
 } as const
+

@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
 import { LobbyRealtime } from "@/components/lobby/LobbyRealtime";
-import { GAMES } from "@/lib/games/catalog";
+import { StartRun } from "@/components/lobby/StartRun";
 import { closeLobby, joinLobby, leaveLobby } from "@/lib/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,13 +21,8 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
 
-  const { error, game: gameParam } = await props.searchParams;
+  const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
-
-  // Set by the home grid when the room was opened from a specific game tile.
-  // A note to the person who clicked, nothing more — see createLobby.
-  const slug = Array.isArray(gameParam) ? gameParam[0] : gameParam;
-  const picked = GAMES.find((g) => g.slug === slug && g.status === "live") ?? null;
 
   // Mirrors the rule in lib/supabase/proxy.ts: an anonymous JWT is signed out,
   // not a user. Both places have to agree or this route becomes the one way in.
@@ -98,6 +94,28 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     );
   }
 
+  // The room is a waiting area while nothing is running in it. Once a run
+  // starts, the people it snapshotted follow it into the match — the host by
+  // their own redirect, everybody else because LobbyRealtime refreshed this
+  // page and the run is now here.
+  //
+  // Only the people it snapshotted. Somebody who walked in after the roster was
+  // frozen is not in this game, so sending them to the match screen would put
+  // them in front of a board they cannot act on. They wait here and are in for
+  // the next one, which is what the two-roster split in 0003 was for.
+  const { data: live } = await supabase
+    .from("runs")
+    .select("id, matches(id, status), run_participants(user_id)")
+    .eq("lobby_id", lobby.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  const inFlight =
+    live?.matches.find((m) => m.status === "setup" || m.status === "playing") ?? null;
+  const seated = live?.run_participants.some((p) => p.user_id === claims.sub) ?? false;
+
+  if (inFlight && seated) redirect(`/match/${inFlight.id}`);
+
   const members = lobby.lobby_members
     .filter((m) => m.left_at === null)
     .sort((a, b) => a.joined_at.localeCompare(b.joined_at));
@@ -109,11 +127,9 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     <Shell code={code} error={errorText} displayName={displayName}>
       <LobbyRealtime lobbyId={lobby.id} />
 
-      {picked ? (
-        <p className="-mt-2 font-mono text-[10px] leading-[1.6] tracking-[0.13em] text-fg-muted uppercase">
-          Your pick: <span className="text-fg">{picked.name.join(" ")}</span>
-          <br />
-          Choose it when you start a run
+      {inFlight ? (
+        <p className="rounded border border-line bg-surface-raised px-3.5 py-2.5 text-sm text-fg-muted">
+          A game is in progress. You&apos;re in for the next one.
         </p>
       ) : null}
 
@@ -156,6 +172,10 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
       </ul>
 
       <div className="mt-2 flex flex-col gap-2.5">
+        {isHost && !inFlight ? (
+          <StartRun lobbyId={lobby.id} code={code} players={members.length} />
+        ) : null}
+
         <form action={leaveLobby}>
           <input type="hidden" name="lobby_id" value={lobby.id} />
           <Button type="submit" variant="ghost">

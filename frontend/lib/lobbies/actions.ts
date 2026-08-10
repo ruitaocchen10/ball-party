@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-import { GAMES } from "@/lib/games/catalog";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -16,9 +15,15 @@ const MESSAGES: Record<string, string> = {
   lobby_not_found: "No room with that code.",
   lobby_full: "That room is already full.",
   not_a_member: "You're not in that room.",
-  not_host: "Only the host can close the room.",
+  not_host: "Only the host can start or close the game.",
   not_authenticated: "Sign in first.",
   code_generation_failed: "Couldn't find a free room code. Try again.",
+  lobby_closed: "This room has closed.",
+  bad_player_count: "You need between two and four players.",
+  mode_not_supported: "Party mode isn't ready yet.",
+  run_already_active: "A game is already running in this room.",
+  too_few_players: "Not enough players to deal a board.",
+  pool_exhausted: "Couldn't deal a full board. Try again.",
 };
 
 function withError(path: string, error: { message: string }): string {
@@ -31,22 +36,14 @@ function normalizeCode(value: FormDataEntryValue | null): string {
 }
 
 /**
- * A room, optionally opened with a game in mind.
+ * A room.
  *
- * The slug rides along in the URL rather than in a column because a lobby has
- * no mode — the game is chosen per run, from inside the room (see
- * docs/architecture/lobbies). So this is a note to the person who clicked,
- * carried as far as the room and no further: it is not shared with the other
- * players, and it is gone the moment they navigate away. When runs are built
- * the choice becomes a row on `runs` and this hint goes away.
- *
- * Unrecognised slugs are dropped rather than echoed — the room URL is a thing
- * people paste to each other, so nothing arbitrary gets to ride in it.
+ * The game tile that opened it used to pass its slug along in the URL as a note
+ * to the person who clicked. That hint is gone: the choice is now a column on
+ * `runs`, written when the host starts the game from inside the room, which is
+ * where a lobby with no mode of its own was always going to have to make it.
  */
-export async function createLobby(formData?: FormData) {
-  const slug = String(formData?.get("game") ?? "");
-  const game = GAMES.find((g) => g.slug === slug && g.status === "live");
-
+export async function createLobby() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_lobby");
 
@@ -54,7 +51,37 @@ export async function createLobby(formData?: FormData) {
   if (error) redirect(withError("/", error));
 
   revalidatePath("/", "layout");
-  redirect(game ? `/lobby/${data.code}?game=${game.slug}` : `/lobby/${data.code}`);
+  redirect(`/lobby/${data.code}`);
+}
+
+/**
+ * Turn the room into a game.
+ *
+ * Two calls, because the platform does not dispatch into a game's setup — it
+ * does not know games exist. `start_run` freezes the roster and opens a match
+ * in `setup`; the game's own RPC deals into it and moves it to `playing`. See
+ * docs/architecture/architecture.md for why that seam is where it is.
+ *
+ * The dispatch below is hardcoded to the one game that is built. It belongs on
+ * the catalog the moment there are two.
+ */
+export async function startRun(formData: FormData) {
+  const lobbyId = String(formData.get("lobby_id") ?? "");
+  const code = normalizeCode(formData.get("code"));
+  const supabase = await createClient();
+
+  const { data: match, error } = await supabase.rpc("start_run", {
+    p_lobby_id: lobbyId,
+    p_mode: "arcade",
+    p_game: "auction_team_builder",
+  });
+  if (error) redirect(withError(`/lobby/${code}`, error));
+
+  const { error: dealError } = await supabase.rpc("start_auction", { p_match_id: match.id });
+  if (dealError) redirect(withError(`/lobby/${code}`, dealError));
+
+  revalidatePath("/", "layout");
+  redirect(`/match/${match.id}`);
 }
 
 /**
