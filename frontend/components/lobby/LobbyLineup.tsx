@@ -1,0 +1,149 @@
+import { StartRun } from "@/components/lobby/StartRun";
+import { Card } from "@/components/ui/Card";
+import { Concealed } from "@/components/ui/Concealed";
+import { GAMES } from "@/lib/games/catalog";
+
+const CAPACITY = 4;
+
+type Member = {
+  user_id: string;
+  profiles: { display_name: string } | null;
+};
+
+/**
+ * The room is a durable party table, rather than an antechamber for one game.
+ * A catalogue card is therefore the contract a new game gets when it arrives:
+ * what it is, how many people it needs, how long it lasts, and whether it can
+ * be started today. Only the auction has a live dispatch behind it for now.
+ */
+export function LobbyLineup({
+  lobbyId,
+  code,
+  members,
+  hostId,
+  viewerId,
+  isHost,
+  inFlight,
+}: {
+  lobbyId: string;
+  code: string;
+  members: Member[];
+  hostId: string;
+  viewerId: string;
+  isHost: boolean;
+  inFlight: boolean;
+}) {
+  const emptySeats = Math.max(0, CAPACITY - members.length);
+
+  return (
+    <section aria-labelledby="lineup-heading" className="flex flex-col gap-5">
+      <div>
+        <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">
+          Tonight&apos;s lineup
+        </p>
+        <h2 id="lineup-heading" className="mt-1 font-slab text-3xl leading-none -skew-x-7 uppercase">
+          Tonight&apos;s lineup
+        </h2>
+        <p className="mt-2 text-sm leading-5 text-fg-muted">
+          {isHost
+            ? "The auction is ready when the party is. More games are on their way."
+            : "The host starts when the party is ready. More games are on their way."}
+        </p>
+      </div>
+
+      <ul className="-mx-6 flex snap-x gap-3 overflow-x-auto px-6 pb-2 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0">
+        {GAMES.map((game) => {
+          // `live` means the catalogue can advertise a game. Launching is a
+          // stricter promise: it needs a run dispatcher and a setup RPC. The
+          // auction is the only game with both today, so a future catalogue
+          // entry never gets a start button before its game implementation.
+          const launchable = game.slug === "auction-team-builder";
+          const meta = [game.players, game.duration].join(" · ");
+
+          return (
+            <li key={game.slug} className="w-[15.5rem] shrink-0 snap-start md:w-auto">
+              {launchable ? (
+                <Card className="flex h-full flex-col">
+                  <div className="flex flex-1 flex-col p-3.5">
+                    <p className="font-mono text-[10px] tracking-[0.13em] text-hidden-ink uppercase">
+                      Next up · live
+                    </p>
+                    <h3 className="mt-2 font-slab text-xl leading-[1.04] -skew-x-7 uppercase">
+                      {game.name.map((line) => (
+                        <span key={line} className="block">
+                          {line}
+                        </span>
+                      ))}
+                    </h3>
+                    <p className="mt-2 text-sm leading-5 text-[#4c4739]">{game.tagline}</p>
+                    <p className="mt-auto border-t border-dashed border-[#c7bfac] pt-3 font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
+                      {meta}
+                    </p>
+                  </div>
+                  {isHost && !inFlight ? (
+                    <div className="border-t border-[#c7bfac] bg-panel-shade p-2.5">
+                      <StartRun lobbyId={lobbyId} code={code} players={members.length} />
+                    </div>
+                  ) : null}
+                </Card>
+              ) : (
+                <article className="flex h-full flex-col rounded-card border border-line bg-surface-raised p-3.5">
+                  <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Coming soon</p>
+                  <h3 className="mt-2 font-slab text-xl leading-[1.04] -skew-x-7 text-fg uppercase">
+                    {game.name.map((line) => (
+                      <span key={line} className="block">
+                        {line}
+                      </span>
+                    ))}
+                  </h3>
+                  <p className="mt-2 text-sm leading-5 text-fg-muted">{game.tagline}</p>
+                  <p className="mt-auto border-t border-line pt-3 font-mono text-[10px] tracking-[0.11em] text-fg-muted uppercase">
+                    {meta}
+                  </p>
+                </article>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">At the table</p>
+        <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
+          {members.length} of {CAPACITY} players
+        </p>
+      </div>
+
+      <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+        {members.map((member) => (
+          <li key={member.user_id}>
+            <Card edge={false} className="h-full border-t-[5px] border-hidden">
+              <div className="px-3 pt-2.5 pb-3">
+                <span className="block font-slab text-lg leading-none -skew-x-7 uppercase">
+                  {member.profiles?.display_name ?? "Unknown player"}
+                </span>
+                <span className="mt-2 block font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
+                  {[
+                    member.user_id === hostId ? "host" : null,
+                    member.user_id === viewerId ? "you" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "at the table"}
+                </span>
+              </div>
+            </Card>
+          </li>
+        ))}
+        {Array.from({ length: emptySeats }, (_, index) => (
+          <li key={`empty-${index}`}>
+            <Concealed label="Open spot, waiting for a player" className="flex h-full min-h-[73px] items-center">
+              <span className="relative w-full text-center font-mono text-[10px] tracking-[0.15em] text-panel/85 uppercase">
+                Invite friend
+              </span>
+            </Concealed>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}

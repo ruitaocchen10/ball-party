@@ -3,14 +3,10 @@ import { redirect } from "next/navigation";
 
 import { TopBar } from "@/components/layout/TopBar";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Concealed } from "@/components/ui/Concealed";
 import { LobbyRealtime } from "@/components/lobby/LobbyRealtime";
-import { StartRun } from "@/components/lobby/StartRun";
+import { LobbyLineup } from "@/components/lobby/LobbyLineup";
 import { closeLobby, joinLobby, leaveLobby } from "@/lib/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
-
-const CAPACITY = 4;
 
 export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { code: rawCode } = await props.params;
@@ -121,8 +117,6 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     .sort((a, b) => a.joined_at.localeCompare(b.joined_at));
 
   const isHost = lobby.host_id === claims.sub;
-  const emptySeats = Math.max(0, CAPACITY - members.length);
-
   return (
     <Shell code={code} error={errorText} displayName={displayName}>
       <LobbyRealtime lobbyId={lobby.id} />
@@ -133,49 +127,17 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
         </p>
       ) : null}
 
-      <Label>
-        {members.length} of {CAPACITY} players
-      </Label>
-
-      {/* Players who've arrived are shown on a panel. Spots nobody has filled are
-          red — same rule as everywhere else: red means not yet revealed. */}
-      <ul className="flex flex-col gap-2.5">
-        {members.map((m) => (
-          <li key={m.user_id}>
-            <Card>
-              <div className="flex items-baseline justify-between gap-3 px-3 pt-2.5 pb-3">
-                <span className="font-slab text-xl leading-none -skew-x-7 uppercase">
-                  {m.profiles?.display_name ?? "Unknown player"}
-                </span>
-                <span className="font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
-                  {[
-                    m.user_id === lobby.host_id ? "host" : null,
-                    m.user_id === claims.sub ? "you" : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </div>
-            </Card>
-          </li>
-        ))}
-
-        {Array.from({ length: emptySeats }, (_, i) => (
-          <li key={`empty-${i}`}>
-            <Concealed label="Open spot, waiting for a player" className="flex h-[52px] items-center">
-              <span className="relative w-full text-center font-mono text-[10px] tracking-[0.15em] text-panel/85 uppercase">
-                Open spot
-              </span>
-            </Concealed>
-          </li>
-        ))}
-      </ul>
+      <LobbyLineup
+        lobbyId={lobby.id}
+        code={code}
+        members={members}
+        hostId={lobby.host_id}
+        viewerId={claims.sub}
+        isHost={isHost}
+        inFlight={Boolean(inFlight)}
+      />
 
       <div className="mt-2 flex flex-col gap-2.5">
-        {isHost && !inFlight ? (
-          <StartRun lobbyId={lobby.id} code={code} players={members.length} />
-        ) : null}
-
         <form action={leaveLobby}>
           <input type="hidden" name="lobby_id" value={lobby.id} />
           <Button type="submit" variant="ghost">
@@ -223,7 +185,7 @@ function Shell({
   return (
     <>
       <TopBar displayName={displayName} />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-14">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center gap-6 px-6 py-14">
         <header className="flex flex-col gap-2">
           <Label>Join code</Label>
           <h1 className="font-mono text-5xl font-semibold tracking-[0.16em] text-fg">{code}</h1>

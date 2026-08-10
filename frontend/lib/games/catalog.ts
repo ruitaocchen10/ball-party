@@ -58,7 +58,7 @@ export const GAMES: readonly Game[] = [
     shortName: ["Auction"],
     kind: "Group · hidden points",
     tagline: "Bid on mystery player-weeks. Fantasy points stay hidden until the bidding closes.",
-    players: "4 players",
+    players: "2–4 players",
     duration: "10–14 min",
     status: "live",
     solo: false,
