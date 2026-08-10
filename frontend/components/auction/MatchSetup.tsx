@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Concealed } from "@/components/ui/Concealed";
-import { createClient } from "@/lib/supabase/client";
+import { createRealtimeClient } from "@/lib/supabase/client";
 
 /**
  * The moment between a run existing and its board being dealt.
@@ -18,18 +18,30 @@ export function MatchSetup({ matchId }: { matchId: string }) {
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`match-setup:${matchId}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` },
-        () => router.refresh(),
-      )
-      .subscribe();
+    let cleanup: (() => void) | null = null;
+    let cancelled = false;
+
+    void (async () => {
+      const supabase = await createRealtimeClient();
+      if (cancelled) return;
+
+      const channel = supabase
+        .channel(`match-setup:${matchId}`)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` },
+          () => router.refresh(),
+        )
+        .subscribe();
+
+      cleanup = () => {
+        void supabase.removeChannel(channel);
+      };
+    })();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      cleanup?.();
     };
   }, [matchId, router]);
 

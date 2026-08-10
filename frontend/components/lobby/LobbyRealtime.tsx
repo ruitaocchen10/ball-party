@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/client";
+import { createRealtimeClient } from "@/lib/supabase/client";
 
 /**
  * Re-fetches the server-rendered lobby whenever its durable state changes.
@@ -27,46 +27,57 @@ export function LobbyRealtime({ lobbyId }: { lobbyId: string }) {
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
     const refresh = () => router.refresh();
+    let cleanup: (() => void) | null = null;
+    let cancelled = false;
 
-    const channel = supabase
-      .channel(`lobby:${lobbyId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "lobby_members",
-          filter: `lobby_id=eq.${lobbyId}`,
-        },
-        refresh,
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "lobbies",
-          filter: `id=eq.${lobbyId}`,
-        },
-        refresh,
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "runs",
-          filter: `lobby_id=eq.${lobbyId}`,
-        },
-        refresh,
-      )
-      .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, refresh)
-      .subscribe();
+    void (async () => {
+      const supabase = await createRealtimeClient();
+      if (cancelled) return;
+
+      const channel = supabase
+        .channel(`lobby:${lobbyId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "lobby_members",
+            filter: `lobby_id=eq.${lobbyId}`,
+          },
+          refresh,
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "lobbies",
+            filter: `id=eq.${lobbyId}`,
+          },
+          refresh,
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "runs",
+            filter: `lobby_id=eq.${lobbyId}`,
+          },
+          refresh,
+        )
+        .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, refresh)
+        .subscribe();
+
+      cleanup = () => {
+        void supabase.removeChannel(channel);
+      };
+    })();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      cleanup?.();
     };
   }, [lobbyId, router]);
 
