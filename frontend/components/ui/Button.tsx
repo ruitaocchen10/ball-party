@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
 /**
  * Buttons are cream, because a button is a known thing and everything known in
@@ -17,6 +17,9 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "solid" | "ghost" | "ink";
   /** Full width is the common case; turn it off to sit inline beside a field. */
   fullWidth?: boolean;
+  /** React 19 passes ref through props; it is spread onto the button below.
+   *  Declared because the caller needs to return focus here — see BidBar. */
+  ref?: Ref<HTMLButtonElement>;
 };
 
 const BASE =

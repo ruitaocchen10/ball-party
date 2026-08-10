@@ -92,7 +92,15 @@ end;
 $$;
 
 -- Exact amounts are validated as amounts, never converted into a nearby bid.
-create or replace function private.auction_apply(p_match_id uuid, p_actor uuid, p_action text, p_amount int, p_by_timeout boolean)
+--
+-- Dropped rather than replaced: 0011 named this parameter p_increment, and
+-- Postgres refuses to rename an input parameter through CREATE OR REPLACE.  The
+-- amount arrives as numeric so that a fractional bid can be REJECTED rather
+-- than silently rounded into a legal one by the int cast at the call boundary
+-- -- which would be exactly the clamping this contract exists to forbid.
+drop function private.auction_apply(uuid, uuid, text, int, boolean);
+
+create function private.auction_apply(p_match_id uuid, p_actor uuid, p_action text, p_amount numeric, p_by_timeout boolean)
 returns void
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -112,10 +120,13 @@ begin
   select b.user_id,b.price into v_high,v_price from public.auction_bids b where b.match_id=p_match_id and b.seq=v_seq and b.action='raise' order by b.bid_seq desc limit 1;
   v_price:=coalesce(v_price,0); select coalesce(max(bid_seq),0)+1 into v_bid from public.auction_bids where match_id=p_match_id and seq=v_seq;
   if p_action='raise' then
-    if p_amount is null or p_amount <= v_price then raise exception 'bid_not_increasing' using errcode='P0001'; end if;
+    -- Well-formedness before value: a bid of $3.50 is refused for its shape,
+    -- not for how it compares to the price.
+    if p_amount is null or p_amount <> trunc(p_amount) then raise exception 'bid_not_whole' using errcode='P0001'; end if;
+    if p_amount <= v_price then raise exception 'bid_not_increasing' using errcode='P0001'; end if;
     if p_amount > v_budget then raise exception 'insufficient_budget' using errcode='P0001'; end if;
     if not private.auction_eligible(p_match_id,p_actor,v_seq) then raise exception 'not_eligible' using errcode='P0001'; end if;
-    v_price:=p_amount; v_high:=p_actor;
+    v_price:=p_amount::int; v_high:=p_actor;
     insert into public.auction_bids values (p_match_id,v_seq,v_bid,p_actor,'raise',v_price,p_by_timeout,now());
   elsif p_action='pass' then
     insert into public.auction_bids values (p_match_id,v_seq,v_bid,p_actor,'pass',null,p_by_timeout,now());
@@ -157,11 +168,67 @@ language sql security definer set search_path = '' stable as $$
  from public.auction_matches m where m.match_id=p_match_id;
 $$;
 
-create or replace function public.place_bid(p_match_id uuid, p_amount int) returns public.auction_turn
+-- Same rename problem as auction_apply, and the same fix.  A drop discards the
+-- grants with the function, so they are re-issued below rather than inherited.
+drop function public.place_bid(uuid, int);
+
+create function public.place_bid(p_match_id uuid, p_amount numeric) returns public.auction_turn
 language plpgsql security definer set search_path = '' as $$
 declare v_user uuid:=auth.uid(); begin
  if v_user is null or (auth.jwt()->>'is_anonymous')::boolean is true then raise exception 'not_authenticated' using errcode='42501'; end if;
  perform private.auction_apply(p_match_id,v_user,'raise',p_amount,false); return private.auction_turn_of(p_match_id); end;
+$$;
+
+-- The janitor has to know about phase deadlines too.  Preview and sold leave
+-- turn_deadline null and carry phase_deadline alone, so the pre-phase sweep
+-- would have walked straight past an abandoned match sitting in either of them
+-- and left it `playing` forever -- the one outcome this exists to prevent.
+--
+-- Each pass drains what it can: expiring a preview opens bidding on a deadline
+-- ten seconds in the future, so the loop stops on its own within a step or two
+-- rather than needing a fresh sweep per phase.
+create or replace function private.auction_sweep()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  r record;
+  v_i int;
+begin
+  for r in
+    select am.match_id
+      from public.auction_matches am
+      join public.matches mt on mt.id = am.match_id
+     where mt.status = 'playing'::public.match_status
+       and coalesce(am.turn_deadline, am.phase_deadline) < now() - interval '1 minute'
+  loop
+    for v_i in 1 .. 8 loop
+      exit when not private.auction_expire(r.match_id);
+    end loop;
+  end loop;
+
+  for r in
+    select mt.id
+      from public.matches mt
+      join public.runs rn on rn.id = mt.run_id
+     where mt.status in ('setup'::public.match_status, 'playing'::public.match_status)
+       and rn.status <> 'active'::public.run_status
+  loop
+    perform private.abandon_match(r.id);
+  end loop;
+
+  for r in
+    select mt.id
+      from public.matches mt
+      join public.runs rn on rn.id = mt.run_id
+     where mt.status = 'setup'::public.match_status
+       and rn.started_at < now() - interval '10 minutes'
+  loop
+    perform private.abandon_match(r.id);
+  end loop;
+end;
 $$;
 
 -- Existing boards (if a deployment lands mid-lot) remain playable.
@@ -169,3 +236,6 @@ update public.auction_matches set phase = case when turn_seat is null then 'lot_
   phase_deadline = case when turn_seat is null then now() + interval '3 seconds' else null end;
 
 revoke all on function private.auction_open_bidding(uuid) from public, anon, authenticated;
+revoke all on function private.auction_apply(uuid, uuid, text, numeric, boolean) from public, anon, authenticated;
+revoke all on function public.place_bid(uuid, numeric) from public, anon;
+grant execute on function public.place_bid(uuid, numeric) to authenticated;

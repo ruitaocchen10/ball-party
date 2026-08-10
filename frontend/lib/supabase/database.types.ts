@@ -90,6 +90,7 @@ export type Database = {
       auction_lots: {
         Row: {
           display_name: string
+          headshot_url: string | null
           is_flex: boolean
           match_id: string
           opponent: string
@@ -107,6 +108,7 @@ export type Database = {
         }
         Insert: {
           display_name: string
+          headshot_url?: string | null
           is_flex: boolean
           match_id: string
           opponent: string
@@ -124,6 +126,7 @@ export type Database = {
         }
         Update: {
           display_name?: string
+          headshot_url?: string | null
           is_flex?: boolean
           match_id?: string
           opponent?: string

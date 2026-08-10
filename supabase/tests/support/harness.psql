@@ -155,12 +155,29 @@ declare
   v_price  int;
   v_moves  int := 0;
   v_raise  boolean;
+  v_phase  text;
 begin
   loop
     perform tests.act_as_admin();
-    select turn_seat into v_seat from public.auction_matches where match_id = p_match_id;
+
+    -- A finished board keeps phase = 'sold' with a null phase_deadline, which
+    -- is inert in production but not here: this loop forces the deadline into
+    -- the past, so without this exit it would drive current_lot past the end of
+    -- the board forever and die on smallint overflow rather than on the guard.
+    exit when (select status from public.matches where id = p_match_id)
+              <> 'playing'::public.match_status;
+
+    select turn_seat, phase into v_seat, v_phase
+      from public.auction_matches where match_id = p_match_id;
+
+    -- Timer-off phases are counted as moves too. They advance real state, so
+    -- leaving them outside the guard is what let the runaway above go unbounded.
     if v_seat is null then
-      if exists (select 1 from public.auction_matches where match_id = p_match_id and phase in ('lot_preview', 'sold')) then
+      if v_phase in ('lot_preview', 'sold') then
+        v_moves := v_moves + 1;
+        if v_moves > 5000 then
+          raise exception 'play_out did not terminate after % moves', v_moves;
+        end if;
         update public.auction_matches set phase_deadline = now() - interval '1 second' where match_id = p_match_id;
         perform private.auction_expire(p_match_id);
         continue;
@@ -192,7 +209,7 @@ begin
 
     perform tests.act_as(v_actor);
     if v_raise then
-      perform public.place_bid(p_match_id, 1);
+      perform public.place_bid(p_match_id, v_price + 1);
     else
       perform public.pass_lot(p_match_id);
     end if;

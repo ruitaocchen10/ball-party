@@ -133,7 +133,6 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         players,
         bids: bidsResult.data ?? [],
         standings: standingsResult.data ?? [],
-        complete: match.status === "complete",
       }}
     />
   );

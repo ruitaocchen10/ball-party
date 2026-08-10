@@ -66,6 +66,19 @@
     0 16px 34px rgb(0 0 0 / 0.62), inset 0 1px 0 rgb(255 255 255 / 0.8);
 
   --radius-card: 5px;
+
+  /* The sold acknowledgement, which is an event rather than a state: it fires
+     once and stops. A looping pulse would keep insisting after the payoff has
+     landed, and would still be going when the next lot's preview starts. Held
+     behind motion-safe, so a reduced-motion viewer keeps the ring and the
+     background and simply does not get the flash. */
+  --animate-sold-once: sold-once 620ms ease-out 1;
+}
+
+@keyframes sold-once {
+  0% { opacity: 1; }
+  30% { opacity: 0.45; }
+  100% { opacity: 1; }
 }
 
 body {

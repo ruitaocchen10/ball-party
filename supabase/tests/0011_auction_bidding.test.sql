@@ -166,20 +166,22 @@ select isnt(
   'and the turn moves off the player holding the high bid — nobody bids against themselves'
 );
 
--- A raise beyond budget is refused; one exactly equal to it is not.
+-- A raise beyond budget is refused; one exactly equal to it is not. Both
+-- amounts have to clear the standing price of 10 first, or the affordability
+-- rule never gets asked the question.
 select tests.act_as_admin();
-update public.auction_players set budget = 6
+update public.auction_players set budget = 12
  where match_id = (select v from tests.fx where k = 'mb')
    and user_id = tests.on_clock((select v from tests.fx where k = 'mb'));
 
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mb')));
 select throws_ok(
-  format($$ select public.place_bid(%L, 5) $$, (select v from tests.fx where k = 'mb')),
+  format($$ select public.place_bid(%L, 13) $$, (select v from tests.fx where k = 'mb')),
   'P0001', 'insufficient_budget',
   'a raise past the budget is refused'
 );
 select lives_ok(
-  format($$ select public.place_bid(%L, 6) $$, (select v from tests.fx where k = 'mb')),
+  format($$ select public.place_bid(%L, 12) $$, (select v from tests.fx where k = 'mb')),
   'a raise to exactly the budget is allowed'
 );
 

@@ -67,7 +67,7 @@ const MESSAGES: Record<string, string> = {
   already_passed: "You already passed on this lot.",
   not_eligible: "You have no open slot for this lot.",
   insufficient_budget: "That's more than you have left.",
-  bad_increment: "You can only raise by $1 or $5.",
+  bid_not_whole: "Bids are in whole dollars.",
   bid_not_increasing: "Your bid must be higher than the current price.",
   bidding_not_open: "Bidding has not opened yet.",
   match_not_playing: "This game has ended.",
@@ -82,7 +82,6 @@ type Initial = {
   players: Player[];
   bids: Bid[];
   standings: Standing[];
-  complete: boolean;
 };
 
 export function AuctionMatch({
@@ -328,7 +327,12 @@ export function AuctionMatch({
 
   return (
     <Screen displayName={displayName} workspace>
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,.9fr)]">
+      {/* Stacked below 1024px, side by side at and above it. The mobile row
+          template is the whole of story 8: the Lot is sized to its content and
+          never compressed, and the Table takes what is left and scrolls inside
+          itself. Without it both rows are auto and a four-seat table pushes the
+          live auction off the screen. */}
+      <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(6rem,1fr)] gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,.9fr)] lg:grid-rows-1">
       <section className="flex min-h-0 flex-col gap-2" aria-label="The lot">
       <header className="flex items-baseline justify-between gap-3">
         <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
@@ -342,12 +346,17 @@ export function AuctionMatch({
       {/* The lot. Red top edge, because there is concealed information behind
           it — which is the rule Card already documents. */}
       <Card className="flex min-h-0 flex-1 flex-col">
+        {/* The portrait band is the Lot's only flexible-height element, and it
+            keeps its height whether or not a shot exists — a player nflverse
+            has no picture for must not change the geometry under a live clock. */}
         <div className="min-h-24 flex-1 border-b border-dashed border-[#c7bfac] bg-panel-shade">
-          <img
-            src={`https://static.www.nfl.com/image/upload/f_auto,q_auto/league/${lot.player_id}`}
-            alt=""
-            className="h-full w-full object-contain object-bottom grayscale [mask-image:linear-gradient(to_bottom,#000_58%,transparent_96%)]"
-          />
+          {lot.headshot_url ? (
+            <img
+              src={lot.headshot_url}
+              alt=""
+              className="h-full w-full object-contain object-bottom grayscale [mask-image:linear-gradient(to_bottom,#000_58%,transparent_96%)]"
+            />
+          ) : null}
         </div>
         <CardTitle>{lot.display_name}</CardTitle>
         <CardMeta>{matchupLine(lot)}</CardMeta>
@@ -492,7 +501,7 @@ function PlayerRail({
           <li
             key={player.user_id}
             className={`rounded border px-3 py-2.5 transition-colors ${
-              soldLot?.winner_id === player.user_id ? "border-panel bg-panel/10 motion-safe:animate-pulse" : acting ? "border-panel/45 bg-surface-raised" : "border-line bg-transparent"
+              soldLot?.winner_id === player.user_id ? "border-panel bg-panel/10 motion-safe:animate-sold-once" : acting ? "border-panel/45 bg-surface-raised" : "border-line bg-transparent"
             }`}
           >
             <div className="flex items-baseline justify-between gap-3">
@@ -529,8 +538,9 @@ function PlayerRail({
   );
 }
 
-/** Filled slots show what they hold. Unfilled ones are concealed, the same as
- *  an open spot in the lobby: red means the thing is not there yet. */
+/** Filled slots show what they hold. Unfilled ones are a dashed gap — an empty
+ *  slot is absent, not withheld, and the concealed weave is reserved for the
+ *  fantasy points, which exist and are being kept from you. */
 function Roster({ lots, userId, highlightSlot = null }: { lots: Lot[]; userId: string; highlightSlot?: string | null }) {
   return (
     <ul className="flex gap-1">
@@ -540,7 +550,10 @@ function Roster({ lots, userId, highlightSlot = null }: { lots: Lot[]; userId: s
         return (
           <li key={slot}>
             {won ? (
-              <span className={`flex h-7 min-w-11 items-center justify-center rounded-[3px] bg-panel px-1.5 font-mono text-[9px] text-panel-fg tabular-nums ${highlightSlot === slot ? "ring-2 ring-panel motion-safe:animate-pulse" : ""}`}>
+              <span
+                aria-label={`${slot} slot, ${won.display_name}, ${fmt(won.points)} points`}
+                className={`flex h-7 min-w-11 items-center justify-center rounded-[3px] bg-panel px-1.5 font-mono text-[9px] text-panel-fg tabular-nums ${highlightSlot === slot ? "ring-2 ring-panel motion-safe:animate-sold-once" : ""}`}
+              >
                 {slot}<span className="hidden lg:inline"> · {won.display_name}</span> {fmt(won.points)}
               </span>
             ) : (
@@ -593,18 +606,41 @@ function BidBar({
   const [customFor, setCustomFor] = useState<string | null>(null);
   const [amount, setAmount] = useState(String(price + 1));
   const input = useRef<HTMLInputElement>(null);
+  const customButton = useRef<HTMLButtonElement>(null);
+  const surface = useRef<HTMLDivElement>(null);
   const minimum = price + 1;
+  // Keying the popover to the interaction rather than to a boolean is what
+  // closes it on a turn change, a new price or a sale: the key it was opened
+  // against simply stops being the current one.
   const interactionKey = `${phase}:${onClock?.seat ?? "none"}:${price}`;
   const custom = customFor === interactionKey;
   const actionable = phase === "bidding_self" && blocked === null && !pending;
-  useEffect(() => { if (custom) input.current?.focus(); }, [custom]);
+
+  // Focus goes back where it came from on Escape and Cancel. It cannot on an
+  // auto-close -- the phase change that closed the popover is the same one that
+  // disabled the Custom button -- so those land on the control surface instead,
+  // which keeps a keyboard user in the controls rather than at the document top.
+  const dismissed = useRef(false);
+  const wasOpen = useRef(false);
+  const closeCustom = useCallback(() => { dismissed.current = true; setCustomFor(null); }, []);
+  useEffect(() => {
+    if (custom) { wasOpen.current = true; input.current?.focus(); return; }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    if (dismissed.current) { dismissed.current = false; customButton.current?.focus(); }
+    else surface.current?.focus();
+  }, [custom]);
   const seconds = remainingMs === null ? null : Math.ceil(remainingMs / 1000);
   const fraction = remainingMs === null ? 0 : Math.min(1, remainingMs / (phase === "bidding_self" || phase === "bidding_other" ? 10_000 - VISIBLE_SLACK_MS : phase === "sold" ? 1_200 : 3_000));
   const urgent = seconds !== null && seconds <= 3 && (phase === "bidding_self" || phase === "bidding_other");
   const invalid = !Number.isInteger(Number(amount)) || Number(amount) < minimum || Number(amount) > budget;
 
   return (
-    <div className="relative mt-auto border-t border-line bg-surface-raised px-3 pt-3 pb-3">
+    <div
+      ref={surface}
+      tabIndex={-1}
+      className="relative mt-auto border-t border-line bg-surface-raised px-3 pt-3 pb-3 outline-none"
+    >
       <div className="flex items-baseline justify-between gap-3">
         <span className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
           {phase === "lot_preview" ? "Bidding has not started" : phase === "sold" ? "Sold" : isMine ? "Your turn" : `${onClock?.display_name ?? "Someone"} is deciding`}
@@ -643,7 +679,7 @@ function BidBar({
             +${increment}
           </Button>
         ))}
-        <Button type="button" disabled={!actionable} onClick={() => { setAmount(String(minimum)); setCustomFor(interactionKey); }}>
+        <Button ref={customButton} type="button" disabled={!actionable} onClick={() => { setAmount(String(minimum)); setCustomFor(interactionKey); }}>
           Custom
         </Button>
       </div>
@@ -657,13 +693,13 @@ function BidBar({
           aria-label="Custom bid"
           className="absolute right-3 bottom-3 left-3 rounded-card bg-panel p-3 text-panel-fg shadow-card"
           onSubmit={(event) => { event.preventDefault(); if (!invalid) onRaise(Number(amount)); }}
-          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setCustomFor(null); } }}
+          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeCustom(); } }}
         >
           <label className="block font-mono text-[10px] tracking-[.13em] text-panel-muted uppercase">Custom bid
             <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full rounded border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
           </label>
           <p className="mt-1 text-xs text-panel-muted">Minimum is ${minimum}. Your maximum is ${budget}.</p>
-          <div className="mt-2 flex gap-2"><Button type="submit" variant="ink" fullWidth={false} disabled={invalid || pending}>Bid ${amount}</Button><button type="button" onClick={() => setCustomFor(null)} className="text-xs text-panel-muted underline">Cancel</button></div>
+          <div className="mt-2 flex gap-2"><Button type="submit" variant="ink" fullWidth={false} disabled={invalid || pending}>Bid ${amount}</Button><button type="button" onClick={closeCustom} className="text-xs text-panel-muted underline">Cancel</button></div>
         </form>
       )}
     </div>
