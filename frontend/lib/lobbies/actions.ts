@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { isSignedInViewer } from "@/lib/auth/viewer";
+import { canCreateLobby, isSignedInViewer } from "@/lib/auth/viewer";
 import { lobbyErrorMessage } from "@/lib/lobbies/messages";
+import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
 
 /**
  * The lobby RPCs raise short machine-readable strings — see
@@ -32,6 +33,9 @@ function normalizeCode(value: FormDataEntryValue | null): string {
  */
 export async function createLobby() {
   const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  if (!canCreateLobby(claimsData?.claims)) redirect(HOST_SIGN_UP_HREF);
+
   const { data, error } = await supabase.rpc("create_lobby");
 
   // redirect() unwinds by throwing, so it must never sit inside a try/catch.

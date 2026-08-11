@@ -1,4 +1,3 @@
-import { ButtonLink } from "@/components/ui/Button";
 import { CurrentRoom, type RoomSummary } from "@/components/home/CurrentRoom";
 import { GameGrid } from "@/components/home/GameGrid";
 import { JoinRoom } from "@/components/home/JoinRoom";
@@ -7,7 +6,7 @@ import { WayIn } from "@/components/home/WayIn";
 import { GAMES } from "@/lib/games/catalog";
 import { TopBar } from "@/components/layout/TopBar";
 import { createClient } from "@/lib/supabase/server";
-import { isSignedInViewer } from "@/lib/auth/viewer";
+import { canCreateLobby, isSignedInViewer } from "@/lib/auth/viewer";
 
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.
@@ -19,17 +18,18 @@ export default async function Home(props: PageProps<"/">) {
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
 
-  const signedIn = isSignedInViewer(claims);
+  const viewer = isSignedInViewer(claims);
+  const canHost = canCreateLobby(claims);
 
   // Independent of each other, so they go together rather than in sequence.
-  const [profileResult, room] = signedIn
+  const [profileResult, room] = viewer
     ? await Promise.all([
         supabase.from("profiles").select("display_name").eq("id", claims!.sub).single(),
         currentRoom(supabase, claims!.sub),
       ])
     : [{ data: null }, null];
 
-  const displayName = profileResult.data?.display_name ?? (signedIn ? (claims!.email as string) : null);
+  const displayName = profileResult.data?.display_name ?? (viewer ? (claims!.email as string) : null);
 
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
@@ -51,14 +51,8 @@ export default async function Home(props: PageProps<"/">) {
           </p>
         ) : null}
 
-        {signedIn ? (
-          <>
-            {room ? <CurrentRoom room={room} /> : null}
-            <ActionStrip hasRoom={room !== null} />
-          </>
-        ) : (
-          <Hero />
-        )}
+        {room ? <CurrentRoom room={room} /> : null}
+        <ActionStrip hasRoom={room !== null} canCreateLobby={canHost} />
 
         <section aria-labelledby="games-heading">
           <div className="mt-9 mb-4 flex items-baseline gap-3.5">
@@ -74,10 +68,8 @@ export default async function Home(props: PageProps<"/">) {
             </span>
           </div>
 
-          <GameGrid signedIn={signedIn} />
+          <GameGrid canCreateLobby={canHost} />
         </section>
-
-        {signedIn ? null : <HowItWorks />}
       </main>
     </>
   );
@@ -114,101 +106,7 @@ async function currentRoom(supabase: Client, userId: string): Promise<RoomSummar
 }
 
 /**
- * Signed out. The pitch is the games themselves, further down — this only has
- * to say what the product is and offer the one action that starts it.
- */
-function Hero() {
-  return (
-    <section className="grid items-center gap-10 pt-10 pb-2 lg:pt-14 xl:grid-cols-[minmax(0,1fr)_480px] xl:gap-12">
-      <div>
-        <p className="mb-3.5 font-mono text-[10px] tracking-[0.19em] text-hidden-text uppercase">
-          4 players · 5–15 minutes · nothing to install
-        </p>
-        <h1 className="mb-4 font-slab text-[34px] leading-[1.02] -skew-x-7 uppercase sm:text-[43px]">
-          Find out who
-          <br />
-          actually knows
-          <br />
-          ball.
-        </h1>
-        <p className="mb-6 max-w-[44ch] text-[15px] leading-[1.6] text-[#bdb9b2] sm:text-base">
-          Start a room, send the code to three friends, and settle it. Points stay hidden until
-          they don&apos;t.
-        </p>
-        <div className="flex flex-col gap-2.5 sm:flex-row">
-          {/* Signed out this navigates rather than submits: creating a room
-              needs an account, and a button that fails is worse than a link
-              that explains. */}
-          <ButtonLink href="/signup" fullWidth={false} className="sm:px-7">
-            Start a room
-          </ButtonLink>
-          <ButtonLink href="#join-room" variant="ghost" fullWidth={false} className="sm:px-7">
-            Join a room
-          </ButtonLink>
-        </div>
-        <p className="mt-4 font-mono text-[9px] tracking-[0.13em] text-fg-muted uppercase">
-          Sign-in takes about ten seconds · Google or email
-        </p>
-
-        {/* The room page opens for people without accounts, so someone who was
-            texted a bare code — no link — needs a door here too. */}
-        <div id="join-room" className="mt-7 border-t border-line pt-5">
-          <p className="mb-2.5 font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
-            Join as a guest — no account needed
-          </p>
-          <JoinRoom className="w-full sm:w-fit" />
-        </div>
-      </div>
-
-      <Fan />
-    </section>
-  );
-}
-
-/**
- * Decoration, and the only place the product shows its hand before you sign in:
- * three things you can see and one you can't.
- *
- * The geometry is load-bearing. Each card is 120px wide but sits 118px from the
- * last, so only 118px of it is ever visible before the next one covers it, and
- * `overflow-hidden` silently eats whatever doesn't fit. Everything printed on a
- * card has to clear that wedge minus 16px of padding — measured, not guessed:
- * "Wavelength" is the widest string at 91px and the wedge gives it 102px.
- * The red back counts as a neighbour, so its offset constrains the last face.
- */
-function Fan() {
-  const faces = GAMES.filter((game) => game.status === "live").slice(0, 3);
-  const offsets = ["left-0 top-5 -rotate-9", "left-[118px] top-1.5 -rotate-2", "left-[236px] top-4 rotate-6"];
-
-  return (
-    <div aria-hidden className="relative hidden h-[210px] xl:block">
-      {faces.map((game, i) => (
-        <div
-          key={game.slug}
-          className={`absolute h-[178px] w-[120px] overflow-hidden rounded-card bg-panel text-panel-fg shadow-card ${offsets[i]}`}
-        >
-          <span className="block h-[5px] bg-hidden" />
-          <p className="px-2 pt-2.5 font-slab text-[11px] leading-[1.1] -skew-x-7 uppercase">
-            {game.shortName.map((line) => (
-              <span key={line} className="block">
-                {line}
-              </span>
-            ))}
-          </p>
-          <p className="px-2 pt-1.5 font-mono text-[7px] tracking-[0.1em] text-panel-muted uppercase">
-            {game.players}
-          </p>
-        </div>
-      ))}
-      <div className="pattern-concealed absolute top-[32px] left-[354px] h-[178px] w-[120px] rotate-[13deg] rounded-card bg-hidden shadow-concealed">
-        <span className="pointer-events-none absolute inset-[5px] rounded-[3px] border border-panel/35" />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Signed in: the heading, and the two ways into a room.
+ * The heading, and the two ways into a room.
  *
  * Both ways in are panels rather than controls in a row. The heading used to
  * read "signed in as <name>" with the actions squeezed beside it — the largest
@@ -224,7 +122,13 @@ function Fan() {
  * is the important object, so the heading shrinks and says what these two
  * buttons will cost you.
  */
-function ActionStrip({ hasRoom }: { hasRoom: boolean }) {
+function ActionStrip({
+  hasRoom,
+  canCreateLobby,
+}: {
+  hasRoom: boolean;
+  canCreateLobby: boolean;
+}) {
   const Heading = hasRoom ? "h2" : "h1";
 
   return (
@@ -256,7 +160,7 @@ function ActionStrip({ hasRoom }: { hasRoom: boolean }) {
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:gap-4 xl:gap-5">
-        <StartRoom />
+        <StartRoom canCreateLobby={canCreateLobby} />
 
         <WayIn
           kicker="Someone else hosts"
@@ -266,58 +170,6 @@ function ActionStrip({ hasRoom }: { hasRoom: boolean }) {
           <JoinRoom className="w-full" inPanel />
         </WayIn>
       </div>
-    </section>
-  );
-}
-
-/** Only shown signed out: someone with an account already knows this. */
-function HowItWorks() {
-  const steps = [
-    {
-      n: "01 · the room",
-      title: "Open a room",
-      body: "One code, four players, no mode yet. The room is durable — it survives whatever you decide to play.",
-    },
-    {
-      n: "02 · arcade",
-      title: "One game, quick",
-      body: "Pick a single game from inside the room. Everyone's still here after, so pick another.",
-    },
-    {
-      n: "03 · party",
-      title: "Race to the score",
-      body: "Minigames back to back, points carry, first to the target wins.",
-    },
-  ];
-
-  return (
-    <section aria-labelledby="how-heading" className="mt-11">
-      <div className="mb-4 flex items-baseline gap-3.5">
-        <h2
-          id="how-heading"
-          className="font-slab text-base leading-none -skew-x-7 uppercase sm:text-lg"
-        >
-          Two ways to play
-        </h2>
-        <span aria-hidden className="h-px flex-1 bg-line" />
-      </div>
-
-      <ul className="grid gap-3 sm:grid-cols-3 lg:gap-4 xl:gap-5">
-        {steps.map((step) => (
-          <li
-            key={step.n}
-            className="rounded border border-line bg-surface-raised px-4 pt-3.5 pb-4"
-          >
-            <p className="mb-2 font-mono text-[9px] tracking-[0.17em] text-hidden-text uppercase">
-              {step.n}
-            </p>
-            <h3 className="mb-1.5 font-slab text-[15px] leading-[1.1] -skew-x-7 uppercase">
-              {step.title}
-            </h3>
-            <p className="text-[12.5px] leading-[1.55] text-[#a5a29c]">{step.body}</p>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }

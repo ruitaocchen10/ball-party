@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Concealed } from "@/components/ui/Concealed";
 import { GAMES, type Game } from "@/lib/games/catalog";
 import { createLobby } from "@/lib/lobbies/actions";
+import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
 
 /**
  * The shop window, and the primary way into the product: every tile is a
@@ -10,15 +11,15 @@ import { createLobby } from "@/lib/lobbies/actions";
  * four people, so a tile does not start a match — the real choice still
  * happens inside the room when someone starts a run.
  *
- * Signed out a tile is a link to sign-up instead of a form. Creating a room
- * needs an account, and a button that fails is worse than a link that explains.
+ * Guests and signed-out visitors see a sign-up link instead of a form. Creating
+ * a room needs an account, and a button that fails is worse than a link that explains.
  *
  * Layout is a bento rather than four equal tiles: one game carries the product
  * and the grid should say so. The featured tile is placed explicitly at the
  * top-left 2×2, which reserves those cells so the remaining tiles auto-flow
  * down the last column regardless of catalog order.
  */
-export function GameGrid({ signedIn }: { signedIn: boolean }) {
+export function GameGrid({ canCreateLobby }: { canCreateLobby: boolean }) {
   const live = GAMES.filter((game) => game.status === "live");
   const upcoming = GAMES.filter((game) => game.status === "development");
 
@@ -33,7 +34,7 @@ export function GameGrid({ signedIn }: { signedIn: boolean }) {
               : "col-span-1 flex"
           }
         >
-          <GameCard game={game} signedIn={signedIn} featured={game.featured} />
+          <GameCard game={game} canCreateLobby={canCreateLobby} featured={game.featured} />
         </li>
       ))}
 
@@ -48,11 +49,11 @@ export function GameGrid({ signedIn }: { signedIn: boolean }) {
 
 function GameCard({
   game,
-  signedIn,
+  canCreateLobby,
   featured,
 }: {
   game: Game;
-  signedIn: boolean;
+  canCreateLobby: boolean;
   featured: boolean;
 }) {
   const meta = [game.players, game.duration].filter(Boolean).join(" · ");
@@ -116,7 +117,7 @@ function GameCard({
           <p className="font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
             {meta}
           </p>
-          <Action signedIn={signedIn} stretch={!featured} />
+          <Action canCreateLobby={canCreateLobby} stretch={!featured} />
         </div>
       </div>
     </article>
@@ -147,15 +148,15 @@ const ACTION =
  */
 const OVERLAY = "absolute inset-0 cursor-pointer";
 
-function Action({ signedIn, stretch }: { signedIn: boolean; stretch: boolean }) {
+function Action({ canCreateLobby, stretch }: { canCreateLobby: boolean; stretch: boolean }) {
   const width = stretch ? "w-full justify-center" : "";
 
-  if (!signedIn) {
+  if (!canCreateLobby) {
     return (
       <>
-        <Link href="/signup?next=%2F" aria-hidden tabIndex={-1} className={OVERLAY} />
-        <Link href="/signup?next=%2F" className={`${ACTION} ${width}`}>
-          Sign in to play
+        <Link href={HOST_SIGN_UP_HREF} aria-hidden tabIndex={-1} className={OVERLAY} />
+        <Link href={HOST_SIGN_UP_HREF} className={`${ACTION} ${width}`}>
+          Create an account to host
         </Link>
       </>
     );
