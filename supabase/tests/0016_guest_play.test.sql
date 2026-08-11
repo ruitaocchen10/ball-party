@@ -65,7 +65,7 @@ select 'match', (public.start_run((select v from tests.fx where k = 'lobby'), 'a
 
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select lives_ok(
-  format($$ select public.start_auction(%L) $$, (select v from tests.fx where k = 'match')),
+  format($$ select public.start_auction(%L, 'weekly', 'standard') $$, (select v from tests.fx where k = 'match')),
   'a guest can set up the match they were snapshotted into'
 );
 

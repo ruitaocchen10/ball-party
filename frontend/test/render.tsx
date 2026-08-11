@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 
 import { AuctionMatch } from "@/components/auction/AuctionMatch";
-import type { Bid, Lot, Player, Standing, Turn } from "@/lib/auction/board";
+import type { AuctionFormat, Bid, Lot, Player, Standing, Turn } from "@/lib/auction/board";
 
 import { MATCH, board, players, supabaseMock } from "./factories";
 
@@ -11,6 +11,7 @@ type Options = {
   seats?: Player[];
   bids?: Bid[];
   standings?: Standing[];
+  format?: AuctionFormat | null;
   /** Seat 0 by default; pass null to render as a non-participant spectator. */
   viewerId?: string | null;
 };
@@ -33,6 +34,7 @@ export function renderMatch(options: Options) {
         players: options.seats ?? players(),
         bids: options.bids ?? [],
         standings: options.standings ?? [],
+        format: options.format ?? null,
       }}
     />,
   );

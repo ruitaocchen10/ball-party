@@ -26,6 +26,28 @@ export function StartRun({
     <form action={startRun} className="flex flex-col gap-2">
       <input type="hidden" name="lobby_id" value={lobbyId} />
       <input type="hidden" name="code" value={code} />
+      <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+        Scoring
+        <select
+          aria-label="Scoring"
+          name="scoring_mode"
+          defaultValue="weekly"
+          className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case"
+        >
+          <option value="weekly">Weekly</option>
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+        Roster
+        <select
+          aria-label="Roster"
+          name="roster_preset"
+          defaultValue="standard"
+          className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case"
+        >
+          <option value="standard">Standard · 20 lots</option>
+        </select>
+      </label>
       <Button type="submit" disabled={short}>
         Start the auction
       </Button>

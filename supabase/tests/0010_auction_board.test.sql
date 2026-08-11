@@ -328,7 +328,7 @@ select tests.act_as((
    order by rp.seat limit 1
 ));
 select lives_ok(
-  format($$ select public.start_auction(%L) $$, (select v from tests.fx where k = 'm_start')),
+  format($$ select public.start_auction(%L, 'weekly', 'standard') $$, (select v from tests.fx where k = 'm_start')),
   'a participant can start the auction'
 );
 
@@ -347,7 +347,7 @@ select tests.act_as((
    order by rp.seat limit 1
 ));
 select throws_ok(
-  format($$ select public.start_auction(%L) $$, (select v from tests.fx where k = 'm_start')),
+  format($$ select public.start_auction(%L, 'weekly', 'standard') $$, (select v from tests.fx where k = 'm_start')),
   'P0001', 'match_not_setup',
   'a match that is already playing cannot be dealt again'
 );
@@ -359,7 +359,7 @@ insert into tests.fx (k, v) values ('m_guard', tests.mkmatch(2));
 
 select tests.act_as((select v from tests.fx where k = 'outsider'));
 select throws_ok(
-  format($$ select public.start_auction(%L) $$, (select v from tests.fx where k = 'm_guard')),
+  format($$ select public.start_auction(%L, 'weekly', 'standard') $$, (select v from tests.fx where k = 'm_guard')),
   '42501', 'not_a_participant',
   'someone who is not in the run cannot start its auction'
 );

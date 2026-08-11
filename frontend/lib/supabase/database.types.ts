@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.15"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -162,33 +157,57 @@ export type Database = {
       auction_matches: {
         Row: {
           current_lot: number
+          flex_slots: number | null
           lot_count: number
           match_id: string
           opener_seat: number
           phase: string
           phase_deadline: string | null
+          purse: number | null
+          qb_slots: number | null
+          rb_slots: number | null
+          roster_preset: string | null
+          scoring_mode: string | null
+          te_slots: number | null
           turn_deadline: string | null
           turn_seat: number | null
+          wr_slots: number | null
         }
         Insert: {
           current_lot?: number
+          flex_slots?: number | null
           lot_count: number
           match_id: string
           opener_seat?: number
           phase?: string
           phase_deadline?: string | null
+          purse?: number | null
+          qb_slots?: number | null
+          rb_slots?: number | null
+          roster_preset?: string | null
+          scoring_mode?: string | null
+          te_slots?: number | null
           turn_deadline?: string | null
           turn_seat?: number | null
+          wr_slots?: number | null
         }
         Update: {
           current_lot?: number
+          flex_slots?: number | null
           lot_count?: number
           match_id?: string
           opener_seat?: number
           phase?: string
           phase_deadline?: string | null
+          purse?: number | null
+          qb_slots?: number | null
+          rb_slots?: number | null
+          roster_preset?: string | null
+          scoring_mode?: string | null
+          te_slots?: number | null
           turn_deadline?: string | null
           turn_seat?: number | null
+          wr_slots?: number | null
         }
         Relationships: [
           {
@@ -542,6 +561,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claim_guest_identity: { Args: never; Returns: string }
       close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       create_lobby: {
         Args: never
@@ -596,8 +616,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      claim_guest_identity: { Args: Record<PropertyKey, never>; Returns: string }
-      record_guest_account_collision: { Args: { p_nonce: string }; Returns: undefined }
       place_bid: {
         Args: { p_amount: number; p_match_id: string }
         Returns: Database["public"]["CompositeTypes"]["auction_turn"]
@@ -608,8 +626,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_guest_account_collision: {
+        Args: { p_nonce: string }
+        Returns: undefined
+      }
       start_auction: {
-        Args: { p_match_id: string }
+        Args: {
+          p_match_id: string
+          p_roster_preset: string
+          p_scoring_mode: string
+        }
         Returns: Database["public"]["CompositeTypes"]["auction_turn"]
         SetofOptions: {
           from: "*"

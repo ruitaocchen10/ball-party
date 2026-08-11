@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { AuctionMatch } from "@/components/auction/AuctionMatch";
 import { MatchSetup } from "@/components/auction/MatchSetup";
 import { TopBar } from "@/components/layout/TopBar";
-import type { Player, Turn } from "@/lib/auction/board";
+import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
 import { createClient } from "@/lib/supabase/server";
 import { GuestUpgrade } from "@/components/auth/GuestUpgrade";
 import { isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
@@ -87,7 +87,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     return <Shell displayName={displayName}><GuestUpgrade />{code ? <BackToRoom code={code} /> : <HomeLink />}</Shell>;
   }
 
-  const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult] = await Promise.all([
+  const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult, formatResult] = await Promise.all([
     supabase.rpc("auction_state", { p_match_id: id }),
     supabase.from("auction_lots").select("*").eq("match_id", id).order("seq"),
     supabase
@@ -97,6 +97,11 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       .order("seat"),
     supabase.from("auction_bids").select("*").eq("match_id", id).order("bid_seq"),
     supabase.from("match_players").select("*").eq("match_id", id),
+    supabase
+      .from("auction_matches")
+      .select("scoring_mode, roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse")
+      .eq("match_id", id)
+      .maybeSingle(),
   ]);
 
   const state = turnResult.data;
@@ -123,6 +128,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     ...seat,
     display_name: profiles?.display_name ?? "Unknown player",
   }));
+  const format = auctionFormat(formatResult.data);
 
   return (
     <AuctionMatch
@@ -140,9 +146,38 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         players,
         bids: bidsResult.data ?? [],
         standings: standingsResult.data ?? [],
+        format,
       }}
     />
   );
+}
+
+function auctionFormat(row: {
+  scoring_mode: string | null;
+  roster_preset: string | null;
+  qb_slots: number | null;
+  rb_slots: number | null;
+  wr_slots: number | null;
+  te_slots: number | null;
+  flex_slots: number | null;
+  purse: number | null;
+} | null): AuctionFormat | null {
+  if (
+    !row ||
+    row.scoring_mode === null || row.roster_preset === null || row.qb_slots === null ||
+    row.rb_slots === null || row.wr_slots === null || row.te_slots === null ||
+    row.flex_slots === null || row.purse === null
+  ) return null;
+  return {
+    scoringMode: row.scoring_mode,
+    rosterPreset: row.roster_preset,
+    qbSlots: row.qb_slots,
+    rbSlots: row.rb_slots,
+    wrSlots: row.wr_slots,
+    teSlots: row.te_slots,
+    flexSlots: row.flex_slots,
+    purse: row.purse,
+  };
 }
 
 function Shell({

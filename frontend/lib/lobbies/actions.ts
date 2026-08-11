@@ -23,6 +23,10 @@ function normalizeCode(value: FormDataEntryValue | null): string {
   return String(value ?? "").trim().toUpperCase();
 }
 
+function validAuctionFormat(scoringMode: string, rosterPreset: string): boolean {
+  return scoringMode === "weekly" && rosterPreset === "standard";
+}
+
 /**
  * A room.
  *
@@ -59,6 +63,11 @@ export async function createLobby() {
 export async function startRun(formData: FormData) {
   const lobbyId = String(formData.get("lobby_id") ?? "");
   const code = normalizeCode(formData.get("code"));
+  const scoringMode = String(formData.get("scoring_mode") ?? "");
+  const rosterPreset = String(formData.get("roster_preset") ?? "");
+  if (!validAuctionFormat(scoringMode, rosterPreset)) {
+    redirect(`/lobby/${code}?error=${encodeURIComponent("Choose a valid auction format.")}`);
+  }
   const supabase = await createClient();
 
   const { data: match, error } = await supabase.rpc("start_run", {
@@ -68,7 +77,11 @@ export async function startRun(formData: FormData) {
   });
   if (error) redirect(withError(`/lobby/${code}`, error));
 
-  const { error: dealError } = await supabase.rpc("start_auction", { p_match_id: match.id });
+  const { error: dealError } = await supabase.rpc("start_auction", {
+    p_match_id: match.id,
+    p_scoring_mode: scoringMode,
+    p_roster_preset: rosterPreset,
+  });
   if (dealError) redirect(withError(`/lobby/${code}`, dealError));
 
   revalidatePath("/", "layout");

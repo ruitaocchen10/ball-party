@@ -18,6 +18,24 @@ const raiseButtons = () =>
   screen.getAllByRole("button", { name: /^\+\$/ }) as HTMLButtonElement[];
 const customButton = () => screen.getByRole("button", { name: "Custom" }) as HTMLButtonElement;
 describe("the four phases", () => {
+  it("shows every participant the immutable dealt format", () => {
+    renderMatch({
+      turn: turn("lot_preview"),
+      format: {
+        scoringMode: "weekly",
+        rosterPreset: "standard",
+        qbSlots: 1,
+        rbSlots: 1,
+        wrSlots: 1,
+        teSlots: 1,
+        flexSlots: 1,
+        purse: 20,
+      },
+    });
+
+    expect(screen.getByLabelText("Auction format")).toHaveTextContent("weekly · standard · 5 slots · $20 purse");
+  });
+
   it("names the lot but opens no controls during the shared preview", () => {
     renderMatch({ turn: turn("lot_preview") });
 

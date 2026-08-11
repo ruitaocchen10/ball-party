@@ -28,6 +28,18 @@ export type Turn = {
   phaseDeadline: string | null;
 };
 
+/** A dealt match's immutable format snapshot, loaded once beside the board. */
+export type AuctionFormat = {
+  scoringMode: string;
+  rosterPreset: string;
+  qbSlots: number;
+  rbSlots: number;
+  wrSlots: number;
+  teSlots: number;
+  flexSlots: number;
+  purse: number;
+};
+
 export type AuctionPhase = "lot_preview" | "bidding_self" | "bidding_other" | "sold";
 
 export function viewerPhase(turn: Turn, viewerSeat: number | null): AuctionPhase {

@@ -25,6 +25,7 @@ import {
   slotFor,
   viewerPhase,
   type Bid,
+  type AuctionFormat,
   type Lot,
   type Player,
   type Seat,
@@ -110,6 +111,7 @@ type Initial = {
   players: Player[];
   bids: Bid[];
   standings: Standing[];
+  format: AuctionFormat | null;
 };
 
 export function AuctionMatch({
@@ -139,6 +141,7 @@ export function AuctionMatch({
   const [players, setPlayers] = useState<Player[]>(initial.players);
   const [bids, setBids] = useState<Bid[]>(initial.bids);
   const [standings, setStandings] = useState<Standing[]>(initial.standings);
+  const format = initial.format;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -437,6 +440,11 @@ export function AuctionMatch({
           {lot.is_flex ? "Flex" : lot.position} {chancesLeft(lots, lot, turn.currentLot)} left
         </p>
       </header>
+      {format ? (
+        <p aria-label="Auction format" className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
+          {format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse
+        </p>
+      ) : null}
 
       {/* The lot. Red top edge, because there is concealed information behind
           it — which is the rule Card already documents. */}
