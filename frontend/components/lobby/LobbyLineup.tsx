@@ -36,12 +36,15 @@ export function LobbyLineup({
   const emptySeats = Math.max(0, CAPACITY - members.length);
 
   return (
-    <section aria-labelledby="lineup-heading" className="flex flex-col gap-5">
+    <section aria-labelledby="lineup-heading" className="flex flex-col gap-5 lg:gap-6">
       <div>
         <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">
           Tonight&apos;s lineup
         </p>
-        <h2 id="lineup-heading" className="mt-1 font-slab text-3xl leading-none -skew-x-7 uppercase">
+        <h2
+          id="lineup-heading"
+          className="mt-1 font-slab text-2xl leading-none -skew-x-7 uppercase sm:text-3xl"
+        >
           Tonight&apos;s lineup
         </h2>
         <p className="mt-2 text-sm leading-5 text-fg-muted">
@@ -51,7 +54,7 @@ export function LobbyLineup({
         </p>
       </div>
 
-      <ul className="-mx-6 flex snap-x gap-3 overflow-x-auto px-6 pb-2 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0">
+      <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 lg:gap-4 xl:gap-5">
         {GAMES.map((game) => {
           // `live` means the catalogue can advertise a game. Launching is a
           // stricter promise: it needs a run dispatcher and a setup RPC. The
@@ -114,7 +117,7 @@ export function LobbyLineup({
         </p>
       </div>
 
-      <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4 lg:gap-4 xl:gap-5">
         {members.map((member) => (
           <li key={member.user_id}>
             <Card edge={false} className="h-full border-t-[5px] border-hidden">

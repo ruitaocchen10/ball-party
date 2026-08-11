@@ -31,6 +31,12 @@ describe("LobbyLineup", () => {
     expect(screen.getAllByText(/coming soon/i)).toHaveLength(2);
     expect(screen.getByRole("button", { name: /start auction with 2 players/i })).toBeInTheDocument();
     expect(screen.getAllByText("Invite friend")).toHaveLength(2);
+
+    // The carousel bleeds to the same small-screen gutter as the home page,
+    // then becomes the same roomy grid at wider breakpoints.
+    const [games, seats] = screen.getAllByRole("list");
+    expect(games.className).toContain("-mx-4");
+    expect(seats.className).toContain("xl:gap-5");
   });
 
   it("does not offer a start control to a guest", () => {

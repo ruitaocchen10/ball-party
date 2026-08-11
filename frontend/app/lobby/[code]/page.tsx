@@ -185,10 +185,12 @@ function Shell({
   return (
     <>
       <TopBar displayName={displayName} />
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center gap-6 px-6 py-14">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-10 pb-16 sm:px-6 sm:py-12 lg:gap-8 lg:px-8 lg:py-14 lg:pb-20">
         <header className="flex flex-col gap-2">
           <Label>Join code</Label>
-          <h1 className="font-mono text-5xl font-semibold tracking-[0.16em] text-fg">{code}</h1>
+          <h1 className="font-mono text-[34px] leading-none font-semibold tracking-[0.16em] text-fg sm:text-[40px]">
+            {code}
+          </h1>
         </header>
 
         {error ? (
