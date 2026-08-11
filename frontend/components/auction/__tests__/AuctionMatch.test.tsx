@@ -36,6 +36,27 @@ describe("the four phases", () => {
     expect(screen.getByLabelText("Auction format")).toHaveTextContent("weekly · standard · 5 slots · $20 purse");
   });
 
+  it("labels a season-total format and omits weekly-only card copy", () => {
+    renderMatch({
+      turn: turn("lot_preview"),
+      format: {
+        scoringMode: "season_total",
+        rosterPreset: "standard",
+        qbSlots: 1,
+        rbSlots: 1,
+        wrSlots: 1,
+        teSlots: 1,
+        flexSlots: 1,
+        purse: 20,
+      },
+      lots: board([{ season: 2018, team: "NYG", week: null, opponent: null }]),
+    });
+
+    expect(screen.getByLabelText("Auction format")).toHaveTextContent("season total");
+    expect(screen.getByText("RB · 2018 · NYG")).toBeInTheDocument();
+    expect(screen.queryByText(/Week|vs /i)).not.toBeInTheDocument();
+  });
+
   it("names the lot but opens no controls during the shared preview", () => {
     renderMatch({ turn: turn("lot_preview") });
 
@@ -71,6 +92,25 @@ describe("the four phases", () => {
     expect(within(revealed).getByText("23.4")).toBeInTheDocument();
     expect(within(revealed).getByText("$12")).toBeInTheDocument();
     expect(within(revealed).getByText("Ben")).toBeInTheDocument();
+  });
+
+  it("renders a three-digit season score without clipping it", () => {
+    renderMatch({
+      turn: turn("sold"),
+      format: {
+        scoringMode: "season_total",
+        rosterPreset: "standard",
+        qbSlots: 1,
+        rbSlots: 1,
+        wrSlots: 1,
+        teSlots: 1,
+        flexSlots: 1,
+        purse: 20,
+      },
+      lots: board([{ week: null, opponent: null, winner_id: "u1", price: 12, slot: "RB", points: 312.4 }]),
+    });
+
+    expect(screen.getByRole("region", { name: /Lot 1, revealed/i })).toHaveTextContent("312.4");
   });
 
   it("shows no resolved lot outside the sold phase, so a stale reveal cannot linger", () => {

@@ -148,8 +148,11 @@ export function canAfford(price: number, budget: number, increment: number): boo
   return price + increment <= budget;
 }
 
-/** `2018 · WEEK 12 · VS CHI` — the four things on a card besides the name. */
+/** Weekly cards show their matchup; season cards show the stable player-season identity. */
 export function matchupLine(lot: Lot): string {
+  if (lot.week === null || lot.opponent === null) {
+    return `${lot.position} · ${lot.season} · ${lot.team}`;
+  }
   return `${lot.position} · ${lot.season} · Week ${lot.week} · vs ${lot.opponent}`;
 }
 

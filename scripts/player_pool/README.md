@@ -25,6 +25,24 @@ python3 scripts/player_pool/build_pool.py --from 2026 --to 2026 \
   --out supabase/migrations/<timestamp>_0009_player_weeks_2026.sql
 ```
 
+The same migration must rebuild `private.player_seasons` after inserting the
+new weekly rows:
+
+```sql
+truncate private.player_seasons;
+insert into private.player_seasons
+  (player_id, season, display_name, position, team, points, pos_rank, tier)
+select player_id, season, min(display_name), min(position),
+       (array_agg(team order by week desc, team))[1], sum(points)::numeric(5,1),
+       min(pos_rank), min(tier)
+from private.player_weeks
+group by player_id, season;
+```
+
+Weekly mode reads `private.player_weeks`; season-total mode reads this SQL-derived
+player-season pool. Keeping both current is required before a future season can
+be dealt in either scoring mode.
+
 **Never regenerate an applied migration.** Migration history is append-only, so
 a new season is a new file. Rebuilds are byte-identical given the same range, so
 a diff in a regenerated file means an input changed, not that the build is

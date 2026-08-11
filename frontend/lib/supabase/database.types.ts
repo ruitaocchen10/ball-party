@@ -88,7 +88,7 @@ export type Database = {
           headshot_url: string | null
           is_flex: boolean
           match_id: string
-          opponent: string
+          opponent: string | null
           player_id: string
           points: number | null
           position: string
@@ -98,7 +98,7 @@ export type Database = {
           seq: number
           slot: string | null
           team: string
-          week: number
+          week: number | null
           winner_id: string | null
         }
         Insert: {
@@ -106,7 +106,7 @@ export type Database = {
           headshot_url?: string | null
           is_flex: boolean
           match_id: string
-          opponent: string
+          opponent?: string | null
           player_id: string
           points?: number | null
           position: string
@@ -116,7 +116,7 @@ export type Database = {
           seq: number
           slot?: string | null
           team: string
-          week: number
+          week?: number | null
           winner_id?: string | null
         }
         Update: {
@@ -124,7 +124,7 @@ export type Database = {
           headshot_url?: string | null
           is_flex?: boolean
           match_id?: string
-          opponent?: string
+          opponent?: string | null
           player_id?: string
           points?: number | null
           position?: string
@@ -134,7 +134,7 @@ export type Database = {
           seq?: number
           slot?: string | null
           team?: string
-          week?: number
+          week?: number | null
           winner_id?: string | null
         }
         Relationships: [

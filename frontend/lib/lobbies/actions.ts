@@ -24,7 +24,7 @@ function normalizeCode(value: FormDataEntryValue | null): string {
 }
 
 function validAuctionFormat(scoringMode: string, rosterPreset: string): boolean {
-  return scoringMode === "weekly" && rosterPreset === "standard";
+  return (scoringMode === "weekly" || scoringMode === "season_total") && rosterPreset === "standard";
 }
 
 /**

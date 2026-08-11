@@ -35,6 +35,7 @@ export function StartRun({
           className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case"
         >
           <option value="weekly">Weekly</option>
+          <option value="season_total">Season total</option>
         </select>
       </label>
       <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">

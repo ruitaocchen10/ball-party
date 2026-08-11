@@ -442,7 +442,7 @@ export function AuctionMatch({
       </header>
       {format ? (
         <p aria-label="Auction format" className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
-          {format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse
+          {format.scoringMode === "season_total" ? "season total" : format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse
         </p>
       ) : null}
 
@@ -903,7 +903,7 @@ function RosterFinal({ lots, userId }: { lots: Lot[]; userId: string }) {
           <div key={slot} className="flex items-baseline justify-between gap-2">
             <dt className="w-10 shrink-0 uppercase">{slot}</dt>
             <dd className="flex-1 truncate text-panel-fg">
-              {lot ? `${lot.display_name} · ${lot.season} wk ${lot.week}` : "—"}
+              {lot ? `${lot.display_name} · ${lot.season}${lot.week === null ? ` · ${lot.team}` : ` wk ${lot.week}`}` : "—"}
             </dd>
             <dd className="shrink-0 font-bold text-panel-fg tabular-nums">
               {lot ? `$${lot.price} · ${fmt(lot.points)}` : ""}
