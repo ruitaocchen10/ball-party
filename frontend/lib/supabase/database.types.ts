@@ -236,6 +236,39 @@ export type Database = {
           },
         ]
       }
+      guest_account_collisions: {
+        Row: {
+          account_id: string
+          created_at: string
+          guest_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          guest_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          guest_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_account_collisions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_account_collisions_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lobbies: {
         Row: {
           closed_at: string | null
@@ -393,6 +426,7 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          is_guest: boolean
           updated_at: string
         }
         Insert: {
@@ -400,6 +434,7 @@ export type Database = {
           created_at?: string
           display_name: string
           id: string
+          is_guest?: boolean
           updated_at?: string
         }
         Update: {
@@ -407,6 +442,7 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          is_guest?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -554,6 +590,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_guest_account_collision: { Args: { p_guest_id: string }; Returns: undefined }
       place_bid: {
         Args: { p_amount: number; p_match_id: string }
         Returns: Database["public"]["CompositeTypes"]["auction_turn"]

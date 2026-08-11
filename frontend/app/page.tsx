@@ -7,6 +7,7 @@ import { WayIn } from "@/components/home/WayIn";
 import { GAMES } from "@/lib/games/catalog";
 import { TopBar } from "@/components/layout/TopBar";
 import { createClient } from "@/lib/supabase/server";
+import { isSignedInViewer } from "@/lib/auth/viewer";
 
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.
@@ -18,8 +19,7 @@ export default async function Home(props: PageProps<"/">) {
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
 
-  // Mirrors lib/supabase/proxy.ts: an anonymous JWT is signed out, not a user.
-  const signedIn = Boolean(claims) && claims?.is_anonymous !== true;
+  const signedIn = isSignedInViewer(claims);
 
   // Independent of each other, so they go together rather than in sequence.
   const [profileResult, room] = signedIn
@@ -142,8 +142,8 @@ function Hero() {
           <ButtonLink href="/signup" fullWidth={false} className="sm:px-7">
             Start a room
           </ButtonLink>
-          <ButtonLink href="#games-heading" variant="ghost" fullWidth={false} className="sm:px-7">
-            See the games
+          <ButtonLink href="#join-room" variant="ghost" fullWidth={false} className="sm:px-7">
+            Join a room
           </ButtonLink>
         </div>
         <p className="mt-4 font-mono text-[9px] tracking-[0.13em] text-fg-muted uppercase">
@@ -152,9 +152,9 @@ function Hero() {
 
         {/* The room page opens for people without accounts, so someone who was
             texted a bare code — no link — needs a door here too. */}
-        <div className="mt-7 border-t border-line pt-5">
+        <div id="join-room" className="mt-7 border-t border-line pt-5">
           <p className="mb-2.5 font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
-            Already have a code?
+            Join as a guest — no account needed
           </p>
           <JoinRoom className="w-full sm:w-fit" />
         </div>

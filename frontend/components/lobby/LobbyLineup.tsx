@@ -7,7 +7,7 @@ const CAPACITY = 4;
 
 type Member = {
   user_id: string;
-  profiles: { display_name: string } | null;
+  profiles: { display_name: string; is_guest?: boolean } | null;
 };
 
 /**
@@ -128,6 +128,7 @@ export function LobbyLineup({
                 <span className="mt-2 block font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
                   {[
                     member.user_id === hostId ? "host" : null,
+                    member.profiles?.is_guest ? "guest" : null,
                     member.user_id === viewerId ? "you" : null,
                   ]
                     .filter(Boolean)
