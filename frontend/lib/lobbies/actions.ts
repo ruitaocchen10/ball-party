@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { isSignedInViewer } from "@/lib/auth/viewer";
+import { lobbyErrorMessage } from "@/lib/lobbies/messages";
 
 /**
  * The lobby RPCs raise short machine-readable strings — see
@@ -11,23 +13,8 @@ import { createClient } from "@/lib/supabase/server";
  * this map is a bug rather than a player-facing condition, so it surfaces raw
  * instead of being flattened into a friendly lie.
  */
-const MESSAGES: Record<string, string> = {
-  lobby_not_found: "No room with that code.",
-  lobby_full: "That room is already full.",
-  not_a_member: "You're not in that room.",
-  not_host: "Only the host can start or close the game.",
-  not_authenticated: "Sign in first.",
-  code_generation_failed: "Couldn't find a free room code. Try again.",
-  lobby_closed: "This room has closed.",
-  bad_player_count: "You need between two and four players.",
-  mode_not_supported: "Party mode isn't ready yet.",
-  run_already_active: "A game is already running in this room.",
-  too_few_players: "Not enough players to deal a board.",
-  pool_exhausted: "Couldn't deal a full board. Try again.",
-};
-
 function withError(path: string, error: { message: string }): string {
-  const text = MESSAGES[error.message] ?? error.message;
+  const text = lobbyErrorMessage(error.message);
   return `${path}?error=${encodeURIComponent(text)}`;
 }
 
@@ -92,6 +79,15 @@ export async function startRun(formData: FormData) {
 export async function goToLobby(formData: FormData) {
   const code = normalizeCode(formData.get("code"));
   if (!code) redirect(`/?error=${encodeURIComponent("Enter a room code.")}`);
+
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  if (!isSignedInViewer(claimsData?.claims)) redirect(`/lobby/${code}`);
+
+  const result = await joinLobbyRpc(supabase, code);
+  if (result.error) redirect(withError(`/?code=${code}`, result.error));
+
+  revalidatePath("/", "layout");
   redirect(`/lobby/${code}`);
 }
 
@@ -99,6 +95,15 @@ export async function joinLobby(formData: FormData) {
   const code = normalizeCode(formData.get("code"));
   const supabase = await createClient();
 
+  const result = await joinLobbyRpc(supabase, code);
+
+  if (result.error) redirect(withError(`/lobby/${code}`, result.error));
+
+  revalidatePath("/", "layout");
+  redirect(`/lobby/${code}`);
+}
+
+async function joinLobbyRpc(supabase: Awaited<ReturnType<typeof createClient>>, code: string) {
   let result = await supabase.rpc("join_lobby", { p_code: code });
 
   // Two players swapping rooms at the same instant take the lobby locks in
@@ -107,11 +112,7 @@ export async function joinLobby(formData: FormData) {
   if (result.error?.code === "40P01") {
     result = await supabase.rpc("join_lobby", { p_code: code });
   }
-
-  if (result.error) redirect(withError(`/lobby/${code}`, result.error));
-
-  revalidatePath("/", "layout");
-  redirect(`/lobby/${code}`);
+  return result;
 }
 
 export async function leaveLobby(formData: FormData) {
