@@ -83,9 +83,8 @@ forever, where getting it wrong once silently ruins games.
       they can pre-think the scale.
 - [ ] **Repeat avoidance** — is a `seen_cards` table worth it at MVP, given the
       target re-randomizes?
-- [ ] **Accounts or not** — a 4-player party game joined by room code arguably
-      wants no signup at all. Every auth screen between an invite and a game is
-      friction. Supabase anonymous auth makes this reversible.
+- [x] **Accounts or not** — decided: guests join by room code with just a name,
+      hosting needs an account. See ball-party#7.
 - [ ] **Party point mapping** — how does round score convert to party points?
 - [ ] **Arcade mode** — this needs a partner to read. Bots, or a different
       single-player format?
