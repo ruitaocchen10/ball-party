@@ -7,6 +7,8 @@ import { LobbyRealtime } from "@/components/lobby/LobbyRealtime";
 import { LobbyLineup } from "@/components/lobby/LobbyLineup";
 import { closeLobby, joinLobby, leaveLobby } from "@/lib/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
+import { GuestJoin } from "@/components/auth/GuestJoin";
+import { isSignedInViewer } from "@/lib/auth/viewer";
 
 export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { code: rawCode } = await props.params;
@@ -20,29 +22,12 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
 
-  // Mirrors the rule in lib/supabase/proxy.ts: an anonymous JWT is signed out,
-  // not a user. Both places have to agree or this route becomes the one way in.
-  // Written as a narrowing guard rather than a boolean so `claims.sub` below
-  // needs no non-null assertion.
-  //
-  // The invite link is the front door, so it opens for people without accounts.
-  // RLS tells us nothing about the room from here — a public preview of who is
-  // already in it needs its own RPC — so this says only what it can stand
-  // behind: the code they were given, and the one action that gets them in.
-  if (!claims || claims.is_anonymous === true) {
-    const next = encodeURIComponent(`/lobby/${code}`);
+  if (!isSignedInViewer(claims)) {
     return (
       <Shell code={code} error={errorText}>
-        <p className="text-sm leading-6 text-fg-muted">
-          You&apos;ve been invited to this room. Sign in to join it — you&apos;ll come straight
-          back here.
-        </p>
-        <div className="flex flex-col gap-2.5">
-          <ButtonLink href={`/login?next=${next}`}>Sign in</ButtonLink>
-          <ButtonLink href={`/signup?next=${next}`} variant="ghost">
-            Create an account
-          </ButtonLink>
-        </div>
+        <p className="text-sm leading-6 text-fg-muted">You&apos;ve been invited to this room. Join in with a name, or sign in to an account.</p>
+        <GuestJoin />
+        <ButtonLink href={`/login?next=${encodeURIComponent(`/lobby/${code}`)}`} variant="ghost">Sign in instead</ButtonLink>
       </Shell>
     );
   }
@@ -63,7 +48,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { data: lobby } = await supabase
     .from("lobbies")
     .select(
-      "id, code, host_id, closed_at, lobby_members(user_id, joined_at, left_at, profiles(display_name))",
+      "id, code, host_id, closed_at, lobby_members(user_id, joined_at, left_at, profiles(display_name, is_guest))",
     )
     .eq("code", code)
     .maybeSingle();

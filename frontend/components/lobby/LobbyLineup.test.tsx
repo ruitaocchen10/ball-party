@@ -10,7 +10,7 @@ import { LobbyLineup } from "./LobbyLineup";
 describe("LobbyLineup", () => {
   const members = [
     { user_id: "host", profiles: { display_name: "Kayla" } },
-    { user_id: "guest", profiles: { display_name: "Devin" } },
+    { user_id: "guest", profiles: { display_name: "Devin", is_guest: true } },
   ];
 
   it("puts the live game alongside honest upcoming games and open seats", () => {
@@ -31,6 +31,7 @@ describe("LobbyLineup", () => {
     expect(screen.getAllByText(/coming soon/i)).toHaveLength(2);
     expect(screen.getByRole("button", { name: /start auction with 2 players/i })).toBeInTheDocument();
     expect(screen.getAllByText("Invite friend")).toHaveLength(2);
+    expect(screen.getByText(/guest/i)).toBeInTheDocument();
 
     // The carousel bleeds to the same small-screen gutter as the home page,
     // then becomes the same roomy grid at wider breakpoints.

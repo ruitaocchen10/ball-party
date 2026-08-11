@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
 
 /**
  * Paths reachable while signed out. Everything else redirects to /login.
@@ -56,10 +57,7 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
 
-  // Ball Party has no guest play. An anonymous JWT — which should not exist,
-  // since anonymous sign-ins are disabled in the dashboard — counts as signed
-  // out rather than as a user, so a stale one can never reach a game.
-  const signedIn = Boolean(claims) && claims?.is_anonymous !== true;
+  const signedIn = isSignedInViewer(claims);
 
   const { pathname } = request.nextUrl;
 
@@ -71,7 +69,9 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (signedIn && matches(pathname, AUTH_ONLY_PATHS)) {
+  // A guest may still visit sign-in to choose an existing account.  That
+  // intentionally records the separate guest identity rather than merging it.
+  if (signedIn && !isGuestViewer(claims) && matches(pathname, AUTH_ONLY_PATHS)) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";

@@ -35,12 +35,14 @@ export async function signInWithEmail(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const next = safeNextPath(formData.get("next"));
+  const guestId = String(formData.get("guest_id") ?? "");
 
   if (!email || !password) {
     return { error: "Enter your email and password." };
   }
 
   const supabase = await createClient();
+  const { data: beforeSignIn } = await supabase.auth.getClaims();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
@@ -52,6 +54,13 @@ export async function signInWithEmail(
           ? "Confirm your email address first — check your inbox for the link."
           : "That email and password don't match an account.",
     };
+  }
+
+  // Signing into a separate account cannot merge a guest's match history
+  // safely. Preserve the relationship instead, so it can be reattached if a
+  // cross-run feature eventually needs it.
+  if (guestId && beforeSignIn?.claims?.sub === guestId && beforeSignIn.claims.is_anonymous === true) {
+    await supabase.rpc("record_guest_account_collision", { p_guest_id: guestId });
   }
 
   revalidatePath("/", "layout");

@@ -6,6 +6,8 @@ import { MatchSetup } from "@/components/auction/MatchSetup";
 import { TopBar } from "@/components/layout/TopBar";
 import type { Player, Turn } from "@/lib/auction/board";
 import { createClient } from "@/lib/supabase/server";
+import { GuestUpgrade } from "@/components/auth/GuestUpgrade";
+import { isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
 
 /**
  * The match screen.
@@ -29,7 +31,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
-  if (!claims || claims.is_anonymous === true) {
+  if (!isSignedInViewer(claims)) {
     redirect(`/login?next=${encodeURIComponent(`/match/${id}`)}`);
   }
 
@@ -39,6 +41,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     .eq("id", claims.sub)
     .single();
   const displayName = viewer?.display_name ?? (claims.email as string | undefined) ?? null;
+  const isGuest = isGuestViewer(claims);
 
   // RLS returns nothing for a match you are not in, so "no row" is a normal
   // state here rather than a failure.
@@ -78,6 +81,10 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         {code ? <BackToRoom code={code} /> : <HomeLink />}
       </Shell>
     );
+  }
+
+  if (match.status === "complete" && isGuest) {
+    return <Shell displayName={displayName}><GuestUpgrade guestId={claims.sub} />{code ? <BackToRoom code={code} /> : <HomeLink />}</Shell>;
   }
 
   const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult] = await Promise.all([
