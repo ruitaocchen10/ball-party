@@ -22,7 +22,7 @@ import { AccountMenu } from "@/components/layout/AccountMenu";
 export function TopBar({ displayName }: { displayName?: string | null }) {
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-surface/92 backdrop-blur-sm">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-x-5 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-x-5 px-4 sm:px-6 lg:px-8">
         <Brand />
         <div className="flex-1" />
         <Account displayName={displayName} />
@@ -31,7 +31,8 @@ export function TopBar({ displayName }: { displayName?: string | null }) {
   );
 }
 
-const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
+const FOCUS =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
 
 function Brand() {
   return (
@@ -47,6 +48,14 @@ function Brand() {
 function Account({ displayName }: { displayName?: string | null }) {
   if (displayName) return <AccountMenu displayName={displayName} />;
 
+  return <SignedOutAccount />;
+}
+
+/**
+ * The unauthenticated top-bar state. Kept separate from the account menu so
+ * each auth state owns its own layout and responsive visibility rules.
+ */
+function SignedOutAccount() {
   return (
     <div className="flex shrink-0 items-center gap-4">
       <Link

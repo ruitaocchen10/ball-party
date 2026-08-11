@@ -15,7 +15,9 @@ export function WayIn({
   return (
     <div
       className={`flex flex-col rounded-card p-4 sm:p-[18px] ${
-        lit ? "bg-panel text-panel-fg shadow-card" : "bg-surface-raised ring-1 ring-line ring-inset"
+        lit
+          ? "bg-panel text-panel-fg shadow-card"
+          : "bg-surface-raised ring-1 ring-line ring-inset"
       }`}
     >
       <p
@@ -25,10 +27,12 @@ export function WayIn({
       >
         {kicker}
       </p>
-      <h3 className="mt-2.5 font-slab text-xl leading-none -skew-x-7 uppercase sm:text-[22px]">
+      <h3 className="mt-2 font-slab text-xl leading-none -skew-x-7 uppercase sm:text-[22px]">
         {title}
       </h3>
-      <p className={`mt-2.5 text-[13.5px] leading-[1.5] ${lit ? "text-[#4c4739]" : "text-[#a5a29c]"}`}>
+      <p
+        className={`m-1 text-[13.5px] leading-[1.5] ${lit ? "text-[#4c4739]" : "text-[#a5a29c]"}`}
+      >
         {body}
       </p>
 

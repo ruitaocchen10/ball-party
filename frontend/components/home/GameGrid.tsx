@@ -23,7 +23,7 @@ export function GameGrid({ signedIn }: { signedIn: boolean }) {
   const upcoming = GAMES.filter((game) => game.status === "development");
 
   return (
-    <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4">
+    <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4 xl:gap-5">
       {live.map((game) => (
         <li
           key={game.slug}
@@ -201,7 +201,7 @@ function InDevelopment({ count }: { count: number }) {
   return (
     <Concealed
       label={`${count} more game in development`}
-      className="flex items-center justify-between gap-4 px-4 py-2.5 sm:px-5"
+      className="flex flex-col items-start gap-1.5 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
     >
       <p className="relative font-slab text-[13px] leading-none -skew-x-7 text-panel/95 uppercase">
         {count === 1 ? "One more game" : `${count} more games`} in development

@@ -41,7 +41,7 @@ export default async function Home(props: PageProps<"/">) {
     <>
       <TopBar displayName={displayName} />
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-16 sm:px-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
         {errorText ? (
           <p
             role="alert"
@@ -119,7 +119,7 @@ async function currentRoom(supabase: Client, userId: string): Promise<RoomSummar
  */
 function Hero() {
   return (
-    <section className="grid items-center gap-10 pt-10 pb-2 lg:grid-cols-[1fr_480px] lg:gap-8 lg:pt-14">
+    <section className="grid items-center gap-10 pt-10 pb-2 lg:pt-14 xl:grid-cols-[minmax(0,1fr)_480px] xl:gap-12">
       <div>
         <p className="mb-3.5 font-mono text-[10px] tracking-[0.19em] text-hidden-text uppercase">
           4 players · 5–15 minutes · nothing to install
@@ -181,7 +181,7 @@ function Fan() {
   const offsets = ["left-0 top-5 -rotate-9", "left-[118px] top-1.5 -rotate-2", "left-[236px] top-4 rotate-6"];
 
   return (
-    <div aria-hidden className="relative hidden h-[210px] lg:block">
+    <div aria-hidden className="relative hidden h-[210px] xl:block">
       {faces.map((game, i) => (
         <div
           key={game.slug}
@@ -255,7 +255,7 @@ function ActionStrip({ hasRoom }: { hasRoom: boolean }) {
           : "Two ways in. Everything else happens once people are in the room."}
       </p>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:gap-4">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:gap-4 xl:gap-5">
         <StartRoom />
 
         <WayIn
@@ -302,7 +302,7 @@ function HowItWorks() {
         <span aria-hidden className="h-px flex-1 bg-line" />
       </div>
 
-      <ul className="grid gap-3 sm:grid-cols-3 lg:gap-4">
+      <ul className="grid gap-3 sm:grid-cols-3 lg:gap-4 xl:gap-5">
         {steps.map((step) => (
           <li
             key={step.n}
