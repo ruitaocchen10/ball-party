@@ -35,14 +35,24 @@ export async function signInWithEmail(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const next = safeNextPath(formData.get("next"));
-  const guestId = String(formData.get("guest_id") ?? "");
 
   if (!email || !password) {
     return { error: "Enter your email and password." };
   }
 
   const supabase = await createClient();
+
+  // Stake the guest's claim while the guest session is still the one we hold.
+  // That is the only moment auth.uid() can prove who is making it, which is why
+  // it happens here rather than after the sign-in below. The nonce is the proof
+  // carried across, and it never leaves this action.
   const { data: beforeSignIn } = await supabase.auth.getClaims();
+  let guestClaim: string | null = null;
+  if (beforeSignIn?.claims?.is_anonymous === true) {
+    const { data } = await supabase.rpc("claim_guest_identity");
+    guestClaim = data ?? null;
+  }
+
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
@@ -58,9 +68,10 @@ export async function signInWithEmail(
 
   // Signing into a separate account cannot merge a guest's match history
   // safely. Preserve the relationship instead, so it can be reattached if a
-  // cross-run feature eventually needs it.
-  if (guestId && beforeSignIn?.claims?.sub === guestId && beforeSignIn.claims.is_anonymous === true) {
-    await supabase.rpc("record_guest_account_collision", { p_guest_id: guestId });
+  // cross-run feature eventually needs it. Redeeming is best-effort: a stale or
+  // expired claim must not cost someone the sign-in they actually asked for.
+  if (guestClaim) {
+    await supabase.rpc("record_guest_account_collision", { p_nonce: guestClaim });
   }
 
   revalidatePath("/", "layout");

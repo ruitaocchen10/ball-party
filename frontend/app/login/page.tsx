@@ -6,14 +6,14 @@ export const metadata = { title: "Sign in · Ball Party" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; guest?: string }>;
+  searchParams: Promise<{ next?: string }>;
 }) {
-  const { next, guest } = await searchParams;
+  const { next } = await searchParams;
   const safeNext = safeNextPath(next);
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-6 py-16">
-      <AuthForm mode="login" next={safeNext} guestId={guest} />
+      <AuthForm mode="login" next={safeNext} />
     </main>
   );
 }

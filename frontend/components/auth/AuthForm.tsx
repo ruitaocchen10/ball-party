@@ -31,7 +31,7 @@ function Submit({ label }: { label: string }) {
   );
 }
 
-export function AuthForm({ mode, next, guestId }: { mode: "login" | "signup"; next: string; guestId?: string }) {
+export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: string }) {
   const isSignup = mode === "signup";
   const [state, formAction] = useActionState<AuthState, FormData>(
     isSignup ? signUpWithEmail : signInWithEmail,
@@ -62,7 +62,6 @@ export function AuthForm({ mode, next, guestId }: { mode: "login" | "signup"; ne
 
       <form action={formAction} className="flex flex-col gap-3">
         <input type="hidden" name="next" value={next} />
-        {guestId ? <input type="hidden" name="guest_id" value={guestId} /> : null}
 
         {isSignup && (
           <label className="flex flex-col gap-1.5">
