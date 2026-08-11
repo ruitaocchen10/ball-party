@@ -5,7 +5,8 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { LobbyRealtime } from "@/components/lobby/LobbyRealtime";
 import { LobbyLineup } from "@/components/lobby/LobbyLineup";
-import { closeLobby, joinLobby, leaveLobby } from "@/lib/lobbies/actions";
+import { AutoJoinRoom } from "@/components/lobby/AutoJoinRoom";
+import { closeLobby, leaveLobby } from "@/lib/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
 import { GuestJoin } from "@/components/auth/GuestJoin";
 import { isSignedInViewer } from "@/lib/auth/viewer";
@@ -26,7 +27,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     return (
       <Shell code={code} error={errorText}>
         <p className="text-sm leading-6 text-fg-muted">You&apos;ve been invited to this room. Join in with a name, or sign in to an account.</p>
-        <GuestJoin />
+        <GuestJoin code={code} />
         <ButtonLink href={`/login?next=${encodeURIComponent(`/lobby/${code}`)}`} variant="ghost">Sign in instead</ButtonLink>
       </Shell>
     );
@@ -56,12 +57,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   if (!lobby) {
     return (
       <Shell code={code} error={errorText} displayName={displayName}>
-        <p className="text-sm leading-6 text-fg-muted">You&apos;re not in this room yet.</p>
-        <form action={joinLobby}>
-          <input type="hidden" name="code" value={code} />
-          <Button type="submit">Join room</Button>
-        </form>
-        <HomeLink />
+        <AutoJoinRoom code={code} />
       </Shell>
     );
   }

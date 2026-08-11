@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 import { DISPLAY_NAME_MAX, DISPLAY_NAME_MIN } from "@/lib/auth/types";
+import { joinLobbyFromBrowser } from "@/lib/lobbies/client";
+import { lobbyErrorMessage } from "@/lib/lobbies/messages";
 
-export function GuestJoin() {
+export function GuestJoin({ code }: { code: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -21,11 +23,21 @@ export function GuestJoin() {
 
     setPending(true);
     setError(null);
-    const { error: signInError } = await createClient().auth.signInAnonymously({
-      options: { data: { display_name: displayName } },
-    });
-    if (signInError) {
-      setError(signInError.message);
+    const supabase = createClient();
+    const { data: claimsData } = await supabase.auth.getClaims();
+    if (!claimsData?.claims?.sub) {
+      const { error: signInError } = await supabase.auth.signInAnonymously({
+        options: { data: { display_name: displayName } },
+      });
+      if (signInError) {
+        setError(signInError.message);
+        setPending(false);
+        return;
+      }
+    }
+    const { error: joinError } = await joinLobbyFromBrowser(supabase, code);
+    if (joinError) {
+      setError(lobbyErrorMessage(joinError.message));
       setPending(false);
       return;
     }
