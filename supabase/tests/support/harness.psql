@@ -82,6 +82,15 @@ begin
   perform set_config('request.jwt.claims', '', true);
 end $$;
 
+-- The join code, readable regardless of who the session is acting as. A player
+-- about to join by code is by definition not yet a member, so the lobby's own
+-- RLS hides the row from them — a lookup inline in a test would silently
+-- resolve to NULL rather than fail.
+create function tests.lobby_code(p_lobby uuid) returns text
+language sql security definer stable as $$
+  select code from public.lobbies where id = p_lobby;
+$$;
+
 -- A lobby with n members, host first. Returns the lobby id.
 create function tests.mklobby(p_users uuid[]) returns uuid
 language plpgsql as $$
@@ -148,6 +157,15 @@ begin
    where am.match_id = deal_and_open.match_id;
   perform private.auction_expire(match_id);
 end $$;
+
+-- The seat a given player was dealt. Seats are randomised at run start by
+-- design (see 0009), so a test that needs a particular player on the clock has
+-- to look their seat up. Assuming one passes about half the time.
+create function tests.seat_of(p_match_id uuid, p_user uuid) returns smallint
+language sql stable as $$
+  select seat from public.auction_players
+   where match_id = p_match_id and user_id = p_user;
+$$;
 
 -- Whoever is on the clock right now.
 create function tests.on_clock(p_match_id uuid) returns uuid
