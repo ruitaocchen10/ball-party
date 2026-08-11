@@ -27,11 +27,11 @@ select throws_ok(
 
 select tests.act_as((select v from tests.fx where k = 'host'));
 insert into tests.fx (k, v)
-select 'lobby', public.create_lobby().id;
+select 'lobby', (public.create_lobby()).id;
 
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select lives_ok(
-  format($$ select public.join_lobby(%L) $$, (select code from public.lobbies where id = (select v from tests.fx where k = 'lobby'))),
+  format($$ select public.join_lobby(%L) $$, tests.lobby_code((select v from tests.fx where k = 'lobby'))),
   'a guest can join a room'
 );
 
@@ -61,7 +61,7 @@ update public.lobbies set host_id = (select v from tests.fx where k = 'host')
  where id = (select v from tests.fx where k = 'lobby');
 select tests.act_as((select v from tests.fx where k = 'host'));
 insert into tests.fx (k, v)
-select 'match', public.start_run((select v from tests.fx where k = 'lobby'), 'arcade', 'auction_team_builder').id;
+select 'match', (public.start_run((select v from tests.fx where k = 'lobby'), 'arcade', 'auction_team_builder')).id;
 
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select lives_ok(
@@ -70,7 +70,8 @@ select lives_ok(
 );
 
 select tests.act_as_admin();
-update public.auction_matches set phase = 'bidding', phase_deadline = null, turn_seat = 1,
+update public.auction_matches set phase = 'bidding', phase_deadline = null,
+  turn_seat = tests.seat_of((select v from tests.fx where k = 'match'), (select v from tests.fx where k = 'guest')),
   turn_deadline = now() + interval '20 seconds'
  where match_id = (select v from tests.fx where k = 'match');
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
@@ -80,7 +81,8 @@ select lives_ok(
 );
 
 select tests.act_as_admin();
-update public.auction_matches set turn_seat = 0, turn_deadline = now() + interval '20 seconds'
+update public.auction_matches set turn_seat = tests.seat_of((select v from tests.fx where k = 'match'), (select v from tests.fx where k = 'host')),
+  turn_deadline = now() + interval '20 seconds'
  where match_id = (select v from tests.fx where k = 'match');
 select tests.act_as((select v from tests.fx where k = 'host'));
 select lives_ok(
@@ -95,7 +97,8 @@ select is(
 );
 
 update public.auction_matches set current_lot = 2, phase = 'bidding', phase_deadline = null,
-  turn_seat = 1, turn_deadline = now() + interval '20 seconds'
+  turn_seat = tests.seat_of((select v from tests.fx where k = 'match'), (select v from tests.fx where k = 'guest')),
+  turn_deadline = now() + interval '20 seconds'
  where match_id = (select v from tests.fx where k = 'match');
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select lives_ok(
@@ -108,17 +111,25 @@ select private.finish_match(
   (select v from tests.fx where k = 'match'),
   jsonb_build_object((select v from tests.fx where k = 'host')::text, 3, (select v from tests.fx where k = 'guest')::text, 8)
 );
+-- Scores land on match_players. run_participants.score is dormant until the
+-- party loop that owns it is built, so asserting there proves nothing.
 select is(
-  (select score from public.run_participants rp join public.matches m on m.run_id = rp.run_id
-    where m.id = (select v from tests.fx where k = 'match') and rp.user_id = (select v from tests.fx where k = 'guest')),
-  8,
-  'a guest score counts toward the run standings'
+  (select raw_score from public.match_players
+    where match_id = (select v from tests.fx where k = 'match')
+      and user_id = (select v from tests.fx where k = 'guest')),
+  8::numeric,
+  'a guest score counts toward the match result'
 );
 
+-- The collision is asserted in two halves, each proven by auth.uid(): the
+-- guest stakes a claim on itself, the account redeems the nonce. See 0017.
 insert into tests.fx (k, v) values ('account', tests.mkuser('Morgan'));
+select tests.act_as_guest((select v from tests.fx where k = 'guest'));
+insert into tests.fx (k, v) select 'nonce', public.claim_guest_identity();
+
 select tests.act_as((select v from tests.fx where k = 'account'));
 select lives_ok(
-  format($$ select public.record_guest_account_collision(%L) $$, (select v from tests.fx where k = 'guest')),
+  format($$ select public.record_guest_account_collision(%L) $$, (select v from tests.fx where k = 'nonce')),
   'signing into a separate account records the guest identity'
 );
 select tests.act_as_admin();
