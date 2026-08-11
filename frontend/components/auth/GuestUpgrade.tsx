@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { PASSWORD_MIN } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/client";
 
-export function GuestUpgrade({ guestId }: { guestId: string }) {
+export function GuestUpgrade() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -37,7 +37,7 @@ export function GuestUpgrade({ guestId }: { guestId: string }) {
         {error ? <p role="alert" className="text-sm text-hidden-text">{error}</p> : null}
         <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Keep my record"}</Button>
       </form>
-      <Link href={`/login?guest=${encodeURIComponent(guestId)}`} className="mt-4 block text-sm text-fg-muted underline decoration-line underline-offset-4">
+      <Link href="/login" className="mt-4 block text-sm text-fg-muted underline decoration-line underline-offset-4">
         I already have an account
       </Link>
     </section>

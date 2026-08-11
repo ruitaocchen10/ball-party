@@ -84,7 +84,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   }
 
   if (match.status === "complete" && isGuest) {
-    return <Shell displayName={displayName}><GuestUpgrade guestId={claims.sub} />{code ? <BackToRoom code={code} /> : <HomeLink />}</Shell>;
+    return <Shell displayName={displayName}><GuestUpgrade />{code ? <BackToRoom code={code} /> : <HomeLink />}</Shell>;
   }
 
   const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult] = await Promise.all([

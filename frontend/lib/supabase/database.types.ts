@@ -238,17 +238,23 @@ export type Database = {
       }
       guest_account_collisions: {
         Row: {
-          account_id: string
+          account_id: string | null
+          claim_nonce: string | null
+          claimed_at: string | null
           created_at: string
           guest_id: string
         }
         Insert: {
-          account_id: string
+          account_id?: string | null
+          claim_nonce?: string | null
+          claimed_at?: string | null
           created_at?: string
           guest_id: string
         }
         Update: {
-          account_id?: string
+          account_id?: string | null
+          claim_nonce?: string | null
+          claimed_at?: string | null
           created_at?: string
           guest_id?: string
         }
@@ -590,7 +596,8 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      record_guest_account_collision: { Args: { p_guest_id: string }; Returns: undefined }
+      claim_guest_identity: { Args: Record<PropertyKey, never>; Returns: string }
+      record_guest_account_collision: { Args: { p_nonce: string }; Returns: undefined }
       place_bid: {
         Args: { p_amount: number; p_match_id: string }
         Returns: Database["public"]["CompositeTypes"]["auction_turn"]
