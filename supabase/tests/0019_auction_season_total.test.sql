@@ -25,8 +25,8 @@ select is(
 
 select is(
   (select count(*)::int from public.auction_lots where match_id = :'match_id'),
-  (select count(*)::int from (select distinct player_id, season from public.auction_lots where match_id = :'match_id') seasons),
-  'every season board has unique player-seasons'
+  (select count(*)::int from (select distinct player_id from public.auction_lots where match_id = :'match_id') people),
+  'a season board offers each player once, in one season and no other'
 );
 
 select tests.act_as_admin();

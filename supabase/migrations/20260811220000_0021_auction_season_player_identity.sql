@@ -1,0 +1,83 @@
+-- A board may not offer the same player twice, and a player is a person rather
+-- than a person-season. The season dealer deduplicated on `player_id:season`,
+-- which is the primary key of the season pool but not the rule the table needs:
+-- the pool holds up to fifteen seasons of a durable starter, so Geno Smith 2024
+-- and Geno Smith 2025 were two eligible draws. Measured before this change,
+-- roughly half of standard season boards and three quarters of deep ones dealt
+-- a repeat, which at the table reads as a bug rather than as variety.
+--
+-- The identity is now the player in both modes, so the two branches differ only
+-- in which pool they draw from and which card fields they carry. Depth is
+-- comfortable: the thinnest cell, QB star, holds thirty-six distinct players
+-- against a worst case of eight quarterback draws on a deep four-player board.
+create or replace function private.deal_auction_board(
+  p_match_id uuid,
+  p_seed double precision default null,
+  p_scoring_mode text default 'weekly',
+  p_roster_preset text default 'standard'
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_seed double precision := coalesce(p_seed, random()); v_n int; v_total int;
+  v_star int; v_solid int; v_deep int; v_order text[]; v_slots text[]; v_tiers text[];
+  v_used text[] := '{}'; v_player_id text; v_display_name text; v_position text;
+  v_season smallint; v_week smallint; v_team text; v_opponent text; v_points numeric(5,1);
+  v_i int; v_qb_slots smallint; v_rb_slots smallint; v_wr_slots smallint;
+  v_te_slots smallint; v_flex_slots smallint; v_purse int;
+begin
+  if p_scoring_mode is distinct from 'weekly' and p_scoring_mode is distinct from 'season_total' then
+    raise exception 'invalid_scoring_mode' using errcode = 'P0001';
+  end if;
+  case p_roster_preset
+    when 'standard' then v_qb_slots := 1; v_rb_slots := 1; v_wr_slots := 1; v_te_slots := 1; v_flex_slots := 1; v_purse := 25;
+    when 'full' then v_qb_slots := 1; v_rb_slots := 2; v_wr_slots := 2; v_te_slots := 1; v_flex_slots := 1; v_purse := 35;
+    when 'deep' then v_qb_slots := 2; v_rb_slots := 2; v_wr_slots := 3; v_te_slots := 1; v_flex_slots := 2; v_purse := 50;
+    else raise exception 'invalid_roster_preset' using errcode = 'P0001';
+  end case;
+  perform setseed(v_seed); set local max_parallel_workers_per_gather = 0;
+  insert into public.auction_players (match_id, user_id, seat, budget)
+    select p_match_id, rp.user_id, rp.seat, v_purse from public.run_participants rp
+    join public.matches m on m.run_id = rp.run_id where m.id = p_match_id;
+  select count(*) into v_n from public.auction_players where match_id = p_match_id;
+  if v_n < 2 then raise exception 'too_few_players' using errcode = 'P0001'; end if;
+  v_total := (v_qb_slots + v_rb_slots + v_wr_slots + v_te_slots + v_flex_slots) * v_n;
+  v_star := (7 * v_total) / 20; v_solid := (8 * v_total) / 20; v_deep := (5 * v_total) / 20;
+  select array_agg(t order by rem desc, ord) into v_order from
+    (values ('star', (7 * v_total) % 20, 1), ('solid', (8 * v_total) % 20, 2), ('deep', (5 * v_total) % 20, 3)) r(t, rem, ord);
+  for v_i in 1 .. (v_total - v_star - v_solid - v_deep) loop
+    if v_order[v_i] = 'star' then v_star := v_star + 1; elsif v_order[v_i] = 'solid' then v_solid := v_solid + 1; else v_deep := v_deep + 1; end if;
+  end loop;
+  select array_agg(position order by random()) into v_slots from (
+    select position from unnest(array['QB','RB','WR','TE']) positions(position),
+      generate_series(1, v_n * case position when 'QB' then v_qb_slots when 'RB' then v_rb_slots when 'WR' then v_wr_slots else v_te_slots end)
+  ) base;
+  v_slots := v_slots || (select array_agg((array['RB','WR','TE'])[1 + floor(random() * 3)::int]) from generate_series(1, v_n * v_flex_slots));
+  select array_agg(t order by random()) into v_tiers from (
+    select 'star' t from generate_series(1, v_star) union all select 'solid' from generate_series(1, v_solid) union all select 'deep' from generate_series(1, v_deep)
+  ) tokens;
+  for v_i in 1 .. v_total loop
+    if p_scoring_mode = 'weekly' then
+      select player_id, display_name, position, season, week, team, opponent, points into v_player_id, v_display_name, v_position, v_season, v_week, v_team, v_opponent, v_points
+        from private.player_weeks where position = v_slots[v_i] and tier = v_tiers[v_i] and not (player_id = any(v_used)) order by random() limit 1;
+    else
+      select player_id, display_name, position, season, null::smallint, team, null::text, points into v_player_id, v_display_name, v_position, v_season, v_week, v_team, v_opponent, v_points
+        from private.player_seasons where position = v_slots[v_i] and tier = v_tiers[v_i] and not (player_id = any(v_used)) order by random() limit 1;
+    end if;
+    if not found then raise exception 'pool_exhausted' using errcode = 'P0001'; end if;
+    v_used := v_used || v_player_id;
+    insert into public.auction_lots (match_id, seq, player_id, display_name, position, season, week, team, opponent, is_flex)
+      values (p_match_id, v_i, v_player_id, v_display_name, v_position, v_season, v_week, v_team, v_opponent, v_i > v_total - (v_n * v_flex_slots));
+    insert into private.auction_answers (match_id, seq, points) values (p_match_id, v_i, v_points);
+  end loop;
+  insert into public.auction_matches (match_id, lot_count, current_lot, opener_seat, scoring_mode, roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse)
+    values (p_match_id, v_total, 1, 0, p_scoring_mode, p_roster_preset, v_qb_slots, v_rb_slots, v_wr_slots, v_te_slots, v_flex_slots, v_purse);
+  insert into private.auction_boards (match_id, seed) values (p_match_id, v_seed);
+end;
+$$;
+
+revoke all on function private.deal_auction_board(uuid, double precision, text, text)
+  from public, anon, authenticated;

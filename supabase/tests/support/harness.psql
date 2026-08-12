@@ -153,6 +153,15 @@ begin
   perform private.deal_auction_board(match_id, p_seed, 'weekly', p_roster_preset);
 end $$;
 
+create function tests.deal(p_n int, p_seed double precision, p_scoring_mode text, p_roster_preset text, out match_id uuid)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.mkmatch(p_n);
+  perform tests.act_as_admin();
+  perform private.deal_auction_board(match_id, p_seed, p_scoring_mode, p_roster_preset);
+end $$;
+
 -- A dealt board with its first lot opened, ready to be bid on.
 create function tests.deal_and_open(p_n int, p_seed double precision, out match_id uuid)
 returns uuid
