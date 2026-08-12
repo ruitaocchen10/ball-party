@@ -204,10 +204,10 @@ function InDevelopment({ count }: { count: number }) {
       label={`${count} more game in development`}
       className="flex flex-col items-start gap-1.5 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
     >
-      <p className="relative font-slab text-[13px] leading-none -skew-x-7 text-panel/95 uppercase">
+      <p className="relative font-slab text-[13px] leading-none -skew-x-7 text-panel uppercase">
         {count === 1 ? "One more game" : `${count} more games`} in development
       </p>
-      <p className="relative font-mono text-[9px] tracking-[0.15em] text-panel/75 uppercase">
+      <p className="relative font-mono text-[9px] tracking-[0.15em] text-panel uppercase">
         Coming soon
       </p>
     </Concealed>

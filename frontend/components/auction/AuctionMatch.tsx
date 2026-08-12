@@ -471,10 +471,10 @@ export function AuctionMatch({
           withheld, and the weave is how this product says so. */}
       <Concealed label="Fantasy points, hidden until this lot is won" className="px-3.5 py-3">
         <div className="relative flex items-baseline justify-between gap-3">
-          <span className="font-mono text-[10px] tracking-[0.15em] text-panel/85 uppercase">
+          <span className="font-mono text-[10px] tracking-[0.15em] text-panel uppercase">
             Fantasy points
           </span>
-          <span className="font-slab text-lg leading-none -skew-x-7 text-panel/90">? ? ?</span>
+          <span className="font-slab text-lg leading-none -skew-x-7 text-panel">? ? ?</span>
         </div>
       </Concealed>
 

@@ -47,7 +47,7 @@ export function MatchSetup({ matchId }: { matchId: string }) {
 
   return (
     <Concealed label="Dealing the board" className="flex h-24 items-center">
-      <span className="relative w-full text-center font-mono text-[10px] tracking-[0.15em] text-panel/85 uppercase">
+      <span className="relative w-full text-center font-mono text-[10px] tracking-[0.15em] text-panel uppercase">
         Dealing the board
       </span>
     </Concealed>

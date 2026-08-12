@@ -141,7 +141,7 @@ export function LobbyLineup({
         {Array.from({ length: emptySeats }, (_, index) => (
           <li key={`empty-${index}`}>
             <Concealed label="Open spot, waiting for a player" className="flex h-full min-h-[73px] items-center">
-              <span className="relative w-full text-center font-mono text-[10px] tracking-[0.15em] text-panel/85 uppercase">
+              <span className="relative w-full text-center font-mono text-[10px] tracking-[0.15em] text-panel uppercase">
                 Invite friend
               </span>
             </Concealed>

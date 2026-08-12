@@ -23,7 +23,7 @@ export function Concealed({
     <div
       aria-label={children ? undefined : label}
       role={children ? undefined : "img"}
-      className={`pattern-concealed relative rounded-card bg-hidden shadow-concealed ${className}`}
+      className={`pattern-concealed relative rounded-card bg-hidden-ink text-panel shadow-concealed ${className}`}
     >
       {/* the inset hairline that reads the weave as a deliberate surface */}
       <span

@@ -100,7 +100,7 @@ body {
   .pattern-concealed {
     background-image: repeating-linear-gradient(
       45deg,
-      rgb(0 0 0 / 0.16) 0 6px,
+      rgb(0 0 0 / 0.10) 0 6px,
       transparent 6px 12px
     );
   }
