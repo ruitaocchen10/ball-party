@@ -95,6 +95,18 @@ body {
 }
 
 @layer components {
+  @keyframes points-reveal {
+    0% { opacity: 0; transform: perspective(32rem) rotateX(-90deg); }
+    60% { opacity: 1; transform: perspective(32rem) rotateX(8deg); }
+    100% { opacity: 1; transform: perspective(32rem) rotateX(0); }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-points-reveal {
+      animation: points-reveal 360ms ease-out both;
+    }
+  }
+
   /* The diagonal weave that marks concealed information. Applied by
      <Concealed>, and by any surface standing in for it. */
   .pattern-concealed {

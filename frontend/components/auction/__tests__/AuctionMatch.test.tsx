@@ -160,7 +160,7 @@ describe("the four phases", () => {
     expect(screen.queryByRole("button", { name: "Pass" })).not.toBeInTheDocument();
   });
 
-  it("reveals the points and the price during the sold acknowledgement", () => {
+  it("flips the concealed points surface into a points-only reveal", () => {
     renderMatch({
       turn: turn("sold"),
       lots: board([{ winner_id: "u1", price: 12, slot: "RB", points: 23.4 }]),
@@ -168,8 +168,11 @@ describe("the four phases", () => {
 
     const revealed = screen.getByRole("region", { name: /Lot 1, revealed/i });
     expect(within(revealed).getByText("23.4")).toBeInTheDocument();
-    expect(within(revealed).getByText("$12")).toBeInTheDocument();
-    expect(within(revealed).getByText("Ben")).toBeInTheDocument();
+    expect(within(revealed).queryByText("$12")).not.toBeInTheDocument();
+    expect(within(revealed).queryByText("Ben")).not.toBeInTheDocument();
+    expect(within(revealed).getByText("23.4").closest("[aria-hidden='true']")).not.toBeNull();
+    expect(within(revealed).getAllByRole("status")).toHaveLength(1);
+    expect(within(revealed).getByRole("status")).toHaveTextContent("Saquon Barkley reveals 23.4 fantasy points.");
   });
 
   it("renders a three-digit season score without clipping it", () => {

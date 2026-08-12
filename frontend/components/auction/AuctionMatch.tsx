@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/Button";
-import { Card, CardMeta, CardStats, CardTitle, Stat } from "@/components/ui/Card";
+import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
 import {
   BLOCKED_TEXT,
@@ -460,18 +460,21 @@ export function AuctionMatch({
         <CardMeta>{matchupLine(lot)}</CardMeta>
       </Card>
 
-      {/* The fantasy points, which are not merely absent — they are being
-          withheld, and the weave is how this product says so. */}
-      <Concealed label="Fantasy points, hidden until this lot is won" className="px-3.5 py-3">
-        <div className="relative flex items-baseline justify-between gap-3">
-          <span className="font-mono text-[10px] tracking-[0.15em] text-panel uppercase">
-            Fantasy points
-          </span>
-          <span className="font-slab text-lg leading-none -skew-x-7 text-panel">? ? ?</span>
-        </div>
-      </Concealed>
-
-      {phase === "sold" ? <Revealed lot={lot} players={players} /> : null}
+      {/* The payoff occupies the concealed surface rather than arriving as a
+          second card. Its face is hidden from assistive technology; the one
+          status sentence in PointsReveal is the complete announcement. */}
+      {phase === "sold" ? (
+        <PointsReveal lot={lot} />
+      ) : (
+        <Concealed label="Fantasy points, hidden until this lot is won" className="px-3.5 py-3">
+          <div className="relative flex items-baseline justify-between gap-3">
+            <span className="font-mono text-[10px] tracking-[0.15em] text-panel uppercase">
+              Fantasy points
+            </span>
+            <span className="font-slab text-lg leading-none -skew-x-7 text-panel">? ? ?</span>
+          </div>
+        </Concealed>
+      )}
 
       {me ? (
         <BidBar
@@ -667,26 +670,22 @@ function UndealtBoardCell({ seq }: { seq: number }) {
 }
 
 /**
- * What the last lot turned out to be. This is the payoff: it appears at the
- * instant the lot resolves, carrying the number everybody was guessing at.
+ * The payoff is the concealed surface turning over, not a second card. The
+ * visible face must stay out of the accessibility tree: the status sentence
+ * gives screen-reader users one complete, ordered announcement instead.
  */
-function Revealed({ lot, players }: { lot: Lot; players: Player[] }) {
-  const winner = players.find((p) => p.user_id === lot.winner_id) ?? null;
-
+function PointsReveal({ lot }: { lot: Lot }) {
   return (
-    <section aria-label={`Lot ${lot.seq}, revealed`} className="flex flex-col gap-1.5">
-      <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
-        Lot {lot.seq} · revealed
-      </p>
-      <Card edge={false}>
-        <CardTitle className="text-xl">{lot.display_name}</CardTitle>
-        <CardMeta>{matchupLine(lot)}</CardMeta>
-        <CardStats>
-          <Stat label="Fpts" value={fmt(lot.points)} />
-          <Stat label="Won by" value={winner ? winner.display_name : "Nobody"} />
-          <Stat label="Price" value={lot.price === null ? "—" : `$${lot.price}`} />
-        </CardStats>
-      </Card>
+    <section aria-label={`Lot ${lot.seq}, revealed`}>
+      <div aria-hidden className="animate-points-reveal flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
+        <span className="font-mono text-[10px] tracking-[0.15em] text-panel-muted uppercase">
+          Fantasy points
+        </span>
+        <span className="min-w-0 font-slab text-lg leading-none -skew-x-7 tabular-nums">
+          {fmt(lot.points)}
+        </span>
+      </div>
+      <p role="status" className="sr-only">{lot.display_name} reveals {fmt(lot.points)} fantasy points.</p>
     </section>
   );
 }
