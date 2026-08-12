@@ -409,7 +409,7 @@ export function AuctionMatch({
 
   if (!lot) {
     return (
-      <Screen displayName={displayName}>
+      <Screen displayName={displayName} workspace>
         <p className="text-sm text-fg-muted">Waiting for the next lot…</p>
       </Screen>
     );
@@ -428,13 +428,11 @@ export function AuctionMatch({
   return (
     <Screen displayName={displayName} workspace>
       <LotStrip lots={lots} players={players} turn={turn} phase={phase} />
-      {/* Stacked below 1024px, side by side at and above it. The mobile row
-          template is the whole of story 8: the Lot is sized to its content and
-          never compressed, and the Table takes what is left and scrolls inside
-          itself. Without it both rows are auto and a four-seat table pushes the
-          live auction off the screen. */}
-      <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(6rem,1fr)] gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,.9fr)] lg:grid-rows-1">
-      <section className="flex min-h-0 flex-col gap-2" aria-label="The lot">
+      {/* DOM order is the phone's decision order: understand the lot, decide
+          what to do, then inspect the other seats. Desktop placement gives
+          controls their own column without changing that reading order. */}
+      <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(6rem,1fr)] gap-4 lg:grid-cols-[minmax(15rem,.62fr)_minmax(0,1fr)_minmax(21rem,.95fr)] lg:grid-rows-1">
+      <section className="flex min-h-0 flex-col gap-2 lg:col-start-2 lg:row-start-1" aria-label="The lot">
       {/* The lot. Red top edge, because there is concealed information behind
           it — which is the rule Card already documents. */}
       <Card className="flex min-h-0 flex-1 flex-col">
@@ -470,25 +468,28 @@ export function AuctionMatch({
         </Concealed>
       )}
 
-      {me ? (
-        <BidBar
-          phase={phase}
-          price={price}
-          budget={me.budget}
-          remainingMs={phase === "bidding_self" || phase === "bidding_other" ? remainingMs : phaseRemainingMs}
-          onClock={onClock}
-          isMine={phase === "bidding_self"}
-          blocked={blocked}
-          pending={pending}
-          error={error}
-          slot={slotFor(lot)}
-          onRaise={(amount) => act(getClient().rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
-          onPass={() => act(getClient().rpc("pass_lot", { p_match_id: matchId }))}
-        />
-      ) : <p className="min-h-17 text-sm text-fg-muted">You&apos;re watching this one.</p>}
       </section>
 
-      <aside className="min-h-0 overflow-y-auto" aria-label="The table">
+      <section className="flex min-h-0 flex-col lg:col-start-1 lg:row-start-1" aria-label="The controls">
+        {me ? (
+          <BidBar
+            phase={phase}
+            price={price}
+            budget={me.budget}
+            remainingMs={phase === "bidding_self" || phase === "bidding_other" ? remainingMs : phaseRemainingMs}
+            onClock={onClock}
+            isMine={phase === "bidding_self"}
+            blocked={blocked}
+            pending={pending}
+            error={error}
+            slot={slotFor(lot)}
+            onRaise={(amount) => act(getClient().rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
+            onPass={() => act(getClient().rpc("pass_lot", { p_match_id: matchId }))}
+          />
+        ) : <p className="min-h-17 text-sm text-fg-muted">You&apos;re watching this one.</p>}
+      </section>
+
+      <aside className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1" aria-label="The table">
       {format ? (
         <p aria-label="Auction format" className="mb-2 font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
           {format.scoringMode === "season_total" ? "season total" : format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse
@@ -536,10 +537,8 @@ function Screen({
 }) {
   return (
     <>
-      <TopBar displayName={displayName} />
-      {/* One column, thumb-width, because four people around a table are all
-          holding phones. */}
-      <main className={`mx-auto flex w-full flex-1 flex-col gap-4 px-5 pt-4 pb-4 ${workspace ? "min-h-0 max-w-6xl overflow-hidden lg:pb-5" : "max-w-md"}`}>
+      {workspace ? null : <TopBar displayName={displayName} />}
+      <main className={`mx-auto flex w-full flex-1 flex-col ${workspace ? "min-h-0 gap-4 overflow-hidden px-4 pt-3 pb-4" : "max-w-md gap-4 px-5 pt-4 pb-4"}`}>
         {children}
       </main>
     </>
