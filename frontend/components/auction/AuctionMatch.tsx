@@ -676,7 +676,7 @@ function UndealtBoardCell({ seq }: { seq: number }) {
  */
 function PointsReveal({ lot }: { lot: Lot }) {
   return (
-    <section aria-label={`Lot ${lot.seq}, revealed`}>
+    <section>
       <div aria-hidden className="animate-points-reveal flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
         <span className="font-mono text-[10px] tracking-[0.15em] text-panel-muted uppercase">
           Fantasy points
@@ -869,41 +869,55 @@ function BidBar({
         );
   const urgent = seconds !== null && seconds <= 3 && live;
   const invalid = !Number.isInteger(Number(amount)) || Number(amount) < minimum || Number(amount) > budget;
+  const tone = urgent
+    ? "border-hidden bg-hidden/10 text-hidden-text"
+    : isMine
+      ? "border-panel bg-panel text-panel-fg"
+      : "border-line bg-surface-raised text-fg";
+
+  // The visible timer changes ten times a second. The live region stays empty
+  // except at the agreed moments, so it never narrates the intervening ticks.
+  const announcement = live && seconds !== null && [10, 5, 3].includes(seconds) ? `${seconds} seconds left` : "";
+  const status = phase === "lot_preview"
+    ? "This player enters the auction."
+    : phase === "sold"
+      ? "The next player is coming up."
+      : blocked
+        ? blocked === "no_slot"
+          ? `Your ${slot} slots are full.`
+          : BLOCKED_TEXT[blocked]
+        : !canAfford(price, budget, INCREMENTS[1])
+          ? `You can only raise by $${INCREMENTS[0]}.`
+          : `A win fills your open ${slot}.`;
 
   return (
     <div
       ref={surface}
       tabIndex={-1}
-      className="relative mt-auto border-t border-line bg-surface-raised px-3 pt-3 pb-3 outline-none"
+      className="relative mt-auto grid gap-2 border-t border-line bg-surface-raised p-3 outline-none"
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
+      <section aria-label="Clock" className={`rounded border p-3 transition-colors ${tone}`}>
+        <p className={`font-mono text-[11px] tracking-[0.15em] uppercase ${isMine ? "text-panel-muted" : "text-fg-muted"}`}>
           {phase === "lot_preview" ? "Bidding has not started" : phase === "sold" ? "Sold" : isMine ? "Your turn" : `${onClock?.display_name ?? "Someone"} is deciding`}
-        </span>
-        <span className={`font-mono tabular-nums ${isMine ? "font-slab text-3xl -skew-x-7" : "text-sm"}`}>
-          {phase === "lot_preview" ? "—" : `$${price}`} <span className="font-mono text-sm text-fg-muted">· ${budget} left</span>
-        </span>
-      </div>
+        </p>
+        {/* The countdown runs to 9.5s against a real 10s deadline, preserving
+            half a second of real deadline after the visible clock empties. */}
+        <p className={`mt-1 font-slab text-5xl leading-none -skew-x-7 tabular-nums ${urgent ? "text-hidden-text" : ""}`} aria-hidden>
+          {seconds === null ? "—" : `${seconds}s`}
+        </p>
+        <p aria-live="polite" className="sr-only">{announcement}</p>
+        <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-current/20">
+          <div className="h-full bg-current" style={{ width: `${fraction * 100}%`, transition: `width ${TICK_MS}ms linear` }} />
+        </div>
+      </section>
 
-      {/* The countdown runs to 9.5s against a real 10s deadline, so a bid sent
-          as the bar empties still has half a second of real deadline behind it.
-          The slack sits behind the clock rather than in front of it, which is
-          what keeps zero meaning zero. */}
-      <div
-        role="timer"
-        aria-label={seconds === null ? "No timer" : `${seconds} seconds left`}
-        className="mt-2 h-1 w-full overflow-hidden rounded-full bg-panel/15"
-      >
-        <div
-          className={`h-full ${urgent ? "bg-hidden-text" : "bg-fg"}`}
-          style={{ width: `${fraction * 100}%`, transition: `width ${TICK_MS}ms linear` }}
-        />
-      </div>
-      <p className={`mt-1 text-right font-mono text-sm tabular-nums ${urgent ? "text-hidden-text" : "text-fg-muted"}`}>
-        {seconds === null ? "—" : `${seconds}s`}
-      </p>
-
-      <div className="mt-2 flex gap-2">
+      <section aria-label="Bid controls" className="rounded border border-line bg-surface px-3 py-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">Standing bid</span>
+          <span className="font-slab text-2xl leading-none -skew-x-7 tabular-nums">{phase === "lot_preview" ? "—" : `$${price}`}</span>
+        </div>
+        <p className="mt-1 font-mono text-[11px] text-fg-muted tabular-nums">Your budget · ${budget} left</p>
+        <div className="mt-3 flex gap-2">
         {INCREMENTS.map((increment) => (
           <Button
             key={increment}
@@ -917,11 +931,12 @@ function BidBar({
         <Button ref={customButton} type="button" disabled={!actionable} onClick={() => { setAmount(String(minimum)); setCustomFor(interactionKey); }}>
           Custom
         </Button>
-      </div>
-      <p role={error ? "alert" : undefined} className={`mt-2 min-h-5 text-xs leading-5 ${error ? "text-hidden-text" : "text-fg-muted"}`}>
-        {error ?? (phase === "lot_preview" ? "This player enters the auction." : phase === "sold" ? "The next player is coming up." : blocked ? (blocked === "no_slot" ? `Your ${slot} slots are full.` : BLOCKED_TEXT[blocked]) : !canAfford(price, budget, INCREMENTS[1]) ? `You can only raise by $${INCREMENTS[0]}.` : `A win fills your open ${slot}.`)}
-        {phase === "bidding_self" && <button type="button" onClick={onPass} className="float-right text-fg-muted underline underline-offset-2">Pass</button>}
-      </p>
+        </div>
+        <div className="mt-3 flex min-h-5 items-start justify-between gap-3 text-xs leading-5">
+          <p role={error && !custom ? "alert" : undefined} className={error && !custom ? "text-hidden-text" : "text-fg-muted"}>{custom ? status : error ?? status}</p>
+          <button type="button" disabled={!actionable} onClick={onPass} className="shrink-0 text-fg-muted underline underline-offset-2 disabled:no-underline disabled:opacity-60">Pass</button>
+        </div>
+      </section>
       {custom && (
         <form
           role="dialog"
@@ -934,6 +949,7 @@ function BidBar({
             <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full rounded border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
           </label>
           <p className="mt-1 text-xs text-panel-muted">Minimum is ${minimum}. Your maximum is ${budget}.</p>
+          {error ? <p role="alert" className="mt-1 text-xs text-hidden-ink">{error}</p> : null}
           <div className="mt-2 flex gap-2"><Button type="submit" variant="ink" fullWidth={false} disabled={invalid || pending}>Bid ${amount}</Button><button type="button" onClick={closeCustom} className="text-xs text-panel-muted underline">Cancel</button></div>
         </form>
       )}
