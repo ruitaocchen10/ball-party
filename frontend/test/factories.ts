@@ -48,7 +48,7 @@ export function lot(over: Partial<Lot> = {}): Lot {
   };
 }
 
-/** A full board, so `chancesLeft` and the roster have something real to read. */
+/** A full board, so the roster and auction history have something real to read. */
 export function board(over: Partial<Lot>[] = []): Lot[] {
   const cards = [
     ["RB", "Saquon Barkley"],

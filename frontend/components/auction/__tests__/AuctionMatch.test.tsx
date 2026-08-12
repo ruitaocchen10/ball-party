@@ -18,6 +18,60 @@ const raiseButtons = () =>
   screen.getAllByRole("button", { name: /^\+\$/ }) as HTMLButtonElement[];
 const customButton = () => screen.getByRole("button", { name: "Custom" }) as HTMLButtonElement;
 describe("the four phases", () => {
+  it("keeps a board cell for every turn lot, including undealt lots", () => {
+    renderMatch({ turn: turn("bidding", { lotCount: 40, currentLot: 2, turnSeat: 0 }) });
+
+    const strip = screen.getByRole("list", { name: "Auction board" });
+    expect(within(strip).getAllByRole("listitem")).toHaveLength(40);
+    expect(within(strip).getByLabelText("Lot 40, not yet dealt")).toBeInTheDocument();
+  });
+
+  it("records a settled lot's face, slot, price, winner, and matchup in the board", () => {
+    renderMatch({
+      turn: turn("bidding", { currentLot: 2, turnSeat: 0 }),
+      lots: board([{ winner_id: "u1", slot: "RB", price: 0 }]),
+    });
+
+    const strip = screen.getByRole("list", { name: "Auction board" });
+    expect(within(strip).getByLabelText("Lot 1, Saquon Barkley, RB, $0, won by Ben")).toHaveTextContent(
+      "2018 · Week 12 · vs CHI",
+    );
+  });
+
+  it("records an unsold lot without inventing a price or winner", () => {
+    renderMatch({ turn: turn("bidding", { currentLot: 2, turnSeat: 0 }) });
+
+    expect(screen.getByLabelText("Lot 1, Saquon Barkley, unfilled, no price, no winner")).toBeInTheDocument();
+  });
+
+  it("marks and smoothly scrolls the live board cell without naming undealt players", () => {
+    renderMatch({
+      turn: turn("sold", { currentLot: 3 }),
+      lots: board([
+        { winner_id: "u0", slot: "RB", price: 3 },
+        { winner_id: "u1", slot: "QB", price: 4 },
+        {},
+        { display_name: "Undealt Player" },
+      ]),
+    });
+
+    expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent(/Lot 3\/? 4Sold/);
+    expect(HTMLElement.prototype.scrollTo).toHaveBeenCalledWith({
+      behavior: "smooth",
+      left: expect.any(Number),
+    });
+    expect(screen.queryByText("Undealt Player")).not.toBeInTheDocument();
+  });
+
+  it("uses season and team copy for a season lot in the board", () => {
+    renderMatch({
+      turn: turn("bidding", { currentLot: 2, turnSeat: 0 }),
+      lots: board([{ winner_id: "u1", slot: "RB", price: 4, week: null, opponent: null }]),
+    });
+
+    expect(screen.getByLabelText("Lot 1, Saquon Barkley, RB, $4, won by Ben")).toHaveTextContent("2018 · NYG");
+  });
+
   it("shows every participant the immutable dealt format", () => {
     renderMatch({
       turn: turn("lot_preview"),
@@ -433,11 +487,6 @@ describe("the shape of the screen", () => {
 
     expect(screen.getByRole("region", { name: "The lot" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "The table" })).toBeInTheDocument();
-  });
-
-  it("says how many more shots at this slot are coming", () => {
-    renderMatch({ turn: turn("bidding", { turnSeat: 0 }) });
-    expect(screen.getByText(/RB 1 left/)).toBeInTheDocument();
   });
 
   it("keeps the final standings and every roster once the board runs out", () => {

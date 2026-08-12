@@ -120,20 +120,6 @@ export function slotFor(lot: Lot): Slot {
   return (lot.is_flex ? "FLEX" : lot.position) as Slot;
 }
 
-/**
- * How many more shots at this slot are coming, this one included. The cheap
- * mitigation that gives a blind board's budget teeth: "is this my last chance
- * at a tight end" has to be knowable.
- */
-export function chancesLeft(lots: Lot[], lot: Lot, currentLot: number): number {
-  return lots.filter(
-    (candidate) =>
-      candidate.seq >= currentLot &&
-      candidate.is_flex === lot.is_flex &&
-      (lot.is_flex || candidate.position === lot.position),
-  ).length;
-}
-
 export function revealedTotal(lots: Lot[], userId: string): number {
   return lots
     .filter((lot) => lot.winner_id === userId)
@@ -176,11 +162,15 @@ export function canAfford(price: number, budget: number, increment: number): boo
 }
 
 /** Weekly cards show their matchup; season cards show the stable player-season identity. */
-export function matchupLine(lot: Lot): string {
+export function lotIdentityLine(lot: Lot): string {
   if (lot.week === null || lot.opponent === null) {
-    return `${lot.position} · ${lot.season} · ${lot.team}`;
+    return `${lot.season} · ${lot.team}`;
   }
-  return `${lot.position} · ${lot.season} · Week ${lot.week} · vs ${lot.opponent}`;
+  return `${lot.season} · Week ${lot.week} · vs ${lot.opponent}`;
+}
+
+export function matchupLine(lot: Lot): string {
+  return `${lot.position} · ${lotIdentityLine(lot)}`;
 }
 
 export function byPlacement(standings: Standing[]): Standing[] {

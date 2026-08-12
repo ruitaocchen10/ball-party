@@ -143,15 +143,15 @@ that a few lots end up unguessable rather than merely hard — accepted, since t
 alternative is a snap-count filter that needs a second dataset and only reaches
 back to 2012.
 
-**Lot visibility** — blind. Current lot only, no lookahead, no board. Every
-reveal stays a genuine surprise.
+**Lot visibility** — blind before a lot is dealt. The auction board records
+settled lots, but never names an undealt player. Every new reveal stays a
+genuine surprise.
 
 - Tradeoff accepted: without comparative context you can't fully price a card,
   so bidding leans on gut and name recognition more than on relative value.
-- Optional cheap mitigation: show counts remaining by position in the header
-  (`Lot 4 of 20 · QB: 2 left`). Leaks no card identities, keeps every reveal a
-  surprise, but makes "is this my last shot at a QB" knowable — which is what
-  gives the budget teeth.
+- Declined cheap mitigation: counts remaining by position in the header. The
+  settled-lot board provides richer price context without teaching players how
+  many chances remain at a position.
 
 **Score visibility** — fully public scoreboard. Points reveal on selection, and
 everyone's running total plus remaining budget is always on screen.

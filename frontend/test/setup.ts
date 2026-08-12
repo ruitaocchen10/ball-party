@@ -16,7 +16,8 @@ vi.mock("@/lib/supabase/client", () => ({
 // pulls next/headers into jsdom, which throws.
 vi.mock("@/lib/auth/actions", () => ({ signOut: vi.fn() }));
 
-// jsdom implements no layout, so it has no scrollIntoView to call. The board
-// strip keeps the live lot centred with it; the scroll itself is not something
-// this environment could assert on anyway, so a no-op is the honest stand-in.
+// jsdom implements no layout or element scrolling. The board strip scrolls its
+// own horizontal rail, so this no-op lets the test assert the public behavior.
+if (!HTMLElement.prototype.scrollTo) HTMLElement.prototype.scrollTo = vi.fn();
+// The isolated design harness still demonstrates the earlier prototype strip.
 if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = vi.fn();

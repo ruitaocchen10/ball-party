@@ -13,10 +13,10 @@ import {
   blockedReason,
   byPlacement,
   canAfford,
-  chancesLeft,
   filledSlots,
   hasPassed,
   highBidder,
+  lotIdentityLine,
   lotAt,
   matchupLine,
   revealedTotal,
@@ -427,6 +427,7 @@ export function AuctionMatch({
 
   return (
     <Screen displayName={displayName} workspace>
+      <LotStrip lots={lots} players={players} turn={turn} phase={phase} />
       {/* Stacked below 1024px, side by side at and above it. The mobile row
           template is the whole of story 8: the Lot is sized to its content and
           never compressed, and the Table takes what is left and scrolls inside
@@ -434,14 +435,6 @@ export function AuctionMatch({
           live auction off the screen. */}
       <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(6rem,1fr)] gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,.9fr)] lg:grid-rows-1">
       <section className="flex min-h-0 flex-col gap-2" aria-label="The lot">
-      <header className="flex items-baseline justify-between gap-3">
-        <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
-          Lot {turn.currentLot} of {turn.lotCount}
-        </p>
-        <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
-          {lot.is_flex ? "Flex" : lot.position} {chancesLeft(lots, lot, turn.currentLot)} left
-        </p>
-      </header>
       {format ? (
         <p aria-label="Auction format" className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
           {format.scoringMode === "season_total" ? "season total" : format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse
@@ -547,6 +540,129 @@ function Screen({
         {children}
       </main>
     </>
+  );
+}
+
+/**
+ * The auction's memory. The server already returns every dealt row to every
+ * match member, so it is safe to show those identities here; fantasy points
+ * remain the information withheld until a lot resolves. The length must come
+ * from the turn, not the dealt rows, so undealt frames never need an identity.
+ */
+function LotStrip({
+  lots,
+  players,
+  turn,
+  phase,
+}: {
+  lots: Lot[];
+  players: Player[];
+  turn: Turn;
+  phase: ReturnType<typeof viewerPhase>;
+}) {
+  const rail = useRef<HTMLOListElement>(null);
+  const current = useRef<HTMLLIElement>(null);
+
+  // The board moves inside its own rail: no page jump, just a gentle reminder
+  // that the previous lot has become part of the table's shared memory.
+  useEffect(() => {
+    const strip = rail.current;
+    const liveCell = current.current;
+    if (!strip || !liveCell) return;
+    strip.scrollTo({
+      behavior: "smooth",
+      left: liveCell.offsetLeft - (strip.clientWidth - liveCell.offsetWidth) / 2,
+    });
+  }, [turn.currentLot]);
+
+  return (
+    <ol
+      ref={rail}
+      aria-label="Auction board"
+      className="flex shrink-0 gap-1.5 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:thin]"
+    >
+      {Array.from({ length: turn.lotCount }, (_, index) => {
+        const seq = index + 1;
+        if (seq === turn.currentLot) {
+          return <CurrentBoardCell key={seq} ref={current} seq={seq} lotCount={turn.lotCount} phase={phase} />;
+        }
+
+        const settled = lots.find((candidate) => candidate.seq === seq) ?? null;
+        return settled && seq < turn.currentLot ? (
+          <SettledBoardCell key={seq} lot={settled} players={players} />
+        ) : (
+          <UndealtBoardCell key={seq} seq={seq} />
+        );
+      })}
+    </ol>
+  );
+}
+
+const BOARD_CELL = "h-36 shrink-0 rounded border px-2 py-1.5";
+
+function SettledBoardCell({ lot, players }: { lot: Lot; players: Player[] }) {
+  const winner = players.find((player) => player.user_id === lot.winner_id) ?? null;
+  const price = lot.price === null ? "no price" : `$${lot.price}`;
+  const winnerCopy = winner ? `won by ${winner.display_name}` : "no winner";
+
+  return (
+    <li
+      aria-label={`Lot ${lot.seq}, ${lot.display_name}, ${lot.slot ?? "unfilled"}, ${price}, ${winnerCopy}`}
+      className={`${BOARD_CELL} flex w-36 flex-col border-line bg-surface-raised`}
+    >
+      <p className="flex items-baseline justify-between gap-1 font-mono text-[11px] leading-none text-fg-muted uppercase">
+        <span>{lot.slot ?? "—"}</span>
+        <span className="font-bold text-fg tabular-nums">{lot.price === null ? "—" : `$${lot.price}`}</span>
+      </p>
+      <span className="mx-auto mt-2 block h-8 w-8 shrink-0 overflow-hidden rounded-full bg-panel-shade">
+        {lot.headshot_url ? <img src={lot.headshot_url} alt="" className="h-full w-full object-cover object-top" /> : null}
+      </span>
+      <p className="mt-1.5 truncate text-center font-slab text-[12px] leading-none -skew-x-7 uppercase">{lot.display_name}</p>
+      <p className="mt-1.5 truncate text-center font-mono text-[11px] leading-none text-fg-muted uppercase">{lotIdentityLine(lot)}</p>
+      <p className="mt-auto truncate font-mono text-[11px] leading-none text-fg-muted uppercase">
+        {winner?.display_name ?? "No bids"}
+      </p>
+    </li>
+  );
+}
+
+function CurrentBoardCell({
+  seq,
+  lotCount,
+  phase,
+  ref,
+}: {
+  seq: number;
+  lotCount: number;
+  phase: ReturnType<typeof viewerPhase>;
+  ref: React.Ref<HTMLLIElement>;
+}) {
+  return (
+    <li
+      ref={ref}
+      aria-current="step"
+      className={`${BOARD_CELL} flex w-52 flex-col justify-center border-panel/45 bg-panel/10 px-3`}
+    >
+      <p className="font-slab text-xl leading-none -skew-x-7 uppercase">
+        Lot {seq}
+        <span className="ml-1.5 font-mono text-[11px] tracking-[0.1em] text-fg-muted">/ {lotCount}</span>
+      </p>
+      <p className="mt-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
+        {phase === "lot_preview" ? "Coming up" : phase === "sold" ? "Sold" : "On the clock"}
+      </p>
+    </li>
+  );
+}
+
+function UndealtBoardCell({ seq }: { seq: number }) {
+  return (
+    <li
+      aria-label={`Lot ${seq}, not yet dealt`}
+      className={`${BOARD_CELL} flex w-36 flex-col items-center justify-center gap-2 border-dashed border-line bg-transparent`}
+    >
+      <span aria-hidden className="block h-8 w-8 rounded-full border border-dashed border-line" />
+      <span className="font-mono text-[11px] leading-none text-fg-muted tabular-nums">{seq}</span>
+    </li>
   );
 }
 
