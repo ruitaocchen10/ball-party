@@ -806,9 +806,10 @@ function Roster({ lots, userId, format, highlightLot = null, compact = false }: 
 }
 
 /**
- * The controls. Pinned to the bottom of the column so the thumb never travels,
- * and sitting on --surface-raised, which the token file already annotates as
- * where a bid bar goes.
+ * The controls. Their own column now, so they sit at the top of it beside the
+ * card rather than hanging off the bottom of the window — the countdown is the
+ * thing a player reads under pressure and it belongs at eye level. Still on
+ * --surface-raised, which the token file annotates as where a bid bar goes.
  *
  * A disabled control always says why. Four different situations produce the
  * same greyed button otherwise, and "you already have a quarterback" being
@@ -908,7 +909,7 @@ function BidBar({
     <div
       ref={surface}
       tabIndex={-1}
-      className="relative mt-auto grid gap-2 border-t border-line bg-surface-raised p-3 outline-none"
+      className="relative grid gap-2 rounded border border-line bg-surface-raised p-3 outline-none"
     >
       <section aria-label="Clock" className={`rounded border p-3 transition-colors ${tone}`}>
         <p className={`font-mono text-[11px] tracking-[0.15em] uppercase ${isMine ? "text-panel-muted" : "text-fg-muted"}`}>
