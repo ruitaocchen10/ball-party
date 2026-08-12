@@ -435,12 +435,6 @@ export function AuctionMatch({
           live auction off the screen. */}
       <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(6rem,1fr)] gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,.9fr)] lg:grid-rows-1">
       <section className="flex min-h-0 flex-col gap-2" aria-label="The lot">
-      {format ? (
-        <p aria-label="Auction format" className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
-          {format.scoringMode === "season_total" ? "season total" : format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse
-        </p>
-      ) : null}
-
       {/* The lot. Red top edge, because there is concealed information behind
           it — which is the rule Card already documents. */}
       <Card className="flex min-h-0 flex-1 flex-col">
@@ -495,6 +489,11 @@ export function AuctionMatch({
       </section>
 
       <aside className="min-h-0 overflow-y-auto" aria-label="The table">
+      {format ? (
+        <p aria-label="Auction format" className="mb-2 font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
+          {format.scoringMode === "season_total" ? "season total" : format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse
+        </p>
+      ) : null}
       <header className="flex items-baseline justify-between gap-3"><p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">The table</p><p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">Lot {turn.currentLot}</p></header>
       <PlayerRail
         players={players}
@@ -507,6 +506,7 @@ export function AuctionMatch({
           .map((p) => p.seat)}
         soldLot={phase === "sold" ? lot : null}
         format={format}
+        price={price}
       />
       </aside></div>
     </Screen>
@@ -704,6 +704,7 @@ function PlayerRail({
   passedSeats,
   soldLot,
   format,
+  price,
 }: {
   players: Player[];
   lots: Lot[];
@@ -713,12 +714,18 @@ function PlayerRail({
   passedSeats: number[];
   soldLot: Lot | null;
   format: AuctionFormat | null;
+  price: number;
 }) {
+  const [open, setOpen] = useState<Record<string, boolean>>(() => ({ [viewerId]: true }));
+
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="mt-2 flex flex-col gap-2">
       {players.map((player) => {
         const acting = player.seat === turnSeat;
         const total = revealedTotal(lots, player.user_id);
+        const holding = holder === player.user_id;
+        const isOpen = open[player.user_id] ?? false;
+        const highlightLot = soldLot?.winner_id === player.user_id ? soldLot : null;
 
         return (
           <li
@@ -727,33 +734,35 @@ function PlayerRail({
               soldLot?.winner_id === player.user_id ? "border-panel bg-panel/10 motion-safe:animate-sold-once" : acting ? "border-panel/45 bg-surface-raised" : "border-line bg-transparent"
             }`}
           >
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="truncate font-slab text-[15px] leading-none -skew-x-7 uppercase">
-                {player.display_name}
-                {player.user_id === viewerId ? (
-                  <span className="ml-1.5 font-mono text-[9px] tracking-[0.13em] text-fg-muted">
-                    YOU
-                  </span>
-                ) : null}
+            <button
+              type="button"
+              aria-expanded={isOpen}
+              onClick={() => setOpen((previous) => ({ ...previous, [player.user_id]: !isOpen }))}
+              className="flex w-full flex-col gap-2 text-left"
+            >
+              <span className="flex items-center gap-2">
+                <span aria-hidden className={`shrink-0 font-mono text-[11px] leading-none text-fg-muted transition-transform ${isOpen ? "rotate-90" : ""}`}>▶</span>
+                <span className="truncate font-slab text-[15px] leading-none -skew-x-7 uppercase">
+                  {player.display_name}
+                </span>
+                <span className="shrink-0 rounded border border-line px-1.5 py-0.5 font-mono text-[11px] text-fg-muted tabular-nums">
+                  ${player.budget}{player.user_id === viewerId ? <span className="ml-1.5 tracking-[0.13em]">YOU</span> : null}
+                </span>
+                {holding ? <span aria-label={`Standing bid $${price}`} className="shrink-0 rounded-[3px] bg-panel px-1.5 py-0.5 font-mono text-[11px] font-bold text-panel-fg tabular-nums">${price}</span> : null}
+                {acting || passedSeats.includes(player.seat) ? <span className="shrink-0 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">{acting ? "on the clock" : "passed"}</span> : null}
+                <span className="ml-auto shrink-0 text-lg font-bold tabular-nums" aria-label={`${fmt(total)} points`}>{fmt(total)}</span>
               </span>
-              <span className="shrink-0 font-mono text-[11px] text-fg tabular-nums">
-                ${player.budget}
-                <span className="ml-2 text-fg-muted">{fmt(total)} pts</span>
-              </span>
-            </div>
+              {!isOpen ? <Roster lots={lots} userId={player.user_id} format={format} highlightLot={highlightLot} compact /> : null}
+            </button>
 
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <Roster lots={lots} userId={player.user_id} format={format} highlightSlot={soldLot?.winner_id === player.user_id ? soldLot.slot : null} />
-              <span className="shrink-0 font-mono text-[9px] tracking-[0.13em] text-fg-muted uppercase">
-                {acting
-                  ? "on the clock"
-                  : holder === player.user_id
-                    ? "high bid"
-                    : passedSeats.includes(player.seat)
-                      ? "passed"
-                      : ""}
-              </span>
-            </div>
+            {isOpen ? (
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <Roster lots={lots} userId={player.user_id} format={format} highlightLot={highlightLot} />
+                <span className="sr-only">
+                  {acting ? "on the clock" : passedSeats.includes(player.seat) ? "passed" : ""}
+                </span>
+              </div>
+            ) : null}
           </li>
         );
       })}
@@ -764,30 +773,31 @@ function PlayerRail({
 /** Filled slots show what they hold. Unfilled ones are a dashed gap — an empty
  *  slot is absent, not withheld, and the concealed weave is reserved for the
  *  fantasy points, which exist and are being kept from you. */
-function Roster({ lots, userId, format, highlightSlot = null }: { lots: Lot[]; userId: string; format: AuctionFormat | null; highlightSlot?: string | null }) {
+function Roster({ lots, userId, format, highlightLot = null, compact = false }: { lots: Lot[]; userId: string; format: AuctionFormat | null; highlightLot?: Lot | null; compact?: boolean }) {
   const slots = rosterSlots(format);
   const wonBySlot = (slot: Slot) => lots.filter((lot) => lot.winner_id === userId && lot.slot === slot);
   return (
-    <ul className="flex gap-1">
+    <span className="flex flex-wrap gap-1">
       {slots.map(({ slot, index, label }) => {
         const won = wonBySlot(slot)[index - 1] ?? null;
+        const lit = won?.seq === highlightLot?.seq ? "ring-2 ring-panel motion-safe:animate-sold-once" : "";
 
         return (
-          <li key={`${slot}-${index}`}>
+          <span key={`${slot}-${index}`}>
             {won ? (
               <span
                 aria-label={`${label} slot, ${won.display_name}, ${fmt(won.points)} points`}
-                className={`flex h-7 min-w-11 items-center justify-center rounded-[3px] bg-panel px-1.5 font-mono text-[9px] text-panel-fg tabular-nums ${highlightSlot === slot ? "ring-2 ring-panel motion-safe:animate-sold-once" : ""}`}
+                className={`flex h-7 min-w-11 items-center justify-center rounded-[3px] bg-panel px-1.5 font-mono text-[11px] text-panel-fg tabular-nums ${lit}`}
               >
-                {label}<span className="hidden lg:inline"> · {won.display_name}</span> {fmt(won.points)}
+                {label}{compact ? null : <><span className="hidden lg:inline"> · {won.display_name}</span> {fmt(won.points)}</>}
               </span>
             ) : (
-              <span aria-label={`${label} slot, empty`} className="flex h-7 min-w-11 items-center justify-center rounded-[3px] border border-dashed border-fg-muted/70 px-1.5 font-mono text-[9px] tracking-[0.1em] text-fg-muted">{label}</span>
+              <span aria-label={`${label} slot, empty`} className={`h-7 min-w-11 items-center justify-center rounded-[3px] border border-dashed border-fg-muted/70 px-1.5 font-mono text-[11px] tracking-[0.1em] text-fg-muted ${compact ? "hidden lg:flex" : "flex"}`}>{label}</span>
             )}
-          </li>
+          </span>
         );
       })}
-    </ul>
+    </span>
   );
 }
 
@@ -945,7 +955,7 @@ function BidBar({
           onSubmit={(event) => { event.preventDefault(); if (!invalid) onRaise(Number(amount)); }}
           onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeCustom(); } }}
         >
-          <label className="block font-mono text-[10px] tracking-[.13em] text-panel-muted uppercase">Custom bid
+          <label className="block font-mono text-[11px] tracking-[.13em] text-panel-muted uppercase">Custom bid
             <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full rounded border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
           </label>
           <p className="mt-1 text-xs text-panel-muted">Minimum is ${minimum}. Your maximum is ${budget}.</p>
