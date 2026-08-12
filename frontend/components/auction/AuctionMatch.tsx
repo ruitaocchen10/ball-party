@@ -453,20 +453,28 @@ export function AuctionMatch({
       </Card>
 
       {/* The payoff occupies the concealed surface rather than arriving as a
-          second card. Its face is hidden from assistive technology; the one
-          status sentence in PointsReveal is the complete announcement. */}
+          second card. Its face is hidden from assistive technology; the status
+          region below is the complete announcement. */}
       {phase === "sold" ? (
         <PointsReveal lot={lot} />
       ) : (
         <Concealed label="Fantasy points, hidden until this lot is won" className="px-3.5 py-3">
           <div className="relative flex items-baseline justify-between gap-3">
-            <span className="font-mono text-[10px] tracking-[0.15em] text-panel uppercase">
+            <span className="font-mono text-[11px] tracking-[0.15em] text-panel uppercase">
               Fantasy points
             </span>
             <span className="font-slab text-lg leading-none -skew-x-7 text-panel">? ? ?</span>
           </div>
         </Concealed>
       )}
+
+      {/* Mounted for the whole lot rather than created with the reveal. A
+          status region that enters the DOM already holding its text is
+          announced inconsistently — the region has to exist first and then
+          change, which is what the countdown's live region does too. */}
+      <p role="status" className="sr-only">
+        {phase === "sold" ? `${lot.display_name} reveals ${fmt(lot.points)} fantasy points.` : ""}
+      </p>
 
       </section>
 
@@ -491,11 +499,11 @@ export function AuctionMatch({
 
       <aside className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1" aria-label="The table">
       {format ? (
-        <p aria-label="Auction format" className="mb-2 font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
+        <p role="note" aria-label="Auction format" className="mb-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
           {format.scoringMode === "season_total" ? "season total" : format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse
         </p>
       ) : null}
-      <header className="flex items-baseline justify-between gap-3"><p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">The table</p><p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">Lot {turn.currentLot}</p></header>
+      <header className="flex items-baseline justify-between gap-3"><p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">The table</p><p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">Lot {turn.currentLot}</p></header>
       <PlayerRail
         players={players}
         lots={lots}
@@ -670,22 +678,19 @@ function UndealtBoardCell({ seq }: { seq: number }) {
 
 /**
  * The payoff is the concealed surface turning over, not a second card. The
- * visible face must stay out of the accessibility tree: the status sentence
- * gives screen-reader users one complete, ordered announcement instead.
+ * visible face stays out of the accessibility tree entirely: the lot's status
+ * region gives screen-reader users one complete, ordered announcement instead.
  */
 function PointsReveal({ lot }: { lot: Lot }) {
   return (
-    <section>
-      <div aria-hidden className="animate-points-reveal flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
-        <span className="font-mono text-[10px] tracking-[0.15em] text-panel-muted uppercase">
-          Fantasy points
-        </span>
-        <span className="min-w-0 font-slab text-lg leading-none -skew-x-7 tabular-nums">
-          {fmt(lot.points)}
-        </span>
-      </div>
-      <p role="status" className="sr-only">{lot.display_name} reveals {fmt(lot.points)} fantasy points.</p>
-    </section>
+    <div aria-hidden className="animate-points-reveal flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
+      <span className="font-mono text-[11px] tracking-[0.15em] text-panel-muted uppercase">
+        Fantasy points
+      </span>
+      <span className="min-w-0 font-slab text-lg leading-none -skew-x-7 tabular-nums">
+        {fmt(lot.points)}
+      </span>
+    </div>
   );
 }
 
@@ -747,19 +752,18 @@ function PlayerRail({
                 <span className="shrink-0 rounded border border-line px-1.5 py-0.5 font-mono text-[11px] text-fg-muted tabular-nums">
                   ${player.budget}{player.user_id === viewerId ? <span className="ml-1.5 tracking-[0.13em]">YOU</span> : null}
                 </span>
-                {holding ? <span aria-label={`Standing bid $${price}`} className="shrink-0 rounded-[3px] bg-panel px-1.5 py-0.5 font-mono text-[11px] font-bold text-panel-fg tabular-nums">${price}</span> : null}
+                {holding ? <span role="img" aria-label={`Standing bid $${price}`} className="shrink-0 rounded-[3px] bg-panel px-1.5 py-0.5 font-mono text-[11px] font-bold text-panel-fg tabular-nums">${price}</span> : null}
                 {acting || passedSeats.includes(player.seat) ? <span className="shrink-0 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">{acting ? "on the clock" : "passed"}</span> : null}
-                <span className="ml-auto shrink-0 text-lg font-bold tabular-nums" aria-label={`${fmt(total)} points`}>{fmt(total)}</span>
+                <span role="img" className="ml-auto shrink-0 text-lg font-bold tabular-nums" aria-label={`${fmt(total)} points`}>{fmt(total)}</span>
               </span>
               {!isOpen ? <Roster lots={lots} userId={player.user_id} format={format} highlightLot={highlightLot} compact /> : null}
             </button>
 
+            {/* The seat's state word lives in the header above, in every
+                disclosure state. Repeating it here read it out twice. */}
             {isOpen ? (
-              <div className="mt-2 flex items-center justify-between gap-2">
+              <div className="mt-2">
                 <Roster lots={lots} userId={player.user_id} format={format} highlightLot={highlightLot} />
-                <span className="sr-only">
-                  {acting ? "on the clock" : passedSeats.includes(player.seat) ? "passed" : ""}
-                </span>
               </div>
             ) : null}
           </li>
@@ -785,13 +789,14 @@ function Roster({ lots, userId, format, highlightLot = null, compact = false }: 
           <span key={`${slot}-${index}`}>
             {won ? (
               <span
+                role="img"
                 aria-label={`${label} slot, ${won.display_name}, ${fmt(won.points)} points`}
                 className={`flex h-7 min-w-11 items-center justify-center rounded-[3px] bg-panel px-1.5 font-mono text-[11px] text-panel-fg tabular-nums ${lit}`}
               >
                 {label}{compact ? null : <><span className="hidden lg:inline"> · {won.display_name}</span> {fmt(won.points)}</>}
               </span>
             ) : (
-              <span aria-label={`${label} slot, empty`} className={`h-7 min-w-11 items-center justify-center rounded-[3px] border border-dashed border-fg-muted/70 px-1.5 font-mono text-[11px] tracking-[0.1em] text-fg-muted ${compact ? "hidden lg:flex" : "flex"}`}>{label}</span>
+              <span role="img" aria-label={`${label} slot, empty`} className={`h-7 min-w-11 items-center justify-center rounded-[3px] border border-dashed border-fg-muted/70 px-1.5 font-mono text-[11px] tracking-[0.1em] text-fg-muted ${compact ? "hidden lg:flex" : "flex"}`}>{label}</span>
             )}
           </span>
         );
@@ -990,7 +995,7 @@ function FinalScreen({
   return (
     <>
       <header className="flex flex-col gap-2 pt-4">
-        <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
+        <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
           Final
         </p>
         <h1 className="font-slab text-3xl leading-none -skew-x-7 uppercase">
@@ -1013,7 +1018,7 @@ function FinalScreen({
                   </span>
                   {nameOf(standing.user_id)}
                   {standing.user_id === viewerId ? (
-                    <span className="ml-1.5 font-mono text-[9px] tracking-[0.13em] text-panel-muted">
+                    <span className="ml-1.5 font-mono text-[11px] tracking-[0.13em] text-panel-muted">
                       YOU
                     </span>
                   ) : null}
@@ -1045,7 +1050,7 @@ function RosterFinal({ lots, userId, format }: { lots: Lot[]; userId: string; fo
   const won = lots.filter((l) => l.winner_id === userId);
 
   return (
-    <dl className="flex flex-col gap-1 border-t border-dashed border-[#c7bfac] pt-2 font-mono text-[10px] text-panel-muted">
+    <dl className="flex flex-col gap-1 border-t border-dashed border-[#c7bfac] pt-2 font-mono text-[11px] text-panel-muted">
       {rosterSlots(format).map(({ slot, index, label }) => {
         const lot = won.filter((l) => l.slot === slot)[index - 1] ?? null;
         return (

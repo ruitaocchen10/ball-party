@@ -47,7 +47,7 @@ export function CardTitle({
 /** The line under the name — position, era, matchup, record. */
 export function CardMeta({ children }: { children: ReactNode }) {
   return (
-    <p className="px-3 pb-3 font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
+    <p className="px-3 pb-3 font-mono text-[11px] tracking-[0.11em] text-panel-muted uppercase">
       {children}
     </p>
   );

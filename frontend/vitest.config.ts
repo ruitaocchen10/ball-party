@@ -17,6 +17,10 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Call history is per-test. Without this the shared scrollTo stub on
+    // HTMLElement.prototype accumulates across a whole file, and any
+    // toHaveBeenCalledWith against it passes on an earlier test's mount.
+    clearMocks: true,
     setupFiles: ["./test/setup.ts"],
     include: ["**/*.test.tsx", "**/*.test.ts"],
     exclude: ["node_modules/**", ".next/**"],

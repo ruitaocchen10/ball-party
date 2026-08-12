@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { AuctionMatch } from "@/components/auction/AuctionMatch";
 import { MATCH, bid, board, lot, players, standing, turn } from "@/test/factories";
 import { renderMatch } from "@/test/render";
 
@@ -17,6 +18,26 @@ import { renderMatch } from "@/test/render";
 const raiseButtons = () =>
   screen.getAllByRole("button", { name: /^\+\$/ }) as HTMLButtonElement[];
 const customButton = () => screen.getByRole("button", { name: "Custom" }) as HTMLButtonElement;
+
+/** The same mount renderMatch() makes, for the tests that re-render in place. */
+const matchWith = (over: Partial<Parameters<typeof AuctionMatch>[0]["initial"]>) => (
+  <AuctionMatch
+    matchId={MATCH}
+    viewerId="u0"
+    displayName="Ava"
+    roomCode="ABCD"
+    initial={{
+      turn: turn("bidding", { turnSeat: 0 }),
+      serverNow: new Date().toISOString(),
+      lots: board(),
+      players: players(),
+      bids: [],
+      standings: [],
+      format: null,
+      ...over,
+    }}
+  />
+);
 describe("the four phases", () => {
   it("keeps a board cell for every turn lot, including undealt lots", () => {
     renderMatch({ turn: turn("bidding", { lotCount: 40, currentLot: 2, turnSeat: 0 }) });
@@ -56,7 +77,7 @@ describe("the four phases", () => {
     });
 
     expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent(/Lot 3\/? 4Sold/);
-    expect(HTMLElement.prototype.scrollTo).toHaveBeenCalledWith({
+    expect(HTMLElement.prototype.scrollTo).toHaveBeenCalledExactlyOnceWith({
       behavior: "smooth",
       left: expect.any(Number),
     });
@@ -157,7 +178,7 @@ describe("the four phases", () => {
 
     expect(screen.getByText(/Ben is deciding/)).toBeInTheDocument();
     for (const button of raiseButtons()) expect(button).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Pass" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pass" })).toBeDisabled();
   });
 
   it("flips the concealed points surface into a points-only reveal", () => {
@@ -166,13 +187,13 @@ describe("the four phases", () => {
       lots: board([{ winner_id: "u1", price: 12, slot: "RB", points: 23.4 }]),
     });
 
-    const revealed = screen.getByRole("region", { name: /Lot 1, revealed/i });
+    const revealed = screen.getByRole("region", { name: "The lot" });
     expect(within(revealed).getByText("23.4")).toBeInTheDocument();
     expect(within(revealed).queryByText("$12")).not.toBeInTheDocument();
     expect(within(revealed).queryByText("Ben")).not.toBeInTheDocument();
     expect(within(revealed).getByText("23.4").closest("[aria-hidden='true']")).not.toBeNull();
-    expect(within(revealed).getAllByRole("status")).toHaveLength(1);
-    expect(within(revealed).getByRole("status")).toHaveTextContent("Saquon Barkley reveals 23.4 fantasy points.");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getByRole("status")).toHaveTextContent("Saquon Barkley reveals 23.4 fantasy points.");
   });
 
   it("renders a three-digit season score without clipping it", () => {
@@ -191,7 +212,7 @@ describe("the four phases", () => {
       lots: board([{ week: null, opponent: null, winner_id: "u1", price: 12, slot: "RB", points: 312.4 }]),
     });
 
-    expect(screen.getByRole("region", { name: /Lot 1, revealed/i })).toHaveTextContent("312.4");
+    expect(screen.getByRole("region", { name: "The lot" })).toHaveTextContent("312.4");
   });
 
   it("shows no resolved lot outside the sold phase, so a stale reveal cannot linger", () => {
@@ -200,7 +221,12 @@ describe("the four phases", () => {
       lots: board([{ winner_id: "u1", price: 12, slot: "RB", points: 23.4 }]),
     });
 
-    expect(screen.queryByRole("region", { name: /revealed/i })).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("region", { name: "The lot" })).queryByText("23.4"),
+    ).not.toBeInTheDocument();
+    // Mounted but silent. The region has to outlive the reveal it announces:
+    // a live region created with its text already in it may never be read.
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 });
 
@@ -229,6 +255,14 @@ describe("the clock", () => {
     renderMatch({ turn: turn("sold", { deadlineMs: 300 }) });
     await waitFor(() => expect(screen.getByText("1s")).toBeInTheDocument());
     expect(screen.getByText("1s").className).not.toMatch(/hidden-text/);
+  });
+
+  it("announces only the countdown milestones from a polite live region", async () => {
+    const { rerender } = renderMatch({ turn: turn("bidding", { turnSeat: 0, deadlineMs: 10_400 }) });
+    await waitFor(() => expect(document.querySelector("[aria-live='polite']")).toHaveTextContent("10 seconds left"));
+
+    rerender(matchWith({ turn: turn("bidding", { turnSeat: 0, deadlineMs: 9_400 }) }));
+    await waitFor(() => expect(document.querySelector("[aria-live='polite']")).toBeEmptyDOMElement());
   });
 });
 
@@ -348,7 +382,7 @@ describe("the custom bid", () => {
   it("leaves the market row and the clock visible", async () => {
     await open();
     expect(screen.getByRole("timer")).toBeInTheDocument();
-    expect(screen.getByText("$7", { exact: false })).toBeInTheDocument();
+    expect(screen.getAllByText("$7", { exact: false })).not.toHaveLength(0);
   });
 
   it("refuses an amount below the minimum", async () => {
@@ -391,6 +425,17 @@ describe("the custom bid", () => {
     });
   });
 
+  it("keeps a server rejection inside the open custom-bid popover", async () => {
+    const { user, supabase } = await open();
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: "bid_not_increasing" } });
+
+    await user.click(screen.getByRole("button", { name: /Bid \$8/ }));
+
+    expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent(
+      "Your bid must be higher than the current price.",
+    );
+  });
+
   it("closes on Escape and gives focus back to the control that opened it", async () => {
     const { user } = await open();
     await user.keyboard("{Escape}");
@@ -409,6 +454,39 @@ describe("the custom bid", () => {
 });
 
 describe("the table", () => {
+  it("keeps the viewer's seat open, lets other seats disclose independently, and keeps lists out of the disclosure", async () => {
+    const user = userEvent.setup();
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }) });
+    const table = screen.getByRole("complementary", { name: "The table" });
+
+    const avaSeat = within(table).getByText("Ava").closest("li")!;
+    const benSeat = within(table).getByText("Ben").closest("li")!;
+    const avaDisclosure = within(avaSeat).getByRole("button");
+    const benDisclosure = within(benSeat).getByRole("button");
+
+    expect(avaDisclosure).toHaveAttribute("aria-expanded", "true");
+    expect(benDisclosure).toHaveAttribute("aria-expanded", "false");
+    expect(benDisclosure.querySelector("ul, ol")).toBeNull();
+
+    await user.click(benDisclosure);
+
+    expect(benDisclosure).toHaveAttribute("aria-expanded", "true");
+    expect(avaDisclosure).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("states a seat's turn once however the seat is disclosed", async () => {
+    const user = userEvent.setup();
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }) });
+    const table = screen.getByRole("complementary", { name: "The table" });
+
+    // The viewer is on the clock and their own seat opens by default.
+    expect(within(table).getAllByText("on the clock")).toHaveLength(1);
+
+    await user.click(within(table).getByText("Ava").closest("li")!.querySelector("button")!);
+
+    expect(within(table).getAllByText("on the clock")).toHaveLength(1);
+  });
+
   it("shows every seat's budget and revealed total", () => {
     renderMatch({
       turn: turn("bidding", { turnSeat: 1 }),
@@ -418,7 +496,7 @@ describe("the table", () => {
 
     const table = screen.getByRole("complementary", { name: "The table" });
     expect(within(table).getByText("$11", { exact: false })).toBeInTheDocument();
-    expect(within(table).getByText(/18\.5 pts/)).toBeInTheDocument();
+    expect(within(table).getByLabelText("18.5 points")).toBeInTheDocument();
   });
 
   it("calls the active bidder and the high bidder separately", () => {
@@ -429,7 +507,7 @@ describe("the table", () => {
 
     const table = screen.getByRole("complementary", { name: "The table" });
     expect(within(table).getByText("on the clock")).toBeInTheDocument();
-    expect(within(table).getByText("high bid")).toBeInTheDocument();
+    expect(within(table).getByText("$6")).toBeInTheDocument();
   });
 
   it("marks a seat that has passed", () => {
@@ -485,11 +563,35 @@ describe("the shape of the screen", () => {
     expect(screen.queryByRole("button", { name: "Custom" })).not.toBeInTheDocument();
   });
 
-  it("names the two regions so they can be found without looking at the layout", () => {
+  it("names the three regions so they can be found without looking at the layout", () => {
     renderMatch({ turn: turn("bidding", { turnSeat: 0 }) });
 
+    expect(screen.getByRole("region", { name: "The controls" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "The lot" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "The table" })).toBeInTheDocument();
+  });
+
+  it.each(["lot_preview", "bidding", "sold"] as const)(
+    "keeps Pass in the bid panel during %s, so the control cannot move under a thumb",
+    (phase) => {
+      renderMatch({ turn: turn(phase, { turnSeat: 0 }) });
+
+      const controls = screen.getByRole("region", { name: "Bid controls" });
+      expect(within(controls).getByRole("button", { name: "Pass" })).toBeInTheDocument();
+    },
+  );
+
+  it("keeps Pass in the bid panel while another seat decides", () => {
+    renderMatch({ turn: turn("bidding", { turnSeat: 1 }) });
+
+    const controls = screen.getByRole("region", { name: "Bid controls" });
+    expect(within(controls).getByRole("button", { name: "Pass" })).toBeInTheDocument();
+  });
+
+  it("runs the live match with no app chrome, so no mis-tap navigates out of a lot", () => {
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }) });
+
+    expect(screen.queryByRole("link", { name: "Ball Party" })).not.toBeInTheDocument();
   });
 
   it("keeps the final standings and every roster once the board runs out", () => {
@@ -507,6 +609,8 @@ describe("the shape of the screen", () => {
 
     expect(screen.getByText("Ava wins")).toBeInTheDocument();
     expect(screen.getByText(/Saquon Barkley/)).toBeInTheDocument();
+    // The game ending hands the player back to the app.
+    expect(screen.getByRole("link", { name: "Ball Party" })).toBeInTheDocument();
   });
 });
 
