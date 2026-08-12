@@ -10,13 +10,13 @@ select public.start_auction(:'match_id', 'weekly', 'standard');
 select is(
   (select row(scoring_mode, roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse)::text
      from public.auction_matches where match_id = :'match_id'),
-  '(weekly,standard,1,1,1,1,1,20)',
+  '(weekly,standard,1,1,1,1,1,25)',
   'a newly dealt match snapshots the weekly standard format and its resolved limits and purse'
 );
 
 select is(
   (select array_agg(distinct budget order by budget) from public.auction_players where match_id = :'match_id'),
-  array[20],
+  array[25],
   'the resolved purse is what every player receives'
 );
 
@@ -52,7 +52,7 @@ select is(
 
 select tests.mkmatch(2) as invalid_roster_match \gset
 select throws_ok(
-  format($$ select public.start_auction(%L, 'weekly', 'deep') $$, :'invalid_roster_match'),
+  format($$ select public.start_auction(%L, 'weekly', 'impossible') $$, :'invalid_roster_match'),
   'P0001', 'invalid_roster_preset',
   'an invalid roster preset is rejected rather than substituted'
 );

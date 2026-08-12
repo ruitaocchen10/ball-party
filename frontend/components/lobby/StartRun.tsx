@@ -47,6 +47,8 @@ export function StartRun({
           className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case"
         >
           <option value="standard">Standard · 20 lots</option>
+          <option value="full">Full · 28 lots</option>
+          <option value="deep">Deep · 40 lots</option>
         </select>
       </label>
       <Button type="submit" disabled={short}>

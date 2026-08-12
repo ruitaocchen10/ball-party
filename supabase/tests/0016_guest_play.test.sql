@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(18);
 
 \ir support/harness.psql
 
@@ -65,8 +65,15 @@ select 'match', (public.start_run((select v from tests.fx where k = 'lobby'), 'a
 
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select lives_ok(
-  format($$ select public.start_auction(%L, 'weekly', 'standard') $$, (select v from tests.fx where k = 'match')),
-  'a guest can set up the match they were snapshotted into'
+  format($$ select public.start_auction(%L, 'weekly', 'deep') $$, (select v from tests.fx where k = 'match')),
+  'a guest can set up the deep-preset match they were snapshotted into'
+);
+
+select is(
+  (select row(roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse)::text
+     from public.auction_matches where match_id = (select v from tests.fx where k = 'match')),
+  '(deep,2,2,3,1,2,50)',
+  'a guest can read the frozen deep format they are playing'
 );
 
 select tests.act_as_admin();

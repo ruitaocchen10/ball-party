@@ -20,9 +20,25 @@ describe("StartRun", () => {
     await user.click(screen.getByRole("button", { name: "Start the auction" }));
 
     expect(startRun).toHaveBeenCalledOnce();
-    const submitted = vi.mocked(startRun).mock.calls[0][0];
+    const submitted = vi.mocked(startRun).mock.calls.at(-1)![0];
     expect(submitted).toBeInstanceOf(FormData);
     expect(submitted.get("scoring_mode")).toBe("weekly");
     expect(submitted.get("roster_preset")).toBe("standard");
+  });
+
+  it("offers the longer roster presets and submits the host's selection", async () => {
+    const user = userEvent.setup();
+    render(<StartRun lobbyId="lobby" code="BLTZ" players={2} />);
+
+    const roster = screen.getByRole("combobox", { name: "Roster" });
+    expect(roster).toHaveTextContent("Standard · 20 lots");
+    expect(roster).toHaveTextContent("Full · 28 lots");
+    expect(roster).toHaveTextContent("Deep · 40 lots");
+
+    await user.selectOptions(roster, "deep");
+    await user.click(screen.getByRole("button", { name: "Start the auction" }));
+
+    const submitted = vi.mocked(startRun).mock.calls.at(-1)![0];
+    expect(submitted.get("roster_preset")).toBe("deep");
   });
 });

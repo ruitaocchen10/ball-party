@@ -29,11 +29,35 @@ describe("the four phases", () => {
         wrSlots: 1,
         teSlots: 1,
         flexSlots: 1,
-        purse: 20,
+        purse: 25,
       },
     });
 
-    expect(screen.getByLabelText("Auction format")).toHaveTextContent("weekly · standard · 5 slots · $20 purse");
+    expect(screen.getByLabelText("Auction format")).toHaveTextContent("weekly · standard · 5 slots · $25 purse");
+  });
+
+  it("renders every repeated roster slot from the dealt format", () => {
+    renderMatch({
+      turn: turn("sold"),
+      format: {
+        scoringMode: "weekly",
+        rosterPreset: "deep",
+        qbSlots: 2,
+        rbSlots: 2,
+        wrSlots: 3,
+        teSlots: 1,
+        flexSlots: 2,
+        purse: 50,
+      },
+      lots: board([
+        { winner_id: "u0", slot: "QB", display_name: "Patrick Mahomes", points: 35.9, price: 5 },
+        { winner_id: "u0", slot: "QB", display_name: "Lamar Jackson", points: 31.4, price: 4 },
+      ]),
+    });
+
+    expect(screen.getByLabelText("Auction format")).toHaveTextContent("deep · 10 slots · $50 purse");
+    expect(screen.getAllByLabelText(/^QB [12] slot,/)).toHaveLength(8);
+    expect(screen.getByLabelText("QB 2 slot, Lamar Jackson, 31.4 points")).toBeInTheDocument();
   });
 
   it("labels a season-total format and omits weekly-only card copy", () => {
@@ -165,8 +189,21 @@ describe("the status line", () => {
         lot({ seq: 2, position: "RB", winner_id: "u0", slot: "RB", points: 10 }),
       ],
     });
-    expect(screen.getByText(/no open slot for this position/i)).toBeInTheDocument();
+    expect(screen.getByText("Your RB slots are full.")).toBeInTheDocument();
     for (const button of raiseButtons()) expect(button).toBeDisabled();
+  });
+
+  it("allows each configured slot before explaining that a deep position is full", () => {
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0 }),
+      format: { scoringMode: "weekly", rosterPreset: "deep", qbSlots: 2, rbSlots: 2, wrSlots: 3, teSlots: 1, flexSlots: 2, purse: 50 },
+      lots: board([
+        { position: "QB", winner_id: "u0", slot: "QB", points: 22, price: 2 },
+        { position: "QB", winner_id: "u0", slot: "QB", points: 18, price: 1 },
+      ]),
+    });
+
+    expect(screen.getByText("Your QB slots are full.")).toBeInTheDocument();
   });
 
   it("replaces the status text with a server rejection without moving the controls", async () => {

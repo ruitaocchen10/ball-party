@@ -10,7 +10,6 @@ import { Concealed } from "@/components/ui/Concealed";
 import {
   BLOCKED_TEXT,
   INCREMENTS,
-  SLOTS,
   blockedReason,
   byPlacement,
   canAfford,
@@ -21,6 +20,7 @@ import {
   lotAt,
   matchupLine,
   revealedTotal,
+  rosterSlots,
   standingPrice,
   slotFor,
   viewerPhase,
@@ -30,6 +30,7 @@ import {
   type Player,
   type Seat,
   type Standing,
+  type Slot,
   type Turn,
 } from "@/lib/auction/board";
 import { createClient, createRealtimeClient } from "@/lib/supabase/client";
@@ -400,6 +401,7 @@ export function AuctionMatch({
           standings={standings}
           viewerId={viewerId}
           roomCode={roomCode}
+          format={format}
         />
       </Screen>
     );
@@ -415,12 +417,12 @@ export function AuctionMatch({
 
   const price = standingPrice(bids, lot.seq);
   const holder = highBidder(bids, lot.seq);
-  const filled = me ? filledSlots(lots, me.user_id) : new Set<string>();
+  const filled = me ? filledSlots(lots, me.user_id) : { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0 };
   const passed = me ? hasPassed(bids, lot.seq, me.user_id) : false;
   const onClock = players.find((p) => p.seat === turn.turnSeat) ?? null;
   const phase = viewerPhase(turn, me?.seat ?? null);
   const blocked = me
-    ? blockedReason({ lot, me, turnSeat: turn.turnSeat, filled, passed, price })
+    ? blockedReason({ lot, me, turnSeat: turn.turnSeat, filled, format, passed, price })
     : "not_your_turn";
 
   return (
@@ -457,7 +459,7 @@ export function AuctionMatch({
             <img
               src={lot.headshot_url}
               alt=""
-              className="h-full w-full object-contain object-bottom grayscale [mask-image:linear-gradient(to_bottom,#000_58%,transparent_96%)]"
+              className="h-full w-full object-contain object-bottom [mask-image:linear-gradient(to_bottom,#000_58%,transparent_96%)]"
             />
           ) : null}
         </div>
@@ -508,6 +510,7 @@ export function AuctionMatch({
           .filter((p) => hasPassed(bids, lot.seq, p.user_id))
           .map((p) => p.seat)}
         soldLot={phase === "sold" ? lot : null}
+        format={format}
       />
       </aside></div>
     </Screen>
@@ -585,6 +588,7 @@ function PlayerRail({
   holder,
   passedSeats,
   soldLot,
+  format,
 }: {
   players: Player[];
   lots: Lot[];
@@ -593,6 +597,7 @@ function PlayerRail({
   holder: string | null;
   passedSeats: number[];
   soldLot: Lot | null;
+  format: AuctionFormat | null;
 }) {
   return (
     <ul className="flex flex-col gap-2">
@@ -623,7 +628,7 @@ function PlayerRail({
             </div>
 
             <div className="mt-2 flex items-center justify-between gap-2">
-              <Roster lots={lots} userId={player.user_id} highlightSlot={soldLot?.winner_id === player.user_id ? soldLot.slot : null} />
+              <Roster lots={lots} userId={player.user_id} format={format} highlightSlot={soldLot?.winner_id === player.user_id ? soldLot.slot : null} />
               <span className="shrink-0 font-mono text-[9px] tracking-[0.13em] text-fg-muted uppercase">
                 {acting
                   ? "on the clock"
@@ -644,23 +649,25 @@ function PlayerRail({
 /** Filled slots show what they hold. Unfilled ones are a dashed gap — an empty
  *  slot is absent, not withheld, and the concealed weave is reserved for the
  *  fantasy points, which exist and are being kept from you. */
-function Roster({ lots, userId, highlightSlot = null }: { lots: Lot[]; userId: string; highlightSlot?: string | null }) {
+function Roster({ lots, userId, format, highlightSlot = null }: { lots: Lot[]; userId: string; format: AuctionFormat | null; highlightSlot?: string | null }) {
+  const slots = rosterSlots(format);
+  const wonBySlot = (slot: Slot) => lots.filter((lot) => lot.winner_id === userId && lot.slot === slot);
   return (
     <ul className="flex gap-1">
-      {SLOTS.map((slot) => {
-        const won = lots.find((l) => l.winner_id === userId && l.slot === slot) ?? null;
+      {slots.map(({ slot, index, label }) => {
+        const won = wonBySlot(slot)[index - 1] ?? null;
 
         return (
-          <li key={slot}>
+          <li key={`${slot}-${index}`}>
             {won ? (
               <span
-                aria-label={`${slot} slot, ${won.display_name}, ${fmt(won.points)} points`}
+                aria-label={`${label} slot, ${won.display_name}, ${fmt(won.points)} points`}
                 className={`flex h-7 min-w-11 items-center justify-center rounded-[3px] bg-panel px-1.5 font-mono text-[9px] text-panel-fg tabular-nums ${highlightSlot === slot ? "ring-2 ring-panel motion-safe:animate-sold-once" : ""}`}
               >
-                {slot}<span className="hidden lg:inline"> · {won.display_name}</span> {fmt(won.points)}
+                {label}<span className="hidden lg:inline"> · {won.display_name}</span> {fmt(won.points)}
               </span>
             ) : (
-              <span aria-label={`${slot} slot, empty`} className="flex h-7 min-w-11 items-center justify-center rounded-[3px] border border-dashed border-fg-muted/70 px-1.5 font-mono text-[9px] tracking-[0.1em] text-fg-muted">{slot}</span>
+              <span aria-label={`${label} slot, empty`} className="flex h-7 min-w-11 items-center justify-center rounded-[3px] border border-dashed border-fg-muted/70 px-1.5 font-mono text-[9px] tracking-[0.1em] text-fg-muted">{label}</span>
             )}
           </li>
         );
@@ -797,7 +804,7 @@ function BidBar({
         </Button>
       </div>
       <p role={error ? "alert" : undefined} className={`mt-2 min-h-5 text-xs leading-5 ${error ? "text-hidden-text" : "text-fg-muted"}`}>
-        {error ?? (phase === "lot_preview" ? "This player enters the auction." : phase === "sold" ? "The next player is coming up." : blocked ? BLOCKED_TEXT[blocked] : !canAfford(price, budget, INCREMENTS[1]) ? `You can only raise by $${INCREMENTS[0]}.` : `A win fills your open ${slot}.`)}
+        {error ?? (phase === "lot_preview" ? "This player enters the auction." : phase === "sold" ? "The next player is coming up." : blocked ? (blocked === "no_slot" ? `Your ${slot} slots are full.` : BLOCKED_TEXT[blocked]) : !canAfford(price, budget, INCREMENTS[1]) ? `You can only raise by $${INCREMENTS[0]}.` : `A win fills your open ${slot}.`)}
         {phase === "bidding_self" && <button type="button" onClick={onPass} className="float-right text-fg-muted underline underline-offset-2">Pass</button>}
       </p>
       {custom && (
@@ -826,12 +833,14 @@ function FinalScreen({
   standings,
   viewerId,
   roomCode,
+  format,
 }: {
   lots: Lot[];
   players: Player[];
   standings: Standing[];
   viewerId: string;
   roomCode: string | null;
+  format: AuctionFormat | null;
 }) {
   const ranked = byPlacement(standings);
   const nameOf = (userId: string) =>
@@ -874,7 +883,7 @@ function FinalScreen({
                 </span>
               </div>
               <div className="px-3 pb-3">
-                <RosterFinal lots={lots} userId={standing.user_id} />
+                <RosterFinal lots={lots} userId={standing.user_id} format={format} />
               </div>
             </Card>
           </li>
@@ -892,16 +901,16 @@ function FinalScreen({
 }
 
 /** The full roster, so there is something to argue about afterwards. */
-function RosterFinal({ lots, userId }: { lots: Lot[]; userId: string }) {
+function RosterFinal({ lots, userId, format }: { lots: Lot[]; userId: string; format: AuctionFormat | null }) {
   const won = lots.filter((l) => l.winner_id === userId);
 
   return (
     <dl className="flex flex-col gap-1 border-t border-dashed border-[#c7bfac] pt-2 font-mono text-[10px] text-panel-muted">
-      {SLOTS.map((slot) => {
-        const lot = won.find((l) => l.slot === slot) ?? null;
+      {rosterSlots(format).map(({ slot, index, label }) => {
+        const lot = won.filter((l) => l.slot === slot)[index - 1] ?? null;
         return (
-          <div key={slot} className="flex items-baseline justify-between gap-2">
-            <dt className="w-10 shrink-0 uppercase">{slot}</dt>
+          <div key={`${slot}-${index}`} className="flex items-baseline justify-between gap-2">
+            <dt className="w-10 shrink-0 uppercase">{label}</dt>
             <dd className="flex-1 truncate text-panel-fg">
               {lot ? `${lot.display_name} · ${lot.season}${lot.week === null ? ` · ${lot.team}` : ` wk ${lot.week}`}` : "—"}
             </dd>

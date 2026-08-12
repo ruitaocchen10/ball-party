@@ -25,9 +25,19 @@ Name, position, year, and matchup are shown. The stat line and fantasy points
 are hidden. Skill = recalling/estimating how that player performed in that era
 and matchup.
 
-**Budget** — $20 each.
+**Roster preset and budget** — the host chooses one before dealing. The match
+stores these resolved counts and purse, so a completed board remains readable if
+a preset is later retuned.
 
-**Roster** — 5 slots: QB, RB, WR, TE, FLEX.
+| Preset | QB/RB/WR/TE/FLEX | Slots | Lots at four players | Purse | Est. length |
+| --- | --- | ---: | ---: | ---: | --- |
+| Standard | 1/1/1/1/1 | 5 | 20 | $25 | 10–14 min |
+| Full | 1/2/2/1/1 | 7 | 28 | $35 | 15–20 min |
+| Deep | 2/2/3/1/2 | 10 | 40 | $50 | 20–28 min |
+
+The same five dollars per slot keeps the bid increments meaningful across
+presets. Repeated positions are independently visible roster slots; a player can
+win up to that preset's count, never more.
 
 DEF was cut. Team defense fantasy points aren't in the weekly player table —
 they're derived from a different shape of data (sacks, INTs, fumble recoveries,
@@ -172,8 +182,9 @@ N players × [QB, RB, WR, TE]  →  N of each                 (4N base)
 N players × [FLEX]            →  N more from {RB, WR, TE}  (N flex)
 ```
 
-Deal the 4N base lots shuffled, then the N flex lots last. At a full table that
-is the intended 16 + 4 = 20.
+Deal every base position count × N shuffled, then flex count × N flex lots last.
+At a four-player table, Standard is 16 + 4 = 20, Full is 24 + 4 = 28, and Deep
+is 32 + 8 = 40.
 
 **A base lot may only be bid on by players whose natural slot is still open.**
 FLEX is eligible during the flex round and nowhere else. That rule is what makes

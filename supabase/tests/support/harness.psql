@@ -144,6 +144,15 @@ begin
   perform private.deal_auction_board(match_id, p_seed);
 end $$;
 
+create function tests.deal(p_n int, p_seed double precision, p_roster_preset text, out match_id uuid)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.mkmatch(p_n);
+  perform tests.act_as_admin();
+  perform private.deal_auction_board(match_id, p_seed, 'weekly', p_roster_preset);
+end $$;
+
 -- A dealt board with its first lot opened, ready to be bid on.
 create function tests.deal_and_open(p_n int, p_seed double precision, out match_id uuid)
 returns uuid
@@ -155,6 +164,18 @@ begin
   perform private.auction_advance(match_id);
   update public.auction_matches am set phase_deadline = now() - interval '1 second'
    where am.match_id = deal_and_open.match_id;
+  perform private.auction_expire(match_id);
+end $$;
+
+create function tests.deal_and_open(p_n int, p_seed double precision, p_roster_preset text, out match_id uuid)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.deal(p_n, p_seed, p_roster_preset);
+  perform tests.act_as_admin();
+  update public.matches set status = 'playing', started_at = now() where id = match_id;
+  perform private.auction_advance(match_id);
+  update public.auction_matches am set phase_deadline = now() - interval '1 second' where am.match_id = deal_and_open.match_id;
   perform private.auction_expire(match_id);
 end $$;
 
@@ -268,17 +289,19 @@ begin
   return v_moves;
 end $$;
 
--- Every seat, every slot. Returns the cases where somebody finished short —
--- empty means nobody was stranded.
+-- Every seat, every configured slot. Returns both shortages and overfills —
+-- either result means the count-based eligibility rule has broken the deal.
 create function tests.stranded(p_match_id uuid) returns text[]
 language sql stable as $$
   select coalesce(array_agg(ap.seat || ':' || s.slot order by ap.seat, s.slot), '{}'::text[])
     from public.auction_players ap
-    cross join unnest(array['QB','RB','WR','TE','FLEX']) s(slot)
-   where ap.match_id = p_match_id
-     and not exists (
-       select 1 from public.auction_lots l
-        where l.match_id = p_match_id and l.winner_id = ap.user_id and l.slot = s.slot);
+    join public.auction_matches am on am.match_id = ap.match_id
+    cross join lateral unnest(array['QB','RB','WR','TE','FLEX']) s(slot)
+    left join lateral (
+      select count(*)::int as won from public.auction_lots l
+       where l.match_id = p_match_id and l.winner_id = ap.user_id and l.slot = s.slot
+    ) w on true
+   where ap.match_id = p_match_id and w.won <> case s.slot when 'QB' then am.qb_slots when 'RB' then am.rb_slots when 'WR' then am.wr_slots when 'TE' then am.te_slots else am.flex_slots end;
 $$;
 
 grant usage on schema tests to authenticated;

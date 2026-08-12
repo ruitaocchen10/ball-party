@@ -50,6 +50,28 @@ export function viewerPhase(turn: Turn, viewerSeat: number | null): AuctionPhase
 export const SLOTS = ["QB", "RB", "WR", "TE", "FLEX"] as const;
 export type Slot = (typeof SLOTS)[number];
 
+export type RosterSlot = { slot: Slot; index: number; label: string };
+
+/** A match may predate roster formats; those boards retain the original shape. */
+const STANDARD_LIMITS: Record<Slot, number> = { QB: 1, RB: 1, WR: 1, TE: 1, FLEX: 1 };
+
+export function slotLimits(format: AuctionFormat | null): Record<Slot, number> {
+  if (!format) return STANDARD_LIMITS;
+  return { QB: format.qbSlots, RB: format.rbSlots, WR: format.wrSlots, TE: format.teSlots, FLEX: format.flexSlots };
+}
+
+/** Every visible roster position, including an independently readable repeat. */
+export function rosterSlots(format: AuctionFormat | null): RosterSlot[] {
+  const limits = slotLimits(format);
+  return SLOTS.flatMap((slot) =>
+    Array.from({ length: limits[slot] }, (_, index) => ({
+      slot,
+      index: index + 1,
+      label: limits[slot] === 1 ? slot : `${slot} ${index + 1}`,
+    })),
+  );
+}
+
 /** The two raises the rules allow. Anything else is refused, not clamped. */
 export const INCREMENTS = [1, 5] as const;
 
@@ -74,10 +96,13 @@ export function hasPassed(bids: Bid[], seq: number, userId: string): boolean {
 }
 
 /** A player's roster is the slots on the lots they won — there is no roster table. */
-export function filledSlots(lots: Lot[], userId: string): Set<string> {
-  return new Set(
-    lots.filter((lot) => lot.winner_id === userId && lot.slot !== null).map((lot) => lot.slot!),
-  );
+export function filledSlots(lots: Lot[], userId: string): Record<Slot, number> {
+  const filled: Record<Slot, number> = { ...STANDARD_LIMITS };
+  for (const slot of SLOTS) filled[slot] = 0;
+  for (const lot of lots) {
+    if (lot.winner_id === userId && lot.slot !== null) filled[lot.slot as Slot] += 1;
+  }
+  return filled;
 }
 
 /**
@@ -85,8 +110,9 @@ export function filledSlots(lots: Lot[], userId: string): Set<string> {
  * FLEX is live during the flex round and nowhere else. That restriction is what
  * makes the board solvable — see the migration and the game doc.
  */
-export function eligibleFor(lot: Lot, filled: Set<string>): boolean {
-  return !filled.has(lot.is_flex ? "FLEX" : lot.position);
+export function eligibleFor(lot: Lot, filled: Record<Slot, number>, format: AuctionFormat | null): boolean {
+  const slot = slotFor(lot);
+  return filled[slot] < slotLimits(format)[slot];
 }
 
 /** What a lot fills if you win it. Never ambiguous, which follows from the rule above. */
@@ -128,13 +154,14 @@ export function blockedReason(args: {
   lot: Lot;
   me: Player | null;
   turnSeat: number | null;
-  filled: Set<string>;
+  filled: Record<Slot, number>;
+  format: AuctionFormat | null;
   passed: boolean;
   price: number;
 }): Blocked | null {
-  const { lot, me, turnSeat, filled, passed, price } = args;
+  const { lot, me, turnSeat, filled, format, passed, price } = args;
   if (!me) return "not_your_turn";
-  if (!eligibleFor(lot, filled)) return "no_slot";
+  if (!eligibleFor(lot, filled, format)) return "no_slot";
   if (passed) return "passed";
   if (turnSeat !== me.seat) return "not_your_turn";
   // Not a block on its own: a player with nothing left can still take an
