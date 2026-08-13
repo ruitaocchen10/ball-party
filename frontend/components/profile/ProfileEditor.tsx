@@ -2,10 +2,9 @@
 
 import { useActionState, useState } from "react";
 
-import {
-  EMPTY_PROFILE_UPDATE_STATE,
-  updateProfile,
-} from "@/app/profile/actions";
+import { type ProfileUpdateState, updateProfile } from "@/app/profile/actions";
+
+const EMPTY_PROFILE_UPDATE_STATE: ProfileUpdateState = { error: null, saved: false };
 
 export function ProfileEditor({ displayName, avatarUrl }: { displayName: string; avatarUrl: string | null }) {
   const [editing, setEditing] = useState(false);

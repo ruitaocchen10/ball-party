@@ -8,8 +8,6 @@ import { validateProfileUpdate } from "@/lib/profile/validation";
 
 export type ProfileUpdateState = { error: string | null; saved: boolean };
 
-export const EMPTY_PROFILE_UPDATE_STATE: ProfileUpdateState = { error: null, saved: false };
-
 export async function updateProfile(
   _previous: ProfileUpdateState,
   formData: FormData,
