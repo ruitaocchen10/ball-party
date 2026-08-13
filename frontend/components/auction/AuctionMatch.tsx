@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { TopBar } from "@/components/layout/TopBar";
+import { PostGameControls } from "@/components/auction/PostGameControls";
+import { PostGameNavigation } from "@/components/auction/PostGameNavigation";
 import { Button } from "@/components/ui/Button";
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
@@ -120,12 +122,14 @@ export function AuctionMatch({
   viewerId,
   displayName,
   roomCode,
+  isHost = false,
   initial,
 }: {
   matchId: string;
   viewerId: string;
   displayName: string | null;
   roomCode: string | null;
+  isHost?: boolean;
   initial: Initial;
 }) {
   // Built on first use rather than during render. createClient() reaches for
@@ -401,6 +405,8 @@ export function AuctionMatch({
           standings={standings}
           viewerId={viewerId}
           roomCode={roomCode}
+          matchId={matchId}
+          isHost={isHost}
           format={format}
         />
       </Screen>
@@ -979,6 +985,8 @@ function FinalScreen({
   standings,
   viewerId,
   roomCode,
+  matchId,
+  isHost,
   format,
 }: {
   lots: Lot[];
@@ -986,6 +994,8 @@ function FinalScreen({
   standings: Standing[];
   viewerId: string;
   roomCode: string | null;
+  matchId: string;
+  isHost: boolean;
   format: AuctionFormat | null;
 }) {
   const ranked = byPlacement(standings);
@@ -1036,12 +1046,19 @@ function FinalScreen({
         ))}
       </ul>
 
-      <Link
-        href={roomCode ? `/lobby/${roomCode}` : "/"}
-        className="mt-2 text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
-      >
-        {roomCode ? "Back to the room" : "Back home"}
-      </Link>
+      {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} /> : null}
+      {roomCode ? (
+        <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} />
+      ) : null}
+
+      {!roomCode ? (
+        <Link
+          href="/"
+          className="mt-2 text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
+        >
+          Back home
+        </Link>
+      ) : null}
     </>
   );
 }

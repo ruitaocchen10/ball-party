@@ -11,6 +11,9 @@ export const LOBBY_MESSAGES: Record<string, string> = {
   run_already_active: "A game is already running in this room.",
   too_few_players: "Not enough players to deal a board.",
   pool_exhausted: "Couldn't deal a full board. Try again.",
+  match_not_complete: "This game is still in progress.",
+  post_game_choice_already_made: "The host has already chosen what’s next.",
+  replay_not_supported: "This game can’t be replayed yet.",
 };
 
 export function lobbyErrorMessage(message: string) {

@@ -219,6 +219,42 @@ export type Database = {
           },
         ]
       }
+      post_game_actions: {
+        Row: {
+          choice: Database["public"]["Enums"]["post_game_choice"]
+          chosen_at: string
+          match_id: string
+          next_match_id: string | null
+        }
+        Insert: {
+          choice: Database["public"]["Enums"]["post_game_choice"]
+          chosen_at?: string
+          match_id: string
+          next_match_id?: string | null
+        }
+        Update: {
+          choice?: Database["public"]["Enums"]["post_game_choice"]
+          chosen_at?: string
+          match_id?: string
+          next_match_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_game_actions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_game_actions_next_match_id_fkey"
+            columns: ["next_match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auction_players: {
         Row: {
           budget: number
@@ -562,6 +598,24 @@ export type Database = {
         }
       }
       claim_guest_identity: { Args: never; Returns: string }
+      choose_post_game: {
+        Args: {
+          p_choice: Database["public"]["Enums"]["post_game_choice"]
+          p_match_id: string
+        }
+        Returns: {
+          choice: Database["public"]["Enums"]["post_game_choice"]
+          chosen_at: string
+          match_id: string
+          next_match_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "post_game_actions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       create_lobby: {
         Args: never
@@ -669,6 +723,7 @@ export type Database = {
     }
     Enums: {
       match_status: "setup" | "playing" | "complete" | "abandoned"
+      post_game_choice: "replay" | "lobby"
       run_mode: "arcade" | "party"
       run_status: "active" | "finished" | "abandoned"
     }

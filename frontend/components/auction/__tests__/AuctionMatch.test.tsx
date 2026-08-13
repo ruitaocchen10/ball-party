@@ -2,6 +2,10 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/components/auction/PostGameNavigation", () => ({
+  PostGameNavigation: () => null,
+}));
+
 import { AuctionMatch } from "@/components/auction/AuctionMatch";
 import { MATCH, bid, board, lot, players, standing, turn } from "@/test/factories";
 import { renderMatch } from "@/test/render";

@@ -6,8 +6,7 @@ import { MatchSetup } from "@/components/auction/MatchSetup";
 import { TopBar } from "@/components/layout/TopBar";
 import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
 import { createClient } from "@/lib/supabase/server";
-import { GuestUpgrade } from "@/components/auth/GuestUpgrade";
-import { isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
+import { isSignedInViewer } from "@/lib/auth/viewer";
 
 /**
  * The match screen.
@@ -41,13 +40,12 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     .eq("id", claims.sub)
     .single();
   const displayName = viewer?.display_name ?? (claims.email as string | undefined) ?? null;
-  const isGuest = isGuestViewer(claims);
 
   // RLS returns nothing for a match you are not in, so "no row" is a normal
   // state here rather than a failure.
   const { data: match } = await supabase
     .from("matches")
-    .select("id, status, run_id, runs(lobby_id, lobbies(code))")
+    .select("id, status, run_id, runs(lobby_id, lobbies(code, host_id))")
     .eq("id", id)
     .maybeSingle();
 
@@ -63,6 +61,22 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   }
 
   const code = match.runs?.lobbies?.code ?? null;
+  const isHost = match.runs?.lobbies?.host_id === claims.sub;
+
+  // A tab opened after the host has already made the choice still reaches the
+  // shared destination; Realtime below is only the fast path for open tabs.
+  const { data: postGameAction } = match.status === "complete"
+    ? await supabase
+      .from("post_game_actions")
+      .select("choice, next_match_id")
+      .eq("match_id", id)
+      .maybeSingle()
+    : { data: null };
+  if (postGameAction) {
+    redirect(postGameAction.choice === "replay" && postGameAction.next_match_id
+      ? `/match/${postGameAction.next_match_id}`
+      : code ? `/lobby/${code}` : "/");
+  }
 
   // The seam start_run leaves open: the run exists and the game has not dealt
   // yet. Normally a blink. If it sticks, the janitor abandons the match.
@@ -81,10 +95,6 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         {code ? <BackToRoom code={code} /> : <HomeLink />}
       </Shell>
     );
-  }
-
-  if (match.status === "complete" && isGuest) {
-    return <Shell displayName={displayName}><GuestUpgrade />{code ? <BackToRoom code={code} /> : <HomeLink />}</Shell>;
   }
 
   const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult, formatResult] = await Promise.all([
@@ -136,6 +146,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       viewerId={claims.sub}
       displayName={displayName}
       roomCode={code}
+      isHost={isHost}
       initial={{
         turn,
         // The server's clock, so the client can offset its own rather than

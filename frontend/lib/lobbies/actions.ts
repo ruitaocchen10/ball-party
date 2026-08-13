@@ -89,6 +89,28 @@ export async function startRun(formData: FormData) {
   redirect(`/match/${match.id}`);
 }
 
+/** The host's final-screen choice is a room event, not personal navigation. */
+export async function postGameChoice(formData: FormData) {
+  const matchId = String(formData.get("match_id") ?? "");
+  const code = normalizeCode(formData.get("room_code"));
+  const choice = String(formData.get("choice") ?? "");
+  if (!matchId || !code || (choice !== "replay" && choice !== "lobby")) {
+    redirect("/");
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("choose_post_game", {
+    p_match_id: matchId,
+    p_choice: choice,
+  });
+  if (error) redirect(withError(`/lobby/${code}`, error));
+
+  revalidatePath(`/lobby/${code}`);
+  redirect(data.choice === "replay" && data.next_match_id
+    ? `/match/${data.next_match_id}`
+    : `/lobby/${code}`);
+}
+
 /**
  * Join by code is two steps on purpose: this only navigates. The room page
  * decides whether you need to join, which means a pasted invite link and a
