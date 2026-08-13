@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { ProfileEditor } from "@/components/profile/ProfileEditor";
+import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { TopBar } from "@/components/layout/TopBar";
 import { isSignedInViewer } from "@/lib/auth/viewer";
 import { matchGameName, type MatchGame } from "@/lib/games/catalog";
@@ -23,7 +25,7 @@ export default async function ProfilePage() {
   const [{ data: profile }, { data: playerRows }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name, created_at")
+      .select("display_name, avatar_url, created_at")
       .eq("id", claims.sub)
       .single(),
     supabase
@@ -64,7 +66,7 @@ export default async function ProfilePage() {
       <TopBar displayName={displayName} />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-10 pb-16 sm:px-6 sm:pt-12 lg:px-8 lg:pt-14 lg:pb-20">
         <header className="flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:items-end">
-          <Avatar name={displayName} />
+          <ProfileAvatar name={displayName} avatarUrl={profile?.avatar_url ?? null} />
           <div className="min-w-0 flex-1">
             <p className="mb-2 font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">
               Player profile
@@ -76,6 +78,7 @@ export default async function ProfilePage() {
               Playing since {joinedMonth(profile?.created_at)}
             </p>
           </div>
+          <ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} />
         </header>
 
         <section aria-label="Career stats" className="grid grid-cols-2 gap-2.5 py-6 sm:grid-cols-4 sm:gap-3">
@@ -134,10 +137,6 @@ function SignedOutProfile() {
   );
 }
 
-function Avatar({ name }: { name: string }) {
-  return <div aria-hidden className="grid h-20 w-20 shrink-0 place-items-center rounded-full border-4 border-panel bg-hidden font-slab text-2xl -skew-x-7 text-panel shadow-card">{initials(name)}</div>;
-}
-
 function Stat({ value, label }: { value: string | number; label: string }) {
   return <div className="rounded-card bg-panel-shade px-4 py-4 text-panel-fg"><strong className="block font-slab text-[28px] leading-none -skew-x-7">{value}</strong><span className="mt-1.5 block font-mono text-[9px] tracking-[0.12em] text-panel-muted uppercase">{label}</span></div>;
 }
@@ -155,7 +154,6 @@ function EmptyRecord() {
   return <div className="mt-3 rounded-card border border-line bg-surface-raised px-5 py-6 text-sm leading-6 text-fg-muted">No completed games yet. Your first result will show up here after the final score is in.</div>;
 }
 
-function initials(name: string) { return name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?"; }
 function joinedMonth(date?: string) { return date ? new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(new Date(date)) : "today"; }
 function shortDate(date: string) { return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(date)); }
 function formatPlacement(value: number | null) { return value === 1 ? "1st" : value === 2 ? "2nd" : value === 3 ? "3rd" : value ? `${value}th` : "—"; }
