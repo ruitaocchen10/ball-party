@@ -39,6 +39,23 @@ export type Game = {
   featured: boolean;
 };
 
+/**
+ * The values persisted by `matches.game`. They predate the public catalog's
+ * URL slugs, so this is the one translation point for durable game records.
+ */
+export const MATCH_GAME_NAMES = {
+  auction_team_builder: "Auction Team Builder",
+  cards_against_humanity: "Cards Against Humanity",
+  higher_or_lower: "Higher or Lower",
+  wavelength_2v2: "2v2 Wavelength",
+} as const;
+
+export type MatchGame = keyof typeof MATCH_GAME_NAMES;
+
+export function matchGameName(game: MatchGame): string {
+  return MATCH_GAME_NAMES[game];
+}
+
 export const GAMES: readonly Game[] = [
   {
     slug: "higher-or-lower",
