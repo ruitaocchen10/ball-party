@@ -78,7 +78,7 @@ export async function startRun(formData: FormData) {
   });
   if (error) redirect(withError(`/lobby/${code}`, error));
 
-  const { error: dealError } = await supabase.rpc("start_auction", {
+  const { error: dealError } = await supabase.schema("auction").rpc("start", {
     p_match_id: match.id,
     p_scoring_mode: scoringMode,
     p_roster_preset: rosterPreset,

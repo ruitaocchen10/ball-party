@@ -34,6 +34,15 @@ direct connection or wrap the critical section in an RPC and become a proxy
 that added a network hop. That hop is not free when a 10s action timer has to
 budget for it.
 
+**One game, one pair of Postgres schemas.** The modules below are a diagram
+until something enforces them, and Postgres already has the mechanism: a game
+owns `<game>` (its write API, exposed through PostgREST) and `<game>_private`
+(its rules engine, unreachable because the schema is). `public` keeps the
+platform and the contract. So "a game may never import lobbies" is a `grant`
+rather than a convention, deleting a game is `drop schema ... cascade`, and
+every game gets to call its function `state` instead of `wavelength_state`. The
+auction moved first, in `0029` — see [`supabase/README.md`](../../supabase/README.md).
+
 **Web UI layer — Next.js deployed in Vercel.** Durable, navigational actions —
 create a room, join by code — are server actions ending in a redirect. A move
 inside a match is not that shape: it is a client component calling `rpc()`

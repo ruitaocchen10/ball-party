@@ -4,7 +4,7 @@ select plan(15);
 \ir support/harness.psql
 
 select tests.mkmatch(2) as match_id \gset
-select public.start_auction(:'match_id', 'season_total', 'standard');
+select auction.start(:'match_id', 'season_total', 'standard');
 
 select is(
   (select scoring_mode from public.auction_matches where match_id = :'match_id'),
@@ -60,7 +60,7 @@ select ok(
 select ok(
   not has_function_privilege(
     'authenticated',
-    'private.deal_auction_board(uuid, double precision, text, text)',
+    'auction_private.deal_board(uuid, double precision, text, text)',
     'EXECUTE'
   ),
   'a participant cannot replay a season deal from its private seed boundary'
@@ -79,7 +79,7 @@ select is(
 );
 
 select tests.act_as_admin();
-select private.auction_resolve(
+select auction_private.resolve(
   :'match_id'::uuid, 1::smallint,
   (select user_id from public.auction_players where match_id = :'match_id' order by seat limit 1),
   3
@@ -101,9 +101,9 @@ select is(
 
 select tests.mkmatch(2) as complete_match \gset
 select tests.act_as_admin();
-select private.deal_auction_board(:'complete_match', 0.61, 'season_total', 'standard');
+select auction_private.deal_board(:'complete_match', 0.61, 'season_total', 'standard');
 update public.matches set status = 'playing', started_at = now() where id = :'complete_match';
-select private.auction_advance(:'complete_match');
+select auction_private.advance(:'complete_match');
 select tests.play_out(:'complete_match', 'pass');
 
 select is(
@@ -119,14 +119,14 @@ select is(
 delete from private.player_seasons where position = 'QB' and tier = 'star';
 select tests.mkmatch(2) as exhausted_match \gset
 select throws_ok(
-  format($$ select public.start_auction(%L, 'season_total', 'standard') $$, :'exhausted_match'),
+  format($$ select auction.start(%L, 'season_total', 'standard') $$, :'exhausted_match'),
   'P0001', 'pool_exhausted',
   'a season deal fails loudly when its private pool cannot satisfy a required draw'
 );
 
 select tests.mkmatch(2) as invalid_match \gset
 select throws_ok(
-  format($$ select public.start_auction(%L, 'season', 'standard') $$, :'invalid_match'),
+  format($$ select auction.start(%L, 'season', 'standard') $$, :'invalid_match'),
   'P0001', 'invalid_scoring_mode',
   'an unknown scoring mode fails loudly'
 );

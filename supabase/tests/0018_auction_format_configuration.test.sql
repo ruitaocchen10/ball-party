@@ -5,7 +5,7 @@ select plan(10);
 
 select tests.mkmatch(2) as match_id \gset
 
-select public.start_auction(:'match_id', 'weekly', 'standard');
+select auction.start(:'match_id', 'weekly', 'standard');
 
 select is(
   (select row(scoring_mode, roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse)::text
@@ -39,7 +39,7 @@ select ok(
 
 select tests.mkmatch(2) as invalid_scoring_match \gset
 select throws_ok(
-  format($$ select public.start_auction(%L, 'season', 'standard') $$, :'invalid_scoring_match'),
+  format($$ select auction.start(%L, 'season', 'standard') $$, :'invalid_scoring_match'),
   'P0001', 'invalid_scoring_mode',
   'an invalid scoring mode is rejected rather than substituted'
 );
@@ -52,7 +52,7 @@ select is(
 
 select tests.mkmatch(2) as invalid_roster_match \gset
 select throws_ok(
-  format($$ select public.start_auction(%L, 'weekly', 'impossible') $$, :'invalid_roster_match'),
+  format($$ select auction.start(%L, 'weekly', 'impossible') $$, :'invalid_roster_match'),
   'P0001', 'invalid_roster_preset',
   'an invalid roster preset is rejected rather than substituted'
 );
@@ -65,7 +65,7 @@ select is(
 
 select tests.mkmatch(2) as missing_scoring_match \gset
 select throws_ok(
-  format($$ select public.start_auction(%L, null, 'standard') $$, :'missing_scoring_match'),
+  format($$ select auction.start(%L, null, 'standard') $$, :'missing_scoring_match'),
   'P0001', 'invalid_scoring_mode',
   'a missing scoring mode is rejected with the format validation error'
 );

@@ -15,7 +15,7 @@ select tests.act_as_admin();
 
 insert into tests.fx (k, v) values ('m', tests.deal(2, 0.41));
 update public.matches set status = 'playing', started_at = now() where id = (select v from tests.fx where k = 'm');
-select private.auction_advance((select v from tests.fx where k = 'm'));
+select auction_private.advance((select v from tests.fx where k = 'm'));
 
 select ok(
   (select phase_deadline from public.auction_matches where match_id = (select v from tests.fx where k = 'm'))
@@ -24,7 +24,7 @@ select ok(
 );
 
 update public.auction_matches set phase_deadline = now() - interval '1 second' where match_id = (select v from tests.fx where k = 'm');
-select private.auction_expire((select v from tests.fx where k = 'm'));
+select auction_private.expire((select v from tests.fx where k = 'm'));
 
 select ok(
   (select turn_deadline from public.auction_matches where match_id = (select v from tests.fx where k = 'm'))
@@ -33,7 +33,7 @@ select ok(
 );
 
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'm')));
-select public.pass_lot((select v from tests.fx where k = 'm'));
+select auction.pass_lot((select v from tests.fx where k = 'm'));
 select tests.act_as_admin();
 
 select ok(
@@ -49,10 +49,10 @@ select ok(
 select tests.act_as_admin();
 insert into tests.fx (k, v) values ('ms', tests.deal(2, 0.52));
 update public.matches set status = 'playing', started_at = now() where id = (select v from tests.fx where k = 'ms');
-select private.auction_advance((select v from tests.fx where k = 'ms'));
+select auction_private.advance((select v from tests.fx where k = 'ms'));
 update public.auction_matches set phase_deadline = now() - interval '5 seconds' where match_id = (select v from tests.fx where k = 'ms');
 
-select private.auction_sweep();
+select auction_private.sweep();
 select isnt(
   (select phase from public.auction_matches where match_id = (select v from tests.fx where k = 'ms')),
   'lot_preview',
@@ -65,7 +65,7 @@ insert into tests.fx (k, v) values ('mb', tests.deal_and_open(3, 0.63));
 insert into tests.fx (k, v) select 'clock', tests.on_clock((select v from tests.fx where k = 'mb'));
 update public.auction_matches set turn_deadline = now() - interval '10 seconds' where match_id = (select v from tests.fx where k = 'mb');
 
-select private.auction_sweep();
+select auction_private.sweep();
 select is(
   tests.on_clock((select v from tests.fx where k = 'mb')),
   (select v from tests.fx where k = 'clock'),
@@ -79,7 +79,7 @@ select is(
 
 -- Past the full minute, the same turn is swept.
 update public.auction_matches set turn_deadline = now() - interval '2 minutes' where match_id = (select v from tests.fx where k = 'mb');
-select private.auction_sweep();
+select auction_private.sweep();
 select is(
   (select count(*)::int from public.auction_bids where match_id = (select v from tests.fx where k = 'mb') and by_timeout),
   1,
@@ -91,9 +91,9 @@ select is(
 select tests.act_as_admin();
 insert into tests.fx (k, v) values ('md', tests.deal(2, 0.74));
 update public.matches set status = 'playing', started_at = now() where id = (select v from tests.fx where k = 'md');
-select private.auction_advance((select v from tests.fx where k = 'md'));
+select auction_private.advance((select v from tests.fx where k = 'md'));
 update public.auction_matches set phase_deadline = now() - interval '5 seconds' where match_id = (select v from tests.fx where k = 'md');
-select private.auction_sweep();
+select auction_private.sweep();
 select ok(
   (select phase from public.auction_matches where match_id = (select v from tests.fx where k = 'md')) in ('bidding', 'sold', 'lot_preview'),
   'the drain leaves the board in a live phase rather than the one it was stuck in'

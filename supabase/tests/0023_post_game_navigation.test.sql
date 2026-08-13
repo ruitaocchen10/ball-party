@@ -19,7 +19,7 @@ insert into tests.fx (k, v)
 select 'match', (public.start_run((select v from tests.fx where k = 'lobby'), 'arcade', 'auction_team_builder')).id;
 
 select tests.act_as_admin();
-select private.deal_auction_board((select v from tests.fx where k = 'match'), .25, 'season_total', 'full');
+select auction_private.deal_board((select v from tests.fx where k = 'match'), .25, 'season_total', 'full');
 update public.matches set status = 'playing' where id = (select v from tests.fx where k = 'match');
 select private.finish_match(
   (select v from tests.fx where k = 'match'),

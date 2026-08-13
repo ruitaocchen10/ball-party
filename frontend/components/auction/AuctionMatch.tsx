@@ -184,7 +184,7 @@ export function AuctionMatch({
   const refetch = useCallback(async () => {
     const supabase = getClient();
     const [state, lotRows, seatRows, bidRows, standingRows] = await Promise.all([
-      supabase.rpc("auction_state", { p_match_id: matchId }),
+      supabase.schema("auction").rpc("state", { p_match_id: matchId }),
       supabase.from("auction_lots").select("*").eq("match_id", matchId).order("seq"),
       supabase
         .from("auction_players")
@@ -359,6 +359,7 @@ export function AuctionMatch({
     attempted.current = now;
 
     void getClient()
+      .schema("auction")
       .rpc("expire_turn", { p_match_id: matchId })
       .then(({ data }) => data && applyTurn(data));
   }, [
@@ -500,8 +501,8 @@ export function AuctionMatch({
             pending={pending}
             error={error}
             slot={slotFor(lot)}
-            onRaise={(amount) => act(getClient().rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
-            onPass={() => act(getClient().rpc("pass_lot", { p_match_id: matchId }))}
+            onRaise={(amount) => act(getClient().schema("auction").rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
+            onPass={() => act(getClient().schema("auction").rpc("pass_lot", { p_match_id: matchId }))}
           />
         ) : <p className="min-h-17 text-sm text-fg-muted">You&apos;re watching this one.</p>}
       </section>

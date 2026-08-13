@@ -140,6 +140,11 @@ export function supabaseMock() {
   const client = {
     rpc,
     from,
+    // The auction's write API lives in its own Postgres schema (0029), so the
+    // component chains `.schema("auction")` before `.rpc`. Handing back the
+    // same client keeps `rpc` a single spy for suites that override it, and
+    // leaves the schema name assertable through the mock's calls.
+    schema: vi.fn(() => client),
     channel: () => client,
     on: () => client,
     // The component passes a status callback; SUBSCRIBED triggers its refetch.

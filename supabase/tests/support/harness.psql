@@ -141,7 +141,7 @@ language plpgsql as $$
 begin
   match_id := tests.mkmatch(p_n);
   perform tests.act_as_admin();
-  perform private.deal_auction_board(match_id, p_seed);
+  perform auction_private.deal_board(match_id, p_seed);
 end $$;
 
 create function tests.deal(p_n int, p_seed double precision, p_roster_preset text, out match_id uuid)
@@ -150,7 +150,7 @@ language plpgsql as $$
 begin
   match_id := tests.mkmatch(p_n);
   perform tests.act_as_admin();
-  perform private.deal_auction_board(match_id, p_seed, 'weekly', p_roster_preset);
+  perform auction_private.deal_board(match_id, p_seed, 'weekly', p_roster_preset);
 end $$;
 
 create function tests.deal(p_n int, p_seed double precision, p_scoring_mode text, p_roster_preset text, out match_id uuid)
@@ -159,7 +159,7 @@ language plpgsql as $$
 begin
   match_id := tests.mkmatch(p_n);
   perform tests.act_as_admin();
-  perform private.deal_auction_board(match_id, p_seed, p_scoring_mode, p_roster_preset);
+  perform auction_private.deal_board(match_id, p_seed, p_scoring_mode, p_roster_preset);
 end $$;
 
 -- A dealt board with its first lot opened, ready to be bid on.
@@ -170,10 +170,10 @@ begin
   match_id := tests.deal(p_n, p_seed);
   perform tests.act_as_admin();
   update public.matches set status = 'playing', started_at = now() where id = match_id;
-  perform private.auction_advance(match_id);
+  perform auction_private.advance(match_id);
   update public.auction_matches am set phase_deadline = now() - interval '1 second'
    where am.match_id = deal_and_open.match_id;
-  perform private.auction_expire(match_id);
+  perform auction_private.expire(match_id);
 end $$;
 
 create function tests.deal_and_open(p_n int, p_seed double precision, p_roster_preset text, out match_id uuid)
@@ -183,9 +183,9 @@ begin
   match_id := tests.deal(p_n, p_seed, p_roster_preset);
   perform tests.act_as_admin();
   update public.matches set status = 'playing', started_at = now() where id = match_id;
-  perform private.auction_advance(match_id);
+  perform auction_private.advance(match_id);
   update public.auction_matches am set phase_deadline = now() - interval '1 second' where am.match_id = deal_and_open.match_id;
-  perform private.auction_expire(match_id);
+  perform auction_private.expire(match_id);
 end $$;
 
 -- The seat a given player was dealt. Seats are randomised at run start by
@@ -258,7 +258,7 @@ begin
           raise exception 'play_out did not terminate after % moves', v_moves;
         end if;
         update public.auction_matches set phase_deadline = now() - interval '1 second' where match_id = p_match_id;
-        perform private.auction_expire(p_match_id);
+        perform auction_private.expire(p_match_id);
         continue;
       end if;
       exit;
@@ -288,9 +288,9 @@ begin
 
     perform tests.act_as(v_actor);
     if v_raise then
-      perform public.place_bid(p_match_id, v_price + 1);
+      perform auction.place_bid(p_match_id, v_price + 1);
     else
-      perform public.pass_lot(p_match_id);
+      perform auction.pass_lot(p_match_id);
     end if;
   end loop;
 

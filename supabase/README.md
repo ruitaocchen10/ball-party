@@ -4,7 +4,45 @@ Schema, the server-authoritative write API, and its tests. Every game rule that
 matters lives here rather than in the client — see
 [`docs/architecture/architecture.md`](../docs/architecture/architecture.md).
 
+## Schemas
+
+A game gets a pair of schemas rather than a naming convention, so that `public`
+does not become a drawer of `place_bid`, `submit_clue`, `pick_card`. Postgres
+schemas are the module boundary the architecture doc describes, and the rule
+that a game may not reach into the platform is a `grant` rather than something
+a reviewer has to notice.
+
+```
+public           platform + contract. Lobbies, runs, matches, post-game.
+                 Also the client-readable game tables, since RLS and the
+                 Realtime publication are what make them readable.
+private          cross-cutting internals, the content module (player_weeks,
+                 player_seasons, player_headshots), and — for now — the
+                 auction's hidden state (auction_answers, auction_boards).
+auction          one game's write API. Exposed through PostgREST.
+auction_private  that game's rules engine. Not exposed, and no usage granted
+                 to anon or authenticated, so it is unreachable rather than
+                 merely unrouted.
+```
+
+0029 moved functions only. The auction's tables are still split across `public`
+and `private`, which is why `auction_private.resolve` writes to
+`private.auction_answers`. Moving them touches the Realtime publication and the
+policies the 0010 leak test asserts on, so it is worth doing on its own.
+
+Adding a game means adding its two schemas and listing the public one in
+`[api] schemas` in `config.toml` — **and in the hosted project's exposed-schema
+setting, which is dashboard state that no migration can carry.** A client
+reaches it with `supabase.schema("auction").rpc(...)`.
+
+Note that `supabase db reset` does not re-read `config.toml`. Exposing a new
+schema locally takes `supabase stop && supabase start`, and until then every
+call to it returns PGRST106.
+
 ## Migrations
+
+The list below stops at 0011 and has not been kept up; `ls migrations/` is the
+authority.
 
 ```
 0001  profiles                 accounts, and the auth trigger behind them

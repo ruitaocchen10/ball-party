@@ -7,6 +7,86 @@ export type Json =
   | Json[]
 
 export type Database = {
+  auction: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      expire_turn: {
+        Args: { p_match_id: string }
+        Returns: Database["auction"]["CompositeTypes"]["turn"]
+        SetofOptions: {
+          from: "*"
+          to: "turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      pass_lot: {
+        Args: { p_match_id: string }
+        Returns: Database["auction"]["CompositeTypes"]["turn"]
+        SetofOptions: {
+          from: "*"
+          to: "turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      place_bid: {
+        Args: { p_amount: number; p_match_id: string }
+        Returns: Database["auction"]["CompositeTypes"]["turn"]
+        SetofOptions: {
+          from: "*"
+          to: "turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      start: {
+        Args: {
+          p_match_id: string
+          p_roster_preset: string
+          p_scoring_mode: string
+        }
+        Returns: Database["auction"]["CompositeTypes"]["turn"]
+        SetofOptions: {
+          from: "*"
+          to: "turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      state: {
+        Args: { p_match_id: string }
+        Returns: Database["auction"]["CompositeTypes"]["turn"]
+        SetofOptions: {
+          from: "*"
+          to: "turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      turn: {
+        match_id: string | null
+        lot_count: number | null
+        current_lot: number | null
+        turn_seat: number | null
+        opener_seat: number | null
+        turn_deadline: string | null
+        server_now: string | null
+        phase: string | null
+        phase_deadline: string | null
+      }
+    }
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -217,42 +297,6 @@ export type Database = {
             foreignKeyName: "auction_matches_match_id_fkey"
             columns: ["match_id"]
             isOneToOne: true
-            referencedRelation: "matches"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      post_game_actions: {
-        Row: {
-          choice: Database["public"]["Enums"]["post_game_choice"]
-          chosen_at: string
-          match_id: string
-          next_match_id: string | null
-        }
-        Insert: {
-          choice: Database["public"]["Enums"]["post_game_choice"]
-          chosen_at?: string
-          match_id: string
-          next_match_id?: string | null
-        }
-        Update: {
-          choice?: Database["public"]["Enums"]["post_game_choice"]
-          chosen_at?: string
-          match_id?: string
-          next_match_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "post_game_actions_match_id_fkey"
-            columns: ["match_id"]
-            isOneToOne: true
-            referencedRelation: "matches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "post_game_actions_next_match_id_fkey"
-            columns: ["next_match_id"]
-            isOneToOne: false
             referencedRelation: "matches"
             referencedColumns: ["id"]
           },
@@ -487,6 +531,42 @@ export type Database = {
           },
         ]
       }
+      post_game_actions: {
+        Row: {
+          choice: Database["public"]["Enums"]["post_game_choice"]
+          chosen_at: string
+          match_id: string
+          next_match_id: string | null
+        }
+        Insert: {
+          choice: Database["public"]["Enums"]["post_game_choice"]
+          chosen_at?: string
+          match_id: string
+          next_match_id?: string | null
+        }
+        Update: {
+          choice?: Database["public"]["Enums"]["post_game_choice"]
+          chosen_at?: string
+          match_id?: string
+          next_match_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_game_actions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_game_actions_next_match_id_fkey"
+            columns: ["next_match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -593,17 +673,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      auction_state: {
-        Args: { p_match_id: string }
-        Returns: Database["public"]["CompositeTypes"]["auction_turn"]
-        SetofOptions: {
-          from: "*"
-          to: "auction_turn"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      claim_guest_identity: { Args: never; Returns: string }
       choose_post_game: {
         Args: {
           p_choice: Database["public"]["Enums"]["post_game_choice"]
@@ -622,8 +691,9 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
+      claim_guest_identity: { Args: never; Returns: string }
       claim_lobby_host: { Args: { p_lobby_id: string }; Returns: undefined }
+      close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       create_lobby: {
         Args: never
         Returns: {
@@ -636,16 +706,6 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "lobbies"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      expire_turn: {
-        Args: { p_match_id: string }
-        Returns: Database["public"]["CompositeTypes"]["auction_turn"]
-        SetofOptions: {
-          from: "*"
-          to: "auction_turn"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -667,45 +727,11 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      lobby_host_is_active: { Args: { p_lobby_id: string }; Returns: boolean }
       leave_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
-      pass_lot: {
-        Args: { p_match_id: string }
-        Returns: Database["public"]["CompositeTypes"]["auction_turn"]
-        SetofOptions: {
-          from: "*"
-          to: "auction_turn"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      place_bid: {
-        Args: { p_amount: number; p_match_id: string }
-        Returns: Database["public"]["CompositeTypes"]["auction_turn"]
-        SetofOptions: {
-          from: "*"
-          to: "auction_turn"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      lobby_host_is_active: { Args: { p_lobby_id: string }; Returns: boolean }
       record_guest_account_collision: {
         Args: { p_nonce: string }
         Returns: undefined
-      }
-      start_auction: {
-        Args: {
-          p_match_id: string
-          p_roster_preset: string
-          p_scoring_mode: string
-        }
-        Returns: Database["public"]["CompositeTypes"]["auction_turn"]
-        SetofOptions: {
-          from: "*"
-          to: "auction_turn"
-          isOneToOne: true
-          isSetofReturn: false
-        }
       }
       start_run: {
         Args: {
@@ -737,17 +763,7 @@ export type Database = {
       run_status: "active" | "finished" | "abandoned"
     }
     CompositeTypes: {
-      auction_turn: {
-        match_id: string | null
-        lot_count: number | null
-        current_lot: number | null
-        turn_seat: number | null
-        opener_seat: number | null
-        turn_deadline: string | null
-        server_now: string | null
-        phase: string | null
-        phase_deadline: string | null
-      }
+      [_ in never]: never
     }
   }
 }
@@ -870,14 +886,19 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  auction: {
+    Enums: {},
+  },
   graphql_public: {
     Enums: {},
   },
   public: {
     Enums: {
       match_status: ["setup", "playing", "complete", "abandoned"],
+      post_game_choice: ["replay", "lobby"],
       run_mode: ["arcade", "party"],
       run_status: ["active", "finished", "abandoned"],
     },
   },
 } as const
+

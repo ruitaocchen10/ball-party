@@ -102,7 +102,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   }
 
   const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult, formatResult] = await Promise.all([
-    supabase.rpc("auction_state", { p_match_id: id }),
+    supabase.schema("auction").rpc("state", { p_match_id: id }),
     supabase.from("auction_lots").select("*").eq("match_id", id).order("seq"),
     supabase
       .from("auction_players")

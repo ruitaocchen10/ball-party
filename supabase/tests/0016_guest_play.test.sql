@@ -65,7 +65,7 @@ select 'match', (public.start_run((select v from tests.fx where k = 'lobby'), 'a
 
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select lives_ok(
-  format($$ select public.start_auction(%L, 'weekly', 'deep') $$, (select v from tests.fx where k = 'match')),
+  format($$ select auction.start(%L, 'weekly', 'deep') $$, (select v from tests.fx where k = 'match')),
   'a guest can set up the deep-preset match they were snapshotted into'
 );
 
@@ -83,7 +83,7 @@ update public.auction_matches set phase = 'bidding', phase_deadline = null,
  where match_id = (select v from tests.fx where k = 'match');
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select lives_ok(
-  format($$ select public.place_bid(%L, 1) $$, (select v from tests.fx where k = 'match')),
+  format($$ select auction.place_bid(%L, 1) $$, (select v from tests.fx where k = 'match')),
   'a guest can bid'
 );
 
@@ -93,7 +93,7 @@ update public.auction_matches set turn_seat = tests.seat_of((select v from tests
  where match_id = (select v from tests.fx where k = 'match');
 select tests.act_as((select v from tests.fx where k = 'host'));
 select lives_ok(
-  format($$ select public.pass_lot(%L) $$, (select v from tests.fx where k = 'match')),
+  format($$ select auction.pass_lot(%L) $$, (select v from tests.fx where k = 'match')),
   'a co-player can resolve a lot the guest bid on'
 );
 select tests.act_as_admin();
@@ -109,7 +109,7 @@ update public.auction_matches set current_lot = 2, phase = 'bidding', phase_dead
  where match_id = (select v from tests.fx where k = 'match');
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select lives_ok(
-  format($$ select public.pass_lot(%L) $$, (select v from tests.fx where k = 'match')),
+  format($$ select auction.pass_lot(%L) $$, (select v from tests.fx where k = 'match')),
   'a guest can pass'
 );
 

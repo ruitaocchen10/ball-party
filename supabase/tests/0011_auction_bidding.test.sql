@@ -84,12 +84,12 @@ select tests.act_as((
    limit 1
 ));
 select throws_ok(
-  format($$ select public.place_bid(%L, 1) $$, (select v from tests.fx where k = 'm')),
+  format($$ select auction.place_bid(%L, 1) $$, (select v from tests.fx where k = 'm')),
   'P0001', 'not_your_turn',
   'a player who is not on the clock cannot bid'
 );
 select throws_ok(
-  format($$ select public.pass_lot(%L) $$, (select v from tests.fx where k = 'm')),
+  format($$ select auction.pass_lot(%L) $$, (select v from tests.fx where k = 'm')),
   'P0001', 'not_your_turn',
   'nor pass'
 );
@@ -97,12 +97,12 @@ select throws_ok(
 -- Exact whole-dollar amounts are accepted rather than clamped.
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'm')));
 select lives_ok(
-  format($$ select public.place_bid(%L, 3) $$, (select v from tests.fx where k = 'm')),
+  format($$ select auction.place_bid(%L, 3) $$, (select v from tests.fx where k = 'm')),
   'an exact whole-dollar bid is accepted'
 );
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'm')));
 select throws_ok(
-  format($$ select public.place_bid(%L, 0) $$, (select v from tests.fx where k = 'm')),
+  format($$ select auction.place_bid(%L, 0) $$, (select v from tests.fx where k = 'm')),
   'P0001', 'bid_not_increasing',
   'and a non-increasing amount is refused'
 );
@@ -113,14 +113,14 @@ insert into tests.fx (k, v) select 'passer', tests.on_clock((select v from tests
 
 select tests.act_as((select v from tests.fx where k = 'passer'));
 select lives_ok(
-  format($$ select public.pass_lot(%L) $$, (select v from tests.fx where k = 'm')),
+  format($$ select auction.pass_lot(%L) $$, (select v from tests.fx where k = 'm')),
   'the player on the clock can pass'
 );
 
 -- They are no longer on the clock, so the honest refusal is not_your_turn. The
 -- already_passed guard is asserted below, where the turn can come back around.
 select throws_ok(
-  format($$ select public.pass_lot(%L) $$, (select v from tests.fx where k = 'm')),
+  format($$ select auction.pass_lot(%L) $$, (select v from tests.fx where k = 'm')),
   'P0001', 'not_your_turn',
   'and cannot pass again straight away'
 );
@@ -149,7 +149,7 @@ insert into tests.fx (k, v) select 'opener', tests.on_clock((select v from tests
 
 select tests.act_as((select v from tests.fx where k = 'opener'));
 select lives_ok(
-  format($$ select public.place_bid(%L, 10) $$, (select v from tests.fx where k = 'mb')),
+  format($$ select auction.place_bid(%L, 10) $$, (select v from tests.fx where k = 'mb')),
   'the opener can raise'
 );
 
@@ -176,12 +176,12 @@ update public.auction_players set budget = 12
 
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mb')));
 select throws_ok(
-  format($$ select public.place_bid(%L, 13) $$, (select v from tests.fx where k = 'mb')),
+  format($$ select auction.place_bid(%L, 13) $$, (select v from tests.fx where k = 'mb')),
   'P0001', 'insufficient_budget',
   'a raise past the budget is refused'
 );
 select lives_ok(
-  format($$ select public.place_bid(%L, 12) $$, (select v from tests.fx where k = 'mb')),
+  format($$ select auction.place_bid(%L, 12) $$, (select v from tests.fx where k = 'mb')),
   'a raise to exactly the budget is allowed'
 );
 
@@ -191,7 +191,7 @@ select lives_ok(
 select tests.act_as_admin();
 insert into tests.fx (k, v) values ('mskip', tests.deal_and_open(3, 0.62));
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mskip')));
-select public.place_bid((select v from tests.fx where k = 'mskip'), 10);
+select auction.place_bid((select v from tests.fx where k = 'mskip'), 10);
 select tests.act_as_admin();
 insert into tests.num (k, v)
 select 'unaffordable_seat', ((turn_seat + 1) % 3)::int
@@ -201,7 +201,7 @@ update public.auction_players set budget = 12
    and seat = (select v::smallint from tests.num where k = 'unaffordable_seat');
 
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mskip')));
-select public.place_bid((select v from tests.fx where k = 'mskip'), 12);
+select auction.place_bid((select v from tests.fx where k = 'mskip'), 12);
 select tests.act_as_admin();
 
 select isnt(
@@ -244,7 +244,7 @@ select ok(
 );
 
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mr')));
-select public.pass_lot((select v from tests.fx where k = 'mr'));
+select auction.pass_lot((select v from tests.fx where k = 'mr'));
 select tests.act_as_admin();
 
 select is(
@@ -319,7 +319,7 @@ insert into tests.num (k, v) select 'seat_before', turn_seat
 -- never what is true.
 select tests.act_as((select v from tests.fx where k = 'watcher'));
 select lives_ok(
-  format($$ select public.expire_turn(%L) $$, (select v from tests.fx where k = 'mt')),
+  format($$ select auction.expire_turn(%L) $$, (select v from tests.fx where k = 'mt')),
   'any participant may call expire_turn, not only the player on the clock'
 );
 
@@ -341,7 +341,7 @@ update public.auction_matches set turn_deadline = now() - interval '1 second'
  where match_id = (select v from tests.fx where k = 'mt');
 
 select tests.act_as((select v from tests.fx where k = 'watcher'));
-select public.expire_turn((select v from tests.fx where k = 'mt'));
+select auction.expire_turn((select v from tests.fx where k = 'mt'));
 select tests.act_as_admin();
 
 select is(
@@ -365,8 +365,8 @@ insert into tests.num (k, v) select 'seat_after', turn_seat
   from public.auction_matches where match_id = (select v from tests.fx where k = 'mt');
 
 select tests.act_as((select v from tests.fx where k = 'watcher'));
-select public.expire_turn((select v from tests.fx where k = 'mt'));
-select public.expire_turn((select v from tests.fx where k = 'mt'));
+select auction.expire_turn((select v from tests.fx where k = 'mt'));
+select auction.expire_turn((select v from tests.fx where k = 'mt'));
 select tests.act_as_admin();
 
 select is(
@@ -389,13 +389,13 @@ insert into tests.fx (k, v) values ('mz', tests.deal_and_open(3, 0.55));
 select tests.act_as_admin();
 
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'ma')));
-select public.pass_lot((select v from tests.fx where k = 'ma'));
+select auction.pass_lot((select v from tests.fx where k = 'ma'));
 
 select tests.act_as_admin();
 update public.auction_matches set turn_deadline = now() - interval '1 second'
  where match_id = (select v from tests.fx where k = 'mz');
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mz')));
-select public.expire_turn((select v from tests.fx where k = 'mz'));
+select auction.expire_turn((select v from tests.fx where k = 'mz'));
 select tests.act_as_admin();
 
 select is(
@@ -443,7 +443,7 @@ update public.auction_lots
 
 select tests.act_as((select v from tests.fx where k = 'filled'));
 select throws_ok(
-  format($$ select public.place_bid(%L, 1) $$, (select v from tests.fx where k = 'me')),
+  format($$ select auction.place_bid(%L, 1) $$, (select v from tests.fx where k = 'me')),
   'P0001', 'not_eligible',
   'a player whose natural slot is filled cannot bid on a base lot at that position'
 );
@@ -453,7 +453,7 @@ select throws_ok(
 -- missing it.
 select tests.act_as_admin();
 select ok(
-  (select bool_and(private.auction_eligible(
+  (select bool_and(auction_private.eligible(
        (select v from tests.fx where k = 'me'), ap.user_id, l.seq))
      from public.auction_players ap
      cross join public.auction_lots l
@@ -471,7 +471,7 @@ update public.auction_lots
                where match_id = (select v from tests.fx where k = 'me'));
 
 select ok(
-  not private.auction_eligible(
+  not auction_private.eligible(
     (select v from tests.fx where k = 'me'),
     (select v from tests.fx where k = 'filled'),
     (select min(seq)::smallint from public.auction_lots
