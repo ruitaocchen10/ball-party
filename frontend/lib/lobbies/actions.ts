@@ -39,8 +39,11 @@ function validAuctionFormat(scoringMode: string, rosterPreset: string): boolean 
  * apart. An absent range is a legitimate submission, not a malformed one.
  */
 function auctionSeasonRange(formData: FormData): { from: number; to: number } | null {
-  const from = Number(formData.get("season_from"));
-  const to = Number(formData.get("season_to"));
+  const fromValue = formData.get("season_from");
+  const toValue = formData.get("season_to");
+  if (fromValue === null || toValue === null) return null;
+  const from = Number(fromValue);
+  const to = Number(toValue);
   if (!Number.isInteger(from) || !Number.isInteger(to)) return null;
   return { from, to };
 }
@@ -117,10 +120,20 @@ export async function postGameChoice(formData: FormData) {
     redirect("/");
   }
 
+  const scoringMode = String(formData.get("scoring_mode") ?? "");
+  const rosterPreset = String(formData.get("roster_preset") ?? "");
+  if (choice === "replay" && (scoringMode || rosterPreset) && !validAuctionFormat(scoringMode, rosterPreset)) {
+    redirect(`/match/${matchId}?error=${encodeURIComponent("Choose a valid auction format.")}`);
+  }
+  const seasons = auctionSeasonRange(formData);
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("choose_post_game", {
     p_match_id: matchId,
     p_choice: choice,
+    ...(choice === "replay" && scoringMode ? { p_scoring_mode: scoringMode } : {}),
+    ...(choice === "replay" && rosterPreset ? { p_roster_preset: rosterPreset } : {}),
+    ...(choice === "replay" && seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
   });
   if (error) redirect(withError(`/lobby/${code}`, error));
 

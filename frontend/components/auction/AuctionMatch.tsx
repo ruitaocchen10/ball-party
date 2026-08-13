@@ -115,6 +115,7 @@ type Initial = {
   bids: Bid[];
   standings: Standing[];
   format: AuctionFormat | null;
+  era?: { seasonMin: number; seasonMax: number; minSpan: number } | null;
 };
 
 export function AuctionMatch({
@@ -409,6 +410,7 @@ export function AuctionMatch({
           matchId={matchId}
           isHost={isHost}
           format={format}
+          era={initial.era ?? null}
         />
       </Screen>
     );
@@ -1046,6 +1048,7 @@ function FinalScreen({
   matchId,
   isHost,
   format,
+  era,
 }: {
   lots: Lot[];
   players: Player[];
@@ -1055,6 +1058,7 @@ function FinalScreen({
   matchId: string;
   isHost: boolean;
   format: AuctionFormat | null;
+  era: { seasonMin: number; seasonMax: number; minSpan: number } | null;
 }) {
   const ranked = byPlacement(standings);
   const nameOf = (userId: string) =>
@@ -1106,7 +1110,7 @@ function FinalScreen({
 
       {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} /> : null}
       {roomCode ? (
-        <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} />
+        <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} format={format} era={era} />
       ) : null}
 
       {!roomCode ? (

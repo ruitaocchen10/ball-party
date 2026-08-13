@@ -98,7 +98,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     );
   }
 
-  const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult, formatResult] = await Promise.all([
+  const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult, formatResult, eraResult] = await Promise.all([
     supabase.schema("auction").rpc("state", { p_match_id: id }),
     supabase.from("auction_lots").select("*").eq("match_id", id).order("seq"),
     supabase
@@ -113,6 +113,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       .select("scoring_mode, roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse, season_from, season_to")
       .eq("match_id", id)
       .maybeSingle(),
+    isHost ? supabase.schema("auction").rpc("season_bounds") : Promise.resolve({ data: null }),
   ]);
 
   const state = turnResult.data;
@@ -159,6 +160,9 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         bids: bidsResult.data ?? [],
         standings: standingsResult.data ?? [],
         format,
+        era: eraResult.data?.season_min != null && eraResult.data.season_max != null && eraResult.data.min_span != null
+          ? { seasonMin: eraResult.data.season_min, seasonMax: eraResult.data.season_max, minSpan: eraResult.data.min_span }
+          : null,
         }}
     />
   );

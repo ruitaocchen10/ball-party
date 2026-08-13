@@ -700,6 +700,10 @@ export type Database = {
         Args: {
           p_choice: Database["public"]["Enums"]["post_game_choice"]
           p_match_id: string
+          p_roster_preset?: string
+          p_scoring_mode?: string
+          p_season_from?: number
+          p_season_to?: number
         }
         Returns: {
           choice: Database["public"]["Enums"]["post_game_choice"]
@@ -924,4 +928,3 @@ export const Constants = {
     },
   },
 } as const
-

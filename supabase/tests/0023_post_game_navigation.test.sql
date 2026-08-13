@@ -1,7 +1,7 @@
 -- The post-game choice is a host-authorized room transition. These assertions
 -- observe its durable result, rather than its private dealer calls.
 begin;
-select plan(10);
+select plan(11);
 
 \ir support/harness.psql
 
@@ -37,7 +37,10 @@ select throws_ok(
 
 select tests.act_as((select v from tests.fx where k = 'host'));
 insert into tests.fx (k, v)
-select 'replay', next_match_id from public.choose_post_game((select v from tests.fx where k = 'match'), 'replay'::public.post_game_choice);
+select 'replay', next_match_id from public.choose_post_game(
+  (select v from tests.fx where k = 'match'), 'replay'::public.post_game_choice,
+  'weekly', 'deep', 2020::smallint, 2025::smallint
+);
 
 select is(
   (select choice::text from public.post_game_actions where match_id = (select v from tests.fx where k = 'match')),
@@ -59,11 +62,15 @@ select set_eq(
 );
 select is(
   (select scoring_mode from public.auction_matches where match_id = (select v from tests.fx where k = 'replay')),
-  'season_total', 'replay keeps the scoring mode'
+  'weekly', 'replay uses the host’s selected scoring mode'
 );
 select is(
   (select roster_preset from public.auction_matches where match_id = (select v from tests.fx where k = 'replay')),
-  'full', 'replay keeps the roster preset'
+  'deep', 'replay uses the host’s selected roster preset'
+);
+select is(
+  (select row(season_from, season_to)::text from public.auction_matches where match_id = (select v from tests.fx where k = 'replay')),
+  '(2020,2025)', 'replay uses the host’s selected season range'
 );
 
 select tests.act_as((select v from tests.fx where k = 'player'));
