@@ -14,3 +14,10 @@ export function canCreateLobby(
 ): boolean {
   return isSignedInViewer(claims) && !isGuestViewer(claims);
 }
+
+/** Profiles are a durable account feature; guest identities only last for a game. */
+export function canViewProfile(
+  claims: { sub?: string; is_anonymous?: boolean } | null | undefined,
+): boolean {
+  return isSignedInViewer(claims) && !isGuestViewer(claims);
+}

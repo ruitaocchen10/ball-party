@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canCreateLobby, isSignedInViewer } from "./viewer";
+import { canCreateLobby, canViewProfile, isSignedInViewer } from "./viewer";
 
 describe("isSignedInViewer", () => {
   it("accepts both anonymous and credentialed claims", () => {
@@ -16,5 +16,10 @@ describe("isSignedInViewer", () => {
     expect(canCreateLobby(undefined)).toBe(false);
     expect(canCreateLobby({ sub: "guest", is_anonymous: true })).toBe(false);
     expect(canCreateLobby({ sub: "member", is_anonymous: false })).toBe(true);
+  });
+
+  it("keeps a returning guest out of the durable profile", () => {
+    expect(canViewProfile({ sub: "guest", is_anonymous: true })).toBe(false);
+    expect(canViewProfile({ sub: "member", is_anonymous: false })).toBe(true);
   });
 });

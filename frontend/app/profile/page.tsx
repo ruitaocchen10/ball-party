@@ -3,7 +3,8 @@ import Link from "next/link";
 import { ProfileEditor } from "@/components/profile/ProfileEditor";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { TopBar } from "@/components/layout/TopBar";
-import { isSignedInViewer } from "@/lib/auth/viewer";
+import { canViewProfile, isSignedInViewer } from "@/lib/auth/viewer";
+import { GuestUpgrade } from "@/components/auth/GuestUpgrade";
 import { matchGameName, type MatchGame } from "@/lib/games/catalog";
 import { summarizeProfile, type CompletedMatch } from "@/lib/profile/summary";
 import { createClient } from "@/lib/supabase/server";
@@ -21,6 +22,7 @@ export default async function ProfilePage() {
   const claims = data?.claims;
 
   if (!isSignedInViewer(claims)) return <SignedOutProfile />;
+  if (!canViewProfile(claims)) return <GuestProfile />;
 
   const [{ data: profile }, { data: playerRows }] = await Promise.all([
     supabase
@@ -116,6 +118,22 @@ export default async function ProfilePage() {
             </Link>
           </aside>
         </div>
+      </main>
+    </>
+  );
+}
+
+function GuestProfile() {
+  return (
+    <>
+      <TopBar />
+      <main className="mx-auto flex w-full max-w-7xl flex-1 px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+        <section className="max-w-xl">
+          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Guest game</p>
+          <h1 className="mt-3 font-slab text-[36px] leading-[.96] -skew-x-7 uppercase sm:text-[46px]">Make your record yours</h1>
+          <p className="mt-4 text-[15px] leading-6 text-fg-muted">Guest names are just for the current game. Create an account to save a profile and keep your results.</p>
+          <div className="mt-6"><GuestUpgrade /></div>
+        </section>
       </main>
     </>
   );

@@ -123,6 +123,7 @@ export function AuctionMatch({
   displayName,
   roomCode,
   isHost = false,
+  isGuest = false,
   initial,
 }: {
   matchId: string;
@@ -130,6 +131,7 @@ export function AuctionMatch({
   displayName: string | null;
   roomCode: string | null;
   isHost?: boolean;
+  isGuest?: boolean;
   initial: Initial;
 }) {
   // Built on first use rather than during render. createClient() reaches for
@@ -407,6 +409,7 @@ export function AuctionMatch({
           roomCode={roomCode}
           matchId={matchId}
           isHost={isHost}
+          isGuest={isGuest}
           format={format}
         />
       </Screen>
@@ -987,6 +990,7 @@ function FinalScreen({
   roomCode,
   matchId,
   isHost,
+  isGuest,
   format,
 }: {
   lots: Lot[];
@@ -996,6 +1000,7 @@ function FinalScreen({
   roomCode: string | null;
   matchId: string;
   isHost: boolean;
+  isGuest: boolean;
   format: AuctionFormat | null;
 }) {
   const ranked = byPlacement(standings);
@@ -1046,7 +1051,7 @@ function FinalScreen({
         ))}
       </ul>
 
-      {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} /> : null}
+      {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} isGuest={isGuest} /> : null}
       {roomCode ? (
         <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} />
       ) : null}

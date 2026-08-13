@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { isSignedInViewer } from "@/lib/auth/viewer";
+import { canViewProfile } from "@/lib/auth/viewer";
 import { createClient } from "@/lib/supabase/server";
 import { validateProfileUpdate } from "@/lib/profile/validation";
 
@@ -20,12 +20,13 @@ export async function updateProfile(
 
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
-  if (!isSignedInViewer(data?.claims)) return { error: "Sign in to edit your profile.", saved: false };
+  const userId = data?.claims?.sub;
+  if (!userId || !canViewProfile(data?.claims)) return { error: "Create an account to save a profile.", saved: false };
 
   const { error } = await supabase
     .from("profiles")
     .update({ display_name: update.displayName, avatar_url: update.avatarUrl })
-    .eq("id", data.claims.sub);
+    .eq("id", userId);
   if (error) return { error: "We couldn’t save your profile. Please try again.", saved: false };
 
   revalidatePath("/profile");

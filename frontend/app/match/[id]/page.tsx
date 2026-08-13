@@ -6,7 +6,8 @@ import { MatchSetup } from "@/components/auction/MatchSetup";
 import { TopBar } from "@/components/layout/TopBar";
 import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
 import { createClient } from "@/lib/supabase/server";
-import { isSignedInViewer } from "@/lib/auth/viewer";
+import { isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
+import { guestSessionFinishedHref } from "@/lib/auth/guest-lifecycle";
 
 /**
  * The match screen.
@@ -73,9 +74,12 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       .maybeSingle()
     : { data: null };
   if (postGameAction) {
-    redirect(postGameAction.choice === "replay" && postGameAction.next_match_id
+    const destination = postGameAction.choice === "replay" && postGameAction.next_match_id
       ? `/match/${postGameAction.next_match_id}`
-      : code ? `/lobby/${code}` : "/");
+      : code ? `/lobby/${code}` : "/";
+    redirect(postGameAction.choice === "replay" && postGameAction.next_match_id
+      ? destination
+      : isGuestViewer(claims) ? guestSessionFinishedHref(destination) : destination);
   }
 
   // The seam start_run leaves open: the run exists and the game has not dealt
@@ -142,12 +146,13 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
   return (
     <AuctionMatch
-      matchId={id}
-      viewerId={claims.sub}
-      displayName={displayName}
-      roomCode={code}
-      isHost={isHost}
-      initial={{
+        matchId={id}
+        viewerId={claims.sub}
+        displayName={displayName}
+        roomCode={code}
+        isHost={isHost}
+        isGuest={isGuestViewer(claims)}
+        initial={{
         turn,
         // The server's clock, so the client can offset its own rather than
         // trust it. A deadline is only a rule if both ends agree what time it
@@ -158,7 +163,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         bids: bidsResult.data ?? [],
         standings: standingsResult.data ?? [],
         format,
-      }}
+        }}
     />
   );
 }

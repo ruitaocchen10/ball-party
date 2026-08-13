@@ -4,9 +4,18 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { createRealtimeClient } from "@/lib/supabase/client";
+import { guestSessionFinishedHref, shouldResetGuestSession } from "@/lib/auth/guest-lifecycle";
 
 /** Follows the host's durable post-game choice in every player’s open tab. */
-export function PostGameNavigation({ matchId, roomCode }: { matchId: string; roomCode: string }) {
+export function PostGameNavigation({
+  matchId,
+  roomCode,
+  isGuest = false,
+}: {
+  matchId: string;
+  roomCode: string;
+  isGuest?: boolean;
+}) {
   const router = useRouter();
 
   useEffect(() => {
@@ -21,11 +30,14 @@ export function PostGameNavigation({ matchId, roomCode }: { matchId: string; roo
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "post_game_actions", filter: `match_id=eq.${matchId}` },
-          (payload) => {
+          async (payload) => {
             const action = payload.new as { choice: "replay" | "lobby"; next_match_id: string | null };
-            router.replace(action.choice === "replay" && action.next_match_id
+            const destination = action.choice === "replay" && action.next_match_id
               ? `/match/${action.next_match_id}`
-              : `/lobby/${roomCode}`);
+              : `/lobby/${roomCode}`;
+            router.replace(shouldResetGuestSession({ isGuest, postGameChoice: action.choice })
+              ? guestSessionFinishedHref(destination)
+              : destination);
           },
         )
         .subscribe();
@@ -36,7 +48,7 @@ export function PostGameNavigation({ matchId, roomCode }: { matchId: string; roo
       cancelled = true;
       cleanup?.();
     };
-  }, [matchId, roomCode, router]);
+  }, [isGuest, matchId, roomCode, router]);
 
   return null;
 }
