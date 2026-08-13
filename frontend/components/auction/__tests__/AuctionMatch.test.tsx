@@ -592,6 +592,12 @@ describe("the shape of the screen", () => {
     expect(within(controls).getByRole("button", { name: "Pass" })).toBeInTheDocument();
   });
 
+  it("gives Pass the same full-size control affordance as a bid action", () => {
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }) });
+
+    expect(screen.getByRole("button", { name: "Pass" })).toHaveClass("min-h-12");
+  });
+
   it("runs the live match with no app chrome, so no mis-tap navigates out of a lot", () => {
     renderMatch({ turn: turn("bidding", { turnSeat: 0 }) });
 

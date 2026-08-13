@@ -956,9 +956,16 @@ function BidBar({
           Custom
         </Button>
         </div>
-        <div className="mt-3 flex min-h-5 items-start justify-between gap-3 text-xs leading-5">
-          <p role={error && !custom ? "alert" : undefined} className={error && !custom ? "text-hidden-text" : "text-fg-muted"}>{custom ? status : error ?? status}</p>
-          <button type="button" disabled={!actionable} onClick={onPass} className="shrink-0 text-fg-muted underline underline-offset-2 disabled:no-underline disabled:opacity-60">Pass</button>
+        <p role={error && !custom ? "alert" : undefined} className={`mt-3 min-h-5 text-xs leading-5 ${error && !custom ? "text-hidden-text" : "text-fg-muted"}`}>{custom ? status : error ?? status}</p>
+        {/* Passing is permanent for this lot, so it needs a deliberate,
+            thumb-sized target of its own. Ghost keeps Raise as the primary
+            action while the divider prevents a hurried bid from becoming a
+            pass. The button remains in place while disabled so the controls
+            never shift during a turn change. */}
+        <div className="mt-3 border-t border-line pt-3">
+          <Button type="button" variant="ghost" disabled={!actionable} onClick={onPass}>
+            Pass
+          </Button>
         </div>
       </section>
       {custom && (
