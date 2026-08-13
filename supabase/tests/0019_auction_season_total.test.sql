@@ -60,7 +60,7 @@ select ok(
 select ok(
   not has_function_privilege(
     'authenticated',
-    'auction_private.deal_board(uuid, double precision, text, text)',
+    'auction_private.deal_board(uuid, double precision, text, text, smallint, smallint)',
     'EXECUTE'
   ),
   'a participant cannot replay a season deal from its private seed boundary'

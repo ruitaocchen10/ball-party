@@ -33,8 +33,9 @@ select bag_eq(
   $$ select p.proname::text
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'auction' $$,
-  $$ values ('start'), ('state'), ('place_bid'), ('pass_lot'), ('expire_turn') $$,
-  'the exposed schema holds exactly the five functions a client may call'
+  $$ values ('start'), ('state'), ('place_bid'), ('pass_lot'), ('expire_turn'),
+            ('season_bounds') $$,
+  'the exposed schema holds exactly the six functions a client may call'
 );
 
 select ok(

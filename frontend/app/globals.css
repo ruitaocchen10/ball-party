@@ -105,6 +105,28 @@ body {
     .animate-points-reveal {
       animation: points-reveal 360ms ease-out both;
     }
+
+    /* The winning roster slot is the destination of the sale. It arrives from
+       the auction side of the screen, then settles in place; unlike a page-wide
+       flying duplicate, it works on narrow layouts and never obscures a bid. */
+    .animate-player-to-roster {
+      animation: player-to-roster 620ms cubic-bezier(.16, 1, .3, 1) both;
+    }
+
+    .animate-sold-headline {
+      animation: sold-headline 360ms ease-out both;
+    }
+  }
+
+  @keyframes player-to-roster {
+    0% { opacity: 0; transform: translateX(-2rem) scale(0.86); }
+    65% { opacity: 1; transform: translateX(0.2rem) scale(1.04); }
+    100% { opacity: 1; transform: translateX(0) scale(1); }
+  }
+
+  @keyframes sold-headline {
+    0% { opacity: 0; transform: translateY(0.5rem); }
+    100% { opacity: 1; transform: translateY(0); }
   }
 
   /* The diagonal weave that marks concealed information. Applied by

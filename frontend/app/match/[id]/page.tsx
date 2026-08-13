@@ -6,8 +6,7 @@ import { MatchSetup } from "@/components/auction/MatchSetup";
 import { TopBar } from "@/components/layout/TopBar";
 import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
 import { createClient } from "@/lib/supabase/server";
-import { isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
-import { guestSessionFinishedHref } from "@/lib/auth/guest-lifecycle";
+import { isSignedInViewer } from "@/lib/auth/viewer";
 
 /**
  * The match screen.
@@ -77,9 +76,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     const destination = postGameAction.choice === "replay" && postGameAction.next_match_id
       ? `/match/${postGameAction.next_match_id}`
       : code ? `/lobby/${code}` : "/";
-    redirect(postGameAction.choice === "replay" && postGameAction.next_match_id
-      ? destination
-      : isGuestViewer(claims) ? guestSessionFinishedHref(destination) : destination);
+    redirect(destination);
   }
 
   // The seam start_run leaves open: the run exists and the game has not dealt
@@ -113,7 +110,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     supabase.from("match_players").select("*").eq("match_id", id),
     supabase
       .from("auction_matches")
-      .select("scoring_mode, roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse")
+      .select("scoring_mode, roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse, season_from, season_to")
       .eq("match_id", id)
       .maybeSingle(),
   ]);
@@ -151,7 +148,6 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         displayName={displayName}
         roomCode={code}
         isHost={isHost}
-        isGuest={isGuestViewer(claims)}
         initial={{
         turn,
         // The server's clock, so the client can offset its own rather than
@@ -177,12 +173,15 @@ function auctionFormat(row: {
   te_slots: number | null;
   flex_slots: number | null;
   purse: number | null;
+  season_from: number | null;
+  season_to: number | null;
 } | null): AuctionFormat | null {
   if (
     !row ||
     row.scoring_mode === null || row.roster_preset === null || row.qb_slots === null ||
     row.rb_slots === null || row.wr_slots === null || row.te_slots === null ||
-    row.flex_slots === null || row.purse === null
+    row.flex_slots === null || row.purse === null ||
+    row.season_from === null || row.season_to === null
   ) return null;
   return {
     scoringMode: row.scoring_mode,
@@ -193,6 +192,8 @@ function auctionFormat(row: {
     teSlots: row.te_slots,
     flexSlots: row.flex_slots,
     purse: row.purse,
+    seasonFrom: row.season_from,
+    seasonTo: row.season_to,
   };
 }
 

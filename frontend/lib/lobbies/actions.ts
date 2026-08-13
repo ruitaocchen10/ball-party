@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { canCreateLobby, isSignedInViewer } from "@/lib/auth/viewer";
+import { canCreateLobby, isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
+import { guestSessionFinishedHref } from "@/lib/auth/guest-lifecycle";
 import { lobbyErrorMessage } from "@/lib/lobbies/messages";
 import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
 
@@ -26,6 +27,22 @@ function normalizeCode(value: FormDataEntryValue | null): string {
 function validAuctionFormat(scoringMode: string, rosterPreset: string): boolean {
   return (scoringMode === "weekly" || scoringMode === "season_total")
     && ["standard", "full", "deep"].includes(rosterPreset);
+}
+
+/**
+ * The era, as the form submitted it, or null for the whole pool.
+ *
+ * Deliberately shallow: this checks that two seasons were sent and that they
+ * are numbers, and nothing else. Which years exist, which way round they go and
+ * how many of them a board needs are the dealer's rules — `auction.start`
+ * refuses on all three, and re-deciding them here is how the two ends drift
+ * apart. An absent range is a legitimate submission, not a malformed one.
+ */
+function auctionSeasonRange(formData: FormData): { from: number; to: number } | null {
+  const from = Number(formData.get("season_from"));
+  const to = Number(formData.get("season_to"));
+  if (!Number.isInteger(from) || !Number.isInteger(to)) return null;
+  return { from, to };
 }
 
 /**
@@ -69,6 +86,7 @@ export async function startRun(formData: FormData) {
   if (!validAuctionFormat(scoringMode, rosterPreset)) {
     redirect(`/lobby/${code}?error=${encodeURIComponent("Choose a valid auction format.")}`);
   }
+  const seasons = auctionSeasonRange(formData);
   const supabase = await createClient();
 
   const { data: match, error } = await supabase.rpc("start_run", {
@@ -82,6 +100,7 @@ export async function startRun(formData: FormData) {
     p_match_id: match.id,
     p_scoring_mode: scoringMode,
     p_roster_preset: rosterPreset,
+    ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
   });
   if (dealError) redirect(withError(`/lobby/${code}`, dealError));
 
@@ -158,12 +177,14 @@ async function joinLobbyRpc(supabase: Awaited<ReturnType<typeof createClient>>, 
 export async function leaveLobby(formData: FormData) {
   const lobbyId = String(formData.get("lobby_id") ?? "");
   const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const isGuest = isGuestViewer(claimsData?.claims);
 
   const { error } = await supabase.rpc("leave_lobby", { p_lobby_id: lobbyId });
   if (error) redirect(withError("/", error));
 
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect(isGuest ? guestSessionFinishedHref("/") : "/");
 }
 
 export async function closeLobby(formData: FormData) {

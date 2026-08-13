@@ -1,4 +1,4 @@
-import { StartRun } from "@/components/lobby/StartRun";
+import { StartRun, type Era } from "@/components/lobby/StartRun";
 import { Card } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
 import { GAMES } from "@/lib/games/catalog";
@@ -26,6 +26,7 @@ export function LobbyLineup({
   isHost,
   inFlight,
   hostIsActive = true,
+  era = null,
 }: {
   lobbyId: string;
   code: string;
@@ -35,6 +36,10 @@ export function LobbyLineup({
   isHost: boolean;
   inFlight: boolean;
   hostIsActive?: boolean;
+  // Auction-specific, like the start control it is handed to. The catalogue
+  // card is the seam where the room stops being general and starts being one
+  // game; this rides along the same seam rather than opening a second one.
+  era?: Era | null;
 }) {
   const emptySeats = Math.max(0, CAPACITY - members.length);
 
@@ -90,7 +95,7 @@ export function LobbyLineup({
                   </div>
                   {isHost && !inFlight ? (
                     <div className="border-t border-[#c7bfac] bg-panel-shade p-2.5">
-                      <StartRun lobbyId={lobbyId} code={code} players={members.length} />
+                      <StartRun lobbyId={lobbyId} code={code} players={members.length} era={era} />
                     </div>
                   ) : null}
                 </Card>

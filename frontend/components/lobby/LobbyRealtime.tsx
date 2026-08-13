@@ -55,7 +55,13 @@ export function LobbyRealtime({ lobbyId }: { lobbyId: string }) {
             table: "lobbies",
             filter: `id=eq.${lobbyId}`,
           },
-          refresh,
+          (payload) => {
+            if ((payload.new as { closed_at: string | null }).closed_at) {
+              router.replace("/");
+              return;
+            }
+            refresh();
+          },
         )
         .on(
           "postgres_changes",

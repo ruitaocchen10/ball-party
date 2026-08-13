@@ -4,17 +4,14 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { createRealtimeClient } from "@/lib/supabase/client";
-import { guestSessionFinishedHref, shouldResetGuestSession } from "@/lib/auth/guest-lifecycle";
 
 /** Follows the host's durable post-game choice in every player’s open tab. */
 export function PostGameNavigation({
   matchId,
   roomCode,
-  isGuest = false,
 }: {
   matchId: string;
   roomCode: string;
-  isGuest?: boolean;
 }) {
   const router = useRouter();
 
@@ -35,9 +32,7 @@ export function PostGameNavigation({
             const destination = action.choice === "replay" && action.next_match_id
               ? `/match/${action.next_match_id}`
               : `/lobby/${roomCode}`;
-            router.replace(shouldResetGuestSession({ isGuest, postGameChoice: action.choice })
-              ? guestSessionFinishedHref(destination)
-              : destination);
+            router.replace(destination);
           },
         )
         .subscribe();
@@ -48,7 +43,7 @@ export function PostGameNavigation({
       cancelled = true;
       cleanup?.();
     };
-  }, [isGuest, matchId, roomCode, router]);
+  }, [matchId, roomCode, router]);
 
   return null;
 }

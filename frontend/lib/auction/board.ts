@@ -38,7 +38,14 @@ export type AuctionFormat = {
   teSlots: number;
   flexSlots: number;
   purse: number;
+  seasonFrom: number;
+  seasonTo: number;
 };
+
+/** The era the board was dealt from, as the format line names it. */
+export function eraLabel(format: AuctionFormat): string {
+  return `${format.seasonFrom}-${format.seasonTo}`;
+}
 
 export type AuctionPhase = "lot_preview" | "bidding_self" | "bidding_other" | "sold";
 

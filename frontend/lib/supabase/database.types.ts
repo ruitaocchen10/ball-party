@@ -45,11 +45,23 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      season_bounds: {
+        Args: never
+        Returns: Database["auction"]["CompositeTypes"]["era"]
+        SetofOptions: {
+          from: "*"
+          to: "era"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       start: {
         Args: {
           p_match_id: string
           p_roster_preset: string
           p_scoring_mode: string
+          p_season_from?: number
+          p_season_to?: number
         }
         Returns: Database["auction"]["CompositeTypes"]["turn"]
         SetofOptions: {
@@ -74,6 +86,11 @@ export type Database = {
       [_ in never]: never
     }
     CompositeTypes: {
+      era: {
+        season_min: number | null
+        season_max: number | null
+        min_span: number | null
+      }
       turn: {
         match_id: string | null
         lot_count: number | null
@@ -251,6 +268,8 @@ export type Database = {
           rb_slots: number | null
           roster_preset: string | null
           scoring_mode: string | null
+          season_from: number | null
+          season_to: number | null
           te_slots: number | null
           turn_deadline: string | null
           turn_seat: number | null
@@ -269,6 +288,8 @@ export type Database = {
           rb_slots?: number | null
           roster_preset?: string | null
           scoring_mode?: string | null
+          season_from?: number | null
+          season_to?: number | null
           te_slots?: number | null
           turn_deadline?: string | null
           turn_seat?: number | null
@@ -287,6 +308,8 @@ export type Database = {
           rb_slots?: number | null
           roster_preset?: string | null
           scoring_mode?: string | null
+          season_from?: number | null
+          season_to?: number | null
           te_slots?: number | null
           turn_deadline?: string | null
           turn_seat?: number | null

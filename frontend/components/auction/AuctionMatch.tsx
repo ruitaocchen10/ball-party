@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 import Link from "next/link";
 
 import { TopBar } from "@/components/layout/TopBar";
@@ -18,10 +18,10 @@ import {
   filledSlots,
   hasPassed,
   highBidder,
-  lotIdentityLine,
   lotAt,
   matchupLine,
   revealedTotal,
+  eraLabel,
   rosterSlots,
   standingPrice,
   slotFor,
@@ -123,7 +123,6 @@ export function AuctionMatch({
   displayName,
   roomCode,
   isHost = false,
-  isGuest = false,
   initial,
 }: {
   matchId: string;
@@ -131,7 +130,6 @@ export function AuctionMatch({
   displayName: string | null;
   roomCode: string | null;
   isHost?: boolean;
-  isGuest?: boolean;
   initial: Initial;
 }) {
   // Built on first use rather than during render. createClient() reaches for
@@ -410,7 +408,6 @@ export function AuctionMatch({
           roomCode={roomCode}
           matchId={matchId}
           isHost={isHost}
-          isGuest={isGuest}
           format={format}
         />
       </Screen>
@@ -441,7 +438,7 @@ export function AuctionMatch({
       {/* DOM order is the phone's decision order: understand the lot, decide
           what to do, then inspect the other seats. Desktop placement gives
           controls their own column without changing that reading order. */}
-      <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(6rem,1fr)] gap-4 lg:grid-cols-[minmax(15rem,.62fr)_minmax(0,1fr)_minmax(21rem,.95fr)] lg:grid-rows-1">
+      <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(6rem,1fr)] gap-3 lg:grid-cols-[minmax(15rem,.62fr)_minmax(0,1fr)_minmax(21rem,.95fr)] lg:grid-rows-1">
       <section className="flex min-h-0 flex-col gap-2 lg:col-start-2 lg:row-start-1" aria-label="The lot">
       {/* The lot. Red top edge, because there is concealed information behind
           it — which is the rule Card already documents. */}
@@ -466,7 +463,10 @@ export function AuctionMatch({
           second card. Its face is hidden from assistive technology; the status
           region below is the complete announcement. */}
       {phase === "sold" ? (
-        <PointsReveal lot={lot} />
+        <>
+          <SoldHeadline lot={lot} players={players} />
+          <PointsReveal lot={lot} />
+        </>
       ) : (
         <Concealed label="Fantasy points, hidden until this lot is won" className="px-3.5 py-3">
           <div className="relative flex items-baseline justify-between gap-3">
@@ -483,7 +483,11 @@ export function AuctionMatch({
           announced inconsistently — the region has to exist first and then
           change, which is what the countdown's live region does too. */}
       <p role="status" className="sr-only">
-        {phase === "sold" ? `${lot.display_name} reveals ${fmt(lot.points)} fantasy points.` : ""}
+        {phase === "sold"
+          ? lot.winner_id
+            ? `${lot.display_name} sold to ${players.find((player) => player.user_id === lot.winner_id)?.display_name ?? "the winning player"} for $${lot.price ?? 0}. It reveals ${fmt(lot.points)} fantasy points.`
+            : `${lot.display_name} received no bids.`
+          : ""}
       </p>
 
       </section>
@@ -510,7 +514,7 @@ export function AuctionMatch({
       <aside className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1" aria-label="The table">
       {format ? (
         <p role="note" aria-label="Auction format" className="mb-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
-          {format.scoringMode === "season_total" ? "season total" : format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse
+          {format.scoringMode === "season_total" ? "season total" : format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse · {eraLabel(format)}
         </p>
       ) : null}
       <header className="flex items-baseline justify-between gap-3"><p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">The table</p><p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">Lot {turn.currentLot}</p></header>
@@ -580,24 +584,18 @@ function LotStrip({
   turn: Turn;
   phase: ReturnType<typeof viewerPhase>;
 }) {
-  const rail = useRef<HTMLOListElement>(null);
   const current = useRef<HTMLLIElement>(null);
 
-  // The board moves inside its own rail: no page jump, just a gentle reminder
-  // that the previous lot has become part of the table's shared memory.
   useEffect(() => {
-    const strip = rail.current;
-    const liveCell = current.current;
-    if (!strip || !liveCell) return;
-    strip.scrollTo({
+    current.current?.scrollIntoView({
       behavior: "smooth",
-      left: liveCell.offsetLeft - (strip.clientWidth - liveCell.offsetWidth) / 2,
+      inline: "center",
+      block: "nearest",
     });
   }, [turn.currentLot]);
 
   return (
     <ol
-      ref={rail}
       aria-label="Auction board"
       className="flex shrink-0 gap-1.5 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:thin]"
     >
@@ -618,7 +616,7 @@ function LotStrip({
   );
 }
 
-const BOARD_CELL = "h-36 shrink-0 rounded border px-2 py-1.5";
+const BOARD_CELL = "h-[74px] shrink-0 rounded border px-1.5 py-1";
 
 function SettledBoardCell({ lot, players }: { lot: Lot; players: Player[] }) {
   const winner = players.find((player) => player.user_id === lot.winner_id) ?? null;
@@ -628,18 +626,17 @@ function SettledBoardCell({ lot, players }: { lot: Lot; players: Player[] }) {
   return (
     <li
       aria-label={`Lot ${lot.seq}, ${lot.display_name}, ${lot.slot ?? "unfilled"}, ${price}, ${winnerCopy}`}
-      className={`${BOARD_CELL} flex w-36 flex-col border-line bg-surface-raised`}
+      className={`${BOARD_CELL} flex w-[84px] flex-col border-line bg-surface-raised`}
     >
-      <p className="flex items-baseline justify-between gap-1 font-mono text-[11px] leading-none text-fg-muted uppercase">
-        <span>{lot.slot ?? "—"}</span>
+      <p className="flex items-baseline justify-between gap-1 font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">
+        <span>{lot.slot}</span>
         <span className="font-bold text-fg tabular-nums">{lot.price === null ? "—" : `$${lot.price}`}</span>
       </p>
-      <span className="mx-auto mt-2 block h-8 w-8 shrink-0 overflow-hidden rounded-full bg-panel-shade">
+      <span className="mx-auto mt-1 block h-7 w-7 shrink-0 overflow-hidden rounded-full bg-panel-shade">
         {lot.headshot_url ? <img src={lot.headshot_url} alt="" className="h-full w-full object-cover object-top" /> : null}
       </span>
-      <p className="mt-1.5 truncate text-center font-slab text-[12px] leading-none -skew-x-7 uppercase">{lot.display_name}</p>
-      <p className="mt-1.5 truncate text-center font-mono text-[11px] leading-none text-fg-muted uppercase">{lotIdentityLine(lot)}</p>
-      <p className="mt-auto truncate font-mono text-[11px] leading-none text-fg-muted uppercase">
+      <p className="mt-1 truncate text-center font-slab text-[10px] leading-none -skew-x-7 uppercase">{abbreviate(lot.display_name)}</p>
+      <p className="mt-1 truncate text-center font-mono text-[8px] leading-none tracking-[0.08em] text-fg-muted uppercase">
         {winner?.display_name ?? "No bids"}
       </p>
     </li>
@@ -655,19 +652,19 @@ function CurrentBoardCell({
   seq: number;
   lotCount: number;
   phase: ReturnType<typeof viewerPhase>;
-  ref: React.Ref<HTMLLIElement>;
+  ref?: Ref<HTMLLIElement>;
 }) {
   return (
     <li
       ref={ref}
       aria-current="step"
-      className={`${BOARD_CELL} flex w-52 flex-col justify-center border-panel/45 bg-panel/10 px-3`}
+      className={`${BOARD_CELL} flex w-[164px] flex-col justify-center border-panel/45 bg-panel/10 px-3`}
     >
-      <p className="font-slab text-xl leading-none -skew-x-7 uppercase">
+      <p className="font-slab text-lg leading-none -skew-x-7 uppercase">
         Lot {seq}
-        <span className="ml-1.5 font-mono text-[11px] tracking-[0.1em] text-fg-muted">/ {lotCount}</span>
+        <span className="ml-1.5 font-mono text-[10px] tracking-[0.1em] text-fg-muted">/ {lotCount}</span>
       </p>
-      <p className="mt-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
+      <p className="mt-1.5 font-mono text-[9px] tracking-[0.13em] text-fg-muted uppercase">
         {phase === "lot_preview" ? "Coming up" : phase === "sold" ? "Sold" : "On the clock"}
       </p>
     </li>
@@ -678,12 +675,18 @@ function UndealtBoardCell({ seq }: { seq: number }) {
   return (
     <li
       aria-label={`Lot ${seq}, not yet dealt`}
-      className={`${BOARD_CELL} flex w-36 flex-col items-center justify-center gap-2 border-dashed border-line bg-transparent`}
+      className={`${BOARD_CELL} flex w-[84px] flex-col items-center justify-center gap-2 border-dashed border-line bg-transparent`}
     >
-      <span aria-hidden className="block h-8 w-8 rounded-full border border-dashed border-line" />
-      <span className="font-mono text-[11px] leading-none text-fg-muted tabular-nums">{seq}</span>
+      <span aria-hidden className="block h-7 w-7 rounded-full border border-dashed border-line" />
+      <span className="font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted tabular-nums">{seq}</span>
     </li>
   );
+}
+
+function abbreviate(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length < 2) return name;
+  return `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
 }
 
 /**
@@ -691,6 +694,33 @@ function UndealtBoardCell({ seq }: { seq: number }) {
  * visible face stays out of the accessibility tree entirely: the lot's status
  * region gives screen-reader users one complete, ordered announcement instead.
  */
+function SoldHeadline({ lot, players }: { lot: Lot; players: Player[] }) {
+  const winner = players.find((player) => player.user_id === lot.winner_id) ?? null;
+
+  if (!lot.winner_id) {
+    return (
+      <p className="rounded border border-line bg-surface-raised px-3.5 py-2 font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
+        No sale
+      </p>
+    );
+  }
+
+  return (
+    <div aria-hidden className="animate-sold-headline rounded border border-panel bg-panel px-3.5 py-2.5 text-panel-fg shadow-card">
+      <p className="font-mono text-[10px] tracking-[0.15em] text-panel-muted uppercase">Sold to</p>
+      <p className="mt-1 flex items-baseline justify-between gap-3 font-slab text-xl leading-none -skew-x-7 uppercase">
+        <span className="truncate">{winner?.display_name ?? "Unknown buyer"}</span>
+        <span className="shrink-0 font-mono text-sm tabular-nums">${lot.price ?? 0}</span>
+      </p>
+    </div>
+  );
+}
+
+function soldRosterName(name: string): string {
+  const [first, ...rest] = name.trim().split(/\s+/);
+  return rest.length === 0 ? name : `${first[0]}. ${rest.join(" ")}`;
+}
+
 function PointsReveal({ lot }: { lot: Lot }) {
   return (
     <div aria-hidden className="animate-points-reveal flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
@@ -745,7 +775,13 @@ function PlayerRail({
           <li
             key={player.user_id}
             className={`rounded border px-3 py-2.5 transition-colors ${
-              soldLot?.winner_id === player.user_id ? "border-panel bg-panel/10 motion-safe:animate-sold-once" : acting ? "border-panel/45 bg-surface-raised" : "border-line bg-transparent"
+              soldLot?.winner_id === player.user_id
+                ? "border-panel bg-panel/10 motion-safe:animate-sold-once"
+                : holding
+                  ? "border-panel bg-panel/5"
+                  : acting
+                    ? "border-panel/45 bg-surface-raised"
+                    : "border-line bg-transparent"
             }`}
           >
             <button
@@ -762,7 +798,15 @@ function PlayerRail({
                 <span className="shrink-0 rounded border border-line px-1.5 py-0.5 font-mono text-[11px] text-fg-muted tabular-nums">
                   ${player.budget}{player.user_id === viewerId ? <span className="ml-1.5 tracking-[0.13em]">YOU</span> : null}
                 </span>
-                {holding ? <span role="img" aria-label={`Standing bid $${price}`} className="shrink-0 rounded-[3px] bg-panel px-1.5 py-0.5 font-mono text-[11px] font-bold text-panel-fg tabular-nums">${price}</span> : null}
+                {holding ? (
+                  <span
+                    role="img"
+                    aria-label={`High bid $${price}`}
+                    className="shrink-0 rounded-[3px] bg-panel px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.08em] text-panel-fg tabular-nums uppercase"
+                  >
+                    High bid · ${price}
+                  </span>
+                ) : null}
                 {acting || passedSeats.includes(player.seat) ? <span className="shrink-0 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">{acting ? "on the clock" : "passed"}</span> : null}
                 <span role="img" className="ml-auto shrink-0 text-lg font-bold tabular-nums" aria-label={`${fmt(total)} points`}>{fmt(total)}</span>
               </span>
@@ -793,7 +837,8 @@ function Roster({ lots, userId, format, highlightLot = null, compact = false }: 
     <span className="flex flex-wrap gap-1">
       {slots.map(({ slot, index, label }) => {
         const won = wonBySlot(slot)[index - 1] ?? null;
-        const lit = won?.seq === highlightLot?.seq ? "ring-2 ring-panel motion-safe:animate-sold-once" : "";
+        const justAdded = won?.seq === highlightLot?.seq;
+        const lit = justAdded ? "ring-2 ring-panel motion-safe:animate-player-to-roster" : "";
 
         return (
           <span key={`${slot}-${index}`}>
@@ -803,7 +848,9 @@ function Roster({ lots, userId, format, highlightLot = null, compact = false }: 
                 aria-label={`${label} slot, ${won.display_name}, ${fmt(won.points)} points`}
                 className={`flex h-7 min-w-11 items-center justify-center rounded-[3px] bg-panel px-1.5 font-mono text-[11px] text-panel-fg tabular-nums ${lit}`}
               >
-                {label}{compact ? null : <><span className="hidden lg:inline"> · {won.display_name}</span> {fmt(won.points)}</>}
+                {label}
+                {justAdded ? <span className="ml-1 truncate">· {soldRosterName(won.display_name)}</span> : null}
+                {compact || justAdded ? null : <><span className="hidden lg:inline"> · {won.display_name}</span> {fmt(won.points)}</>}
               </span>
             ) : (
               <span role="img" aria-label={`${label} slot, empty`} className={`h-7 min-w-11 items-center justify-center rounded-[3px] border border-dashed border-fg-muted/70 px-1.5 font-mono text-[11px] tracking-[0.1em] text-fg-muted ${compact ? "hidden lg:flex" : "flex"}`}>{label}</span>
@@ -998,7 +1045,6 @@ function FinalScreen({
   roomCode,
   matchId,
   isHost,
-  isGuest,
   format,
 }: {
   lots: Lot[];
@@ -1008,7 +1054,6 @@ function FinalScreen({
   roomCode: string | null;
   matchId: string;
   isHost: boolean;
-  isGuest: boolean;
   format: AuctionFormat | null;
 }) {
   const ranked = byPlacement(standings);
@@ -1059,7 +1104,7 @@ function FinalScreen({
         ))}
       </ul>
 
-      {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} isGuest={isGuest} /> : null}
+      {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} /> : null}
       {roomCode ? (
         <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} />
       ) : null}

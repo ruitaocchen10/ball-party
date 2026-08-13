@@ -9,7 +9,8 @@ import { AutoJoinRoom } from "@/components/lobby/AutoJoinRoom";
 import { claimLobbyHost, closeLobby, leaveLobby } from "@/lib/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
 import { GuestJoin } from "@/components/auth/GuestJoin";
-import { canCreateLobby, isSignedInViewer } from "@/lib/auth/viewer";
+import { canCreateLobby, isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
+import { guestSessionFinishedHref } from "@/lib/auth/guest-lifecycle";
 
 export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { code: rawCode } = await props.params;
@@ -63,6 +64,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   }
 
   if (lobby.closed_at) {
+    if (isGuestViewer(claims)) redirect(guestSessionFinishedHref("/"));
     return (
       <Shell code={code} error={errorText} displayName={displayName}>
         <p className="text-sm leading-6 text-fg-muted">This room has closed.</p>
@@ -98,6 +100,12 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     .sort((a, b) => a.joined_at.localeCompare(b.joined_at));
 
   const isHost = lobby.host_id === claims.sub;
+  // Only the host is offered a format, so only the host's page pays for the
+  // bounds behind it. A failure here is not fatal: the picker disappears and
+  // the dealer falls back to the whole pool.
+  const { data: era } = isHost
+    ? await supabase.schema("auction").rpc("season_bounds")
+    : { data: null };
   const { data: activeHost } = await supabase.rpc("lobby_host_is_active", { p_lobby_id: lobby.id });
   const hostIsActive = activeHost ?? true;
   const canTakeHostControls = !isHost && !hostIsActive && canCreateLobby(claims);
@@ -120,6 +128,11 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
         isHost={isHost}
         inFlight={Boolean(inFlight)}
         hostIsActive={hostIsActive}
+        era={
+          era?.season_min != null && era.season_max != null && era.min_span != null
+            ? { seasonMin: era.season_min, seasonMax: era.season_max, minSpan: era.min_span }
+            : null
+        }
       />
 
       <div className="mt-2 flex flex-col gap-2.5">

@@ -51,7 +51,7 @@ describe("the four phases", () => {
     expect(within(strip).getByLabelText("Lot 40, not yet dealt")).toBeInTheDocument();
   });
 
-  it("records a settled lot's face, slot, price, winner, and matchup in the board", () => {
+  it("records a settled lot's face, slot, price, winner, and abbreviated name in the board", () => {
     renderMatch({
       turn: turn("bidding", { currentLot: 2, turnSeat: 0 }),
       lots: board([{ winner_id: "u1", slot: "RB", price: 0 }]),
@@ -59,7 +59,7 @@ describe("the four phases", () => {
 
     const strip = screen.getByRole("list", { name: "Auction board" });
     expect(within(strip).getByLabelText("Lot 1, Saquon Barkley, RB, $0, won by Ben")).toHaveTextContent(
-      "2018 · Week 12 · vs CHI",
+      "S. Barkley",
     );
   });
 
@@ -81,20 +81,21 @@ describe("the four phases", () => {
     });
 
     expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent(/Lot 3\/? 4Sold/);
-    expect(HTMLElement.prototype.scrollTo).toHaveBeenCalledExactlyOnceWith({
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledExactlyOnceWith({
       behavior: "smooth",
-      left: expect.any(Number),
+      inline: "center",
+      block: "nearest",
     });
     expect(screen.queryByText("Undealt Player")).not.toBeInTheDocument();
   });
 
-  it("uses season and team copy for a season lot in the board", () => {
+  it("keeps the compact board treatment for a season lot", () => {
     renderMatch({
       turn: turn("bidding", { currentLot: 2, turnSeat: 0 }),
       lots: board([{ winner_id: "u1", slot: "RB", price: 4, week: null, opponent: null }]),
     });
 
-    expect(screen.getByLabelText("Lot 1, Saquon Barkley, RB, $4, won by Ben")).toHaveTextContent("2018 · NYG");
+    expect(screen.getByLabelText("Lot 1, Saquon Barkley, RB, $4, won by Ben")).toHaveTextContent("S. Barkley");
   });
 
   it("shows every participant the immutable dealt format", () => {
@@ -109,10 +110,14 @@ describe("the four phases", () => {
         teSlots: 1,
         flexSlots: 1,
         purse: 25,
+        seasonFrom: 2020,
+        seasonTo: 2025,
       },
     });
 
-    expect(screen.getByLabelText("Auction format")).toHaveTextContent("weekly · standard · 5 slots · $25 purse");
+    expect(screen.getByLabelText("Auction format")).toHaveTextContent(
+      "weekly · standard · 5 slots · $25 purse · 2020-2025",
+    );
   });
 
   it("renders every repeated roster slot from the dealt format", () => {
@@ -127,6 +132,8 @@ describe("the four phases", () => {
         teSlots: 1,
         flexSlots: 2,
         purse: 50,
+        seasonFrom: 2010,
+        seasonTo: 2025,
       },
       lots: board([
         { winner_id: "u0", slot: "QB", display_name: "Patrick Mahomes", points: 35.9, price: 5 },
@@ -151,6 +158,8 @@ describe("the four phases", () => {
         teSlots: 1,
         flexSlots: 1,
         purse: 20,
+        seasonFrom: 2010,
+        seasonTo: 2025,
       },
       lots: board([{ season: 2018, team: "NYG", week: null, opponent: null }]),
     });
@@ -193,11 +202,11 @@ describe("the four phases", () => {
 
     const revealed = screen.getByRole("region", { name: "The lot" });
     expect(within(revealed).getByText("23.4")).toBeInTheDocument();
-    expect(within(revealed).queryByText("$12")).not.toBeInTheDocument();
-    expect(within(revealed).queryByText("Ben")).not.toBeInTheDocument();
+    expect(within(revealed).getByText("$12")).toBeInTheDocument();
+    expect(within(revealed).getByText("Ben")).toBeInTheDocument();
     expect(within(revealed).getByText("23.4").closest("[aria-hidden='true']")).not.toBeNull();
     expect(screen.getAllByRole("status")).toHaveLength(1);
-    expect(screen.getByRole("status")).toHaveTextContent("Saquon Barkley reveals 23.4 fantasy points.");
+    expect(screen.getByRole("status")).toHaveTextContent("Saquon Barkley sold to Ben for $12. It reveals 23.4 fantasy points.");
   });
 
   it("renders a three-digit season score without clipping it", () => {
@@ -212,6 +221,8 @@ describe("the four phases", () => {
         teSlots: 1,
         flexSlots: 1,
         purse: 20,
+        seasonFrom: 2010,
+        seasonTo: 2025,
       },
       lots: board([{ week: null, opponent: null, winner_id: "u1", price: 12, slot: "RB", points: 312.4 }]),
     });
@@ -291,7 +302,7 @@ describe("the status line", () => {
   it("allows each configured slot before explaining that a deep position is full", () => {
     renderMatch({
       turn: turn("bidding", { turnSeat: 0 }),
-      format: { scoringMode: "weekly", rosterPreset: "deep", qbSlots: 2, rbSlots: 2, wrSlots: 3, teSlots: 1, flexSlots: 2, purse: 50 },
+      format: { scoringMode: "weekly", rosterPreset: "deep", qbSlots: 2, rbSlots: 2, wrSlots: 3, teSlots: 1, flexSlots: 2, purse: 50, seasonFrom: 2010, seasonTo: 2025 },
       lots: board([
         { position: "QB", winner_id: "u0", slot: "QB", points: 22, price: 2 },
         { position: "QB", winner_id: "u0", slot: "QB", points: 18, price: 1 },
@@ -511,7 +522,8 @@ describe("the table", () => {
 
     const table = screen.getByRole("complementary", { name: "The table" });
     expect(within(table).getByText("on the clock")).toBeInTheDocument();
-    expect(within(table).getByText("$6")).toBeInTheDocument();
+    expect(within(table).getByLabelText("High bid $6")).toHaveTextContent("High bid · $6");
+    expect(within(table).getByText("Ben").closest("li")).toHaveClass("border-panel", "bg-panel/5");
   });
 
   it("marks a seat that has passed", () => {
@@ -556,6 +568,10 @@ describe("the table", () => {
     // The animation is behind motion-safe, so the ring survives reduced motion.
     expect(seat.className).toMatch(/motion-safe:/);
     expect(seat.className).toMatch(/border-panel/);
+    expect(screen.getByText("Sold to")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "The lot" })).getByText("Ben")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "The lot" })).getByText("$9")).toBeInTheDocument();
+    expect(screen.getByLabelText("RB slot, Saquon Barkley, 18.5 points").className).toMatch(/animate-player-to-roster/);
   });
 });
 
