@@ -37,6 +37,7 @@ export type Database = {
       auction_bids: {
         Row: {
           action: string
+          automatic: boolean
           bid_seq: number
           by_timeout: boolean
           created_at: string
@@ -47,6 +48,7 @@ export type Database = {
         }
         Insert: {
           action: string
+          automatic?: boolean
           bid_seq: number
           by_timeout?: boolean
           created_at?: string
@@ -57,6 +59,7 @@ export type Database = {
         }
         Update: {
           action?: string
+          automatic?: boolean
           bid_seq?: number
           by_timeout?: boolean
           created_at?: string

@@ -7,7 +7,7 @@
 -- rather than asserting on individual moves.
 
 begin;
-select plan(44);
+select plan(47);
 
 \ir support/harness.psql
 
@@ -183,6 +183,46 @@ select throws_ok(
 select lives_ok(
   format($$ select public.place_bid(%L, 12) $$, (select v from tests.fx where k = 'mb')),
   'a raise to exactly the budget is allowed'
+);
+
+-- A player who cannot beat the standing price has no action to take.  They
+-- must not receive a full turn merely to press Pass; the server skips them and
+-- gives the clock to the next player who can still raise.
+select tests.act_as_admin();
+insert into tests.fx (k, v) values ('mskip', tests.deal_and_open(3, 0.62));
+select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mskip')));
+select public.place_bid((select v from tests.fx where k = 'mskip'), 10);
+select tests.act_as_admin();
+insert into tests.num (k, v)
+select 'unaffordable_seat', ((turn_seat + 1) % 3)::int
+  from public.auction_matches where match_id = (select v from tests.fx where k = 'mskip');
+update public.auction_players set budget = 12
+ where match_id = (select v from tests.fx where k = 'mskip')
+   and seat = (select v::smallint from tests.num where k = 'unaffordable_seat');
+
+select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mskip')));
+select public.place_bid((select v from tests.fx where k = 'mskip'), 12);
+select tests.act_as_admin();
+
+select isnt(
+  (select turn_seat::int from public.auction_matches where match_id = (select v from tests.fx where k = 'mskip')),
+  (select v from tests.num where k = 'unaffordable_seat'),
+  'a player who cannot top the standing bid is skipped instead of receiving a twenty-second turn'
+);
+select is(
+  (select automatic from public.auction_bids
+    where match_id = (select v from tests.fx where k = 'mskip')
+      and user_id = (select ap.user_id from public.auction_players ap
+                       where ap.match_id = (select v from tests.fx where k = 'mskip')
+                         and ap.seat = (select v::smallint from tests.num where k = 'unaffordable_seat'))
+      and action = 'pass'),
+  true,
+  'the affordability skip is recorded as an automatic pass'
+);
+select ok(
+  (select turn_deadline from public.auction_matches where match_id = (select v from tests.fx where k = 'mskip'))
+    between now() + interval '19 seconds' and now() + interval '21 seconds',
+  'the clock is immediately given to an actionable challenger'
 );
 
 -- --------------------------------------------------- resolution and reveal --
