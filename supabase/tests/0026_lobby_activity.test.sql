@@ -1,6 +1,6 @@
 -- Durable lobby membership is distinct from the short-lived activity lease.
 begin;
-select plan(13);
+select plan(14);
 
 \ir support/harness.psql
 
@@ -108,6 +108,20 @@ select throws_ok(
   format($$ select public.claim_lobby_host(%L) $$, (select v from tests.fx where k = 'idle_lobby')),
   'P0001', 'lobby_not_found',
   'a closed lobby cannot be taken over'
+);
+
+-- A game has its own abandonment janitor, so lobby cleanup must leave it alone
+-- even when every lobby heartbeat is stale.
+select tests.act_as((select v from tests.fx where k = 'member'));
+select public.start_run((select v from tests.fx where k = 'lobby'), 'arcade', 'auction_team_builder');
+select tests.act_as_admin();
+update public.lobby_members
+   set last_seen_at = now() - interval '21 minutes'
+ where lobby_id = (select v from tests.fx where k = 'lobby');
+select private.sweep_inactive_lobbies();
+select ok(
+  (select closed_at is null from public.lobbies where id = (select v from tests.fx where k = 'lobby')),
+  'the lobby sweep leaves an active run to the match janitor'
 );
 
 select * from finish();
