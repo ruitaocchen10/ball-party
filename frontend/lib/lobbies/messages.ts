@@ -3,6 +3,7 @@ export const LOBBY_MESSAGES: Record<string, string> = {
   lobby_full: "That room is already full.",
   not_a_member: "You're not in that room.",
   not_host: "Only the host can start or close the game.",
+  host_still_active: "The host is still connected. Try again in a moment.",
   not_authenticated: "Sign in first.",
   code_generation_failed: "Couldn't find a free room code. Try again.",
   lobby_closed: "This room has closed.",

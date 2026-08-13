@@ -177,3 +177,16 @@ export async function closeLobby(formData: FormData) {
   revalidatePath("/", "layout");
   redirect("/");
 }
+
+/** Claim controls only after the database has observed the host away for 30s. */
+export async function claimLobbyHost(formData: FormData) {
+  const lobbyId = String(formData.get("lobby_id") ?? "");
+  const code = normalizeCode(formData.get("code"));
+  const supabase = await createClient();
+
+  const { error } = await supabase.rpc("claim_lobby_host", { p_lobby_id: lobbyId });
+  if (error) redirect(withError(`/lobby/${code}`, error));
+
+  revalidatePath(`/lobby/${code}`);
+  redirect(`/lobby/${code}`);
+}

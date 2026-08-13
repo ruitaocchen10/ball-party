@@ -7,6 +7,7 @@ const CAPACITY = 4;
 
 type Member = {
   user_id: string;
+  last_seen_at?: string;
   profiles: { display_name: string; is_guest?: boolean } | null;
 };
 
@@ -24,6 +25,7 @@ export function LobbyLineup({
   viewerId,
   isHost,
   inFlight,
+  hostIsActive = true,
 }: {
   lobbyId: string;
   code: string;
@@ -32,6 +34,7 @@ export function LobbyLineup({
   viewerId: string;
   isHost: boolean;
   inFlight: boolean;
+  hostIsActive?: boolean;
 }) {
   const emptySeats = Math.max(0, CAPACITY - members.length);
 
@@ -50,7 +53,9 @@ export function LobbyLineup({
         <p className="mt-2 text-sm leading-5 text-fg-muted">
           {isHost
             ? "The auction is ready when the party is. More games are on their way."
-            : "The host starts when the party is ready. More games are on their way."}
+            : hostIsActive
+              ? "The host starts when the party is ready. More games are on their way."
+              : "The host is away. You can take host controls to keep the party moving."}
         </p>
       </div>
 
@@ -128,6 +133,7 @@ export function LobbyLineup({
                 <span className="mt-2 block font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
                   {[
                     member.user_id === hostId ? "host" : null,
+                    member.user_id === hostId && !hostIsActive ? "away" : null,
                     member.profiles?.is_guest ? "guest" : null,
                     member.user_id === viewerId ? "you" : null,
                   ]

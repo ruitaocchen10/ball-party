@@ -368,18 +368,21 @@ export type Database = {
       lobby_members: {
         Row: {
           joined_at: string
+          last_seen_at: string
           left_at: string | null
           lobby_id: string
           user_id: string
         }
         Insert: {
           joined_at?: string
+          last_seen_at?: string
           left_at?: string | null
           lobby_id: string
           user_id: string
         }
         Update: {
           joined_at?: string
+          last_seen_at?: string
           left_at?: string | null
           lobby_id?: string
           user_id?: string
@@ -620,6 +623,7 @@ export type Database = {
         }
       }
       close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
+      claim_lobby_host: { Args: { p_lobby_id: string }; Returns: undefined }
       create_lobby: {
         Args: never
         Returns: {
@@ -646,6 +650,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      heartbeat_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       join_lobby: {
         Args: { p_code: string }
         Returns: {
@@ -662,6 +667,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      lobby_host_is_active: { Args: { p_lobby_id: string }; Returns: boolean }
       leave_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       pass_lot: {
         Args: { p_match_id: string }

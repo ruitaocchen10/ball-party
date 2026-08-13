@@ -70,7 +70,18 @@ export function LobbyRealtime({ lobbyId }: { lobbyId: string }) {
         .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, refresh)
         .subscribe();
 
+      const heartbeat = () => {
+        if (document.visibilityState === "visible") {
+          void supabase.rpc("heartbeat_lobby", { p_lobby_id: lobbyId });
+        }
+      };
+      heartbeat();
+      const heartbeatInterval = window.setInterval(heartbeat, 10_000);
+      document.addEventListener("visibilitychange", heartbeat);
+
       cleanup = () => {
+        window.clearInterval(heartbeatInterval);
+        document.removeEventListener("visibilitychange", heartbeat);
         void supabase.removeChannel(channel);
       };
     })();

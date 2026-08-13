@@ -6,10 +6,10 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { LobbyRealtime } from "@/components/lobby/LobbyRealtime";
 import { LobbyLineup } from "@/components/lobby/LobbyLineup";
 import { AutoJoinRoom } from "@/components/lobby/AutoJoinRoom";
-import { closeLobby, leaveLobby } from "@/lib/lobbies/actions";
+import { claimLobbyHost, closeLobby, leaveLobby } from "@/lib/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
 import { GuestJoin } from "@/components/auth/GuestJoin";
-import { isSignedInViewer } from "@/lib/auth/viewer";
+import { canCreateLobby, isSignedInViewer } from "@/lib/auth/viewer";
 
 export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { code: rawCode } = await props.params;
@@ -49,7 +49,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { data: lobby } = await supabase
     .from("lobbies")
     .select(
-      "id, code, host_id, closed_at, lobby_members(user_id, joined_at, left_at, profiles(display_name, is_guest))",
+      "id, code, host_id, closed_at, lobby_members(user_id, joined_at, last_seen_at, left_at, profiles(display_name, is_guest))",
     )
     .eq("code", code)
     .maybeSingle();
@@ -98,6 +98,9 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     .sort((a, b) => a.joined_at.localeCompare(b.joined_at));
 
   const isHost = lobby.host_id === claims.sub;
+  const { data: activeHost } = await supabase.rpc("lobby_host_is_active", { p_lobby_id: lobby.id });
+  const hostIsActive = activeHost ?? true;
+  const canTakeHostControls = !isHost && !hostIsActive && canCreateLobby(claims);
   return (
     <Shell code={code} error={errorText} displayName={displayName}>
       <LobbyRealtime lobbyId={lobby.id} />
@@ -116,6 +119,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
         viewerId={claims.sub}
         isHost={isHost}
         inFlight={Boolean(inFlight)}
+        hostIsActive={hostIsActive}
       />
 
       <div className="mt-2 flex flex-col gap-2.5">
@@ -138,6 +142,16 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
               className="text-hidden-text ring-hidden/40 hover:bg-hidden/10"
             >
               Close room for everyone
+            </Button>
+          </form>
+        ) : null}
+
+        {canTakeHostControls ? (
+          <form action={claimLobbyHost}>
+            <input type="hidden" name="lobby_id" value={lobby.id} />
+            <input type="hidden" name="code" value={code} />
+            <Button type="submit" variant="ghost">
+              Take host controls
             </Button>
           </form>
         ) : null}
