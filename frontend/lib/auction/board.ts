@@ -161,12 +161,12 @@ export function canAfford(price: number, budget: number, increment: number): boo
   return price + increment <= budget;
 }
 
-/** Weekly cards show their matchup; season cards show the stable player-season identity. */
+/** Weekly cards name the player's team before their opponent; season cards show the stable player-season identity. */
 export function lotIdentityLine(lot: Lot): string {
   if (lot.week === null || lot.opponent === null) {
     return `${lot.season} · ${lot.team}`;
   }
-  return `${lot.season} · Week ${lot.week} · vs ${lot.opponent}`;
+  return `${lot.season} · Week ${lot.week} · ${lot.team} vs. ${lot.opponent}`;
 }
 
 export function matchupLine(lot: Lot): string {
