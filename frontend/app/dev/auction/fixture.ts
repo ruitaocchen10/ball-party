@@ -142,9 +142,9 @@ export const STANDINGS: Standing[] = [
 
 let bidSeq = 0;
 const raise = (seq: number, user: string, price: number): Bid =>
-  ({ seq, user_id: user, action: "raise", price, bid_seq: ++bidSeq, by_timeout: false, created_at: RESOLVED, match_id: MATCH });
+  ({ seq, user_id: user, action: "raise", price, bid_seq: ++bidSeq, by_timeout: false, automatic: false, created_at: RESOLVED, match_id: MATCH });
 const pass = (seq: number, user: string): Bid =>
-  ({ seq, user_id: user, action: "pass", price: null, bid_seq: ++bidSeq, by_timeout: false, created_at: RESOLVED, match_id: MATCH });
+  ({ seq, user_id: user, action: "pass", price: null, bid_seq: ++bidSeq, by_timeout: false, automatic: false, created_at: RESOLVED, match_id: MATCH });
 
 export const BIDS = { raise, pass };
 

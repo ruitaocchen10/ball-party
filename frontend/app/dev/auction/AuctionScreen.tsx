@@ -191,7 +191,18 @@ export function AuctionScreen({
             {/* The portrait band is the Lot's only flexible-height element, and it
             keeps its height whether or not a shot exists — a player nflverse
             has no picture for must not change the geometry under a live clock. */}
-            <div className="min-h-24 flex-1 border-b border-dashed border-[#c7bfac] bg-panel-shade">
+            <div className="relative min-h-24 flex-1 border-b border-dashed border-[#c7bfac] bg-panel-shade">
+              {/* These two labels make the card read as a live auction object,
+                  not just a player profile. The player is known; the score is
+                  not. */}
+              <div className="absolute inset-x-0 top-0 z-[1] flex items-start justify-between gap-2 p-3">
+                <span className="rounded-[3px] bg-panel-fg px-2 py-1 font-mono text-[9px] font-bold tracking-[0.14em] text-panel uppercase">
+                  {phase === "sold" ? "Hammered" : `Live lot ${lot.seq}`}
+                </span>
+                <span className="rounded-[3px] border border-panel-fg/20 bg-panel/80 px-2 py-1 font-mono text-[9px] font-bold tracking-[0.12em] text-panel-fg uppercase">
+                  {slotFor(lot)} slot
+                </span>
+              </div>
               {lot.headshot_url ? (
                 <img
                   src={lot.headshot_url}
@@ -200,7 +211,7 @@ export function AuctionScreen({
                 />
               ) : null}
             </div>
-            <CardTitle>{lot.display_name}</CardTitle>
+            <CardTitle className="pt-3">{lot.display_name}</CardTitle>
             <CardMeta>{matchupLine(lot)}</CardMeta>
           </Card>
 
@@ -218,7 +229,7 @@ export function AuctionScreen({
             >
               <div className="relative flex items-baseline justify-between gap-3">
                 <span className="font-mono text-[10px] tracking-[0.15em] text-panel uppercase">
-                  Fantasy points
+                  Sealed game score
                 </span>
                 <span className="font-slab text-lg leading-none -skew-x-7 text-panel">
                   ? ? ?
@@ -252,6 +263,7 @@ export function AuctionScreen({
               pending={pending}
               error={error}
               slot={slotFor(lot)}
+              isHolding={holder === viewerId}
               onRaise={onRaise}
               onPass={onPass}
             />
@@ -685,6 +697,7 @@ function PlayerRail({
         const total = revealedTotal(lots, player.user_id);
         const holding = holder === player.user_id;
         const isOpen = open[player.user_id] ?? false;
+        const rosterCount = lots.filter((lot) => lot.winner_id === player.user_id).length;
         const highlightSlot =
           soldLot?.winner_id === player.user_id ? soldLot.slot : null;
         /* Out of THIS lot, not out of the game — which is why it is a wash and
@@ -718,6 +731,9 @@ function PlayerRail({
               className="flex w-full flex-col gap-2 text-left lg:gap-1.5"
             >
               <span className="flex items-center gap-2">
+                <span className="hidden shrink-0 font-mono text-[9px] tracking-[0.1em] text-fg-muted sm:inline">
+                  {String(player.seat).padStart(2, "0")}
+                </span>
                 <span
                   aria-hidden
                   className={`shrink-0 font-mono text-[10px] leading-none text-fg-muted transition-transform ${isOpen ? "rotate-90" : ""}`}
@@ -788,8 +804,11 @@ function PlayerRail({
                   lots={lots}
                   userId={player.user_id}
                   highlightSlot={highlightSlot}
-                />
-                {/* "High bid" has left the word list: the chip on the seat
+                  />
+                  <span className="ml-auto hidden shrink-0 font-mono text-[9px] tracking-[0.11em] text-fg-muted uppercase lg:ml-0 lg:block lg:text-right">
+                    {rosterCount}/{SLOTS.length} roster
+                  </span>
+                  {/* "High bid" has left the word list: the chip on the seat
                     header carries it now, at every seat, open or closed. What
                     is left are the two states the chip cannot say. */}
                 {useCardStateIndicators ? null : (
@@ -964,6 +983,7 @@ function BidBar({
   pending,
   error,
   slot,
+  isHolding,
   onRaise,
   onPass,
 }: {
@@ -979,6 +999,7 @@ function BidBar({
   phase: "lot_preview" | "bidding_self" | "bidding_other" | "sold";
   error: string | null;
   slot: Slot;
+  isHolding: boolean;
 }) {
   const [customFor, setCustomFor] = useState<string | null>(null);
   const [amount, setAmount] = useState(String(price + 1));
@@ -1127,15 +1148,29 @@ function BidBar({
             drops to its own caption line rather than riding the baseline: at
             this size "$2 $14 left" on one line would read as one quantity. */}
         <div>
-          <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
-            Standing bid
-          </p>
-          <p className="mt-1.5 font-slab text-4xl leading-none -skew-x-7 tabular-nums lg:text-5xl">
-            {phase === "lot_preview" ? "—" : `$${price}`}
-          </p>
-          <p className="mt-1.5 font-mono text-[11px] text-fg-muted tabular-nums">
-            ${budget} left
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
+                Standing bid
+              </p>
+              <p className="mt-1.5 font-slab text-4xl leading-none -skew-x-7 tabular-nums lg:text-5xl">
+                {phase === "lot_preview" ? "—" : `$${price}`}
+              </p>
+            </div>
+            {price > 0 ? (
+              <span className="mt-0.5 rounded-[3px] border border-panel/25 bg-panel/10 px-2 py-1 font-mono text-[9px] tracking-[0.11em] text-fg-muted uppercase">
+                {isHolding ? "You lead" : "Bid is live"}
+              </span>
+            ) : (
+              <span className="mt-0.5 rounded-[3px] border border-dashed border-line px-2 py-1 font-mono text-[9px] tracking-[0.11em] text-fg-muted uppercase">
+                Opening bid
+              </span>
+            )}
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3 font-mono text-[11px] tabular-nums">
+            <span className="text-fg-muted">${budget} left</span>
+            <span className="text-fg-muted">Wins → {slot}</span>
+          </div>
         </div>
 
         {/* Raises are one row of equals — they are the same move at different

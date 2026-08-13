@@ -70,6 +70,7 @@ export function bid(over: Partial<Bid> = {}): Bid {
     action: "raise",
     price: 5,
     by_timeout: false,
+    automatic: false,
     created_at: new Date().toISOString(),
     ...over,
   };
