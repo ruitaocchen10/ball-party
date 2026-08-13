@@ -129,11 +129,43 @@ Three details that are easy to get wrong:
 Server `now()` ships alongside match state, so a client can offset its own
 clock rather than trust it.
 
-**Era range** — 2010-2025, flat. 16 seasons, all inside plausible memory for
-anyone who's followed fantasy in the last decade. Recall is the floor that
-matters here, not scoring. The upper bound is the most recent completed season
-and moves with it. Widen the lower bound after playtesting if it starts feeling
-samey.
+**Era range** — the pool is 2010-2025, and the host picks a window inside it as
+part of the format. The default is all of it: 16 seasons, all inside plausible
+memory for anyone who's followed fantasy in the last decade, because recall is
+the floor that matters here rather than scoring. A table that only wants players
+it watched live deals 2020-2025 instead. Both bounds come from the pool at
+request time — the upper one is the most recent completed season and moves with
+it as new seasons land as migrations, so nothing above the data writes a year
+down.
+
+Narrowing composes with the tiers for free, because `tier` is a per-season
+positional finish: a narrowed window still deals 7:8:5, with the stars of that
+window.
+
+**Minimum span: four seasons.** The dealer draws distinct players and the star
+band is ranks 1-5 per position per season, so one season offers exactly five
+star QBs — and a Deep board for four wants fourteen stars across all positions.
+Replaying the dealer against the real pool over every window in the era, at two
+to four players, the worst-case rate at which a board cannot be dealt at all:
+
+```
+  span      worst window            pool_exhausted
+  1 year    2013,      deep, 4p     54.6%
+  2 years   2024-2025, deep, 4p      4.9%
+  3 years   2012-2014, deep, 4p      0.2%
+  4 years   —                        0%
+```
+
+Three would very nearly do; four is where every window is clean with room to
+spare, and it is not a difference a host asking for recent players will feel.
+`pool_exhausted` stays as the backstop — the floor makes it unreachable rather
+than replacing it, which matters while the tier bands are still being tuned.
+
+The tradeoff the host is making is repetition: 2020-2025 holds 73 distinct star
+players against the full era's 159, and one Deep board eats fourteen of them. A
+few games on a narrow window and you have seen most of its stars. That is the
+same sameyness the flat 16-season range was guarding against, approached from
+the other end.
 
 **Dud weeks** — kept, not filtered out. A player who took four snaps and left
 injured is still a lot, and his 0.0 still counts. The live possibility of a zero
