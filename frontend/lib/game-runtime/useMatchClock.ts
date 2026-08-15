@@ -103,7 +103,7 @@ export function useMatchClock({
   skipExpiry = false,
   expire,
   reconcile,
-}: MatchClockOptions): { now: number; remainingMs: number | null; reconcile: () => void } {
+}: MatchClockOptions): { remainingMs: number | null; reconcile: () => void } {
   // How far this browser's clock is from the server's. Re-measured every time
   // a fresh `serverNow` arrives, which is also the only thing the ticking
   // effect below depends on — restarting the interval on a state update is
@@ -172,5 +172,5 @@ export function useMatchClock({
   // and the one only the caller's own subscription can know has happened.
   const triggerReconcile = useCallback(() => void reconcile(), [reconcile]);
 
-  return { now, remainingMs, reconcile: triggerReconcile };
+  return { remainingMs, reconcile: triggerReconcile };
 }

@@ -194,6 +194,38 @@ export function AuctionMatch({
     }
   }, [getClient, matchId, applyTurn]);
 
+  const me = players.find((p) => p.user_id === viewerId) ?? null;
+  const finished = turn.currentLot > turn.lotCount;
+  const lot = lotAt(lots, turn.currentLot);
+
+  // Bidding is the one phase a move can be sent in, so it is the one phase
+  // the visible countdown ends early for; a finished match has no deadline
+  // left to chase, whatever a stale turn record still says. Exactly one of
+  // turnDeadline/phaseDeadline is ever set at a time -- the server sets the
+  // former during bidding and the latter otherwise -- so there is always at
+  // most one active deadline to hand the clock.
+  const bidding = turn.phase === "bidding";
+  const activeDeadline = finished ? null : (turn.turnDeadline ?? turn.phaseDeadline);
+  // The player on the clock is the one client that cannot be trusted with
+  // expiry: everyone else fires it, jittered, while they get first crack at
+  // acting.
+  const skipExpiry = bidding && !!me && turn.turnSeat === me.seat;
+
+  const { remainingMs, reconcile } = useMatchClock({
+    serverNow,
+    deadline: activeDeadline,
+    visibleSlackMs: bidding ? VISIBLE_SLACK_MS : 0,
+    skipExpiry,
+    expire: () =>
+      getClient()
+        .schema("auction")
+        .rpc("expire_turn", { p_match_id: matchId })
+        .then(({ data }) => {
+          if (data) applyTurn(data as AuctionTurnRow);
+        }),
+    reconcile: refetch,
+  });
+
   // Realtime applies payloads to client state directly rather than refreshing
   // the server render — see LobbyRealtime for why the lobby does the opposite.
   useEffect(() => {
@@ -270,10 +302,11 @@ export function AuctionMatch({
           },
         )
         // A rejoin is precisely when this client may have missed something, so
-        // the state is read again rather than assumed to have kept up. Fires on
+        // the state is read again rather than assumed to have kept up -- the
+        // third of the match clock's three reconciliation triggers. Fires on
         // the first join too, which is a cheap duplicate of the server render.
         .subscribe((status) => {
-          if (status === "SUBSCRIBED") void refetch();
+          if (status === "SUBSCRIBED") reconcile();
         });
 
       cleanup = () => {
@@ -285,39 +318,7 @@ export function AuctionMatch({
       cancelled = true;
       cleanup?.();
     };
-  }, [matchId, applyTurn, refetch]);
-
-  const me = players.find((p) => p.user_id === viewerId) ?? null;
-  const finished = turn.currentLot > turn.lotCount;
-  const lot = lotAt(lots, turn.currentLot);
-
-  // Bidding is the one phase a move can be sent in, so it is the one phase
-  // the visible countdown ends early for; a finished match has no deadline
-  // left to chase, whatever a stale turn record still says. Exactly one of
-  // turnDeadline/phaseDeadline is ever set at a time -- the server sets the
-  // former during bidding and the latter otherwise -- so there is always at
-  // most one active deadline to hand the clock.
-  const bidding = turn.phase === "bidding";
-  const activeDeadline = finished ? null : (turn.turnDeadline ?? turn.phaseDeadline);
-  // The player on the clock is the one client that cannot be trusted with
-  // expiry: everyone else fires it, jittered, while they get first crack at
-  // acting.
-  const skipExpiry = bidding && !!me && turn.turnSeat === me.seat;
-
-  const { remainingMs } = useMatchClock({
-    serverNow,
-    deadline: activeDeadline,
-    visibleSlackMs: bidding ? VISIBLE_SLACK_MS : 0,
-    skipExpiry,
-    expire: () =>
-      getClient()
-        .schema("auction")
-        .rpc("expire_turn", { p_match_id: matchId })
-        .then(({ data }) => {
-          if (data) applyTurn(data as AuctionTurnRow);
-        }),
-    reconcile: refetch,
-  });
+  }, [matchId, applyTurn, reconcile]);
 
   const act = useCallback(
     async (call: PromiseLike<{ data: AuctionTurnRow | null; error: { message: string } | null }>) => {
