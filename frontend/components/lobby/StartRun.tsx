@@ -60,6 +60,9 @@ export function StartRun({
     <form action={startRun} className="flex flex-col gap-2">
       <input type="hidden" name="lobby_id" value={lobbyId} />
       <input type="hidden" name="code" value={code} />
+      {/* Which game the room is starting. The action dispatches on it rather
+          than assuming, now that there is more than one. */}
+      <input type="hidden" name="game" value="auction_team_builder" />
       <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
         Scoring
         <select

@@ -113,7 +113,7 @@ end $$;
 
 -- n fresh players in a fresh room, with a run started and its match dealt into
 -- setup. Returns the match id. Leaves the session acting as the host.
-create function tests.mkmatch(p_n int, out match_id uuid) returns uuid
+create function tests.mkmatch(p_n int, p_game text, out match_id uuid) returns uuid
 language plpgsql as $$
 declare
   v_users uuid[] := '{}';
@@ -128,8 +128,15 @@ begin
   v_lobby := tests.mklobby(v_users);
 
   perform tests.act_as(v_users[1]);
-  select id into match_id
-    from public.start_run(v_lobby, 'arcade', 'auction_team_builder');
+  select id into match_id from public.start_run(v_lobby, 'arcade', p_game);
+end $$;
+
+-- The auction was the only game when this fixture was written, so it keeps the
+-- one-argument spelling every existing suite calls.
+create function tests.mkmatch(p_n int, out match_id uuid) returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.mkmatch(p_n, 'auction_team_builder');
 end $$;
 
 -- A dealt board from a fixed seed, so composition and play can be asserted
@@ -312,6 +319,34 @@ language sql stable as $$
     ) w on true
    where ap.match_id = p_match_id and w.won <> case s.slot when 'QB' then am.qb_slots when 'RB' then am.rb_slots when 'WR' then am.wr_slots when 'TE' then am.te_slots else am.flex_slots end;
 $$;
+
+-- ------------------------------------------------------- higher or lower --
+
+-- A dealt Higher or Lower ladder from a fixed seed, so the board can be
+-- asserted exactly. Goes through the private dealer rather than
+-- higher_or_lower.start because the seed is deliberately not an argument of the
+-- public entry point.
+--
+-- Scoring mode and era window are arguments rather than a second helper: they
+-- are the two things a board's shape depends on, and a suite that wants a
+-- narrow window should not have to build the match itself to get one.
+create function tests.deal_higher_or_lower(
+  p_n int,
+  p_seed double precision,
+  p_scoring_mode text default 'season_total',
+  p_season_from smallint default null,
+  p_season_to smallint default null,
+  out match_id uuid
+)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.mkmatch(p_n, 'higher_or_lower');
+  perform tests.act_as_admin();
+  perform higher_or_lower_private.deal_board(
+    match_id, p_seed, p_scoring_mode, p_season_from, p_season_to
+  );
+end $$;
 
 grant usage on schema tests to authenticated;
 grant execute on all functions in schema tests to authenticated;

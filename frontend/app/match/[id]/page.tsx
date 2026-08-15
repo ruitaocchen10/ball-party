@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AuctionMatch } from "@/components/auction/AuctionMatch";
 import { MatchSetup } from "@/components/auction/MatchSetup";
+import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
 import { TopBar } from "@/components/layout/TopBar";
 import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
 import { createClient } from "@/lib/supabase/server";
@@ -45,7 +46,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // state here rather than a failure.
   const { data: match } = await supabase
     .from("matches")
-    .select("id, status, run_id, runs(lobby_id, lobbies(code, host_id))")
+    .select("id, game, status, run_id, runs(lobby_id, lobbies(code, host_id))")
     .eq("id", id)
     .maybeSingle();
 
@@ -95,6 +96,56 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         <p className="text-sm leading-6 text-fg-muted">This game was abandoned.</p>
         {code ? <BackToRoom code={code} /> : <HomeLink />}
       </Shell>
+    );
+  }
+
+  // Each game reads its own tables out of its own schema, so this is where one
+  // match screen becomes two. The shell above — who you are, whether the match
+  // is yours, whether it has been dealt or abandoned — is the platform's and is
+  // the same for every game.
+  if (match.game === "higher_or_lower") {
+    const [boardResult, cardsResult, seatsResult] = await Promise.all([
+      supabase
+        .from("higher_or_lower_matches")
+        .select("question_count, current_question, scoring_mode, season_from, season_to")
+        .eq("match_id", id)
+        .maybeSingle(),
+      supabase.from("higher_or_lower_cards").select("*").eq("match_id", id).order("ordinal"),
+      supabase
+        .from("higher_or_lower_players")
+        .select("*, profiles(display_name)")
+        .eq("match_id", id)
+        .order("seat"),
+    ]);
+
+    const row = boardResult.data;
+    if (!row) {
+      return (
+        <Shell displayName={displayName}>
+          <p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p>
+          <HomeLink />
+        </Shell>
+      );
+    }
+
+    return (
+      <HigherOrLowerMatch
+        viewerId={claims.sub}
+        initial={{
+          board: {
+            questionCount: row.question_count,
+            currentQuestion: row.current_question,
+            scoringMode: row.scoring_mode,
+            seasonFrom: row.season_from,
+            seasonTo: row.season_to,
+          },
+          cards: cardsResult.data ?? [],
+          players: (seatsResult.data ?? []).map(({ profiles, ...seat }) => ({
+            ...seat,
+            display_name: profiles?.display_name ?? "Unknown player",
+          })),
+        }}
+      />
     );
   }
 

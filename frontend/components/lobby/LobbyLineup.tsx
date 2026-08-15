@@ -1,3 +1,4 @@
+import { StartHigherOrLower } from "@/components/lobby/StartHigherOrLower";
 import { StartRun, type Era } from "@/components/lobby/StartRun";
 import { Card } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
@@ -57,7 +58,7 @@ export function LobbyLineup({
         </h2>
         <p className="mt-2 text-sm leading-5 text-fg-muted">
           {isHost
-            ? "The auction is ready when the party is. More games are on their way."
+            ? "Pick a game when the party is ready. More are on their way."
             : hostIsActive
               ? "The host starts when the party is ready. More games are on their way."
               : "The host is away. You can take host controls to keep the party moving."}
@@ -66,11 +67,12 @@ export function LobbyLineup({
 
       <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 lg:gap-4 xl:gap-5">
         {GAMES.map((game) => {
-          // `live` means the catalogue can advertise a game. Launching is a
-          // stricter promise: it needs a run dispatcher and a setup RPC. The
-          // auction is the only game with both today, so a future catalogue
-          // entry never gets a start button before its game implementation.
-          const launchable = game.slug === "auction-team-builder";
+          // A tile can be started when the catalogue says which durable match
+          // record it deals. That is a stricter promise than `live`, which is
+          // only what the home screen may advertise, and the two run in
+          // opposite directions while a game is being built in slices — so the
+          // kicker below says which of the two this card is.
+          const launchable = game.match !== null;
           const meta = [game.players, game.duration].join(" · ");
 
           return (
@@ -79,7 +81,7 @@ export function LobbyLineup({
                 <Card className="flex h-full flex-col">
                   <div className="flex flex-1 flex-col p-3.5">
                     <p className="font-mono text-[10px] tracking-[0.13em] text-hidden-ink uppercase">
-                      Next up · live
+                      {game.status === "live" ? "Next up · live" : "Next up · in development"}
                     </p>
                     <h3 className="mt-2 font-slab text-xl leading-[1.04] -skew-x-7 uppercase">
                       {game.name.map((line) => (
@@ -95,7 +97,11 @@ export function LobbyLineup({
                   </div>
                   {isHost && !inFlight ? (
                     <div className="border-t border-[#c7bfac] bg-panel-shade p-2.5">
-                      <StartRun lobbyId={lobbyId} code={code} players={members.length} era={era} />
+                      {game.match === "higher_or_lower" ? (
+                        <StartHigherOrLower lobbyId={lobbyId} code={code} players={members.length} />
+                      ) : (
+                        <StartRun lobbyId={lobbyId} code={code} players={members.length} era={era} />
+                      )}
                     </div>
                   ) : null}
                 </Card>

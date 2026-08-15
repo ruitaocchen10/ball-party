@@ -14,6 +14,16 @@ export type GameStatus = "live" | "development";
 
 export type Game = {
   slug: string;
+  /**
+   * The `matches.game` a tile starts, or null when nothing can start it yet.
+   *
+   * `status` is what the home screen may advertise; this is the stricter
+   * promise, that a run dispatcher and a setup RPC exist behind the tile. The
+   * two run in opposite directions while a game is being built in slices, so
+   * they are separate fields — and this is the only place the catalogue's slug
+   * and the durable record's name are tied together.
+   */
+  match: MatchGame | null;
   /** Split across lines the way it should wrap on a card. */
   name: readonly string[];
   /**
@@ -56,9 +66,15 @@ export function matchGameName(game: MatchGame): string {
   return MATCH_GAME_NAMES[game];
 }
 
+/** The games a room can actually start today, by their durable record name. */
+export function startableGames(): MatchGame[] {
+  return GAMES.map((game) => game.match).filter((game) => game !== null);
+}
+
 export const GAMES: readonly Game[] = [
   {
     slug: "higher-or-lower",
+    match: "higher_or_lower",
     name: ["Higher", "or lower"],
     shortName: ["Higher", "or lower"],
     kind: "Solo or group",
@@ -71,6 +87,7 @@ export const GAMES: readonly Game[] = [
   },
   {
     slug: "auction-team-builder",
+    match: "auction_team_builder",
     name: ["Auction", "team builder"],
     shortName: ["Auction"],
     kind: "Group · hidden points",
@@ -83,6 +100,7 @@ export const GAMES: readonly Game[] = [
   },
   {
     slug: "wavelength",
+    match: null,
     name: ["2v2", "Wavelength"],
     shortName: ["2v2", "Wavelength"],
     kind: "2v2 · hidden target",

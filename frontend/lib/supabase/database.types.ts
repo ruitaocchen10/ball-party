@@ -129,6 +129,45 @@ export type Database = {
       [_ in never]: never
     }
   }
+  higher_or_lower: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      start: {
+        Args: {
+          p_match_id: string
+          p_scoring_mode?: string
+          p_season_from?: number
+          p_season_to?: number
+        }
+        Returns: Database["higher_or_lower"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      board: {
+        match_id: string | null
+        question_count: number | null
+        spare_count: number | null
+        current_question: number | null
+        scoring_mode: string | null
+        season_from: number | null
+        season_to: number | null
+      }
+    }
+  }
   public: {
     Tables: {
       auction_bids: {
@@ -395,6 +434,130 @@ export type Database = {
             foreignKeyName: "guest_account_collisions_guest_id_fkey"
             columns: ["guest_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      higher_or_lower_cards: {
+        Row: {
+          display_name: string
+          headshot_url: string | null
+          match_id: string
+          opponent: string | null
+          ordinal: number
+          player_id: string
+          points: number | null
+          position: string
+          revealed_at: string | null
+          season: number
+          team: string
+          week: number | null
+        }
+        Insert: {
+          display_name: string
+          headshot_url?: string | null
+          match_id: string
+          opponent?: string | null
+          ordinal: number
+          player_id: string
+          points?: number | null
+          position: string
+          revealed_at?: string | null
+          season: number
+          team: string
+          week?: number | null
+        }
+        Update: {
+          display_name?: string
+          headshot_url?: string | null
+          match_id?: string
+          opponent?: string | null
+          ordinal?: number
+          player_id?: string
+          points?: number | null
+          position?: string
+          revealed_at?: string | null
+          season?: number
+          team?: string
+          week?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_cards_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      higher_or_lower_matches: {
+        Row: {
+          current_question: number
+          match_id: string
+          question_count: number
+          scoring_mode: string
+          season_from: number
+          season_to: number
+          spare_count: number
+        }
+        Insert: {
+          current_question?: number
+          match_id: string
+          question_count: number
+          scoring_mode: string
+          season_from: number
+          season_to: number
+          spare_count: number
+        }
+        Update: {
+          current_question?: number
+          match_id?: string
+          question_count?: number
+          scoring_mode?: string
+          season_from?: number
+          season_to?: number
+          spare_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_matches_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      higher_or_lower_players: {
+        Row: {
+          match_id: string
+          seat: number
+          user_id: string
+        }
+        Insert: {
+          match_id: string
+          seat: number
+          user_id: string
+        }
+        Update: {
+          match_id?: string
+          seat?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_players_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -917,6 +1080,9 @@ export const Constants = {
     Enums: {},
   },
   graphql_public: {
+    Enums: {},
+  },
+  higher_or_lower: {
     Enums: {},
   },
   public: {
