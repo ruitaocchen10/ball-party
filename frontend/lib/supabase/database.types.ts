@@ -152,6 +152,26 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      state: {
+        Args: { p_match_id: string }
+        Returns: Database["higher_or_lower"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tick: {
+        Args: { p_match_id: string }
+        Returns: Database["higher_or_lower"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never
@@ -165,6 +185,9 @@ export type Database = {
         scoring_mode: string | null
         season_from: number | null
         season_to: number | null
+        phase: string | null
+        phase_deadline: string | null
+        server_now: string | null
       }
     }
   }
@@ -500,6 +523,8 @@ export type Database = {
           scoring_mode: string
           season_from: number
           season_to: number
+          phase: string
+          phase_deadline: string | null
           spare_count: number
         }
         Insert: {
@@ -518,6 +543,8 @@ export type Database = {
           scoring_mode?: string
           season_from?: number
           season_to?: number
+          phase?: string
+          phase_deadline?: string | null
           spare_count?: number
         }
         Relationships: [

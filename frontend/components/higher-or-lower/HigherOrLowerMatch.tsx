@@ -1,3 +1,7 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
 import {
@@ -10,16 +14,15 @@ import {
   type Card as LadderCard,
   type Player,
 } from "@/lib/higher-or-lower/board";
+import { TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
+import { createClient, createRealtimeClient } from "@/lib/supabase/client";
 
 /**
  * The ladder, on one screen.
  *
- * At this slice the screen is a rendering of a dealt board and nothing else:
- * the anchor face up, the challenger with its points withheld, and the two
- * numbers that say where in the match the table is. There is no clock and
- * nothing to press, so there is nothing for a browser to do that a server
- * render does not already do — this becomes a client component in #25, when
- * the phase machine gives it deadlines to chase and state to reconcile.
+ * The server deals the ladder, owns its phase and deadline, and publishes only
+ * revealed points. This client renders that projection, repeatedly asks the
+ * server to expire a passed deadline, and reconciles after reconnects.
  *
  * The withheld number is withheld by the server. The challenger's row simply
  * does not carry its points until its question reveals, so the concealed panel
@@ -27,14 +30,98 @@ import {
  * something it is choosing not to say. See migration 0032.
  */
 export function HigherOrLowerMatch({
+  matchId,
   viewerId,
   initial,
 }: {
+  matchId: string;
   viewerId: string;
   initial: { board: Board; cards: LadderCard[]; players: Player[] };
 }) {
-  const { board, cards, players } = initial;
-  const { anchor, challenger } = questionPair(cards, board.currentQuestion);
+  const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const getClient = useCallback(() => (clientRef.current ??= createClient()), []);
+  const [board, setBoard] = useState<Board>(initial.board);
+  const [cards, setCards] = useState<LadderCard[]>(initial.cards);
+  const [players, setPlayers] = useState<Player[]>(initial.players);
+
+  const applyBoard = useCallback((row: Partial<Board>) => {
+    if (
+      row.questionCount == null || row.currentQuestion == null || row.scoringMode == null ||
+      row.seasonFrom == null || row.seasonTo == null || row.phase == null ||
+      row.phaseDeadline === undefined || row.serverNow == null
+    ) return;
+    setBoard({
+      questionCount: row.questionCount,
+      currentQuestion: row.currentQuestion,
+      scoringMode: row.scoringMode,
+      seasonFrom: row.seasonFrom,
+      seasonTo: row.seasonTo,
+      phase: row.phase,
+      phaseDeadline: row.phaseDeadline,
+      serverNow: row.serverNow,
+    });
+  }, []);
+
+  const refetch = useCallback(async () => {
+    const supabase = getClient();
+    const [state, cardRows, playerRows] = await Promise.all([
+      supabase.schema("higher_or_lower").rpc("state", { p_match_id: matchId }),
+      supabase.from("higher_or_lower_cards").select("*").eq("match_id", matchId).order("ordinal"),
+      supabase.from("higher_or_lower_players").select("*, profiles(display_name)").eq("match_id", matchId).order("seat"),
+    ]);
+    if (state.data) applyBoard(boardFromState(state.data as HigherOrLowerState));
+    if (cardRows.data) setCards(cardRows.data as LadderCard[]);
+    if (playerRows.data) {
+      setPlayers(playerRows.data.map(({ profiles, ...seat }) => ({
+        ...seat,
+        display_name: profiles?.display_name ?? "Unknown player",
+      })) as Player[]);
+    }
+  }, [applyBoard, getClient, matchId]);
+
+  const { remainingMs, reconcile } = useMatchClock({
+    serverNow: board.serverNow,
+    deadline: board.phase === "complete" ? null : board.phaseDeadline,
+    visibleSlackMs: VISIBLE_SLACK_MS,
+    expire: () => getClient().schema("higher_or_lower").rpc("tick", { p_match_id: matchId }).then(({ data }) => {
+      if (data) applyBoard(boardFromState(data as HigherOrLowerState));
+    }),
+    reconcile: refetch,
+  });
+
+  useEffect(() => {
+    let cleanup: (() => void) | null = null;
+    let cancelled = false;
+    void (async () => {
+      const supabase = await createRealtimeClient();
+      if (cancelled) return;
+      const channel = supabase
+        .channel(`higher-or-lower:${matchId}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "higher_or_lower_matches", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const row = payload.new as HigherOrLowerMatchRow;
+          // A row payload has no server timestamp. Keep the last one supplied
+          // by state() rather than quietly substituting this browser's clock;
+          // the next reconciliation supplies a fresh authoritative offset.
+          setBoard((previous) => ({ ...previous, ...boardFromRow(row) }));
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "higher_or_lower_cards", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const card = payload.new as LadderCard;
+          setCards((previous) => previous.map((candidate) => candidate.ordinal === card.ordinal ? card : candidate));
+        })
+        .subscribe((status) => { if (status === "SUBSCRIBED") reconcile(); });
+      cleanup = () => { void supabase.removeChannel(channel); };
+    })();
+    return () => { cancelled = true; cleanup?.(); };
+  }, [matchId, reconcile]);
+
+  const { anchor, challenger: dealtChallenger } = questionPair(cards, board.currentQuestion);
+  // The card and board changes commit together, but Realtime delivers table
+  // payloads independently. The board phase is the authoritative permission to
+  // display this question's answer, so a card event that wins that small race
+  // cannot show its points while this screen still renders a call.
+  const challenger = dealtChallenger && (board.phase === "reveal" || board.phase === "complete")
+    ? dealtChallenger
+    : dealtChallenger ? { ...dealtChallenger, points: null, revealed_at: null } : null;
 
   return (
     <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
@@ -50,6 +137,8 @@ export function HigherOrLowerMatch({
           {scoringModeLabel(board)} · {eraLabel(board)}
         </p>
       </header>
+
+      <MatchClock phase={board.phase} remainingMs={remainingMs} />
 
       {anchor && challenger ? (
         <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
@@ -72,7 +161,7 @@ export function HigherOrLowerMatch({
           region is the complete announcement of what is on screen. */}
       <p role="status" className="sr-only">
         {anchor && challenger
-          ? `Question ${board.currentQuestion} of ${board.questionCount}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.display_name} is hidden.`
+          ? `Question ${board.currentQuestion} of ${board.questionCount}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
           : ""}
       </p>
 
@@ -94,6 +183,68 @@ export function HigherOrLowerMatch({
         </ul>
       </aside>
     </main>
+  );
+}
+
+type HigherOrLowerState = {
+  question_count: number | null;
+  current_question: number | null;
+  scoring_mode: string | null;
+  season_from: number | null;
+  season_to: number | null;
+  phase: Board["phase"] | null;
+  phase_deadline: string | null;
+  server_now: string | null;
+};
+
+type HigherOrLowerMatchRow = {
+  question_count: number;
+  current_question: number;
+  scoring_mode: string;
+  season_from: number;
+  season_to: number;
+  phase: Board["phase"];
+  phase_deadline: string | null;
+};
+
+function boardFromState(row: HigherOrLowerState): Partial<Board> {
+  return {
+    questionCount: row.question_count ?? undefined,
+    currentQuestion: row.current_question ?? undefined,
+    scoringMode: row.scoring_mode ?? undefined,
+    seasonFrom: row.season_from ?? undefined,
+    seasonTo: row.season_to ?? undefined,
+    phase: row.phase ?? undefined,
+    phaseDeadline: row.phase_deadline,
+    serverNow: row.server_now ?? undefined,
+  };
+}
+
+function boardFromRow(row: HigherOrLowerMatchRow): Omit<Board, "serverNow"> {
+  return {
+    questionCount: row.question_count,
+    currentQuestion: row.current_question,
+    scoringMode: row.scoring_mode,
+    seasonFrom: row.season_from,
+    seasonTo: row.season_to,
+    phase: row.phase,
+    phaseDeadline: row.phase_deadline,
+  };
+}
+
+function MatchClock({ phase, remainingMs }: { phase: Board["phase"]; remainingMs: number | null }) {
+  const seconds = remainingMs === null ? null : Math.ceil(remainingMs / 1_000);
+  const duration = phase === "board_intro" ? 5_000 : phase === "call" ? 12_000 : 4_000;
+  const fraction = remainingMs === null ? 0 : Math.min(1, remainingMs / (duration - VISIBLE_SLACK_MS));
+  const label = phase === "board_intro" ? "The board is coming into view" : phase === "call" ? "Make your call" : phase === "reveal" ? "The answer is revealed" : "Match complete";
+  return (
+    <section aria-label="Clock" className="rounded border border-line bg-surface-raised p-3">
+      <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
+      <p className="mt-1 font-slab text-3xl leading-none -skew-x-7 tabular-nums" aria-hidden>{seconds === null ? "—" : `${seconds}s`}</p>
+      <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
+        <div className="h-full bg-panel transition-[width]" style={{ width: `${fraction * 100}%`, transitionDuration: `${TICK_MS}ms` }} />
+      </div>
+    </section>
   );
 }
 

@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
 import type { Board, Card, Player } from "@/lib/higher-or-lower/board";
+import { supabaseMock } from "@/test/factories";
 
 /**
  * The match screen, at the slice where a ladder exists and nothing can be
@@ -57,6 +58,9 @@ const BOARD: Board = {
   scoringMode: "season_total",
   seasonFrom: 2010,
   seasonTo: 2025,
+  phase: "call",
+  phaseDeadline: new Date(Date.now() + 12_000).toISOString(),
+  serverNow: new Date().toISOString(),
 };
 
 const PLAYERS: Player[] = [
@@ -67,6 +71,7 @@ const PLAYERS: Player[] = [
 function renderMatch(over: { board?: Partial<Board>; cards?: Card[]; players?: Player[] } = {}) {
   return render(
     <HigherOrLowerMatch
+      matchId={MATCH}
       viewerId="u0"
       initial={{
         board: { ...BOARD, ...over.board },
@@ -78,6 +83,43 @@ function renderMatch(over: { board?: Partial<Board>; cards?: Card[]; players?: P
 }
 
 describe("HigherOrLowerMatch", () => {
+  beforeEach(() => {
+    globalThis.__supabaseMock = supabaseMock();
+  });
+
+  it("shows the shared phase and its server-timed countdown", () => {
+    renderMatch({ board: { phase: "call", phaseDeadline: new Date(Date.now() + 9_000).toISOString() } });
+
+    expect(screen.getByRole("region", { name: /clock/i })).toHaveTextContent("Make your call");
+    expect(screen.getByRole("timer", { name: /seconds left/i })).toBeInTheDocument();
+  });
+
+  it("shows a challenger's points once the server says its reveal is live", () => {
+    renderMatch({
+      board: { phase: "reveal" },
+      cards: [
+        card({ ordinal: 0, points: 289.4, revealed_at: "2026-08-15T12:00:00Z" }),
+        card({ ordinal: 1, display_name: "Patrick Mahomes", points: 417.1, revealed_at: "2026-08-15T12:01:00Z" }),
+      ],
+    });
+
+    expect(screen.getByRole("group", { name: /challenger/i })).toHaveTextContent("417.1");
+    expect(screen.queryByText("? ? ?")).not.toBeInTheDocument();
+  });
+
+  it("keeps a reordered card update concealed until its reveal phase arrives", () => {
+    renderMatch({
+      board: { phase: "call" },
+      cards: [
+        card({ ordinal: 0, points: 289.4, revealed_at: "2026-08-15T12:00:00Z" }),
+        card({ ordinal: 1, display_name: "Patrick Mahomes", points: 417.1, revealed_at: "2026-08-15T12:01:00Z" }),
+      ],
+    });
+
+    expect(screen.getByRole("group", { name: /challenger/i })).toHaveTextContent("? ? ?");
+    expect(screen.getByRole("group", { name: /challenger/i })).not.toHaveTextContent("417.1");
+  });
+
   it("shows the anchor with its points and the challenger with them withheld", () => {
     renderMatch();
 

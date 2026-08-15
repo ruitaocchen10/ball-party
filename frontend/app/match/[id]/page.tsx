@@ -105,11 +105,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // the same for every game.
   if (match.game === "higher_or_lower") {
     const [boardResult, cardsResult, seatsResult] = await Promise.all([
-      supabase
-        .from("higher_or_lower_matches")
-        .select("question_count, current_question, scoring_mode, season_from, season_to")
-        .eq("match_id", id)
-        .maybeSingle(),
+      supabase.schema("higher_or_lower").rpc("state", { p_match_id: id }),
       supabase.from("higher_or_lower_cards").select("*").eq("match_id", id).order("ordinal"),
       supabase
         .from("higher_or_lower_players")
@@ -119,7 +115,11 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     ]);
 
     const row = boardResult.data;
-    if (!row) {
+    if (
+      !row || row.question_count === null || row.current_question === null ||
+      row.scoring_mode === null || row.season_from === null || row.season_to === null ||
+      row.phase === null || row.server_now === null
+    ) {
       return (
         <Shell displayName={displayName}>
           <p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p>
@@ -130,6 +130,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
     return (
       <HigherOrLowerMatch
+        matchId={id}
         viewerId={claims.sub}
         initial={{
           board: {
@@ -138,6 +139,9 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
             scoringMode: row.scoring_mode,
             seasonFrom: row.season_from,
             seasonTo: row.season_to,
+            phase: row.phase as "board_intro" | "call" | "reveal" | "complete",
+            phaseDeadline: row.phase_deadline,
+            serverNow: row.server_now,
           },
           cards: cardsResult.data ?? [],
           players: (seatsResult.data ?? []).map(({ profiles, ...seat }) => ({

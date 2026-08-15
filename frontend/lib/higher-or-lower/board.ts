@@ -22,6 +22,9 @@ export type Board = {
   scoringMode: string;
   seasonFrom: number;
   seasonTo: number;
+  phase: "board_intro" | "call" | "reveal" | "complete";
+  phaseDeadline: string | null;
+  serverNow: string;
 };
 
 /**
