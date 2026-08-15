@@ -438,8 +438,9 @@ select bag_eq(
       where pubname = 'supabase_realtime' and schemaname = 'public'
         and tablename like 'higher_or_lower%' $$,
   $$ values ('higher_or_lower_matches'), ('higher_or_lower_cards'),
-            ('higher_or_lower_players') $$,
-  'the three client-readable tables are replicated, and only those'
+            ('higher_or_lower_players'), ('higher_or_lower_calls'),
+            ('higher_or_lower_call_statuses') $$,
+  'the client-readable ladder and call projections are replicated, and only those'
 );
 
 -- The quantile is not just this card's answer, it is its rank in the deck. Easy
@@ -470,15 +471,15 @@ select bag_eq(
   $$ select p.proname::text
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'higher_or_lower' $$,
-  $$ values ('start') $$,
-  'the exposed schema holds exactly the function a client may call'
+  $$ values ('call'), ('start'), ('state'), ('tick') $$,
+  'the exposed schema holds exactly the client RPCs for the dealt ladder'
 );
 
 select ok(
-  (select bool_and(not has_function_privilege('authenticated', p.oid, 'EXECUTE'))
+  (select bool_and(p.proname = 'has_called' or not has_function_privilege('authenticated', p.oid, 'EXECUTE'))
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'higher_or_lower_private'),
-  'no engine function is executable by a participant'
+  'only the policy helper is executable by a participant; every engine entry remains private'
 );
 
 select ok(

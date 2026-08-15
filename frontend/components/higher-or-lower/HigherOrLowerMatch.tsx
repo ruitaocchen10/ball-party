@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { Concealed } from "@/components/ui/Concealed";
 import {
   cardMetaLine,
@@ -12,6 +13,8 @@ import {
   scoringModeLabel,
   type Board,
   type Card as LadderCard,
+  type Call,
+  type CallStatus,
   type Player,
 } from "@/lib/higher-or-lower/board";
 import { TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
@@ -36,13 +39,17 @@ export function HigherOrLowerMatch({
 }: {
   matchId: string;
   viewerId: string;
-  initial: { board: Board; cards: LadderCard[]; players: Player[] };
+  initial: { board: Board; cards: LadderCard[]; players: Player[]; calls: Call[]; statuses: CallStatus[] };
 }) {
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
   const getClient = useCallback(() => (clientRef.current ??= createClient()), []);
   const [board, setBoard] = useState<Board>(initial.board);
   const [cards, setCards] = useState<LadderCard[]>(initial.cards);
   const [players, setPlayers] = useState<Player[]>(initial.players);
+  const [calls, setCalls] = useState<Call[]>(initial.calls);
+  const [statuses, setStatuses] = useState<CallStatus[]>(initial.statuses);
+  const [pendingCall, setPendingCall] = useState(false);
+  const [callError, setCallError] = useState<string | null>(null);
 
   const applyBoard = useCallback((row: Partial<Board>) => {
     if (
@@ -64,10 +71,12 @@ export function HigherOrLowerMatch({
 
   const refetch = useCallback(async () => {
     const supabase = getClient();
-    const [state, cardRows, playerRows] = await Promise.all([
+    const [state, cardRows, playerRows, callRows, statusRows] = await Promise.all([
       supabase.schema("higher_or_lower").rpc("state", { p_match_id: matchId }),
       supabase.from("higher_or_lower_cards").select("*").eq("match_id", matchId).order("ordinal"),
       supabase.from("higher_or_lower_players").select("*, profiles(display_name)").eq("match_id", matchId).order("seat"),
+      supabase.from("higher_or_lower_calls").select("*").eq("match_id", matchId).order("created_at"),
+      supabase.from("higher_or_lower_call_statuses").select("*").eq("match_id", matchId),
     ]);
     if (state.data) applyBoard(boardFromState(state.data as HigherOrLowerState));
     if (cardRows.data) setCards(cardRows.data as LadderCard[]);
@@ -77,6 +86,8 @@ export function HigherOrLowerMatch({
         display_name: profiles?.display_name ?? "Unknown player",
       })) as Player[]);
     }
+    if (callRows.data) setCalls(callRows.data as Call[]);
+    if (statusRows.data) setStatuses(statusRows.data as CallStatus[]);
   }, [applyBoard, getClient, matchId]);
 
   const { remainingMs, reconcile } = useMatchClock({
@@ -107,12 +118,31 @@ export function HigherOrLowerMatch({
         .on("postgres_changes", { event: "*", schema: "public", table: "higher_or_lower_cards", filter: `match_id=eq.${matchId}` }, (payload) => {
           const card = payload.new as LadderCard;
           setCards((previous) => previous.map((candidate) => candidate.ordinal === card.ordinal ? card : candidate));
+          // A reveal changes which existing call rows RLS permits. Calls do not
+          // emit a new event at that moment, so re-read their policy projection.
+          if (card.revealed_at) void refetch();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "higher_or_lower_players", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const player = payload.new as Player;
+          setPlayers((previous) => previous.map((candidate) => candidate.user_id === player.user_id ? {
+            ...candidate, ...player,
+          } : candidate));
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "higher_or_lower_calls", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const call = payload.new as Call;
+          setCalls((previous) => previous.some((candidate) => candidate.user_id === call.user_id && candidate.question === call.question)
+            ? previous : [...previous, call]);
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "higher_or_lower_call_statuses", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const status = payload.new as CallStatus;
+          setStatuses((previous) => previous.some((candidate) => candidate.user_id === status.user_id && candidate.question === status.question)
+            ? previous : [...previous, status]);
         })
         .subscribe((status) => { if (status === "SUBSCRIBED") reconcile(); });
       cleanup = () => { void supabase.removeChannel(channel); };
     })();
     return () => { cancelled = true; cleanup?.(); };
-  }, [matchId, reconcile]);
+  }, [matchId, reconcile, refetch]);
 
   const { anchor, challenger: dealtChallenger } = questionPair(cards, board.currentQuestion);
   // The card and board changes commit together, but Realtime delivers table
@@ -122,6 +152,32 @@ export function HigherOrLowerMatch({
   const challenger = dealtChallenger && (board.phase === "reveal" || board.phase === "complete")
     ? dealtChallenger
     : dealtChallenger ? { ...dealtChallenger, points: null, revealed_at: null } : null;
+  const myCall = calls.find((call) => call.question === board.currentQuestion && call.user_id === viewerId);
+  const lockedIn = new Set(statuses.filter((status) => status.question === board.currentQuestion).map((status) => status.user_id));
+  const makeCall = async (direction: "higher" | "lower") => {
+    setPendingCall(true);
+    setCallError(null);
+    const { data, error } = await getClient().schema("higher_or_lower").rpc("call", {
+      p_match_id: matchId,
+      p_direction: direction,
+    });
+    setPendingCall(false);
+    if (error) {
+      setCallError(CALL_MESSAGES[error.message] ?? error.message);
+      return;
+    }
+    if (data) {
+      const call = data as Call;
+      setCalls((previous) => previous.some((candidate) => candidate.user_id === call.user_id && candidate.question === call.question)
+        ? previous : [...previous, call]);
+      setStatuses((previous) => previous.some((status) => status.user_id === call.user_id && status.question === call.question)
+        ? previous : [...previous, { match_id: call.match_id, question: call.question, user_id: call.user_id }]);
+      // A player who locks in after someone else needs the rows that became
+      // visible with their call. Future calls still arrive as individual
+      // Realtime inserts rather than a client-side reveal batch.
+      await refetch();
+    }
+  };
 
   return (
     <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
@@ -139,6 +195,14 @@ export function HigherOrLowerMatch({
       </header>
 
       <MatchClock phase={board.phase} remainingMs={remainingMs} />
+
+      <CallControls
+        phase={board.phase}
+        called={myCall?.direction ?? null}
+        pending={pendingCall}
+        error={callError}
+        onCall={makeCall}
+      />
 
       {anchor && challenger ? (
         <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
@@ -167,7 +231,9 @@ export function HigherOrLowerMatch({
 
       <aside aria-label="The table" className="shrink-0">
         <ul className="flex flex-wrap gap-2">
-          {players.map((player) => (
+          {players.map((player) => {
+            const call = calls.find((candidate) => candidate.question === board.currentQuestion && candidate.user_id === player.user_id);
+            return (
             <li
               key={player.user_id}
               className="rounded border border-line px-3 py-1.5 font-slab text-[15px] leading-none -skew-x-7 uppercase"
@@ -178,11 +244,47 @@ export function HigherOrLowerMatch({
                   YOU
                 </span>
               ) : null}
+              <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                {player.current_streak} now · {player.best_streak} best · {player.correct_count} correct
+              </span>
+              {lockedIn.has(player.user_id) ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                  {call ? call.direction : "LOCKED"}
+                </span>
+              ) : null}
             </li>
-          ))}
+            );
+          })}
         </ul>
       </aside>
     </main>
+  );
+}
+
+const CALL_MESSAGES: Record<string, string> = {
+  already_called: "You already locked in this question.",
+  call_not_open: "Calls are not open right now.",
+  call_deadline_passed: "The call window has closed.",
+  match_not_playing: "This match has ended.",
+};
+
+function CallControls({
+  phase, called, pending, error, onCall,
+}: {
+  phase: Board["phase"];
+  called: string | null;
+  pending: boolean;
+  error: string | null;
+  onCall: (direction: "higher" | "lower") => void;
+}) {
+  const disabled = phase !== "call" || called !== null || pending;
+  return (
+    <section aria-label="Make your call" className="grid shrink-0 gap-2 sm:grid-cols-2">
+      <Button disabled={disabled} onClick={() => onCall("higher")}>Higher</Button>
+      <Button disabled={disabled} variant="ghost" onClick={() => onCall("lower")}>Lower</Button>
+      {called ? <p className="sm:col-span-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">You called {called}.</p> : null}
+      {error ? <p role="alert" className="sm:col-span-2 text-sm text-red-700">{error}</p> : null}
+    </section>
   );
 }
 

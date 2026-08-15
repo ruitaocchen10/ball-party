@@ -135,7 +135,10 @@ function query(table: string) {
 }
 
 export function supabaseMock() {
-  const rpc = vi.fn(async (): Promise<RpcResult> => ({ data: null, error: null }));
+  const rpc = vi.fn(async (...args: unknown[]): Promise<RpcResult> => {
+    void args;
+    return { data: null, error: null };
+  });
   const from = vi.fn((table: string) => query(table));
   const client = {
     rpc,

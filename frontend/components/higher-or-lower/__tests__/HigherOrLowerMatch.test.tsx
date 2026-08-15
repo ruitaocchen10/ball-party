@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
-import type { Board, Card, Player } from "@/lib/higher-or-lower/board";
+import type { Board, Call, CallStatus, Card, Player } from "@/lib/higher-or-lower/board";
 import { supabaseMock } from "@/test/factories";
 
 /**
@@ -64,11 +65,11 @@ const BOARD: Board = {
 };
 
 const PLAYERS: Player[] = [
-  { match_id: MATCH, user_id: "u0", seat: 0, display_name: "Ava" },
-  { match_id: MATCH, user_id: "u1", seat: 1, display_name: "Ben" },
+  { match_id: MATCH, user_id: "u0", seat: 0, current_streak: 2, best_streak: 3, correct_count: 5, display_name: "Ava" },
+  { match_id: MATCH, user_id: "u1", seat: 1, current_streak: 0, best_streak: 1, correct_count: 1, display_name: "Ben" },
 ];
 
-function renderMatch(over: { board?: Partial<Board>; cards?: Card[]; players?: Player[] } = {}) {
+function renderMatch(over: { board?: Partial<Board>; cards?: Card[]; players?: Player[]; calls?: Call[]; statuses?: CallStatus[] } = {}) {
   return render(
     <HigherOrLowerMatch
       matchId={MATCH}
@@ -77,6 +78,8 @@ function renderMatch(over: { board?: Partial<Board>; cards?: Card[]; players?: P
         board: { ...BOARD, ...over.board },
         cards: over.cards ?? ladder(),
         players: over.players ?? PLAYERS,
+        calls: over.calls ?? [],
+        statuses: over.statuses ?? [],
       }}
     />,
   );
@@ -92,6 +95,39 @@ describe("HigherOrLowerMatch", () => {
 
     expect(screen.getByRole("region", { name: /clock/i })).toHaveTextContent("Make your call");
     expect(screen.getByRole("timer", { name: /seconds left/i })).toBeInTheDocument();
+  });
+
+  it("accepts one higher-or-lower call and disables both controls", async () => {
+    const user = userEvent.setup();
+    globalThis.__supabaseMock.rpc.mockImplementation(async (name: unknown) => name === "call"
+      ? { data: { match_id: MATCH, question: 1, user_id: "u0", direction: "higher", created_at: new Date().toISOString() }, error: null }
+      : { data: null, error: null });
+    renderMatch();
+
+    await user.click(screen.getByRole("button", { name: "Higher" }));
+
+    expect(globalThis.__supabaseMock.schema).toHaveBeenCalledWith("higher_or_lower");
+    expect(globalThis.__supabaseMock.rpc).toHaveBeenCalledWith("call", {
+      p_match_id: MATCH,
+      p_direction: "higher",
+    });
+    expect(screen.getByRole("button", { name: "Higher" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Lower" })).toBeDisabled();
+    expect(screen.getByText("You called higher.")).toBeInTheDocument();
+  });
+
+  it("shows every lock-in but only directions supplied by the policy", () => {
+    renderMatch({
+      calls: [{ match_id: MATCH, question: 1, user_id: "u0", direction: "lower", created_at: new Date().toISOString() }],
+      statuses: [
+        { match_id: MATCH, question: 1, user_id: "u0" },
+        { match_id: MATCH, question: 1, user_id: "u1" },
+      ],
+    });
+
+    expect(screen.getAllByText("LOCKED")).toHaveLength(1);
+    expect(screen.getByText("You called lower.")).toBeInTheDocument();
+    expect(screen.queryByText(/Ben called/i)).not.toBeInTheDocument();
   });
 
   it("shows a challenger's points once the server says its reveal is live", () => {
@@ -203,6 +239,7 @@ describe("HigherOrLowerMatch", () => {
 
     expect(screen.getByText("Ava")).toBeInTheDocument();
     expect(screen.getByText("Ben")).toBeInTheDocument();
+    expect(screen.getByText("2 now · 3 best · 5 correct")).toBeInTheDocument();
     expect(screen.getByRole("note", { name: /format/i })).toHaveTextContent("season total · 2010-2025");
   });
 

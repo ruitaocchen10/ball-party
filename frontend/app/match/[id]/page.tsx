@@ -104,7 +104,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // is yours, whether it has been dealt or abandoned — is the platform's and is
   // the same for every game.
   if (match.game === "higher_or_lower") {
-    const [boardResult, cardsResult, seatsResult] = await Promise.all([
+    const [boardResult, cardsResult, seatsResult, callsResult, statusesResult] = await Promise.all([
       supabase.schema("higher_or_lower").rpc("state", { p_match_id: id }),
       supabase.from("higher_or_lower_cards").select("*").eq("match_id", id).order("ordinal"),
       supabase
@@ -112,6 +112,8 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         .select("*, profiles(display_name)")
         .eq("match_id", id)
         .order("seat"),
+      supabase.from("higher_or_lower_calls").select("*").eq("match_id", id).order("created_at"),
+      supabase.from("higher_or_lower_call_statuses").select("*").eq("match_id", id),
     ]);
 
     const row = boardResult.data;
@@ -148,6 +150,8 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
             ...seat,
             display_name: profiles?.display_name ?? "Unknown player",
           })),
+          calls: callsResult.data ?? [],
+          statuses: statusesResult.data ?? [],
         }}
       />
     );

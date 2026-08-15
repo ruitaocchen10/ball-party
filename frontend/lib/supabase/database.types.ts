@@ -137,6 +137,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      call: {
+        Args: { p_direction: string; p_match_id: string }
+        Returns: Database["public"]["Tables"]["higher_or_lower_calls"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "higher_or_lower_calls"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       start: {
         Args: {
           p_match_id: string
@@ -515,6 +525,78 @@ export type Database = {
           },
         ]
       }
+      higher_or_lower_call_statuses: {
+        Row: {
+          match_id: string
+          question: number
+          user_id: string
+        }
+        Insert: {
+          match_id: string
+          question: number
+          user_id: string
+        }
+        Update: {
+          match_id?: string
+          question?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_call_statuses_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_call_statuses_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "higher_or_lower_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
+      higher_or_lower_calls: {
+        Row: {
+          created_at: string
+          direction: string
+          match_id: string
+          question: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          match_id: string
+          question: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          match_id?: string
+          question?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_calls_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_calls_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "higher_or_lower_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
       higher_or_lower_matches: {
         Row: {
           current_question: number
@@ -559,16 +641,25 @@ export type Database = {
       }
       higher_or_lower_players: {
         Row: {
+          best_streak: number
+          correct_count: number
+          current_streak: number
           match_id: string
           seat: number
           user_id: string
         }
         Insert: {
+          best_streak?: number
+          correct_count?: number
+          current_streak?: number
           match_id: string
           seat: number
           user_id: string
         }
         Update: {
+          best_streak?: number
+          correct_count?: number
+          current_streak?: number
           match_id?: string
           seat?: number
           user_id?: string

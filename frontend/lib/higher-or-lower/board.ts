@@ -12,6 +12,8 @@ import type { Database } from "@/lib/supabase/database.types";
 
 export type Card = Database["public"]["Tables"]["higher_or_lower_cards"]["Row"];
 export type Seat = Database["public"]["Tables"]["higher_or_lower_players"]["Row"];
+export type Call = Database["public"]["Tables"]["higher_or_lower_calls"]["Row"];
+export type CallStatus = Database["public"]["Tables"]["higher_or_lower_call_statuses"]["Row"];
 
 export type Player = Seat & { display_name: string };
 
