@@ -36,6 +36,7 @@ import {
   type Turn,
 } from "@/lib/auction/board";
 import { createClient, createRealtimeClient } from "@/lib/supabase/client";
+import { TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
 
 /**
  * The whole game, on one screen.
@@ -56,37 +57,22 @@ import { createClient, createRealtimeClient } from "@/lib/supabase/client";
  * what everybody is reasoning about.
  */
 
-/** The server's real deadline is longer than the visible clock, which stops
- *  short so a bid sent as the bar empties still has real deadline behind it.
- *  These mirror the intervals in the migrations; the server remains the only
- *  thing that decides when a phase is actually over. */
-const VISIBLE_SLACK_MS = 500;
-const TICK_MS = 100;
+/**
+ * The server's real deadline is longer than the visible clock, which stops
+ * short so a bid sent as the bar empties still has real deadline behind it.
+ * That slack, the repeat-with-jitter expiry polling and the reconciliation
+ * triggers all live in the shared match clock now -- see its module doc for
+ * the playtest that shape is fixing (three lots in one game took 81s, 127s
+ * and 271s, because a client asked once and latched). DURATION_MS is the only
+ * piece that stays here: it is the bid bar's own fraction-of-elapsed drawing,
+ * mirroring the intervals in the migrations. The server remains the only
+ * thing that decides when a phase is actually over.
+ */
 const DURATION_MS: Record<Turn["phase"], number> = {
   lot_preview: 5_000,
   bidding: 20_000,
   sold: 5_000,
 };
-
-/**
- * Expiry is asked for repeatedly, not once.
- *
- * The previous version fired exactly one request per state and latched. If that
- * one attempt no-opped -- and for the timer-only phases it fired at exactly the
- * deadline with no slack, so any client whose clock ran a millisecond fast got
- * a no-op -- then nobody ever asked again and the auction sat there until the
- * janitor swept it a minute later. Three lots in one playtest took 81s, 127s
- * and 271s that way, one of them with no player actions at all.
- *
- * Asking again is free: the server re-checks in its own time under the match
- * lock and does nothing if it disagrees.
- */
-const RETRY_MS = 1_000;
-
-/** How far past a deadline the screen has to look before it stops believing
- *  itself and refetches. Well behind RETRY_MS, so this only runs when expiry
- *  has already failed to move things along. */
-const STALE_MS = 4_000;
 
 /**
  * The auction RPCs raise short machine-readable strings — see
@@ -151,15 +137,15 @@ export function AuctionMatch({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // How far this browser's clock is from the server's. Measured on mount and
-  // re-measured on every RPC response, so a machine whose clock drifts mid-game
-  // corrects itself. Both are read from the wall clock, so both are set in an
-  // effect rather than during render.
-  const offset = useRef(0);
-  const [now, setNow] = useState(0);
+  // Server time as of the most recently applied state. The shared match clock
+  // measures how far this browser's clock is from the server's against it, so
+  // a machine whose clock drifts mid-game keeps correcting itself. State
+  // rather than a ref: applyTurn already has a setter for everything else it
+  // updates, and this is one more.
+  const [serverNow, setServerNow] = useState(initial.serverNow);
 
   const applyTurn = useCallback((state: AuctionTurnRow) => {
-    if (state.server_now) offset.current = Date.parse(state.server_now) - Date.now();
+    if (state.server_now) setServerNow(state.server_now);
     setTurn({
       lotCount: state.lot_count ?? 0,
       currentLot: state.current_lot ?? 1,
@@ -301,25 +287,37 @@ export function AuctionMatch({
     };
   }, [matchId, applyTurn, refetch]);
 
-  // The bar should move, so this ticks rather than counting seconds.
-  useEffect(() => {
-    offset.current = Date.parse(initial.serverNow) - Date.now();
-    const tick = () => setNow(Date.now() + offset.current);
-    tick();
-    const id = setInterval(tick, TICK_MS);
-    return () => clearInterval(id);
-  }, [initial.serverNow]);
-
   const me = players.find((p) => p.user_id === viewerId) ?? null;
   const finished = turn.currentLot > turn.lotCount;
   const lot = lotAt(lots, turn.currentLot);
 
-  const deadline = turn.turnDeadline ? Date.parse(turn.turnDeadline) : null;
-  const phaseDeadline = turn.phaseDeadline ? Date.parse(turn.phaseDeadline) : null;
-  // Null until the first tick has established what time the server thinks it is.
-  const remainingMs =
-    deadline === null || now === 0 ? null : Math.max(0, deadline - VISIBLE_SLACK_MS - now);
-  const phaseRemainingMs = phaseDeadline === null || now === 0 ? null : Math.max(0, phaseDeadline - now);
+  // Bidding is the one phase a move can be sent in, so it is the one phase
+  // the visible countdown ends early for; a finished match has no deadline
+  // left to chase, whatever a stale turn record still says. Exactly one of
+  // turnDeadline/phaseDeadline is ever set at a time -- the server sets the
+  // former during bidding and the latter otherwise -- so there is always at
+  // most one active deadline to hand the clock.
+  const bidding = turn.phase === "bidding";
+  const activeDeadline = finished ? null : (turn.turnDeadline ?? turn.phaseDeadline);
+  // The player on the clock is the one client that cannot be trusted with
+  // expiry: everyone else fires it, jittered, while they get first crack at
+  // acting.
+  const skipExpiry = bidding && !!me && turn.turnSeat === me.seat;
+
+  const { remainingMs } = useMatchClock({
+    serverNow,
+    deadline: activeDeadline,
+    visibleSlackMs: bidding ? VISIBLE_SLACK_MS : 0,
+    skipExpiry,
+    expire: () =>
+      getClient()
+        .schema("auction")
+        .rpc("expire_turn", { p_match_id: matchId })
+        .then(({ data }) => {
+          if (data) applyTurn(data as AuctionTurnRow);
+        }),
+    reconcile: refetch,
+  });
 
   const act = useCallback(
     async (call: PromiseLike<{ data: AuctionTurnRow | null; error: { message: string } | null }>) => {
@@ -332,71 +330,6 @@ export function AuctionMatch({
     },
     [applyTurn],
   );
-
-  // Every client that is NOT on the clock fires the expiry once its own
-  // countdown has passed the deadline plus a little jitter. The player on the
-  // clock gets first crack at acting, and the jitter stops four clients
-  // stampeding the endpoint every single turn. Being wrong is free: the server
-  // re-checks in its own time and does nothing if it disagrees.
-  // Jitter now applies to every phase, not just bidding. The timer-only phases
-  // used to fire at exactly the deadline across every client at once, which
-  // both stampeded the endpoint and handed a marginally fast clock a guaranteed
-  // no-op — and a no-op used to be final.
-  const attempted = useRef(0);
-  const jitter = useRef(0);
-  useEffect(() => {
-    jitter.current = 300 + Math.random() * 500;
-    attempted.current = 0;
-  }, [turn.currentLot, turn.turnSeat, turn.turnDeadline, turn.phase, turn.phaseDeadline]);
-
-  useEffect(() => {
-    const activeDeadline = deadline ?? phaseDeadline;
-    if (activeDeadline === null || finished || now === 0) return;
-    if (turn.phase === "bidding" && me && turn.turnSeat === me.seat) return;
-    if (now < activeDeadline + jitter.current) return;
-    if (now - attempted.current < RETRY_MS) return;
-    attempted.current = now;
-
-    void getClient()
-      .schema("auction")
-      .rpc("expire_turn", { p_match_id: matchId })
-      .then(({ data }) => data && applyTurn(data));
-  }, [
-    now,
-    deadline, phaseDeadline,
-    finished,
-    me,
-    matchId,
-    getClient,
-    applyTurn,
-    turn.turnSeat,
-    turn.phase,
-  ]);
-
-  // The watchdog. Expiry above is the mechanism; this is the admission that it
-  // might not have worked — because this tab was backgrounded and its interval
-  // throttled, because a realtime payload never arrived, or because the player
-  // on the clock is the one client that deliberately never fires expiry. It
-  // only runs once a deadline is well past, so a healthy game never reaches it.
-  const reconciled = useRef(0);
-  useEffect(() => {
-    const activeDeadline = deadline ?? phaseDeadline;
-    if (activeDeadline === null || finished || now === 0) return;
-    if (now < activeDeadline + STALE_MS) return;
-    if (now - reconciled.current < STALE_MS) return;
-    reconciled.current = now;
-    void refetch();
-  }, [now, deadline, phaseDeadline, finished, refetch]);
-
-  // Coming back to a tab is the other moment this screen is likely to be wrong:
-  // background throttling means the clock above may have barely run at all.
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void refetch();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [refetch]);
 
   if (finished) {
     return (
@@ -500,7 +433,7 @@ export function AuctionMatch({
             phase={phase}
             price={price}
             budget={me.budget}
-            remainingMs={phase === "bidding_self" || phase === "bidding_other" ? remainingMs : phaseRemainingMs}
+            remainingMs={remainingMs}
             onClock={onClock}
             isMine={phase === "bidding_self"}
             blocked={blocked}
