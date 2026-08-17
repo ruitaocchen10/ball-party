@@ -17,7 +17,7 @@ import {
   type CallStatus,
   type Player,
 } from "@/lib/higher-or-lower/board";
-import { TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
+import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
 import { createClient, createRealtimeClient } from "@/lib/supabase/client";
 
 /**
@@ -94,6 +94,11 @@ export function HigherOrLowerMatch({
     serverNow: board.serverNow,
     deadline: board.phase === "complete" ? null : board.phaseDeadline,
     visibleSlackMs: VISIBLE_SLACK_MS,
+    // The tick below is also how this player says they are still here. Asking
+    // only at a passed deadline would put nobody on the record inside a
+    // question, and the server latches a player who ticked nowhere in one
+    // absent at its reveal.
+    heartbeatMs: HEARTBEAT_MS,
     expire: () => getClient().schema("higher_or_lower").rpc("tick", { p_match_id: matchId }).then(({ data }) => {
       if (data) applyBoard(boardFromState(data as HigherOrLowerState));
     }),
@@ -198,7 +203,7 @@ export function HigherOrLowerMatch({
 
       <CallControls
         phase={board.phase}
-        called={myCall?.direction ?? null}
+        call={myCall ?? null}
         pending={pendingCall}
         error={callError}
         onCall={makeCall}
@@ -247,7 +252,22 @@ export function HigherOrLowerMatch({
               <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
                 {player.current_streak} now · {player.best_streak} best · {player.correct_count} correct
               </span>
-              {lockedIn.has(player.user_id) ? (
+              {/* Absence is the server's judgement, latched over a whole
+                  question. Saying so is what makes the table's stopping to
+                  wait for someone legible rather than arbitrary. */}
+              {player.absent ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                  AWAY
+                </span>
+              ) : null}
+              {/* Three things, one slot: they let the clock run out, they have
+                  locked in something this screen may not read yet, or they have
+                  locked in something it may. */}
+              {call?.timed_out ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                  TIMED OUT
+                </span>
+              ) : lockedIn.has(player.user_id) ? (
                 <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
                   {call ? call.direction : "LOCKED"}
                 </span>
@@ -268,21 +288,33 @@ const CALL_MESSAGES: Record<string, string> = {
   match_not_playing: "This match has ended.",
 };
 
+/**
+ * The two buttons, and what became of the call they make.
+ *
+ * A row with no direction is the miss the server wrote when the deadline
+ * passed. It is scored exactly as a wrong call — that is the point of writing
+ * it — so this line is the only place the difference is visible, and it says
+ * "ran out of time" rather than reporting a call nobody made.
+ */
 function CallControls({
-  phase, called, pending, error, onCall,
+  phase, call, pending, error, onCall,
 }: {
   phase: Board["phase"];
-  called: string | null;
+  call: Call | null;
   pending: boolean;
   error: string | null;
   onCall: (direction: "higher" | "lower") => void;
 }) {
-  const disabled = phase !== "call" || called !== null || pending;
+  const disabled = phase !== "call" || call !== null || pending;
   return (
     <section aria-label="Make your call" className="grid shrink-0 gap-2 sm:grid-cols-2">
       <Button disabled={disabled} onClick={() => onCall("higher")}>Higher</Button>
       <Button disabled={disabled} variant="ghost" onClick={() => onCall("lower")}>Lower</Button>
-      {called ? <p className="sm:col-span-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">You called {called}.</p> : null}
+      {call ? (
+        <p className="sm:col-span-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
+          {call.timed_out ? "You ran out of time." : `You called ${call.direction}.`}
+        </p>
+      ) : null}
       {error ? <p role="alert" className="sm:col-span-2 text-sm text-red-700">{error}</p> : null}
     </section>
   );

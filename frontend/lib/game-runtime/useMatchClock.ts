@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * The three behaviours every timer-driven match screen needs, in one place.
+ * The behaviours every timer-driven match screen needs, in one place.
  *
  * The auction learned these the hard way — see its match component's history
  * for the playtest where three lots in one game took 81s, 127s and 271s, one
@@ -32,7 +32,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *    disagrees. `skipExpiry` lets a caller exempt the one client mid-decision
  *    (the auction's player on the clock) from asking at all.
  *
- * 3. **Reconciliation.** Realtime is the fast path, not the only path: a
+ * 3. **A heartbeat, if the caller asks for one.** Off by default, because the
+ *    auction's expiry endpoint learns nothing from being asked early. Higher
+ *    or Lower's does: its tick RPC stamps the caller as last seen, and a
+ *    player who ticks nowhere inside a question is latched absent at that
+ *    question's reveal, so that screen has to put the question on a cadence
+ *    rather than only once a deadline is past. What the server makes of the
+ *    extra asking is the game's business; this only knows how often to ask.
+ *
+ * 4. **Reconciliation.** Realtime is the fast path, not the only path: a
  *    single dropped payload must not leave the screen permanently wrong. This
  *    calls `reconcile` — a full state re-read — under two of the three
  *    conditions the architecture doc asks for: a deadline that stays past
@@ -59,6 +67,12 @@ export const TICK_MS = 100;
  *  not caution. */
 const RETRY_MS = 1_000;
 
+/** How often a caller that wants a heartbeat asks while the deadline is still
+ *  ahead. Comfortably inside Higher or Lower's twelve-second call phase, so
+ *  several beats land in every question and losing one to a dropped request
+ *  does not make a present player look departed. */
+export const HEARTBEAT_MS = 3_000;
+
 /** How far past a deadline the screen has to look before it stops believing
  *  itself and reconciles. Well behind RETRY_MS, so this only fires once
  *  expiry has already had several tries. */
@@ -84,6 +98,11 @@ export type MatchClockOptions = {
    *  player on the clock, for instance, who is the one client that cannot be
    *  trusted with it. Everyone else keeps asking. */
   skipExpiry?: boolean;
+  /** How often to call `expire` while the deadline is still ahead. Omit —
+   *  the default — for a game whose expiry endpoint learns nothing from being
+   *  asked early. Pass `HEARTBEAT_MS` for one whose server reads presence off
+   *  the same call. */
+  heartbeatMs?: number | null;
   /** Calls the game's expiry RPC and applies whatever it returns. Resolves
    *  once the round trip (and any resulting state application) is done; its
    *  return value is not inspected; a rejection is not caught here, the same
@@ -101,6 +120,7 @@ export function useMatchClock({
   deadline,
   visibleSlackMs = 0,
   skipExpiry = false,
+  heartbeatMs = null,
   expire,
   reconcile,
 }: MatchClockOptions): { remainingMs: number | null; reconcile: () => void } {
@@ -133,13 +153,25 @@ export function useMatchClock({
     attempted.current = 0;
   }, [deadline]);
 
+  // One cadence, chosen by whether the deadline has passed: the retry interval
+  // once it has, the caller's heartbeat until then. Sharing `attempted` across
+  // both is what keeps a beat and a retry from doubling up at the boundary, and
+  // its reset above is why a fresh phase is asked about immediately -- which a
+  // heartbeat caller wants, since that ask is what puts everyone on the record
+  // as present for the question that just opened.
+  //
+  // Nothing timed means nothing to ask about, heartbeat or not. A finished
+  // match has no deadline, and a screen that kept beating at one would be
+  // asking a server that has stopped listening.
   useEffect(() => {
     if (deadlineMs === null || now === 0 || skipExpiry) return;
-    if (now < deadlineMs + jitter.current) return;
-    if (now - attempted.current < RETRY_MS) return;
+    const passed = now >= deadlineMs + jitter.current;
+    const interval = passed ? RETRY_MS : heartbeatMs;
+    if (interval === null) return;
+    if (now - attempted.current < interval) return;
     attempted.current = now;
     void expire();
-  }, [now, deadlineMs, skipExpiry, expire]);
+  }, [now, deadlineMs, skipExpiry, heartbeatMs, expire]);
 
   // The watchdog. Expiry above is the mechanism; this is the admission that it
   // might not have worked -- because a tab was backgrounded and its interval

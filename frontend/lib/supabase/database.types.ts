@@ -561,23 +561,26 @@ export type Database = {
       higher_or_lower_calls: {
         Row: {
           created_at: string
-          direction: string
+          direction: string | null
           match_id: string
           question: number
+          timed_out: boolean
           user_id: string
         }
         Insert: {
           created_at?: string
-          direction: string
+          direction?: string | null
           match_id: string
           question: number
+          timed_out?: boolean
           user_id: string
         }
         Update: {
           created_at?: string
-          direction?: string
+          direction?: string | null
           match_id?: string
           question?: number
+          timed_out?: boolean
           user_id?: string
         }
         Relationships: [
@@ -607,6 +610,7 @@ export type Database = {
           season_to: number
           phase: string
           phase_deadline: string | null
+          question_started_at: string | null
           spare_count: number
         }
         Insert: {
@@ -616,6 +620,7 @@ export type Database = {
           scoring_mode: string
           season_from: number
           season_to: number
+          question_started_at?: string | null
           spare_count: number
         }
         Update: {
@@ -627,6 +632,7 @@ export type Database = {
           season_to?: number
           phase?: string
           phase_deadline?: string | null
+          question_started_at?: string | null
           spare_count?: number
         }
         Relationships: [
@@ -641,25 +647,31 @@ export type Database = {
       }
       higher_or_lower_players: {
         Row: {
+          absent: boolean
           best_streak: number
           correct_count: number
           current_streak: number
+          last_seen_at: string
           match_id: string
           seat: number
           user_id: string
         }
         Insert: {
+          absent?: boolean
           best_streak?: number
           correct_count?: number
           current_streak?: number
+          last_seen_at?: string
           match_id: string
           seat: number
           user_id: string
         }
         Update: {
+          absent?: boolean
           best_streak?: number
           correct_count?: number
           current_streak?: number
+          last_seen_at?: string
           match_id?: string
           seat?: number
           user_id?: string

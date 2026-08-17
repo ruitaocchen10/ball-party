@@ -97,6 +97,10 @@ select throws_ok(
 
 -- Correctness comes from private answers, not public revealed points. Call both
 -- directions on question two so the assertions cover extension and reset.
+--
+-- The counters move when the question reveals rather than when a call lands —
+-- see 0037, which made the reveal transition the one place a question is
+-- settled — so the reveal is part of this fixture now.
 select tests.act_as_admin();
 update public.higher_or_lower_matches set current_question = 2, phase = 'call', phase_deadline = now() + interval '1 minute'
  where match_id = (select v from tests.fx where k = 'm');
@@ -117,6 +121,7 @@ select higher_or_lower.call((select v from tests.fx where k = 'm'), case when (
    where a.match_id = (select v from tests.fx where k = 'm') and a.ordinal = 1
 ) then 'lower' else 'higher' end);
 select tests.act_as_admin();
+select tests.hol_expire((select v from tests.fx where k = 'm'));
 select ok((select current_streak >= 1 and best_streak >= current_streak and correct_count >= 1
   from public.higher_or_lower_players where match_id = (select v from tests.fx where k = 'm') and user_id = (select v from tests.fx where k = 'one')),
   'a correct call extends current streak, raises best streak, and increments correct count');

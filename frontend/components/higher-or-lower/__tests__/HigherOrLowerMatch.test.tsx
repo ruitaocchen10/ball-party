@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
 import type { Board, Call, CallStatus, Card, Player } from "@/lib/higher-or-lower/board";
@@ -53,6 +53,27 @@ function ladder(): Card[] {
   ];
 }
 
+/**
+ * A call, or the absence of one. A timeout is a row like any other with no
+ * direction on it and the flag set — the server writes it at the reveal, and
+ * the screen's job is to say "timed out" where it would otherwise say "wrong".
+ */
+function call(over: Partial<Call> = {}): Call {
+  return {
+    match_id: MATCH,
+    question: 1,
+    user_id: "u0",
+    direction: "higher",
+    timed_out: false,
+    created_at: "2026-08-15T12:00:00Z",
+    ...over,
+  };
+}
+
+function miss(over: Partial<Call> = {}): Call {
+  return call({ direction: null, timed_out: true, ...over });
+}
+
 const BOARD: Board = {
   questionCount: 12,
   currentQuestion: 1,
@@ -64,9 +85,11 @@ const BOARD: Board = {
   serverNow: new Date().toISOString(),
 };
 
+const SEEN = "2026-08-15T12:00:00Z";
+
 const PLAYERS: Player[] = [
-  { match_id: MATCH, user_id: "u0", seat: 0, current_streak: 2, best_streak: 3, correct_count: 5, display_name: "Ava" },
-  { match_id: MATCH, user_id: "u1", seat: 1, current_streak: 0, best_streak: 1, correct_count: 1, display_name: "Ben" },
+  { match_id: MATCH, user_id: "u0", seat: 0, current_streak: 2, best_streak: 3, correct_count: 5, absent: false, last_seen_at: SEEN, display_name: "Ava" },
+  { match_id: MATCH, user_id: "u1", seat: 1, current_streak: 0, best_streak: 1, correct_count: 1, absent: false, last_seen_at: SEEN, display_name: "Ben" },
 ];
 
 function renderMatch(over: { board?: Partial<Board>; cards?: Card[]; players?: Player[]; calls?: Call[]; statuses?: CallStatus[] } = {}) {
@@ -118,7 +141,7 @@ describe("HigherOrLowerMatch", () => {
 
   it("shows every lock-in but only directions supplied by the policy", () => {
     renderMatch({
-      calls: [{ match_id: MATCH, question: 1, user_id: "u0", direction: "lower", created_at: new Date().toISOString() }],
+      calls: [call({ user_id: "u0", direction: "lower" })],
       statuses: [
         { match_id: MATCH, question: 1, user_id: "u0" },
         { match_id: MATCH, question: 1, user_id: "u1" },
@@ -128,6 +151,40 @@ describe("HigherOrLowerMatch", () => {
     expect(screen.getAllByText("LOCKED")).toHaveLength(1);
     expect(screen.getByText("You called lower.")).toBeInTheDocument();
     expect(screen.queryByText(/Ben called/i)).not.toBeInTheDocument();
+  });
+
+  // The server scores a timeout exactly as it scores a wrong call, on purpose.
+  // The screen is the one place the two are meant to look different, which is
+  // the entire reason the row carries a flag rather than just a null direction.
+  it("tells a player who ran out of time apart from one who called wrong", () => {
+    renderMatch({
+      board: { phase: "reveal" },
+      calls: [call({ user_id: "u0", direction: "lower" }), miss({ user_id: "u1" })],
+      statuses: [{ match_id: MATCH, question: 1, user_id: "u0" }],
+    });
+
+    const table = screen.getByRole("complementary", { name: /the table/i });
+    expect(table).toHaveTextContent("lower");
+    expect(table).toHaveTextContent("TIMED OUT");
+    expect(screen.queryByText("LOCKED")).not.toBeInTheDocument();
+  });
+
+  it("says plainly when the clock ran out on you rather than reporting a call", () => {
+    renderMatch({ board: { phase: "reveal" }, calls: [miss({ user_id: "u0" })] });
+
+    expect(screen.getByText("You ran out of time.")).toBeInTheDocument();
+    expect(screen.queryByText(/You called/)).not.toBeInTheDocument();
+  });
+
+  // Absence is the server's judgement, latched over a whole question. The
+  // screen only reports it, so that the table can see why it stopped waiting.
+  it("marks a player the server has stopped waiting for", () => {
+    renderMatch({
+      players: [PLAYERS[0], { ...PLAYERS[1], absent: true }],
+    });
+
+    const table = screen.getByRole("complementary", { name: /the table/i });
+    expect(table).toHaveTextContent("AWAY");
   });
 
   it("shows a challenger's points once the server says its reveal is live", () => {
@@ -249,5 +306,68 @@ describe("HigherOrLowerMatch", () => {
     renderMatch({ board: { currentQuestion: 9 } });
 
     expect(screen.getByText(/waiting for the next card/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * Presence rides on the tick RPC this screen already calls. A screen that only
+ * asked when a deadline had passed would put nobody on the record during a
+ * question, and the server would latch the whole table absent at its reveal —
+ * so the wiring that makes this screen keep asking is behaviour, not detail.
+ */
+describe("staying at the table", () => {
+  // Date faked alongside the interval, for the reason the clock module's own
+  // suite gives: the countdown reads Date.now() plus a measured offset, so a
+  // fake interval driving a real clock advances ticks without advancing time.
+  const withFakeTimers = async (body: () => Promise<void>) => {
+    vi.useFakeTimers({
+      toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "Date"],
+    });
+    try {
+      await body();
+    } finally {
+      vi.useRealTimers();
+    }
+  };
+
+  const advance = async (ms: number, step = 500) => {
+    for (let elapsed = 0; elapsed < ms; elapsed += step) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(step);
+      });
+    }
+  };
+
+  const ticks = () =>
+    globalThis.__supabaseMock.rpc.mock.calls.filter(([name]: unknown[]) => name === "tick");
+
+  it("keeps ticking through a live question, not only once its deadline is past", async () => {
+    await withFakeTimers(async () => {
+      globalThis.__supabaseMock = supabaseMock();
+      renderMatch({
+        board: {
+          phase: "call",
+          serverNow: new Date().toISOString(),
+          phaseDeadline: new Date(Date.now() + 12_000).toISOString(),
+        },
+      });
+
+      await advance(9_000);
+
+      expect(ticks().length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  it("stops once the match is over, so a finished board is not polled forever", async () => {
+    await withFakeTimers(async () => {
+      globalThis.__supabaseMock = supabaseMock();
+      renderMatch({
+        board: { phase: "complete", serverNow: new Date().toISOString(), phaseDeadline: null },
+      });
+
+      await advance(9_000);
+
+      expect(ticks()).toHaveLength(0);
+    });
   });
 });

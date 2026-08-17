@@ -348,6 +348,55 @@ begin
   );
 end $$;
 
+-- Put a board on a live call phase without waiting out the intro, the way the
+-- clock would. The presence window opens now, so a tick taken during the test
+-- counts as a tick during this question — a fixture that skipped that would
+-- latch every player absent at the first reveal.
+create function tests.open_question(p_match_id uuid, p_question smallint default 1)
+returns void
+language plpgsql as $$
+begin
+  update public.higher_or_lower_matches
+     set current_question   = p_question,
+         phase              = 'call',
+         phase_deadline     = now() + interval '1 minute',
+         question_started_at = now()
+   where match_id = p_match_id;
+end $$;
+
+-- The direction that is right for a question, read from the hidden answers.
+--
+-- Definer because a test asserting on scoring has to know the answer while
+-- acting as a player who by definition may not. Reading the public cards
+-- instead would only work once the question had already revealed, which is
+-- after the moment most of these assertions care about.
+create function tests.hol_answer(p_match_id uuid, p_question smallint) returns text
+language sql stable security definer as $$
+  select case when challenger.points > anchor.points then 'higher' else 'lower' end
+    from higher_or_lower_private.answers anchor
+    join higher_or_lower_private.answers challenger
+      on challenger.match_id = anchor.match_id
+     and challenger.ordinal = anchor.ordinal + 1
+   where anchor.match_id = p_match_id and anchor.ordinal = p_question - 1;
+$$;
+
+-- The other one. A wrong call has to be wrong on purpose, not by luck.
+create function tests.hol_wrong_answer(p_match_id uuid, p_question smallint) returns text
+language sql stable as $$
+  select case tests.hol_answer(p_match_id, p_question) when 'higher' then 'lower' else 'higher' end;
+$$;
+
+-- Force the phase deadline past and let the server take exactly one transition,
+-- which is what a client's tick would have caused a moment later.
+create function tests.hol_expire(p_match_id uuid) returns void
+language plpgsql as $$
+begin
+  update public.higher_or_lower_matches
+     set phase_deadline = now() - interval '1 second'
+   where match_id = p_match_id;
+  perform higher_or_lower_private.expire(p_match_id);
+end $$;
+
 grant usage on schema tests to authenticated;
 grant execute on all functions in schema tests to authenticated;
 grant all on all tables in schema tests to authenticated;

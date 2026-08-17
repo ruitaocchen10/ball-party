@@ -1,14 +1,14 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { useMatchClock, VISIBLE_SLACK_MS } from "./useMatchClock";
+import { HEARTBEAT_MS, useMatchClock, VISIBLE_SLACK_MS } from "./useMatchClock";
 
 /**
- * The three behaviours in isolation, the same three the auction's match-screen
- * suite exercises through a whole component. Fake timers throughout: Date has
- * to be faked alongside the interval, since the hook derives `now` from
- * Date.now() plus a measured offset, and a fake interval driving a real clock
- * would advance the ticks without advancing the time they read.
+ * The behaviours in isolation, the same ones the auction's match-screen suite
+ * exercises through a whole component. Fake timers throughout: Date has to be
+ * faked alongside the interval, since the hook derives `now` from Date.now()
+ * plus a measured offset, and a fake interval driving a real clock would
+ * advance the ticks without advancing the time they read.
  */
 
 const NOW = Date.parse("2026-08-15T12:00:00.000Z");
@@ -192,6 +192,129 @@ describe("expiry", () => {
     } finally {
       random.mockRestore();
     }
+  });
+});
+
+/**
+ * The fourth behaviour, and the only optional one. A game whose server learns
+ * something from being asked — Higher or Lower stamps presence on the same RPC
+ * — needs the question put on a cadence, not only once a deadline is past. A
+ * game that learns nothing must not pay for it, which is why this is off unless
+ * a caller asks.
+ */
+describe("the heartbeat", () => {
+  it("asks nothing at all before the deadline when no caller wants a heartbeat", async () => {
+    await withFakeTimers(async () => {
+      const expire = vi.fn();
+      renderHook(() =>
+        useMatchClock({ serverNow: iso(0), deadline: iso(30_000), expire, reconcile: vi.fn() }),
+      );
+
+      await advance(12_000);
+      expect(expire).not.toHaveBeenCalled();
+    });
+  });
+
+  it("keeps asking on its own cadence while the deadline is still ahead", async () => {
+    await withFakeTimers(async () => {
+      const expire = vi.fn();
+      renderHook(() =>
+        useMatchClock({
+          serverNow: iso(0),
+          deadline: iso(30_000),
+          heartbeatMs: HEARTBEAT_MS,
+          expire,
+          reconcile: vi.fn(),
+        }),
+      );
+
+      // A whole call phase is twelve seconds. Presence is judged over one of
+      // them, so what matters is that several beats land inside one.
+      await advance(12_000);
+      expect(expire.mock.calls.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  it("speaks up as soon as a new phase begins rather than waiting out a beat", async () => {
+    await withFakeTimers(async () => {
+      const expire = vi.fn();
+      const { rerender } = renderHook(
+        ({ deadline }: { deadline: string }) =>
+          useMatchClock({
+            serverNow: iso(0),
+            deadline,
+            heartbeatMs: HEARTBEAT_MS,
+            expire,
+            reconcile: vi.fn(),
+          }),
+        { initialProps: { deadline: iso(30_000) } },
+      );
+
+      await advance(500, 100);
+      const onArrival = expire.mock.calls.length;
+      rerender({ deadline: iso(60_000) });
+      await advance(500, 100);
+
+      expect(expire.mock.calls.length).toBeGreaterThan(onArrival);
+    });
+  });
+
+  it("still switches to the faster retry cadence once the deadline has passed", async () => {
+    await withFakeTimers(async () => {
+      const beats: number[] = [];
+      const expire = vi.fn(() => beats.push(Date.now()));
+      renderHook(() =>
+        useMatchClock({
+          serverNow: iso(0),
+          deadline: iso(-200),
+          heartbeatMs: HEARTBEAT_MS,
+          expire,
+          reconcile: vi.fn(),
+        }),
+      );
+
+      await advance(4_000, 100);
+      // Four seconds at the retry cadence is several attempts; four seconds at
+      // the heartbeat cadence would be one.
+      expect(beats.length).toBeGreaterThan(2);
+    });
+  });
+
+  it("goes quiet once nothing is timed, so a finished match stops being polled", async () => {
+    await withFakeTimers(async () => {
+      const expire = vi.fn();
+      renderHook(() =>
+        useMatchClock({
+          serverNow: iso(0),
+          deadline: null,
+          heartbeatMs: HEARTBEAT_MS,
+          expire,
+          reconcile: vi.fn(),
+        }),
+      );
+
+      await advance(12_000);
+      expect(expire).not.toHaveBeenCalled();
+    });
+  });
+
+  it("never asks for a client the caller has exempted, heartbeat or not", async () => {
+    await withFakeTimers(async () => {
+      const expire = vi.fn();
+      renderHook(() =>
+        useMatchClock({
+          serverNow: iso(0),
+          deadline: iso(30_000),
+          heartbeatMs: HEARTBEAT_MS,
+          skipExpiry: true,
+          expire,
+          reconcile: vi.fn(),
+        }),
+      );
+
+      await advance(12_000);
+      expect(expire).not.toHaveBeenCalled();
+    });
   });
 });
 
