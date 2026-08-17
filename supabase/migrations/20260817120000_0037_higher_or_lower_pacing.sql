@@ -124,7 +124,29 @@ as $$
    where p.match_id = p_match_id and p.user_id = x.user_id;
 $$;
 
--- ---------------------------------------------------------- the transition --
+-- --------------------------------------------------------- the transitions --
+
+-- Open one question. The only way a question begins — from the board intro and
+-- from the reveal before it — because a question's start is now two facts that
+-- have to agree: the deadline the call phase runs to, and the instant presence
+-- starts being measured from. Two sites setting one of those and forgetting the
+-- other is how a table gets silently latched absent.
+create function higher_or_lower_private.open_question(
+  p_match_id uuid,
+  p_question smallint
+)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.higher_or_lower_matches
+     set current_question     = p_question,
+         phase                = 'call',
+         phase_deadline       = now() + interval '12 seconds',
+         question_started_at  = now()
+   where match_id = p_match_id;
+$$;
 
 -- Settle one question. The only way a question ends, whichever door was used.
 --
@@ -188,9 +210,8 @@ $$;
 -- ------------------------------------------------------------ the two doors --
 
 -- Door one: the clock. Unchanged in shape from 0033 — one expired phase per
--- call, re-checked under the board lock — except that the call phase now hands
--- its ending to reveal_question, and both entries into a call phase stamp when
--- that question's presence window opened.
+-- call, re-checked under the board lock — except that it now hands both ends of
+-- a question to the pair above rather than spelling either out itself.
 create or replace function higher_or_lower_private.expire(p_match_id uuid)
 returns boolean
 language plpgsql
@@ -213,11 +234,7 @@ begin
   end if;
 
   if v_board.phase = 'board_intro' then
-    update public.higher_or_lower_matches
-       set phase = 'call',
-           phase_deadline = now() + interval '12 seconds',
-           question_started_at = now()
-     where match_id = p_match_id;
+    perform higher_or_lower_private.open_question(p_match_id, 1::smallint);
   elsif v_board.phase = 'call' then
     perform higher_or_lower_private.reveal_question(p_match_id, v_board.current_question);
   elsif v_board.phase = 'reveal' then
@@ -231,12 +248,7 @@ begin
        where match_id = p_match_id;
       perform private.finish_match(p_match_id, coalesce(v_scores, '{}'::jsonb));
     else
-      update public.higher_or_lower_matches
-         set current_question = current_question + 1,
-             phase = 'call',
-             phase_deadline = now() + interval '12 seconds',
-             question_started_at = now()
-       where match_id = p_match_id;
+      perform higher_or_lower_private.open_question(p_match_id, (v_board.current_question + 1)::smallint);
     end if;
   else
     return false;
@@ -365,6 +377,8 @@ $$;
 
 -- ---------------------------------------------------------------- privileges --
 
+revoke all on function higher_or_lower_private.open_question(uuid, smallint)
+  from public, anon, authenticated;
 revoke all on function higher_or_lower_private.score_question(uuid, smallint)
   from public, anon, authenticated;
 revoke all on function higher_or_lower_private.reveal_question(uuid, smallint)
