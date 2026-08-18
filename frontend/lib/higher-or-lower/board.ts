@@ -17,6 +17,9 @@ export type CallStatus = Database["public"]["Tables"]["higher_or_lower_call_stat
 
 export type Player = Seat & { display_name: string };
 
+/** The platform's per-match standings row — the shape #28 writes into. */
+export type Standing = Database["public"]["Tables"]["match_players"]["Row"];
+
 /** A dealt match's format snapshot, loaded once beside the ladder. */
 export type Board = {
   questionCount: number;
@@ -24,10 +27,46 @@ export type Board = {
   scoringMode: string;
   seasonFrom: number;
   seasonTo: number;
-  phase: "board_intro" | "call" | "reveal" | "complete";
+  phase: "board_intro" | "call" | "reveal" | "sudden_death_call" | "sudden_death_reveal" | "complete";
   phaseDeadline: string | null;
   serverNow: string;
 };
+
+/**
+ * Standard competition ranking, read back for display. The auction's board
+ * module says almost the same function; they stay apart on purpose (see the
+ * note on cardIdentityLine below), so this is the one place this game defines
+ * "what order does the final scoreboard read in".
+ */
+export function byPlacement(standings: Standing[]): Standing[] {
+  return [...standings].sort(
+    (a, b) => (a.placement ?? 99) - (b.placement ?? 99) || Number(b.raw_score) - Number(a.raw_score),
+  );
+}
+
+/** Sudden death is two phases, everywhere a caller only needs "is it live". */
+export function isSuddenDeath(phase: Board["phase"]): boolean {
+  return phase === "sudden_death_call" || phase === "sudden_death_reveal";
+}
+
+/** Which sudden-death round is live — the spare ordinals start where the
+ * twelve questions end, so the round number is just the distance past them. */
+export function suddenDeathRound(board: Board): number {
+  return board.currentQuestion - board.questionCount;
+}
+
+/**
+ * Whether this viewer's two buttons should be live right now. The server is
+ * the actual rule (higher_or_lower.call rejects anything this disagrees
+ * with) — this only decides what the controls show, the same division the
+ * auction's disabled-bid derivation draws.
+ */
+export function canCallNow(board: Board, viewer: Player | undefined): boolean {
+  if (!viewer) return false;
+  if (board.phase === "call") return true;
+  if (board.phase === "sudden_death_call") return viewer.sudden_death && viewer.eliminated_at === null;
+  return false;
+}
 
 /**
  * The two cards a question puts side by side.

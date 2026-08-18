@@ -472,6 +472,95 @@ export type Database = {
           },
         ]
       }
+      higher_or_lower_call_statuses: {
+        Row: {
+          match_id: string
+          question: number
+          user_id: string
+        }
+        Insert: {
+          match_id: string
+          question: number
+          user_id: string
+        }
+        Update: {
+          match_id?: string
+          question?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_call_statuses_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_call_statuses_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "higher_or_lower_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_call_statuses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      higher_or_lower_calls: {
+        Row: {
+          created_at: string
+          direction: string | null
+          match_id: string
+          question: number
+          timed_out: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction?: string | null
+          match_id: string
+          question: number
+          timed_out?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string | null
+          match_id?: string
+          question?: number
+          timed_out?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_calls_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_calls_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "higher_or_lower_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_calls_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       higher_or_lower_cards: {
         Row: {
           display_name: string
@@ -525,114 +614,41 @@ export type Database = {
           },
         ]
       }
-      higher_or_lower_call_statuses: {
-        Row: {
-          match_id: string
-          question: number
-          user_id: string
-        }
-        Insert: {
-          match_id: string
-          question: number
-          user_id: string
-        }
-        Update: {
-          match_id?: string
-          question?: number
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "higher_or_lower_call_statuses_match_id_fkey"
-            columns: ["match_id"]
-            isOneToOne: false
-            referencedRelation: "matches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "higher_or_lower_call_statuses_match_id_user_id_fkey"
-            columns: ["match_id", "user_id"]
-            isOneToOne: false
-            referencedRelation: "higher_or_lower_players"
-            referencedColumns: ["match_id", "user_id"]
-          },
-        ]
-      }
-      higher_or_lower_calls: {
-        Row: {
-          created_at: string
-          direction: string | null
-          match_id: string
-          question: number
-          timed_out: boolean
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          direction?: string | null
-          match_id: string
-          question: number
-          timed_out?: boolean
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          direction?: string | null
-          match_id?: string
-          question?: number
-          timed_out?: boolean
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "higher_or_lower_calls_match_id_fkey"
-            columns: ["match_id"]
-            isOneToOne: false
-            referencedRelation: "matches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "higher_or_lower_calls_match_id_user_id_fkey"
-            columns: ["match_id", "user_id"]
-            isOneToOne: false
-            referencedRelation: "higher_or_lower_players"
-            referencedColumns: ["match_id", "user_id"]
-          },
-        ]
-      }
       higher_or_lower_matches: {
         Row: {
           current_question: number
           match_id: string
+          phase: string
+          phase_deadline: string | null
           question_count: number
+          question_started_at: string | null
           scoring_mode: string
           season_from: number
           season_to: number
-          phase: string
-          phase_deadline: string | null
-          question_started_at: string | null
           spare_count: number
         }
         Insert: {
           current_question?: number
           match_id: string
+          phase?: string
+          phase_deadline?: string | null
           question_count: number
+          question_started_at?: string | null
           scoring_mode: string
           season_from: number
           season_to: number
-          question_started_at?: string | null
           spare_count: number
         }
         Update: {
           current_question?: number
           match_id?: string
+          phase?: string
+          phase_deadline?: string | null
           question_count?: number
+          question_started_at?: string | null
           scoring_mode?: string
           season_from?: number
           season_to?: number
-          phase?: string
-          phase_deadline?: string | null
-          question_started_at?: string | null
           spare_count?: number
         }
         Relationships: [
@@ -651,9 +667,11 @@ export type Database = {
           best_streak: number
           correct_count: number
           current_streak: number
+          eliminated_at: number | null
           last_seen_at: string
           match_id: string
           seat: number
+          sudden_death: boolean
           user_id: string
         }
         Insert: {
@@ -661,9 +679,11 @@ export type Database = {
           best_streak?: number
           correct_count?: number
           current_streak?: number
+          eliminated_at?: number | null
           last_seen_at?: string
           match_id: string
           seat: number
+          sudden_death?: boolean
           user_id: string
         }
         Update: {
@@ -671,9 +691,11 @@ export type Database = {
           best_streak?: number
           correct_count?: number
           current_streak?: number
+          eliminated_at?: number | null
           last_seen_at?: string
           match_id?: string
           seat?: number
+          sudden_death?: boolean
           user_id?: string
         }
         Relationships: [
@@ -1224,3 +1246,4 @@ export const Constants = {
     },
   },
 } as const
+

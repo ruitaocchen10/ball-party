@@ -6,6 +6,7 @@ import { MatchSetup } from "@/components/auction/MatchSetup";
 import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
 import { TopBar } from "@/components/layout/TopBar";
 import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
+import type { Board } from "@/lib/higher-or-lower/board";
 import { createClient } from "@/lib/supabase/server";
 import { isSignedInViewer } from "@/lib/auth/viewer";
 
@@ -104,7 +105,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // is yours, whether it has been dealt or abandoned — is the platform's and is
   // the same for every game.
   if (match.game === "higher_or_lower") {
-    const [boardResult, cardsResult, seatsResult, callsResult, statusesResult] = await Promise.all([
+    const [boardResult, cardsResult, seatsResult, callsResult, statusesResult, standingsResult] = await Promise.all([
       supabase.schema("higher_or_lower").rpc("state", { p_match_id: id }),
       supabase.from("higher_or_lower_cards").select("*").eq("match_id", id).order("ordinal"),
       supabase
@@ -114,6 +115,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         .order("seat"),
       supabase.from("higher_or_lower_calls").select("*").eq("match_id", id).order("created_at"),
       supabase.from("higher_or_lower_call_statuses").select("*").eq("match_id", id),
+      supabase.from("match_players").select("*").eq("match_id", id),
     ]);
 
     const row = boardResult.data;
@@ -134,6 +136,8 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       <HigherOrLowerMatch
         matchId={id}
         viewerId={claims.sub}
+        roomCode={code}
+        isHost={isHost}
         initial={{
           board: {
             questionCount: row.question_count,
@@ -141,7 +145,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
             scoringMode: row.scoring_mode,
             seasonFrom: row.season_from,
             seasonTo: row.season_to,
-            phase: row.phase as "board_intro" | "call" | "reveal" | "complete",
+            phase: row.phase as Board["phase"],
             phaseDeadline: row.phase_deadline,
             serverNow: row.server_now,
           },
@@ -152,6 +156,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
           })),
           calls: callsResult.data ?? [],
           statuses: statusesResult.data ?? [],
+          standings: standingsResult.data ?? [],
         }}
       />
     );

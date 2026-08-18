@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 import Link from "next/link";
 
 import { TopBar } from "@/components/layout/TopBar";
-import { PostGameControls } from "@/components/auction/PostGameControls";
-import { PostGameNavigation } from "@/components/auction/PostGameNavigation";
+import { PostGameControls } from "@/components/game-runtime/PostGameControls";
+import { PostGameNavigation } from "@/components/game-runtime/PostGameNavigation";
 import { Button } from "@/components/ui/Button";
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";

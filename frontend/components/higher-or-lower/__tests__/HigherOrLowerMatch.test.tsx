@@ -2,8 +2,12 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/components/game-runtime/PostGameNavigation", () => ({
+  PostGameNavigation: () => null,
+}));
+
 import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
-import type { Board, Call, CallStatus, Card, Player } from "@/lib/higher-or-lower/board";
+import type { Board, Call, CallStatus, Card, Player, Standing } from "@/lib/higher-or-lower/board";
 import { supabaseMock } from "@/test/factories";
 
 /**
@@ -88,21 +92,47 @@ const BOARD: Board = {
 const SEEN = "2026-08-15T12:00:00Z";
 
 const PLAYERS: Player[] = [
-  { match_id: MATCH, user_id: "u0", seat: 0, current_streak: 2, best_streak: 3, correct_count: 5, absent: false, last_seen_at: SEEN, display_name: "Ava" },
-  { match_id: MATCH, user_id: "u1", seat: 1, current_streak: 0, best_streak: 1, correct_count: 1, absent: false, last_seen_at: SEEN, display_name: "Ben" },
+  { match_id: MATCH, user_id: "u0", seat: 0, current_streak: 2, best_streak: 3, correct_count: 5, absent: false, last_seen_at: SEEN, sudden_death: false, eliminated_at: null, display_name: "Ava" },
+  { match_id: MATCH, user_id: "u1", seat: 1, current_streak: 0, best_streak: 1, correct_count: 1, absent: false, last_seen_at: SEEN, sudden_death: false, eliminated_at: null, display_name: "Ben" },
 ];
 
-function renderMatch(over: { board?: Partial<Board>; cards?: Card[]; players?: Player[]; calls?: Call[]; statuses?: CallStatus[] } = {}) {
+function standing(over: Partial<Standing> = {}): Standing {
+  return {
+    match_id: MATCH,
+    run_id: "run-1",
+    user_id: "u0",
+    team: null,
+    raw_score: 3,
+    placement: 1,
+    points_awarded: null,
+    ...over,
+  };
+}
+
+function renderMatch(over: {
+  board?: Partial<Board>;
+  cards?: Card[];
+  players?: Player[];
+  calls?: Call[];
+  statuses?: CallStatus[];
+  standings?: Standing[];
+  roomCode?: string | null;
+  isHost?: boolean;
+  viewerId?: string;
+} = {}) {
   return render(
     <HigherOrLowerMatch
       matchId={MATCH}
-      viewerId="u0"
+      viewerId={over.viewerId ?? "u0"}
+      roomCode={over.roomCode ?? "ABCD"}
+      isHost={over.isHost ?? true}
       initial={{
         board: { ...BOARD, ...over.board },
         cards: over.cards ?? ladder(),
         players: over.players ?? PLAYERS,
         calls: over.calls ?? [],
         statuses: over.statuses ?? [],
+        standings: over.standings ?? [],
       }}
     />,
   );
@@ -306,6 +336,146 @@ describe("HigherOrLowerMatch", () => {
     renderMatch({ board: { currentQuestion: 9 } });
 
     expect(screen.getByText(/waiting for the next card/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * A tied top best streak (#28) puts the same screen through two more phases,
+ * a strict subset of players, and a shorter clock. The card panels, the
+ * lock-in indicators and the reveal split are the same mechanism reused —
+ * only the header, the clock and who may call are new — so those are what
+ * this block asserts.
+ */
+describe("sudden death", () => {
+  const TIED: Player[] = [
+    { ...PLAYERS[0], sudden_death: true, eliminated_at: null },
+    { ...PLAYERS[1], sudden_death: true, eliminated_at: null },
+  ];
+
+  it("names the round instead of the question", () => {
+    renderMatch({
+      board: { phase: "sudden_death_call", currentQuestion: 13 },
+      players: TIED,
+    });
+
+    expect(screen.getByText("Sudden death · Round 1")).toBeInTheDocument();
+    expect(screen.queryByText(/^Question/)).not.toBeInTheDocument();
+  });
+
+  it("gives sudden death an eight-second clock, not the main round's twelve", () => {
+    renderMatch({
+      board: {
+        phase: "sudden_death_call",
+        currentQuestion: 13,
+        phaseDeadline: new Date(Date.now() + 8_000).toISOString(),
+      },
+      players: TIED,
+    });
+
+    expect(screen.getByRole("region", { name: /clock/i })).toHaveTextContent("Make your call");
+  });
+
+  it("lets an admitted, still-alive player call", async () => {
+    const user = userEvent.setup();
+    globalThis.__supabaseMock.rpc.mockImplementation(async (name: unknown) => name === "call"
+      ? { data: { match_id: MATCH, question: 13, user_id: "u0", direction: "higher", timed_out: false, created_at: new Date().toISOString() }, error: null }
+      : { data: null, error: null });
+    renderMatch({
+      board: { phase: "sudden_death_call", currentQuestion: 13 },
+      players: TIED,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Higher" }));
+
+    expect(screen.getByText("You called higher.")).toBeInTheDocument();
+  });
+
+  // Sudden death admits a strict subset; everyone else's placement is already
+  // settled, and the server refuses their call outright — the screen only
+  // has to not offer a control the RPC would reject anyway.
+  it("does not let a player who was never tied call", () => {
+    renderMatch({
+      board: { phase: "sudden_death_call", currentQuestion: 13 },
+      players: [TIED[0], { ...PLAYERS[1], sudden_death: false, eliminated_at: null }],
+      viewerId: "u1",
+    });
+
+    expect(screen.getByRole("button", { name: "Higher" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Lower" })).toBeDisabled();
+  });
+
+  it("does not let an eliminated player call again", () => {
+    renderMatch({
+      board: { phase: "sudden_death_call", currentQuestion: 14 },
+      players: [TIED[0], { ...PLAYERS[1], sudden_death: true, eliminated_at: 13 }],
+      viewerId: "u1",
+    });
+
+    expect(screen.getByRole("button", { name: "Higher" })).toBeDisabled();
+  });
+
+  it("marks an eliminated player apart from one still watching", () => {
+    renderMatch({
+      board: { phase: "sudden_death_call", currentQuestion: 14 },
+      players: [
+        { ...TIED[0], eliminated_at: 13 },
+        { ...PLAYERS[1], sudden_death: false, eliminated_at: null },
+      ],
+    });
+
+    const table = screen.getByRole("complementary", { name: /the table/i });
+    expect(table).toHaveTextContent("ELIMINATED");
+    expect(table).toHaveTextContent("WATCHING");
+  });
+});
+
+/**
+ * The ending (#28): a final scoreboard read from the platform's standings,
+ * and the same play-again-or-back-to-the-room the auction's final screen
+ * offers, reused rather than reinvented (components/game-runtime).
+ */
+describe("the final screen", () => {
+  it("names the sole winner and ranks the table under them", () => {
+    renderMatch({
+      board: { phase: "complete" },
+      players: PLAYERS,
+      standings: [
+        standing({ user_id: "u0", placement: 1, raw_score: 3 }),
+        standing({ user_id: "u1", placement: 2, raw_score: 1 }),
+      ],
+    });
+
+    expect(screen.getByRole("heading", { name: "Ava wins" })).toBeInTheDocument();
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("Ava");
+    expect(rows[1]).toHaveTextContent("Ben");
+  });
+
+  // Co-winners are the accepted last resort (#28's exhausted-spares fallback),
+  // not a bug this screen should hide by picking one name.
+  it("names every co-winner when the standings share first place", () => {
+    renderMatch({
+      board: { phase: "complete" },
+      players: PLAYERS,
+      standings: [
+        standing({ user_id: "u0", placement: 1, raw_score: 3 }),
+        standing({ user_id: "u1", placement: 1, raw_score: 3 }),
+      ],
+    });
+
+    expect(screen.getByRole("heading", { name: "Ava & Ben tie" })).toBeInTheDocument();
+  });
+
+  it("offers to play again or go back to the room", () => {
+    renderMatch({
+      board: { phase: "complete" },
+      players: PLAYERS,
+      standings: [standing({ user_id: "u0", placement: 1 })],
+      isHost: true,
+    });
+
+    expect(screen.getByRole("button", { name: /replay/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /back to lobby/i })).toBeInTheDocument();
   });
 });
 

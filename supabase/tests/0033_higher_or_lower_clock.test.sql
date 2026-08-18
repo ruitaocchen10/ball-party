@@ -62,13 +62,17 @@ select ok((select phase_deadline from public.higher_or_lower_matches where match
   between now() + interval '3 seconds' and now() + interval '5 seconds',
   'the reveal is held for four seconds');
 
--- The no-input machine plays all twelve questions to a completed platform
--- match. Deliberate deadline jumps exercise the server transition, not a UI.
+-- The no-input machine plays all twelve questions, and then the whole of
+-- sudden death, to a completed platform match. Nobody ever calls, so both
+-- players tie at a best streak of zero — sudden death (#28) is entered and
+-- then, with nobody ever right, no round can eliminate anyone, so it runs out
+-- every spare before falling back to a shared placement. Deliberate deadline
+-- jumps exercise the server transition, not a UI.
 select tests.act_as_admin();
 do $$
 declare v_id uuid := (select v from tests.fx where k = 'm'); v_i int;
 begin
-  for v_i in 1..23 loop
+  for v_i in 1..33 loop
     update public.higher_or_lower_matches set phase_deadline = now() - interval '1 second' where match_id = v_id;
     perform higher_or_lower_private.expire(v_id);
   end loop;
@@ -77,7 +81,7 @@ select is((select phase from public.higher_or_lower_matches where match_id = (se
   'complete', 'the final reveal completes the board');
 select is((select status from public.matches where id = (select v from tests.fx where k = 'm')),
   'complete', 'and completes the platform match');
-select is((select count(*)::int from public.higher_or_lower_cards where match_id = (select v from tests.fx where k = 'm') and points is not null),
+select is((select count(*)::int from public.higher_or_lower_cards where match_id = (select v from tests.fx where k = 'm') and points is not null and ordinal <= 12),
   13, 'the played anchor and twelve challengers are all revealed at completion');
 
 -- The sweep is a fallback. A live call receives a generous minute of grace;

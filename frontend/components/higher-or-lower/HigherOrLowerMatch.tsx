@@ -1,21 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
+import { PostGameControls } from "@/components/game-runtime/PostGameControls";
+import { PostGameNavigation } from "@/components/game-runtime/PostGameNavigation";
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Concealed } from "@/components/ui/Concealed";
 import {
+  byPlacement,
+  canCallNow,
   cardMetaLine,
   eraLabel,
   formatPoints,
+  isSuddenDeath,
   questionPair,
   scoringModeLabel,
+  suddenDeathRound,
   type Board,
   type Card as LadderCard,
   type Call,
   type CallStatus,
   type Player,
+  type Standing,
 } from "@/lib/higher-or-lower/board";
 import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
 import { createClient, createRealtimeClient } from "@/lib/supabase/client";
@@ -35,11 +43,22 @@ import { createClient, createRealtimeClient } from "@/lib/supabase/client";
 export function HigherOrLowerMatch({
   matchId,
   viewerId,
+  roomCode,
+  isHost,
   initial,
 }: {
   matchId: string;
   viewerId: string;
-  initial: { board: Board; cards: LadderCard[]; players: Player[]; calls: Call[]; statuses: CallStatus[] };
+  roomCode: string | null;
+  isHost: boolean;
+  initial: {
+    board: Board;
+    cards: LadderCard[];
+    players: Player[];
+    calls: Call[];
+    statuses: CallStatus[];
+    standings: Standing[];
+  };
 }) {
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
   const getClient = useCallback(() => (clientRef.current ??= createClient()), []);
@@ -48,6 +67,7 @@ export function HigherOrLowerMatch({
   const [players, setPlayers] = useState<Player[]>(initial.players);
   const [calls, setCalls] = useState<Call[]>(initial.calls);
   const [statuses, setStatuses] = useState<CallStatus[]>(initial.statuses);
+  const [standings, setStandings] = useState<Standing[]>(initial.standings);
   const [pendingCall, setPendingCall] = useState(false);
   const [callError, setCallError] = useState<string | null>(null);
 
@@ -71,12 +91,13 @@ export function HigherOrLowerMatch({
 
   const refetch = useCallback(async () => {
     const supabase = getClient();
-    const [state, cardRows, playerRows, callRows, statusRows] = await Promise.all([
+    const [state, cardRows, playerRows, callRows, statusRows, standingRows] = await Promise.all([
       supabase.schema("higher_or_lower").rpc("state", { p_match_id: matchId }),
       supabase.from("higher_or_lower_cards").select("*").eq("match_id", matchId).order("ordinal"),
       supabase.from("higher_or_lower_players").select("*, profiles(display_name)").eq("match_id", matchId).order("seat"),
       supabase.from("higher_or_lower_calls").select("*").eq("match_id", matchId).order("created_at"),
       supabase.from("higher_or_lower_call_statuses").select("*").eq("match_id", matchId),
+      supabase.from("match_players").select("*").eq("match_id", matchId),
     ]);
     if (state.data) applyBoard(boardFromState(state.data as HigherOrLowerState));
     if (cardRows.data) setCards(cardRows.data as LadderCard[]);
@@ -88,6 +109,7 @@ export function HigherOrLowerMatch({
     }
     if (callRows.data) setCalls(callRows.data as Call[]);
     if (statusRows.data) setStatuses(statusRows.data as CallStatus[]);
+    if (standingRows.data) setStandings(standingRows.data);
   }, [applyBoard, getClient, matchId]);
 
   const { remainingMs, reconcile } = useMatchClock({
@@ -143,6 +165,13 @@ export function HigherOrLowerMatch({
           setStatuses((previous) => previous.some((candidate) => candidate.user_id === status.user_id && candidate.question === status.question)
             ? previous : [...previous, status]);
         })
+        // Written once, at completion (0009's finish_match, called from #28's
+        // ending), so there is never an existing row to merge into — an upsert
+        // into the standings the final screen reads.
+        .on("postgres_changes", { event: "*", schema: "public", table: "match_players", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const row = payload.new as Standing;
+          setStandings((previous) => [...previous.filter((s) => s.user_id !== row.user_id), row]);
+        })
         .subscribe((status) => { if (status === "SUBSCRIBED") reconcile(); });
       cleanup = () => { void supabase.removeChannel(channel); };
     })();
@@ -158,6 +187,7 @@ export function HigherOrLowerMatch({
     ? dealtChallenger
     : dealtChallenger ? { ...dealtChallenger, points: null, revealed_at: null } : null;
   const myCall = calls.find((call) => call.question === board.currentQuestion && call.user_id === viewerId);
+  const viewerPlayer = players.find((player) => player.user_id === viewerId);
   const lockedIn = new Set(statuses.filter((status) => status.question === board.currentQuestion).map((status) => status.user_id));
   const makeCall = async (direction: "higher" | "lower") => {
     setPendingCall(true);
@@ -184,11 +214,28 @@ export function HigherOrLowerMatch({
     }
   };
 
+  if (board.phase === "complete") {
+    return (
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 px-6 py-10">
+        <FinalScreen
+          standings={standings}
+          players={players}
+          viewerId={viewerId}
+          roomCode={roomCode}
+          matchId={matchId}
+          isHost={isHost}
+        />
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
       <header className="flex shrink-0 items-baseline justify-between gap-3">
         <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
-          Question {board.currentQuestion} of {board.questionCount}
+          {isSuddenDeath(board.phase)
+            ? `Sudden death · Round ${suddenDeathRound(board)}`
+            : `Question ${board.currentQuestion} of ${board.questionCount}`}
         </p>
         <p
           role="note"
@@ -202,7 +249,7 @@ export function HigherOrLowerMatch({
       <MatchClock phase={board.phase} remainingMs={remainingMs} />
 
       <CallControls
-        phase={board.phase}
+        canCall={canCallNow(board, viewerPlayer)}
         call={myCall ?? null}
         pending={pendingCall}
         error={callError}
@@ -230,7 +277,7 @@ export function HigherOrLowerMatch({
           region is the complete announcement of what is on screen. */}
       <p role="status" className="sr-only">
         {anchor && challenger
-          ? `Question ${board.currentQuestion} of ${board.questionCount}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
+          ? `${isSuddenDeath(board.phase) ? `Sudden death, round ${suddenDeathRound(board)}` : `Question ${board.currentQuestion} of ${board.questionCount}`}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
           : ""}
       </p>
 
@@ -260,6 +307,17 @@ export function HigherOrLowerMatch({
                   AWAY
                 </span>
               ) : null}
+              {/* Sudden death narrows visibly: eliminated beats watching
+                  beats nothing, so at most one of these shows. */}
+              {player.eliminated_at !== null ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                  ELIMINATED
+                </span>
+              ) : isSuddenDeath(board.phase) && !player.sudden_death ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                  WATCHING
+                </span>
+              ) : null}
               {/* Three things, one slot: they let the clock run out, they have
                   locked in something this screen may not read yet, or they have
                   locked in something it may. */}
@@ -281,6 +339,91 @@ export function HigherOrLowerMatch({
   );
 }
 
+/**
+ * Names a winner, so the ladder ends rather than merely stopping. Standings
+ * are #28's ending — best streak, with a tied top resolved in sudden death —
+ * already ranked the way the auction's are, so this reads exactly the same
+ * platform record the auction's own final screen does.
+ */
+function FinalScreen({
+  standings,
+  players,
+  viewerId,
+  roomCode,
+  matchId,
+  isHost,
+}: {
+  standings: Standing[];
+  players: Player[];
+  viewerId: string;
+  roomCode: string | null;
+  matchId: string;
+  isHost: boolean;
+}) {
+  const ranked = byPlacement(standings);
+  const nameOf = (userId: string) => players.find((p) => p.user_id === userId)?.display_name ?? "Unknown player";
+  const winners = ranked.filter((s) => s.placement === 1);
+
+  return (
+    <>
+      <header className="flex flex-col gap-2 pt-4">
+        <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
+          Final
+        </p>
+        <h1 className="font-slab text-3xl leading-none -skew-x-7 uppercase">
+          {winners.length === 0
+            ? "Game over"
+            : winners.length === 1
+              ? `${nameOf(winners[0].user_id)} wins`
+              : `${winners.map((w) => nameOf(w.user_id)).join(" & ")} tie`}
+        </h1>
+      </header>
+
+      <ul className="flex flex-col gap-2.5">
+        {ranked.map((standing) => {
+          const player = players.find((p) => p.user_id === standing.user_id);
+          return (
+            <li key={standing.user_id}>
+              <Card edge={false}>
+                <div className="flex items-baseline justify-between gap-3 px-3 py-2.5">
+                  <span className="font-slab text-xl leading-none -skew-x-7 uppercase">
+                    <span className="mr-2 font-mono text-[11px] text-panel-muted tabular-nums">
+                      {standing.placement}
+                    </span>
+                    {nameOf(standing.user_id)}
+                    {standing.user_id === viewerId ? (
+                      <span className="ml-1.5 font-mono text-[11px] tracking-[0.13em] text-panel-muted">
+                        YOU
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="font-mono text-sm font-bold text-panel-fg tabular-nums">
+                    {player ? `${player.best_streak} best · ${player.correct_count} correct` : ""}
+                  </span>
+                </div>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+
+      {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} /> : null}
+      {roomCode ? (
+        <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} />
+      ) : null}
+
+      {!roomCode ? (
+        <Link
+          href="/"
+          className="mt-2 text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
+        >
+          Back home
+        </Link>
+      ) : null}
+    </>
+  );
+}
+
 const CALL_MESSAGES: Record<string, string> = {
   already_called: "You already locked in this question.",
   call_not_open: "Calls are not open right now.",
@@ -297,15 +440,15 @@ const CALL_MESSAGES: Record<string, string> = {
  * "ran out of time" rather than reporting a call nobody made.
  */
 function CallControls({
-  phase, call, pending, error, onCall,
+  canCall, call, pending, error, onCall,
 }: {
-  phase: Board["phase"];
+  canCall: boolean;
   call: Call | null;
   pending: boolean;
   error: string | null;
   onCall: (direction: "higher" | "lower") => void;
 }) {
-  const disabled = phase !== "call" || call !== null || pending;
+  const disabled = !canCall || call !== null || pending;
   return (
     <section aria-label="Make your call" className="grid shrink-0 gap-2 sm:grid-cols-2">
       <Button disabled={disabled} onClick={() => onCall("higher")}>Higher</Button>
@@ -368,9 +511,15 @@ function boardFromRow(row: HigherOrLowerMatchRow): Omit<Board, "serverNow"> {
 
 function MatchClock({ phase, remainingMs }: { phase: Board["phase"]; remainingMs: number | null }) {
   const seconds = remainingMs === null ? null : Math.ceil(remainingMs / 1_000);
-  const duration = phase === "board_intro" ? 5_000 : phase === "call" ? 12_000 : 4_000;
+  const duration = phase === "board_intro" ? 5_000 : phase === "call" ? 12_000 : phase === "sudden_death_call" ? 8_000 : 4_000;
   const fraction = remainingMs === null ? 0 : Math.min(1, remainingMs / (duration - VISIBLE_SLACK_MS));
-  const label = phase === "board_intro" ? "The board is coming into view" : phase === "call" ? "Make your call" : phase === "reveal" ? "The answer is revealed" : "Match complete";
+  const label = phase === "board_intro"
+    ? "The board is coming into view"
+    : phase === "call" || phase === "sudden_death_call"
+      ? "Make your call"
+      : phase === "reveal" || phase === "sudden_death_reveal"
+        ? "The answer is revealed"
+        : "Match complete";
   return (
     <section aria-label="Clock" className="rounded border border-line bg-surface-raised p-3">
       <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
