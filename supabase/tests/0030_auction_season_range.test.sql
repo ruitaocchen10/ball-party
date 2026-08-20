@@ -18,7 +18,7 @@ select ok(
   'every lot on the board comes from inside the chosen era'
 );
 
--- Narrowing still deals a complete board.
+-- Narrowing must not disturb the quota, because tier is a per-season finish.
 select is(
   (select count(*)::int from public.auction_lots where match_id = :'modern_match'),
   20,
@@ -41,24 +41,23 @@ select throws_ok(
   'a range that runs backwards is rejected rather than reordered'
 );
 
-select tests.mkmatch(4) as narrow_match \gset
-select auction.start(:'narrow_match', 'weekly', 'standard', 2025::smallint, 2025::smallint);
-
-select is(
-  (select count(*)::int from public.auction_lots where match_id = :'narrow_match'),
-  20,
-  'a single-season window still deals a complete board'
-);
-
-select ok(
-  (select bool_and(season = 2025) from public.auction_lots where match_id = :'narrow_match'),
-  'a single-season board stays inside its selected era'
+select tests.mkmatch(2) as narrow_match \gset
+select throws_ok(
+  format($$ select auction.start(%L, 'weekly', 'standard', 2023::smallint, 2025::smallint) $$, :'narrow_match'),
+  'P0001', 'season_range_too_narrow',
+  'a range under the minimum span is rejected rather than widened'
 );
 
 select is(
-  (select count(*)::int from public.auction_lots where match_id = :'narrow_match'),
-  (select count(*)::int from (select distinct player_id from public.auction_lots where match_id = :'narrow_match') players),
-  'weekly cards remain distinct by player in a single-season board'
+  (select count(*)::int from public.auction_matches where match_id = :'narrow_match'),
+  0,
+  'a rejected era leaves no partial board'
+);
+
+select is(
+  (select status::text from public.matches where id = :'narrow_match'),
+  'setup',
+  'a rejected era leaves the match undealt'
 );
 
 select tests.mkmatch(2) as outside_match \gset
@@ -83,8 +82,8 @@ select is(
 
 select is(
   (select min_span from auction.season_bounds()),
-  1::smallint,
-  'the host is told that a single season is valid'
+  4::smallint,
+  'the host is told the same minimum span the dealer enforces'
 );
 
 -- Reading the pool directly to check the answer needs the owner; the assertion

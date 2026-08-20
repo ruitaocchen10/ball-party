@@ -12,8 +12,8 @@ import { startRun } from "@/lib/lobbies/actions";
  * are the pool's own extent — 0007 gave `player_weeks.season` a lower bound and
  * no upper one precisely so a finished season can arrive as a migration, and a
  * year written down in this file would be the thing that could not reach it.
- * A span may be as narrow as one season. The database still owns validation of
- * the actual pool bounds, but the form never rejects a legitimate era choice.
+ * The minimum span is the dealer's rule, read rather than restated, so the form
+ * cannot offer a range that would be refused.
  */
 export type Era = { seasonMin: number; seasonMax: number; minSpan: number };
 
@@ -23,8 +23,10 @@ export type Era = { seasonMin: number; seasonMax: number; minSpan: number };
  * host-only check exists to prevent — the RPC enforces it either way, so this
  * is the honest rendering of a rule rather than the rule itself.
  *
- * Disabled below two players and for an inverted range, with the reason next
- * to it in both cases. A single season is a legitimate deck.
+ * Disabled below two players, and disabled on a season range the dealer would
+ * refuse, with the reason next to it in both cases. The database has its own
+ * floor for each and will refuse; saying so before the tap is what stops it
+ * reading as a broken button.
  */
 export function StartRun({
   lobbyId,
@@ -45,11 +47,14 @@ export function StartRun({
 
   const short = players < 2;
   const backwards = era !== null && to < from;
+  const narrow = era !== null && !backwards && to - from + 1 < era.minSpan;
   const reason = short
     ? "Waiting for one more player"
     : backwards
       ? "The last season has to come after the first"
-      : null;
+      : narrow
+        ? `Pick a span of at least ${era?.minSpan} seasons`
+        : null;
 
   return (
     <form action={startRun} className="flex flex-col gap-2">
@@ -63,7 +68,7 @@ export function StartRun({
         <select
           aria-label="Scoring"
           name="scoring_mode"
-          defaultValue="season_total"
+          defaultValue="weekly"
           className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case"
         >
           <option value="weekly">Weekly</option>
@@ -119,7 +124,7 @@ export function StartRun({
           </label>
         </div>
       ) : null}
-      <Button type="submit" disabled={short || backwards}>
+      <Button type="submit" disabled={short || backwards || narrow}>
         Start the auction
       </Button>
       {reason ? (

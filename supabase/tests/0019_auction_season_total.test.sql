@@ -33,19 +33,14 @@ select tests.act_as_admin();
 
 select is(
   (select array_agg(c order by tier) from (
-    with ranked_deck as (
-      select ps.player_id, ps.season,
-             ntile(20) over (partition by ps.position order by ps.points desc, ps.player_id, ps.season) as quantile
-        from private.player_seasons ps
-    )
-    select case when quantile <= 7 then 'star' when quantile <= 15 then 'solid' else 'deep' end as tier, count(*)::int as c
+    select ps.tier, count(*)::int as c
       from public.auction_lots al
-      join ranked_deck d using (player_id, season)
+      join private.player_seasons ps using (player_id, season)
      where al.match_id = :'match_id'
-     group by tier
+     group by ps.tier
   ) tiers),
   array[2, 4, 4],
-  'the season dealer preserves the selected-deck band quota at two players'
+  'the season dealer preserves the tier quota at two players'
 );
 
 select ok(
@@ -121,12 +116,12 @@ select is(
   'final standings aggregate each winner’s revealed season totals'
 );
 
-delete from private.player_seasons where position = 'QB';
+delete from private.player_seasons where position = 'QB' and tier = 'star';
 select tests.mkmatch(2) as exhausted_match \gset
 select throws_ok(
   format($$ select auction.start(%L, 'season_total', 'standard') $$, :'exhausted_match'),
   'P0001', 'pool_exhausted',
-  'a season deal fails loudly when its selected private deck cannot satisfy a required draw'
+  'a season deal fails loudly when its private pool cannot satisfy a required draw'
 );
 
 select tests.mkmatch(2) as invalid_match \gset
