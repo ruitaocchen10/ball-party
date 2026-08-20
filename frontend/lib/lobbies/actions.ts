@@ -128,7 +128,11 @@ export async function startRun(formData: FormData) {
       p_roster_preset: rosterPreset,
       ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
     })
-    : await supabase.schema("higher_or_lower").rpc("start", { p_match_id: match.id });
+    : await supabase.schema("higher_or_lower").rpc("start", {
+      p_match_id: match.id,
+      p_scoring_mode: scoringMode,
+      ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
+    });
   if (dealError) redirect(withError(`/lobby/${code}`, dealError));
 
   revalidatePath("/", "layout");

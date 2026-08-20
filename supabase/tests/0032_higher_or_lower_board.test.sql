@@ -15,7 +15,7 @@
 -- not a decoration.
 
 begin;
-select plan(61);
+select plan(63);
 
 \ir support/harness.psql
 
@@ -471,7 +471,7 @@ select bag_eq(
   $$ select p.proname::text
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'higher_or_lower' $$,
-  $$ values ('call'), ('start'), ('state'), ('tick') $$,
+  $$ values ('call'), ('season_bounds'), ('start'), ('state'), ('tick') $$,
   'the exposed schema holds exactly the client RPCs for the dealt ladder'
 );
 
@@ -578,20 +578,30 @@ select throws_ok(
   'and a match belonging to another game is refused'
 );
 
--- Weekly is the column, the card fields and the host's choice — but not the
--- deck. It is refused rather than silently dealt as season total, which would
--- be a board nobody asked for. See #29.
+-- Weekly draws its own player-week deck and keeps the same player distinct
+-- throughout the ladder.
 select tests.act_as_admin();
 insert into tests.fx (k, v) values ('m_weekly', tests.mkmatch(2, 'higher_or_lower'));
 -- mkmatch leaves the session acting as the host, and the host cannot reach the
 -- engine schema at all — which would turn both refusals below into 42501.
 select tests.act_as_admin();
 
-select throws_ok(
+select lives_ok(
   format($$ select higher_or_lower_private.deal_board(%L, 0.1, 'weekly') $$,
          (select v from tests.fx where k = 'm_weekly')),
-  'P0001', 'scoring_mode_not_supported',
-  'weekly scoring is refused until its deck exists'
+  'weekly scoring deals from its player-week deck'
+);
+
+select ok(
+  (select bool_and(week is not null and opponent is not null) from public.higher_or_lower_cards
+    where match_id = (select v from tests.fx where k = 'm_weekly')),
+  'weekly cards expose their week and opponent recall cues'
+);
+
+select is(
+  (select count(*)::int from public.higher_or_lower_cards where match_id = (select v from tests.fx where k = 'm_weekly')),
+  (select count(distinct player_id)::int from public.higher_or_lower_cards where match_id = (select v from tests.fx where k = 'm_weekly')),
+  'weekly cards remain distinct by player'
 );
 
 select throws_ok(

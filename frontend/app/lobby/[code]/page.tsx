@@ -103,9 +103,12 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   // Only the host is offered a format, so only the host's page pays for the
   // bounds behind it. A failure here is not fatal: the picker disappears and
   // the dealer falls back to the whole pool.
-  const { data: era } = isHost
-    ? await supabase.schema("auction").rpc("season_bounds")
-    : { data: null };
+  const [{ data: era }, { data: higherOrLowerEra }] = isHost
+    ? await Promise.all([
+      supabase.schema("auction").rpc("season_bounds"),
+      supabase.schema("higher_or_lower").rpc("season_bounds" as never) as unknown as Promise<{ data: { season_min: number; season_max: number } | null }>,
+    ])
+    : [{ data: null }, { data: null }];
   const { data: activeHost } = await supabase.rpc("lobby_host_is_active", { p_lobby_id: lobby.id });
   const hostIsActive = activeHost ?? true;
   const canTakeHostControls = !isHost && !hostIsActive && canCreateLobby(claims);
@@ -131,6 +134,11 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
         era={
           era?.season_min != null && era.season_max != null && era.min_span != null
             ? { seasonMin: era.season_min, seasonMax: era.season_max, minSpan: era.min_span }
+            : null
+        }
+        higherOrLowerEra={
+          higherOrLowerEra?.season_min != null && higherOrLowerEra.season_max != null
+            ? { seasonMin: higherOrLowerEra.season_min, seasonMax: higherOrLowerEra.season_max }
             : null
         }
       />

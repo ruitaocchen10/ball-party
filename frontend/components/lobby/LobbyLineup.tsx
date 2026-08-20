@@ -28,6 +28,7 @@ export function LobbyLineup({
   inFlight,
   hostIsActive = true,
   era = null,
+  higherOrLowerEra = null,
 }: {
   lobbyId: string;
   code: string;
@@ -41,6 +42,7 @@ export function LobbyLineup({
   // card is the seam where the room stops being general and starts being one
   // game; this rides along the same seam rather than opening a second one.
   era?: Era | null;
+  higherOrLowerEra?: { seasonMin: number; seasonMax: number } | null;
 }) {
   const emptySeats = Math.max(0, CAPACITY - members.length);
 
@@ -98,7 +100,7 @@ export function LobbyLineup({
                   {isHost && !inFlight ? (
                     <div className="border-t border-[#c7bfac] bg-panel-shade p-2.5">
                       {game.match === "higher_or_lower" ? (
-                        <StartHigherOrLower lobbyId={lobbyId} code={code} players={members.length} />
+                        <StartHigherOrLower lobbyId={lobbyId} code={code} players={members.length} era={higherOrLowerEra} />
                       ) : (
                         <StartRun lobbyId={lobbyId} code={code} players={members.length} era={era} />
                       )}
