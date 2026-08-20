@@ -31,13 +31,10 @@ export function PostGameControls({
   }
 
   const backwards = era !== null && to < from;
-  const narrow = era !== null && !backwards && to - from + 1 < era.minSpan;
-  const replayDisabled = backwards || narrow;
+  const replayDisabled = backwards;
   const reason = backwards
     ? "The last season has to come after the first"
-    : narrow
-      ? `Pick a span of at least ${era?.minSpan} seasons`
-      : null;
+    : null;
 
   return (
     <div className="mt-2 flex flex-col gap-2">

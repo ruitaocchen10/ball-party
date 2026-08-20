@@ -138,34 +138,16 @@ request time — the upper one is the most recent completed season and moves wit
 it as new seasons land as migrations, so nothing above the data writes a year
 down.
 
-Narrowing composes with the tiers for free, because `tier` is a per-season
-positional finish: a narrowed window still deals 7:8:5, with the stars of that
-window.
+The dealer computes its 7:8:5 star/solid/deep bands from the selected deck,
+per position: weekly cards rank against player-weeks in the chosen era, and
+season-total cards rank against player-seasons there. That keeps a band’s
+meaning stable when the scoring mode or window changes.
 
-**Minimum span: four seasons.** The dealer draws distinct players and the star
-band is ranks 1-5 per position per season, so one season offers exactly five
-star QBs — and a Deep board for four wants fourteen stars across all positions.
-Replaying the dealer against the real pool over every window in the era, at two
-to four players, the worst-case rate at which a board cannot be dealt at all:
-
-```
-  span      worst window            pool_exhausted
-  1 year    2013,      deep, 4p     54.6%
-  2 years   2024-2025, deep, 4p      4.9%
-  3 years   2012-2014, deep, 4p      0.2%
-  4 years   —                        0%
-```
-
-Three would very nearly do; four is where every window is clean with room to
-spare, and it is not a difference a host asking for recent players will feel.
-`pool_exhausted` stays as the backstop — the floor makes it unreachable rather
-than replacing it, which matters while the tier bands are still being tuned.
-
-The tradeoff the host is making is repetition: 2020-2025 holds 73 distinct star
-players against the full era's 159, and one Deep board eats fourteen of them. A
-few games on a narrow window and you have seen most of its stars. That is the
-same sameyness the flat 16-season range was guarding against, approached from
-the other end.
+There is no minimum span. A one-season window is a legitimate recall challenge,
+and the selected-deck quantiles still supply its bands while the dealer keeps
+the existing one-player-per-board rule. The tradeoff is repetition: a narrow
+window exposes a much smaller set of players, so it will feel familiar sooner
+than the full archive.
 
 **Dud weeks** — kept, not filtered out. A player who took four snaps and left
 injured is still a lot, and his 0.0 still counts. The live possibility of a zero

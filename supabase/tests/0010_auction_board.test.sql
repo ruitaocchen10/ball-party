@@ -68,18 +68,23 @@ select is(
   'no player appears twice on a board'
 );
 
--- Tier is checked by joining back to the pool, because the lot itself must not
--- carry it — see the leak tests below.
+-- The dealer's band is checked against the selected (weekly, full-era) deck.
+-- Lots do not carry it because difficulty remains part of the private answer
+-- boundary.
 select is(
   (select array_agg(c order by t) from (
-     select pw.tier as t, count(*)::int as c
+     with ranked_deck as (
+       select pw.player_id, pw.season, pw.week,
+              ntile(20) over (partition by pw.position order by pw.points desc, pw.player_id, pw.season, pw.week) as quantile
+         from private.player_weeks pw
+     )
+     select case when quantile <= 7 then 'star' when quantile <= 15 then 'solid' else 'deep' end as t, count(*)::int as c
        from public.auction_lots al
-       join private.player_weeks pw
-         on pw.player_id = al.player_id and pw.season = al.season and pw.week = al.week
+       join ranked_deck d using (player_id, season, week)
       where al.match_id = (select v from tests.fx where k = 'm4')
-      group by pw.tier) x),
+      group by t) x),
   array[5, 8, 7],
-  'the tier quota at N=4 is 7 star, 8 solid, 5 deep (deep, solid, star alphabetically)'
+  'the selected-deck band quota at N=4 is 7 star, 8 solid, 5 deep (deep, solid, star alphabetically)'
 );
 
 -- ------------------------------------------------- the quota at other sizes --
@@ -89,12 +94,16 @@ select tests.act_as_admin();
 
 select is(
   (select array_agg(c order by t) from (
-     select pw.tier as t, count(*)::int as c
+     with ranked_deck as (
+       select pw.player_id, pw.season, pw.week,
+              ntile(20) over (partition by pw.position order by pw.points desc, pw.player_id, pw.season, pw.week) as quantile
+         from private.player_weeks pw
+     )
+     select case when quantile <= 7 then 'star' when quantile <= 15 then 'solid' else 'deep' end as t, count(*)::int as c
        from public.auction_lots al
-       join private.player_weeks pw
-         on pw.player_id = al.player_id and pw.season = al.season and pw.week = al.week
+       join ranked_deck d using (player_id, season, week)
       where al.match_id = (select v from tests.fx where k = 'm3')
-      group by pw.tier) x),
+      group by t) x),
   array[4, 6, 5],
   'the quota at N=3 is 5/6/4 — the odd lot goes to the largest remainder, deep'
 );
@@ -110,12 +119,16 @@ select tests.act_as_admin();
 
 select is(
   (select array_agg(c order by t) from (
-     select pw.tier as t, count(*)::int as c
+     with ranked_deck as (
+       select pw.player_id, pw.season, pw.week,
+              ntile(20) over (partition by pw.position order by pw.points desc, pw.player_id, pw.season, pw.week) as quantile
+         from private.player_weeks pw
+     )
+     select case when quantile <= 7 then 'star' when quantile <= 15 then 'solid' else 'deep' end as t, count(*)::int as c
        from public.auction_lots al
-       join private.player_weeks pw
-         on pw.player_id = al.player_id and pw.season = al.season and pw.week = al.week
+       join ranked_deck d using (player_id, season, week)
       where al.match_id = (select v from tests.fx where k = 'm2')
-      group by pw.tier) x),
+      group by t) x),
   array[2, 4, 4],
   'the quota at N=2 is 4/4/2 — star and deep tie on remainder and star takes it'
 );
