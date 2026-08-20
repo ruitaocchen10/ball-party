@@ -375,6 +375,19 @@ describe("sudden death", () => {
     expect(screen.getByRole("region", { name: /clock/i })).toHaveTextContent("Make your call");
   });
 
+  it("reveals the challenger after a sudden-death round", () => {
+    renderMatch({
+      board: { phase: "sudden_death_reveal", currentQuestion: 13 },
+      players: TIED,
+      cards: [
+        card({ ordinal: 12, display_name: "Justin Jefferson", points: 368.2, revealed_at: "2026-08-15T12:12:00Z" }),
+        card({ ordinal: 13, display_name: "Travis Kelce", points: 417.1, revealed_at: "2026-08-15T12:13:00Z" }),
+      ],
+    });
+
+    expect(screen.getByRole("group", { name: /challenger/i })).toHaveTextContent("417.1");
+  });
+
   it("lets an admitted, still-alive player call", async () => {
     const user = userEvent.setup();
     globalThis.__supabaseMock.rpc.mockImplementation(async (name: unknown) => name === "call"

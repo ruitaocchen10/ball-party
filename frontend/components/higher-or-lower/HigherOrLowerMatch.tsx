@@ -183,7 +183,9 @@ export function HigherOrLowerMatch({
   // payloads independently. The board phase is the authoritative permission to
   // display this question's answer, so a card event that wins that small race
   // cannot show its points while this screen still renders a call.
-  const challenger = dealtChallenger && (board.phase === "reveal" || board.phase === "complete")
+  const challenger = dealtChallenger && (
+    board.phase === "reveal" || board.phase === "sudden_death_reveal" || board.phase === "complete"
+  )
     ? dealtChallenger
     : dealtChallenger ? { ...dealtChallenger, points: null, revealed_at: null } : null;
   const myCall = calls.find((call) => call.question === board.currentQuestion && call.user_id === viewerId);
