@@ -65,7 +65,7 @@
   --shadow-card-hover:
     0 16px 34px rgb(0 0 0 / 0.62), inset 0 1px 0 rgb(255 255 255 / 0.8);
 
-  --radius-card: 5px;
+  --radius-card: 0px;
 
   /* The sold acknowledgement, which is an event rather than a state: it fires
      once and stops. A looping pulse would keep insisting after the payoff has

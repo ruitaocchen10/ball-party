@@ -1,7 +1,9 @@
 import { CurrentRoom, type RoomSummary } from "@/components/home/CurrentRoom";
 import { GameGrid } from "@/components/home/GameGrid";
 import { JoinRoom } from "@/components/home/JoinRoom";
+import { SoloGrid } from "@/components/home/SoloGrid";
 import { StartRoom } from "@/components/home/StartRoom";
+import { TalkPreview } from "@/components/home/TalkPreview";
 import { WayIn } from "@/components/home/WayIn";
 import { GAMES } from "@/lib/games/catalog";
 import { TopBar } from "@/components/layout/TopBar";
@@ -36,6 +38,7 @@ export default async function Home(props: PageProps<"/">) {
 
   const live = GAMES.filter((game) => game.status === "live").length;
   const upcoming = GAMES.length - live;
+  const soloLive = GAMES.filter((game) => game.solo && game.status === "live").length;
 
   return (
     <>
@@ -54,21 +57,31 @@ export default async function Home(props: PageProps<"/">) {
         {room ? <CurrentRoom room={room} /> : null}
         <ActionStrip hasRoom={room !== null} canCreateLobby={canHost} />
 
-        <section aria-labelledby="games-heading">
-          <div className="mt-9 mb-4 flex items-baseline gap-3.5">
-            <h2
-              id="games-heading"
-              className="font-slab text-base leading-none -skew-x-7 uppercase sm:text-lg"
-            >
-              Games
-            </h2>
-            <span aria-hidden className="h-px flex-1 bg-line" />
-            <span className="font-mono text-[9px] tracking-[0.15em] text-fg-muted uppercase">
-              {live} live · {upcoming} in development
-            </span>
+        <section className="mt-9" aria-labelledby="play-heading">
+          <ColumnHead
+            id="play-heading"
+            title="Play"
+            meta={`${live} live · ${upcoming} in development`}
+          />
+          <GameGrid canCreateLobby={canHost} />
+        </section>
+
+        {/* Solo and Social as two even columns: the smaller of the room's two
+            offshoots — one real game deep, one nothing behind it yet — so
+            neither one is stretched to carry a full-width section on its
+            own. Social has nothing behind it yet, so it gets an
+            honestly-empty placeholder instead of a column pretending to be
+            real — see TalkPreview. */}
+        <section className="mt-9 grid grid-cols-1 gap-x-8 gap-y-9 lg:grid-cols-2 lg:gap-x-10">
+          <div aria-labelledby="solo-heading">
+            <ColumnHead id="solo-heading" title="Solo" meta={`${soloLive} live`} />
+            <SoloGrid canPlaySolo={viewer} />
           </div>
 
-          <GameGrid canCreateLobby={canHost} canPlaySolo={viewer} />
+          <div aria-labelledby="social-heading">
+            <ColumnHead id="social-heading" title="Social" meta="In development" />
+            <TalkPreview />
+          </div>
         </section>
       </main>
     </>
@@ -106,6 +119,25 @@ async function currentRoom(supabase: Client, userId: string): Promise<RoomSummar
 }
 
 /**
+ * A column's heading: title, a hairline to fill the rest of the row, and a
+ * status line flush right. Pulled out of the old single "Games" section
+ * heading so Play and Talk render it identically.
+ */
+function ColumnHead({ id, title, meta }: { id: string; title: string; meta: string }) {
+  return (
+    <div className="mb-4 flex items-baseline gap-3.5">
+      <h2 id={id} className="font-slab text-base leading-none -skew-x-7 uppercase sm:text-lg">
+        {title}
+      </h2>
+      <span aria-hidden className="h-px flex-1 bg-line" />
+      <span className="font-mono text-[9px] tracking-[0.15em] text-fg-muted uppercase">
+        {meta}
+      </span>
+    </div>
+  );
+}
+
+/**
  * The heading, and the two ways into a room.
  *
  * Both ways in are panels rather than controls in a row. The heading used to
@@ -121,6 +153,10 @@ async function currentRoom(supabase: Client, userId: string): Promise<RoomSummar
  * When you are already in a room the whole section steps down: the panel above
  * is the important object, so the heading shrinks and says what these two
  * buttons will cost you.
+ *
+ * Carries `id="party-heading"` for the top bar's "Party" link — this is the
+ * actual room flow the nav points at, whatever the heading above happens to
+ * say at the moment.
  */
 function ActionStrip({
   hasRoom,
@@ -132,7 +168,7 @@ function ActionStrip({
   const Heading = hasRoom ? "h2" : "h1";
 
   return (
-    <section className={hasRoom ? "pt-6" : "pt-10 lg:pt-14"}>
+    <section id="party-heading" className={hasRoom ? "pt-6" : "pt-10 lg:pt-14"}>
       <Heading
         className={`font-slab leading-[1.02] -skew-x-7 uppercase ${
           hasRoom ? "text-2xl sm:text-3xl" : "text-[34px] sm:text-[43px]"

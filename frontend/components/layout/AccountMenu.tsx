@@ -97,11 +97,11 @@ export function AccountMenu({ displayName }: { displayName: string }) {
           event.preventDefault();
           setOpen(true);
         }}
-        className="flex cursor-pointer items-center gap-2.5 rounded-[3px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        className="flex cursor-pointer items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
       >
         <span
           aria-hidden
-          className="flex h-7 w-7 items-center justify-center rounded-[3px] bg-panel font-slab text-xs leading-none -skew-x-7 text-panel-fg shadow-card"
+          className="flex h-7 w-7 items-center justify-center bg-panel font-slab text-xs leading-none -skew-x-7 text-panel-fg shadow-card"
         >
           {initials(displayName)}
         </span>
