@@ -139,6 +139,17 @@ begin
   match_id := tests.mkmatch(p_n, 'auction_team_builder');
 end $$;
 
+-- One player's own run, no lobby involved, with the match dealt into setup.
+-- Returns the match id. Leaves the session acting as that player, the way
+-- tests.mkmatch leaves it acting as the host.
+create function tests.mksolomatch(p_user uuid, p_game text, out match_id uuid)
+returns uuid
+language plpgsql as $$
+begin
+  perform tests.act_as(p_user);
+  select id into match_id from public.start_solo_run(p_game);
+end $$;
+
 -- A dealt board from a fixed seed, so composition and play can be asserted
 -- exactly. Goes through the private dealer rather than start_auction because
 -- the seed is deliberately not an argument of the public entry point.
@@ -342,6 +353,26 @@ returns uuid
 language plpgsql as $$
 begin
   match_id := tests.mkmatch(p_n, 'higher_or_lower');
+  perform tests.act_as_admin();
+  perform higher_or_lower_private.deal_board(
+    match_id, p_seed, p_scoring_mode, p_season_from, p_season_to
+  );
+end $$;
+
+-- The solo counterpart: one player's own run rather than a lobby's, otherwise
+-- dealt the same way.
+create function tests.deal_solo_higher_or_lower(
+  p_user uuid,
+  p_seed double precision,
+  p_scoring_mode text default 'season_total',
+  p_season_from smallint default null,
+  p_season_to smallint default null,
+  out match_id uuid
+)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.mksolomatch(p_user, 'higher_or_lower');
   perform tests.act_as_admin();
   perform higher_or_lower_private.deal_board(
     match_id, p_seed, p_scoring_mode, p_season_from, p_season_to

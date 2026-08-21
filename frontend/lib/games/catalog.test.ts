@@ -11,7 +11,7 @@ describe("home game catalog", () => {
       duration: "3–5 min",
       status: "live",
       kind: "Group · simultaneous",
-      solo: false,
+      solo: true,
     });
   });
 

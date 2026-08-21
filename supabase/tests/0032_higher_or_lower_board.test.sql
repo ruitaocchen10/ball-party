@@ -491,20 +491,24 @@ select ok(
 -- --------------------------------------------------------------- refusals --
 
 -- Constructed, because start_run already refuses a one-person lobby: the
--- platform floor and the game floor are different rules that happen to agree at
--- N=1 today. This asserts the game's own floor exists rather than being assumed.
+-- platform floor and the game floor are different rules. This asserts the
+-- game's own floor exists rather than being assumed.
+--
+-- It was N=1 here until #32/0045 lowered the game's own floor to 1 for solo
+-- play — a one-player table is exactly what a solo match deals, and
+-- 0045_higher_or_lower_solo.test.sql covers that it succeeds. What is left
+-- for the dealer to refuse is a table with nobody at it at all.
 select tests.act_as_admin();
 insert into tests.fx (k, v) values ('m_thin', tests.mkmatch(2, 'higher_or_lower'));
 select tests.act_as_admin();
 
 delete from public.run_participants
- where run_id = (select run_id from public.matches where id = (select v from tests.fx where k = 'm_thin'))
-   and seat = 1;
+ where run_id = (select run_id from public.matches where id = (select v from tests.fx where k = 'm_thin'));
 
 select throws_ok(
   format($$ select higher_or_lower_private.deal_board(%L, 0.1) $$, (select v from tests.fx where k = 'm_thin')),
   'P0001', 'too_few_players',
-  'a one-player table is refused by the dealer, which is where a game floor belongs'
+  'an empty table is refused by the dealer, which is where a game floor belongs'
 );
 
 -- higher_or_lower.start is the real entry point: it checks the caller and the

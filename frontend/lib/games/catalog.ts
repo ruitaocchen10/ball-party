@@ -71,6 +71,11 @@ export function startableGames(): MatchGame[] {
   return GAMES.map((game) => game.match).filter((game) => game !== null);
 }
 
+/** The games a lone player can actually start today, by their durable record name. */
+export function soloGames(): MatchGame[] {
+  return GAMES.filter((game) => game.solo).map((game) => game.match).filter((game) => game !== null);
+}
+
 export const GAMES: readonly Game[] = [
   {
     slug: "higher-or-lower",
@@ -82,7 +87,7 @@ export const GAMES: readonly Game[] = [
     players: "2–4 players",
     duration: "3–5 min",
     status: "live",
-    solo: false,
+    solo: true,
     featured: false,
   },
   {

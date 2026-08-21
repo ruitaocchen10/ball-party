@@ -147,6 +147,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      season_bounds: {
+        Args: never
+        Returns: Database["higher_or_lower"]["CompositeTypes"]["era"]
+        SetofOptions: {
+          from: "*"
+          to: "era"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       start: {
         Args: {
           p_match_id: string
@@ -198,6 +208,10 @@ export type Database = {
         phase: string | null
         phase_deadline: string | null
         server_now: string | null
+      }
+      era: {
+        season_min: number | null
+        season_max: number | null
       }
     }
   }
@@ -617,6 +631,7 @@ export type Database = {
       higher_or_lower_matches: {
         Row: {
           current_question: number
+          is_solo: boolean
           match_id: string
           phase: string
           phase_deadline: string | null
@@ -629,6 +644,7 @@ export type Database = {
         }
         Insert: {
           current_question?: number
+          is_solo?: boolean
           match_id: string
           phase?: string
           phase_deadline?: string | null
@@ -641,6 +657,7 @@ export type Database = {
         }
         Update: {
           current_question?: number
+          is_solo?: boolean
           match_id?: string
           phase?: string
           phase_deadline?: string | null
@@ -972,7 +989,7 @@ export type Database = {
         Row: {
           ended_at: string | null
           id: string
-          lobby_id: string
+          lobby_id: string | null
           mode: Database["public"]["Enums"]["run_mode"]
           started_at: string
           status: Database["public"]["Enums"]["run_status"]
@@ -981,7 +998,7 @@ export type Database = {
         Insert: {
           ended_at?: string | null
           id?: string
-          lobby_id: string
+          lobby_id?: string | null
           mode: Database["public"]["Enums"]["run_mode"]
           started_at?: string
           status?: Database["public"]["Enums"]["run_status"]
@@ -990,7 +1007,7 @@ export type Database = {
         Update: {
           ended_at?: string | null
           id?: string
-          lobby_id?: string
+          lobby_id?: string | null
           mode?: Database["public"]["Enums"]["run_mode"]
           started_at?: string
           status?: Database["public"]["Enums"]["run_status"]
@@ -1097,11 +1114,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      start_solo_run: {
+        Args: { p_game: string }
+        Returns: {
+          ended_at: string | null
+          game: string
+          id: string
+          run_id: string
+          seq: number
+          started_at: string | null
+          status: Database["public"]["Enums"]["match_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       match_status: "setup" | "playing" | "complete" | "abandoned"
       post_game_choice: "replay" | "lobby"
-      run_mode: "arcade" | "party"
+      run_mode: "arcade" | "party" | "solo"
       run_status: "active" | "finished" | "abandoned"
     }
     CompositeTypes: {
@@ -1241,7 +1276,7 @@ export const Constants = {
     Enums: {
       match_status: ["setup", "playing", "complete", "abandoned"],
       post_game_choice: ["replay", "lobby"],
-      run_mode: ["arcade", "party"],
+      run_mode: ["arcade", "party", "solo"],
       run_status: ["active", "finished", "abandoned"],
     },
   },

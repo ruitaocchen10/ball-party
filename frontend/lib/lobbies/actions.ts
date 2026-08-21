@@ -8,7 +8,7 @@ import { canCreateLobby, isGuestViewer, isSignedInViewer } from "@/lib/auth/view
 import { guestSessionFinishedHref } from "@/lib/auth/guest-lifecycle";
 import { lobbyErrorMessage } from "@/lib/lobbies/messages";
 import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
-import { startableGames, type MatchGame } from "@/lib/games/catalog";
+import { soloGames, startableGames, type MatchGame } from "@/lib/games/catalog";
 
 /**
  * The lobby RPCs raise short machine-readable strings — see
@@ -134,6 +134,58 @@ export async function startRun(formData: FormData) {
       ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
     });
   if (dealError) redirect(withError(`/lobby/${code}`, dealError));
+
+  revalidatePath("/", "layout");
+  redirect(`/match/${match.id}`);
+}
+
+/**
+ * Which solo-capable game the tile asked for, or null.
+ *
+ * A narrower check than `submittedGame`: every startable game can open a room,
+ * but not every one has a solo floor low enough to deal for one player yet —
+ * today that is only Higher or Lower. Checked against the catalogue so this
+ * gate and the "Play solo" tile's own visibility can never drift apart.
+ */
+function submittedSoloGame(value: FormDataEntryValue | null): MatchGame | null {
+  const game = String(value ?? "");
+  return soloGames().find((startable) => startable === game) ?? null;
+}
+
+/**
+ * One player, no lobby.
+ *
+ * The platform and per-game halves of `startRun` above, without the room in
+ * between: `start_solo_run` freezes a one-person roster with no lobby to lock,
+ * and the game's own setup RPC deals into it exactly as it would for a group.
+ * No format picker yet — solo takes the same defaults a host's unconfigured
+ * game would.
+ */
+export async function playSolo(formData: FormData) {
+  const game = submittedSoloGame(formData.get("game"));
+  if (!game) {
+    redirect(`/?error=${encodeURIComponent("Pick a game that's ready to play solo.")}`);
+  }
+
+  // `soloGames()` is catalogue-driven and already admits only Higher or Lower
+  // today, but it is a list of names, not a list of setup RPCs — this is the
+  // one place that turns a name into the call, the same seam `startRun` keeps
+  // for its two games. A second solo game has to be added here, not just to
+  // the catalogue, or this falls through to the same refusal rather than
+  // silently dealing the wrong game.
+  if (game !== "higher_or_lower") {
+    redirect(`/?error=${encodeURIComponent("Pick a game that's ready to play solo.")}`);
+  }
+
+  const supabase = await createClient();
+
+  const { data: match, error } = await supabase.rpc("start_solo_run", { p_game: game });
+  if (error) redirect(withError("/", error));
+
+  const { error: dealError } = await supabase.schema("higher_or_lower").rpc("start", {
+    p_match_id: match.id,
+  });
+  if (dealError) redirect(withError("/", dealError));
 
   revalidatePath("/", "layout");
   redirect(`/match/${match.id}`);

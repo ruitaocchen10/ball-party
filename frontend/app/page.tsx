@@ -68,7 +68,7 @@ export default async function Home(props: PageProps<"/">) {
             </span>
           </div>
 
-          <GameGrid canCreateLobby={canHost} />
+          <GameGrid canCreateLobby={canHost} canPlaySolo={viewer} />
         </section>
       </main>
     </>
