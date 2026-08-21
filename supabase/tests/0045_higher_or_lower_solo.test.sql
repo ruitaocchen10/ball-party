@@ -23,8 +23,8 @@ select tests.act_as_admin();
 select is(
   (select count(*)::int from public.higher_or_lower_cards
     where match_id = (select v from tests.fx where k = 'solo')),
-  18,
-  'a one-player table still deals a full ladder — seed anchor, twelve questions, five spares'
+  13,
+  'a one-player table deals the seed anchor and twelve-question opening ladder'
 );
 
 select is(
@@ -70,7 +70,7 @@ select is(
 select is(
   (select count(*)::int from public.higher_or_lower_cards
     where match_id = (select v from tests.fx where k = 'solo')),
-  18, 'and every card of their own ladder'
+  13, 'and every card of their own opening ladder'
 );
 select is(
   (select count(*)::int from public.higher_or_lower_players

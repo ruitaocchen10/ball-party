@@ -235,9 +235,7 @@ export function HigherOrLowerMatch({
     <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
       <header className="flex shrink-0 items-baseline justify-between gap-3">
         <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
-          {isSuddenDeath(board.phase)
-            ? `Sudden death · Round ${suddenDeathRound(board)}`
-            : `Question ${board.currentQuestion} of ${board.questionCount}`}
+          {questionLabel(board, "visual")}
         </p>
         <p
           role="note"
@@ -279,7 +277,7 @@ export function HigherOrLowerMatch({
           region is the complete announcement of what is on screen. */}
       <p role="status" className="sr-only">
         {anchor && challenger
-          ? `${isSuddenDeath(board.phase) ? `Sudden death, round ${suddenDeathRound(board)}` : `Question ${board.currentQuestion} of ${board.questionCount}`}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
+          ? `${questionLabel(board, "spoken")}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
           : ""}
       </p>
 
@@ -509,6 +507,19 @@ function boardFromRow(row: HigherOrLowerMatchRow): Omit<Board, "serverNow"> {
     phase: row.phase,
     phaseDeadline: row.phase_deadline,
   };
+}
+
+/** The visible heading and screen-reader announcement must name a live board
+ * identically; only sudden death's punctuation differs for natural speech. */
+function questionLabel(board: Board, audience: "visual" | "spoken"): string {
+  if (isSuddenDeath(board.phase)) {
+    return audience === "visual"
+      ? `Sudden death · Round ${suddenDeathRound(board)}`
+      : `Sudden death, round ${suddenDeathRound(board)}`;
+  }
+  return board.currentQuestion > board.questionCount
+    ? `Question ${board.currentQuestion}`
+    : `Question ${board.currentQuestion} of ${board.questionCount}`;
 }
 
 function MatchClock({ phase, remainingMs }: { phase: Board["phase"]; remainingMs: number | null }) {

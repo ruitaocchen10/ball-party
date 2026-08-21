@@ -273,6 +273,20 @@ describe("HigherOrLowerMatch", () => {
     expect(screen.getByText("Question 1 of 12")).toBeInTheDocument();
   });
 
+  it("uses an open-ended question count after the solo ladder's fixed opening", () => {
+    renderMatch({
+      board: { currentQuestion: 13 },
+      cards: [
+        card({ ordinal: 12, points: 289.4, revealed_at: "2026-08-15T12:00:00Z" }),
+        card({ ordinal: 13, display_name: "Patrick Mahomes" }),
+      ],
+    });
+
+    expect(screen.getByText("Question 13")).toBeInTheDocument();
+    expect(screen.queryByText(/Question 13 of/)).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Question 13.");
+  });
+
   it("gives each card the cues a call is made from", () => {
     renderMatch();
 
