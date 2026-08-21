@@ -28,6 +28,7 @@ import { isSignedInViewer } from "@/lib/auth/viewer";
  */
 export default async function MatchPage(props: PageProps<"/match/[id]">) {
   const { id } = await props.params;
+  const { error } = await props.searchParams;
   const supabase = await createClient();
 
   const { data } = await supabase.auth.getClaims();
@@ -64,6 +65,17 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
   const code = match.runs?.lobbies?.code ?? null;
   const isHost = match.runs?.lobbies?.host_id === claims.sub;
+
+  // A replay can race with a second submit. Keep the server's one-time-choice
+  // refusal visible instead of immediately following the winner's action.
+  if (error) {
+    return (
+      <Shell displayName={displayName}>
+        <p role="alert" className="text-sm leading-6 text-fg-muted">{error}</p>
+        {code ? <BackToRoom code={code} /> : <HomeLink />}
+      </Shell>
+    );
+  }
 
   // A tab opened after the host has already made the choice still reaches the
   // shared destination; Realtime below is only the fast path for open tabs.

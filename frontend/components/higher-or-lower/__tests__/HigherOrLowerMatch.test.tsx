@@ -124,7 +124,7 @@ function renderMatch(over: {
     <HigherOrLowerMatch
       matchId={MATCH}
       viewerId={over.viewerId ?? "u0"}
-      roomCode={over.roomCode ?? "ABCD"}
+      roomCode={over.roomCode === undefined ? "ABCD" : over.roomCode}
       isHost={over.isHost ?? true}
       initial={{
         board: { ...BOARD, ...over.board },
@@ -503,6 +503,18 @@ describe("the final screen", () => {
 
     expect(screen.getByRole("button", { name: /replay/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /back to lobby/i })).toBeInTheDocument();
+  });
+
+  it("offers a solo player another match alongside the home link", () => {
+    renderMatch({
+      board: { phase: "complete" },
+      players: [PLAYERS[0]],
+      standings: [standing({ user_id: "u0", placement: 1 })],
+      roomCode: null,
+    });
+
+    expect(screen.getByRole("button", { name: /play again/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /back home/i })).toBeInTheDocument();
   });
 });
 

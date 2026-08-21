@@ -191,12 +191,12 @@ export async function playSolo(formData: FormData) {
   redirect(`/match/${match.id}`);
 }
 
-/** The host's final-screen choice is a room event, not personal navigation. */
+/** A completed match's one-time next destination: host-owned in a room, player-owned solo. */
 export async function postGameChoice(formData: FormData) {
   const matchId = String(formData.get("match_id") ?? "");
   const code = normalizeCode(formData.get("room_code"));
   const choice = String(formData.get("choice") ?? "");
-  if (!matchId || !code || (choice !== "replay" && choice !== "lobby")) {
+  if (!matchId || (choice !== "replay" && choice !== "lobby")) {
     redirect("/");
   }
 
@@ -215,12 +215,13 @@ export async function postGameChoice(formData: FormData) {
     ...(choice === "replay" && rosterPreset ? { p_roster_preset: rosterPreset } : {}),
     ...(choice === "replay" && seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
   });
-  if (error) redirect(withError(`/lobby/${code}`, error));
+  const origin = code ? `/lobby/${code}` : `/match/${matchId}`;
+  if (error) redirect(withError(origin, error));
 
-  revalidatePath(`/lobby/${code}`);
+  revalidatePath(code ? `/lobby/${code}` : "/");
   redirect(data.choice === "replay" && data.next_match_id
     ? `/match/${data.next_match_id}`
-    : `/lobby/${code}`);
+    : code ? `/lobby/${code}` : "/");
 }
 
 /**

@@ -16,7 +16,8 @@ export const LOBBY_MESSAGES: Record<string, string> = {
   season_range_too_narrow: "Pick a wider span of seasons.",
   season_out_of_range: "That season isn't in the player pool.",
   match_not_complete: "This game is still in progress.",
-  post_game_choice_already_made: "The host has already chosen what’s next.",
+  post_game_choice_already_made: "The next game has already been chosen.",
+  not_match_participant: "Only a player in this match can choose what’s next.",
   replay_not_supported: "This game can’t be replayed yet.",
 };
 

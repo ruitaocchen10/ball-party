@@ -26,6 +26,7 @@ import {
   type Standing,
 } from "@/lib/higher-or-lower/board";
 import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
+import { postGameChoice } from "@/lib/lobbies/actions";
 import { createClient, createRealtimeClient } from "@/lib/supabase/client";
 
 /**
@@ -413,12 +414,19 @@ function FinalScreen({
       ) : null}
 
       {!roomCode ? (
-        <Link
-          href="/"
-          className="mt-2 text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
-        >
-          Back home
-        </Link>
+        <div className="mt-2 flex flex-col gap-2">
+          <form action={postGameChoice}>
+            <input type="hidden" name="match_id" value={matchId} />
+            <input type="hidden" name="choice" value="replay" />
+            <Button type="submit" fullWidth>Play again</Button>
+          </form>
+          <Link
+            href="/"
+            className="text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
+          >
+            Back home
+          </Link>
+        </div>
       ) : null}
     </>
   );
