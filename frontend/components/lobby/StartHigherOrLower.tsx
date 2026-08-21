@@ -34,6 +34,7 @@ export function StartHigherOrLower({
   const short = players < 2;
   const [from, setFrom] = useState(era?.seasonMin ?? 0);
   const [to, setTo] = useState(era?.seasonMax ?? 0);
+  const backwards = era !== null && to < from;
 
   return (
     <form action={startRun} className="flex flex-col gap-2">
@@ -51,12 +52,17 @@ export function StartHigherOrLower({
         <Season label="First season" name="season_from" value={from} era={era} onChange={setFrom} />
         <Season label="Last season" name="season_to" value={to} era={era} onChange={setTo} />
       </div> : null}
-      <Button type="submit" disabled={short}>
+      <Button type="submit" disabled={short || backwards}>
         Start higher or lower
       </Button>
       {short ? (
         <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
           Waiting for one more player
+        </p>
+      ) : null}
+      {backwards ? (
+        <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
+          The last season has to come after the first
         </p>
       ) : null}
     </form>
