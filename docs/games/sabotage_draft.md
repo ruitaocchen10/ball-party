@@ -165,6 +165,30 @@ rather than a measured one — pushed further and fourteen rounds of simultaneou
 picks plus a crowded guessing window each round risks turning into a long
 sit, but that's a pacing question for playtesting, not a structural limit.
 
+**Disconnects — reuse existing paths rather than invent an absent-player
+case.** Every resolution a dropped player needs already exists for a present
+one; the disconnect story is just routing through it automatically:
+
+- **Mid-pick, timer expires with no choice made** — auto-resolve through the
+  same random respin a successful name-only guess already triggers: a fresh
+  random player and year from that round's team/position. Not the single
+  highest-AV player available, on purpose — auto-picking the best option
+  would make disconnecting (or stalling deliberately) a viable strategy, where
+  a random outcome keeps it a real penalty for not being there, the same
+  spirit as getting sniped.
+- **Mid-guess-window, no guess submitted** — this is already a legal choice
+  for a present player, so an absent one just defaults to it. Nothing new to
+  build.
+- **Already picked, then disconnects before the guess window closes** — a
+  guess against that pick resolves exactly as if they were present. The pick
+  was already locked in server-side; being absent doesn't undo it, same as an
+  auction bid that wins after the bidder drops.
+
+Overall, a disconnected player keeps whatever roster they've built so far,
+stays on the scoreboard, gets a record simulated for them like everyone else
+at the end, and can rejoin mid-match — their first ping clears the absent
+flag.
+
 ### Data
 
 This is the open cost worth being honest about. Every other game in this app
@@ -202,5 +226,3 @@ at all in the same way "an auction needs opponents" argues against one there.
       else here assumes it's solved.
 - [ ] **Party point mapping** — cross-cutting, still unanswered for the other
       three games too. See `app.md`.
-- [ ] **Disconnects** — what happens to a player's in-progress pick or an
-      open guess window if they drop mid-round?
