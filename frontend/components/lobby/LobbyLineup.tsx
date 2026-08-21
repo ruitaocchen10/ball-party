@@ -16,7 +16,7 @@ type Member = {
  * The room is a durable party table, rather than an antechamber for one game.
  * A catalogue card is therefore the contract a new game gets when it arrives:
  * what it is, how many people it needs, how long it lasts, and whether it can
- * be started today. Only the auction has a live dispatch behind it for now.
+ * be started today.
  */
 export function LobbyLineup({
   lobbyId,

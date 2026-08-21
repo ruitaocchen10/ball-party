@@ -19,7 +19,7 @@ describe("LobbyLineup", () => {
     { user_id: "guest", profiles: { display_name: "Devin", is_guest: true } },
   ];
 
-  it("puts the live game alongside honest upcoming games and open seats", () => {
+  it("puts the live games alongside an honest upcoming game and open seats", () => {
     render(
       <LobbyLineup
         lobbyId="lobby"
@@ -33,11 +33,11 @@ describe("LobbyLineup", () => {
     );
 
     expect(screen.getByRole("heading", { name: /tonight's lineup/i })).toBeInTheDocument();
-    expect(screen.getByText(/next up · live/i)).toBeInTheDocument();
-    // Higher or Lower can be started while the catalogue still calls it
-    // unfinished, so its card says which of the two it is.
-    expect(screen.getByText(/next up · in development/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/next up · live/i)).toHaveLength(2);
+    expect(screen.queryByText(/next up · in development/i)).not.toBeInTheDocument();
     expect(screen.getAllByText(/coming soon/i)).toHaveLength(1);
+    expect(screen.getByText("Everyone calls higher or lower at once. Longest streak wins.")).toBeInTheDocument();
+    expect(screen.getByText("2–4 players · 3–5 min")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /start auction with 2 players/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /start higher or lower with 2 players/i }),

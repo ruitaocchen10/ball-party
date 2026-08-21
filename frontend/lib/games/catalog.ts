@@ -6,9 +6,9 @@
  * changes. It moves to the database when games gain state the platform has to
  * read — availability by region, say, or per-player unlocks.
  *
- * `status` means playable, not planned. The auction is the one game that is
- * actually built end to end; the other three are documented and unbuilt, and
- * saying otherwise on the home screen would be the product lying about itself.
+ * `status` means playable, not planned. The auction and Higher or Lower are
+ * built end to end; the remaining game is documented and unbuilt, and saying
+ * otherwise on the home screen would be the product lying about itself.
  */
 export type GameStatus = "live" | "development";
 
@@ -77,12 +77,12 @@ export const GAMES: readonly Game[] = [
     match: "higher_or_lower",
     name: ["Higher", "or lower"],
     shortName: ["Higher", "or lower"],
-    kind: "Solo or group",
-    tagline: "Two stat lines, one call. Keep the streak alive or hand it over.",
-    players: "1–4 players",
-    duration: "3–6 min",
-    status: "development",
-    solo: true,
+    kind: "Group · simultaneous",
+    tagline: "Everyone calls higher or lower at once. Longest streak wins.",
+    players: "2–4 players",
+    duration: "3–5 min",
+    status: "live",
+    solo: false,
     featured: false,
   },
   {
