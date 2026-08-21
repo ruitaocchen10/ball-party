@@ -8,6 +8,7 @@ import { canCreateLobby, isGuestViewer, isSignedInViewer } from "@/lib/auth/view
 import { guestSessionFinishedHref } from "@/lib/auth/guest-lifecycle";
 import { lobbyErrorMessage } from "@/lib/lobbies/messages";
 import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
+import { soloGames, startableGames, type MatchGame } from "@/lib/games/catalog";
 
 /**
  * The lobby RPCs raise short machine-readable strings — see
@@ -71,6 +72,18 @@ export async function createLobby() {
 }
 
 /**
+ * Which game the room asked for, or null if it named one nothing can start.
+ *
+ * Checked against the catalogue rather than a list kept here: the catalogue is
+ * where a tile says which durable record it starts, and a second list would be
+ * the thing that disagrees with it.
+ */
+function submittedGame(value: FormDataEntryValue | null): MatchGame | null {
+  const game = String(value ?? "");
+  return startableGames().find((startable) => startable === game) ?? null;
+}
+
+/**
  * Turn the room into a game.
  *
  * Two calls, because the platform does not dispatch into a game's setup — it
@@ -78,15 +91,21 @@ export async function createLobby() {
  * in `setup`; the game's own RPC deals into it and moves it to `playing`. See
  * docs/architecture/architecture.md for why that seam is where it is.
  *
- * The dispatch below is hardcoded to the one game that is built. It belongs on
- * the catalog the moment there are two.
+ * The second call is the one place in the app that has to know which game it
+ * started, because each game's setup RPC lives in that game's own Postgres
+ * schema and takes that game's own format. Everything above it is generic.
  */
 export async function startRun(formData: FormData) {
   const lobbyId = String(formData.get("lobby_id") ?? "");
   const code = normalizeCode(formData.get("code"));
+  const game = submittedGame(formData.get("game"));
+  if (!game) {
+    redirect(`/lobby/${code}?error=${encodeURIComponent("Pick a game that's ready to play.")}`);
+  }
+
   const scoringMode = String(formData.get("scoring_mode") ?? "");
   const rosterPreset = String(formData.get("roster_preset") ?? "");
-  if (!validAuctionFormat(scoringMode, rosterPreset)) {
+  if (game === "auction_team_builder" && !validAuctionFormat(scoringMode, rosterPreset)) {
     redirect(`/lobby/${code}?error=${encodeURIComponent("Choose a valid auction format.")}`);
   }
   const seasons = auctionSeasonRange(formData);
@@ -95,28 +114,89 @@ export async function startRun(formData: FormData) {
   const { data: match, error } = await supabase.rpc("start_run", {
     p_lobby_id: lobbyId,
     p_mode: "arcade",
-    p_game: "auction_team_builder",
+    p_game: game,
   });
   if (error) redirect(withError(`/lobby/${code}`, error));
 
-  const { error: dealError } = await supabase.schema("auction").rpc("start", {
-    p_match_id: match.id,
-    p_scoring_mode: scoringMode,
-    p_roster_preset: rosterPreset,
-    ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
-  });
+  // Higher or Lower sends no format yet: its scoring mode and era window are
+  // arguments of the RPC with defaults it resolves and records itself, and the
+  // host's picker for them is a later slice.
+  const { error: dealError } = game === "auction_team_builder"
+    ? await supabase.schema("auction").rpc("start", {
+      p_match_id: match.id,
+      p_scoring_mode: scoringMode,
+      p_roster_preset: rosterPreset,
+      ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
+    })
+    : await supabase.schema("higher_or_lower").rpc("start", {
+      p_match_id: match.id,
+      p_scoring_mode: scoringMode,
+      ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
+    });
   if (dealError) redirect(withError(`/lobby/${code}`, dealError));
 
   revalidatePath("/", "layout");
   redirect(`/match/${match.id}`);
 }
 
-/** The host's final-screen choice is a room event, not personal navigation. */
+/**
+ * Which solo-capable game the tile asked for, or null.
+ *
+ * A narrower check than `submittedGame`: every startable game can open a room,
+ * but not every one has a solo floor low enough to deal for one player yet —
+ * today that is only Higher or Lower. Checked against the catalogue so this
+ * gate and the "Play solo" tile's own visibility can never drift apart.
+ */
+function submittedSoloGame(value: FormDataEntryValue | null): MatchGame | null {
+  const game = String(value ?? "");
+  return soloGames().find((startable) => startable === game) ?? null;
+}
+
+/**
+ * One player, no lobby.
+ *
+ * The platform and per-game halves of `startRun` above, without the room in
+ * between: `start_solo_run` freezes a one-person roster with no lobby to lock,
+ * and the game's own setup RPC deals into it exactly as it would for a group.
+ * No format picker yet — solo takes the same defaults a host's unconfigured
+ * game would.
+ */
+export async function playSolo(formData: FormData) {
+  const game = submittedSoloGame(formData.get("game"));
+  if (!game) {
+    redirect(`/?error=${encodeURIComponent("Pick a game that's ready to play solo.")}`);
+  }
+
+  // `soloGames()` is catalogue-driven and already admits only Higher or Lower
+  // today, but it is a list of names, not a list of setup RPCs — this is the
+  // one place that turns a name into the call, the same seam `startRun` keeps
+  // for its two games. A second solo game has to be added here, not just to
+  // the catalogue, or this falls through to the same refusal rather than
+  // silently dealing the wrong game.
+  if (game !== "higher_or_lower") {
+    redirect(`/?error=${encodeURIComponent("Pick a game that's ready to play solo.")}`);
+  }
+
+  const supabase = await createClient();
+
+  const { data: match, error } = await supabase.rpc("start_solo_run", { p_game: game });
+  if (error) redirect(withError("/", error));
+
+  const { error: dealError } = await supabase.schema("higher_or_lower").rpc("start", {
+    p_match_id: match.id,
+  });
+  if (dealError) redirect(withError("/", dealError));
+
+  revalidatePath("/", "layout");
+  redirect(`/match/${match.id}`);
+}
+
+/** A completed match's one-time next destination: host-owned in a room, player-owned solo. */
 export async function postGameChoice(formData: FormData) {
   const matchId = String(formData.get("match_id") ?? "");
   const code = normalizeCode(formData.get("room_code"));
   const choice = String(formData.get("choice") ?? "");
-  if (!matchId || !code || (choice !== "replay" && choice !== "lobby")) {
+  if (!matchId || (choice !== "replay" && choice !== "lobby")) {
     redirect("/");
   }
 
@@ -135,12 +215,13 @@ export async function postGameChoice(formData: FormData) {
     ...(choice === "replay" && rosterPreset ? { p_roster_preset: rosterPreset } : {}),
     ...(choice === "replay" && seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
   });
-  if (error) redirect(withError(`/lobby/${code}`, error));
+  const origin = code ? `/lobby/${code}` : `/match/${matchId}`;
+  if (error) redirect(withError(origin, error));
 
-  revalidatePath(`/lobby/${code}`);
+  revalidatePath(code ? `/lobby/${code}` : "/");
   redirect(data.choice === "replay" && data.next_match_id
     ? `/match/${data.next_match_id}`
-    : `/lobby/${code}`);
+    : code ? `/lobby/${code}` : "/");
 }
 
 /**

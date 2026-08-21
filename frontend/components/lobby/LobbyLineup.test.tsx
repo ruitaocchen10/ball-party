@@ -5,6 +5,12 @@ vi.mock("@/components/lobby/StartRun", () => ({
   StartRun: ({ players }: { players: number }) => <button>Start auction with {players} players</button>,
 }));
 
+vi.mock("@/components/lobby/StartHigherOrLower", () => ({
+  StartHigherOrLower: ({ players }: { players: number }) => (
+    <button>Start higher or lower with {players} players</button>
+  ),
+}));
+
 import { LobbyLineup } from "./LobbyLineup";
 
 describe("LobbyLineup", () => {
@@ -13,7 +19,7 @@ describe("LobbyLineup", () => {
     { user_id: "guest", profiles: { display_name: "Devin", is_guest: true } },
   ];
 
-  it("puts the live game alongside honest upcoming games and open seats", () => {
+  it("puts the live games alongside an honest upcoming game and open seats", () => {
     render(
       <LobbyLineup
         lobbyId="lobby"
@@ -27,9 +33,15 @@ describe("LobbyLineup", () => {
     );
 
     expect(screen.getByRole("heading", { name: /tonight's lineup/i })).toBeInTheDocument();
-    expect(screen.getByText(/next up · live/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/coming soon/i)).toHaveLength(2);
+    expect(screen.getAllByText(/next up · live/i)).toHaveLength(2);
+    expect(screen.queryByText(/next up · in development/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/coming soon/i)).toHaveLength(1);
+    expect(screen.getByText("Everyone calls higher or lower at once. Longest streak wins.")).toBeInTheDocument();
+    expect(screen.getByText("2–4 players · 3–5 min")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /start auction with 2 players/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /start higher or lower with 2 players/i }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Invite friend")).toHaveLength(2);
     expect(screen.getByText(/guest/i)).toBeInTheDocument();
 
@@ -54,6 +66,7 @@ describe("LobbyLineup", () => {
     );
 
     expect(screen.queryByRole("button", { name: /start auction/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /start higher or lower/i })).not.toBeInTheDocument();
     expect(screen.getByText(/host starts when the party is ready/i)).toBeInTheDocument();
   });
 });

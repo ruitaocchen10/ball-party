@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace }),
 }));
 
-import { PostGameNavigation } from "@/components/auction/PostGameNavigation";
+import { PostGameNavigation } from "@/components/game-runtime/PostGameNavigation";
 
 type RealtimeClient = {
   channel: () => RealtimeClient;

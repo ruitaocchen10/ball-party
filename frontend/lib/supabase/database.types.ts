@@ -129,6 +129,92 @@ export type Database = {
       [_ in never]: never
     }
   }
+  higher_or_lower: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      call: {
+        Args: { p_direction: string; p_match_id: string }
+        Returns: Database["public"]["Tables"]["higher_or_lower_calls"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "higher_or_lower_calls"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      season_bounds: {
+        Args: never
+        Returns: Database["higher_or_lower"]["CompositeTypes"]["era"]
+        SetofOptions: {
+          from: "*"
+          to: "era"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      start: {
+        Args: {
+          p_match_id: string
+          p_scoring_mode?: string
+          p_season_from?: number
+          p_season_to?: number
+        }
+        Returns: Database["higher_or_lower"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      state: {
+        Args: { p_match_id: string }
+        Returns: Database["higher_or_lower"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tick: {
+        Args: { p_match_id: string }
+        Returns: Database["higher_or_lower"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      board: {
+        match_id: string | null
+        question_count: number | null
+        spare_count: number | null
+        current_question: number | null
+        scoring_mode: string | null
+        season_from: number | null
+        season_to: number | null
+        phase: string | null
+        phase_deadline: string | null
+        server_now: string | null
+      }
+      era: {
+        season_min: number | null
+        season_max: number | null
+      }
+    }
+  }
   public: {
     Tables: {
       auction_bids: {
@@ -400,6 +486,252 @@ export type Database = {
           },
         ]
       }
+      higher_or_lower_call_statuses: {
+        Row: {
+          match_id: string
+          question: number
+          user_id: string
+        }
+        Insert: {
+          match_id: string
+          question: number
+          user_id: string
+        }
+        Update: {
+          match_id?: string
+          question?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_call_statuses_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_call_statuses_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "higher_or_lower_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_call_statuses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      higher_or_lower_calls: {
+        Row: {
+          created_at: string
+          direction: string | null
+          match_id: string
+          question: number
+          timed_out: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction?: string | null
+          match_id: string
+          question: number
+          timed_out?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string | null
+          match_id?: string
+          question?: number
+          timed_out?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_calls_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_calls_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "higher_or_lower_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_calls_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      higher_or_lower_cards: {
+        Row: {
+          display_name: string
+          headshot_url: string | null
+          match_id: string
+          opponent: string | null
+          ordinal: number
+          player_id: string
+          points: number | null
+          position: string
+          revealed_at: string | null
+          season: number
+          team: string
+          week: number | null
+        }
+        Insert: {
+          display_name: string
+          headshot_url?: string | null
+          match_id: string
+          opponent?: string | null
+          ordinal: number
+          player_id: string
+          points?: number | null
+          position: string
+          revealed_at?: string | null
+          season: number
+          team: string
+          week?: number | null
+        }
+        Update: {
+          display_name?: string
+          headshot_url?: string | null
+          match_id?: string
+          opponent?: string | null
+          ordinal?: number
+          player_id?: string
+          points?: number | null
+          position?: string
+          revealed_at?: string | null
+          season?: number
+          team?: string
+          week?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_cards_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      higher_or_lower_matches: {
+        Row: {
+          current_question: number
+          is_solo: boolean
+          match_id: string
+          phase: string
+          phase_deadline: string | null
+          question_count: number
+          question_started_at: string | null
+          scoring_mode: string
+          season_from: number
+          season_to: number
+          spare_count: number
+        }
+        Insert: {
+          current_question?: number
+          is_solo?: boolean
+          match_id: string
+          phase?: string
+          phase_deadline?: string | null
+          question_count: number
+          question_started_at?: string | null
+          scoring_mode: string
+          season_from: number
+          season_to: number
+          spare_count: number
+        }
+        Update: {
+          current_question?: number
+          is_solo?: boolean
+          match_id?: string
+          phase?: string
+          phase_deadline?: string | null
+          question_count?: number
+          question_started_at?: string | null
+          scoring_mode?: string
+          season_from?: number
+          season_to?: number
+          spare_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_matches_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      higher_or_lower_players: {
+        Row: {
+          absent: boolean
+          best_streak: number
+          correct_count: number
+          current_streak: number
+          eliminated_at: number | null
+          last_seen_at: string
+          match_id: string
+          seat: number
+          sudden_death: boolean
+          user_id: string
+        }
+        Insert: {
+          absent?: boolean
+          best_streak?: number
+          correct_count?: number
+          current_streak?: number
+          eliminated_at?: number | null
+          last_seen_at?: string
+          match_id: string
+          seat: number
+          sudden_death?: boolean
+          user_id: string
+        }
+        Update: {
+          absent?: boolean
+          best_streak?: number
+          correct_count?: number
+          current_streak?: number
+          eliminated_at?: number | null
+          last_seen_at?: string
+          match_id?: string
+          seat?: number
+          sudden_death?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "higher_or_lower_players_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lobbies: {
         Row: {
           closed_at: string | null
@@ -657,7 +989,7 @@ export type Database = {
         Row: {
           ended_at: string | null
           id: string
-          lobby_id: string
+          lobby_id: string | null
           mode: Database["public"]["Enums"]["run_mode"]
           started_at: string
           status: Database["public"]["Enums"]["run_status"]
@@ -666,7 +998,7 @@ export type Database = {
         Insert: {
           ended_at?: string | null
           id?: string
-          lobby_id: string
+          lobby_id?: string | null
           mode: Database["public"]["Enums"]["run_mode"]
           started_at?: string
           status?: Database["public"]["Enums"]["run_status"]
@@ -675,7 +1007,7 @@ export type Database = {
         Update: {
           ended_at?: string | null
           id?: string
-          lobby_id?: string
+          lobby_id?: string | null
           mode?: Database["public"]["Enums"]["run_mode"]
           started_at?: string
           status?: Database["public"]["Enums"]["run_status"]
@@ -782,11 +1114,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      start_solo_run: {
+        Args: { p_game: string }
+        Returns: {
+          ended_at: string | null
+          game: string
+          id: string
+          run_id: string
+          seq: number
+          started_at: string | null
+          status: Database["public"]["Enums"]["match_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       match_status: "setup" | "playing" | "complete" | "abandoned"
       post_game_choice: "replay" | "lobby"
-      run_mode: "arcade" | "party"
+      run_mode: "arcade" | "party" | "solo"
       run_status: "active" | "finished" | "abandoned"
     }
     CompositeTypes: {
@@ -919,12 +1269,16 @@ export const Constants = {
   graphql_public: {
     Enums: {},
   },
+  higher_or_lower: {
+    Enums: {},
+  },
   public: {
     Enums: {
       match_status: ["setup", "playing", "complete", "abandoned"],
       post_game_choice: ["replay", "lobby"],
-      run_mode: ["arcade", "party"],
+      run_mode: ["arcade", "party", "solo"],
       run_status: ["active", "finished", "abandoned"],
     },
   },
 } as const
+

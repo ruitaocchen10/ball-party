@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 
 import { AuctionMatch } from "@/components/auction/AuctionMatch";
 import { MatchSetup } from "@/components/auction/MatchSetup";
+import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
 import { TopBar } from "@/components/layout/TopBar";
 import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
+import type { Board } from "@/lib/higher-or-lower/board";
 import { createClient } from "@/lib/supabase/server";
 import { isSignedInViewer } from "@/lib/auth/viewer";
 
@@ -26,6 +28,7 @@ import { isSignedInViewer } from "@/lib/auth/viewer";
  */
 export default async function MatchPage(props: PageProps<"/match/[id]">) {
   const { id } = await props.params;
+  const { error } = await props.searchParams;
   const supabase = await createClient();
 
   const { data } = await supabase.auth.getClaims();
@@ -45,7 +48,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // state here rather than a failure.
   const { data: match } = await supabase
     .from("matches")
-    .select("id, status, run_id, runs(lobby_id, lobbies(code, host_id))")
+    .select("id, game, status, run_id, runs(lobby_id, lobbies(code, host_id))")
     .eq("id", id)
     .maybeSingle();
 
@@ -62,6 +65,17 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
   const code = match.runs?.lobbies?.code ?? null;
   const isHost = match.runs?.lobbies?.host_id === claims.sub;
+
+  // A replay can race with a second submit. Keep the server's one-time-choice
+  // refusal visible instead of immediately following the winner's action.
+  if (error) {
+    return (
+      <Shell displayName={displayName}>
+        <p role="alert" className="text-sm leading-6 text-fg-muted">{error}</p>
+        {code ? <BackToRoom code={code} /> : <HomeLink />}
+      </Shell>
+    );
+  }
 
   // A tab opened after the host has already made the choice still reaches the
   // shared destination; Realtime below is only the fast path for open tabs.
@@ -95,6 +109,74 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         <p className="text-sm leading-6 text-fg-muted">This game was abandoned.</p>
         {code ? <BackToRoom code={code} /> : <HomeLink />}
       </Shell>
+    );
+  }
+
+  // Each game reads its own tables out of its own schema, so this is where one
+  // match screen becomes two. The shell above — who you are, whether the match
+  // is yours, whether it has been dealt or abandoned — is the platform's and is
+  // the same for every game.
+  if (match.game === "higher_or_lower") {
+    const [boardResult, cardsResult, seatsResult, callsResult, statusesResult, standingsResult] = await Promise.all([
+      supabase.schema("higher_or_lower").rpc("state", { p_match_id: id }),
+      supabase.from("higher_or_lower_cards").select("*").eq("match_id", id).order("ordinal"),
+      supabase
+        .from("higher_or_lower_players")
+        // The compound (match_id, user_id) FKs on higher_or_lower_calls and
+        // higher_or_lower_call_statuses give PostgREST a second, many-to-many
+        // path to profiles alongside this table's direct one — an unqualified
+        // `profiles(...)` embed is ambiguous between them (PGRST201). Naming
+        // the direct FK is how every other embed in this file stays a single
+        // choice.
+        .select("*, profiles!higher_or_lower_players_user_id_fkey(display_name)")
+        .eq("match_id", id)
+        .order("seat"),
+      supabase.from("higher_or_lower_calls").select("*").eq("match_id", id).order("created_at"),
+      supabase.from("higher_or_lower_call_statuses").select("*").eq("match_id", id),
+      supabase.from("match_players").select("*").eq("match_id", id),
+    ]);
+
+    const row = boardResult.data;
+    if (
+      !row || row.question_count === null || row.current_question === null ||
+      row.scoring_mode === null || row.season_from === null || row.season_to === null ||
+      row.phase === null || row.server_now === null
+    ) {
+      return (
+        <Shell displayName={displayName}>
+          <p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p>
+          <HomeLink />
+        </Shell>
+      );
+    }
+
+    return (
+      <HigherOrLowerMatch
+        matchId={id}
+        viewerId={claims.sub}
+        roomCode={code}
+        isHost={isHost}
+        initial={{
+          board: {
+            questionCount: row.question_count,
+            currentQuestion: row.current_question,
+            scoringMode: row.scoring_mode,
+            seasonFrom: row.season_from,
+            seasonTo: row.season_to,
+            phase: row.phase as Board["phase"],
+            phaseDeadline: row.phase_deadline,
+            serverNow: row.server_now,
+          },
+          cards: cardsResult.data ?? [],
+          players: (seatsResult.data ?? []).map(({ profiles, ...seat }) => ({
+            ...seat,
+            display_name: profiles?.display_name ?? "Unknown player",
+          })),
+          calls: callsResult.data ?? [],
+          statuses: statusesResult.data ?? [],
+          standings: standingsResult.data ?? [],
+        }}
+      />
     );
   }
 

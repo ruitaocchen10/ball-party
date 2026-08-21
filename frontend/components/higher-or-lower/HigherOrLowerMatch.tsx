@@ -1,0 +1,621 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+
+import { PostGameControls } from "@/components/game-runtime/PostGameControls";
+import { PostGameNavigation } from "@/components/game-runtime/PostGameNavigation";
+import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Concealed } from "@/components/ui/Concealed";
+import {
+  byPlacement,
+  canCallNow,
+  cardMetaLine,
+  eraLabel,
+  formatPoints,
+  isSuddenDeath,
+  questionPair,
+  scoringModeLabel,
+  suddenDeathRound,
+  type Board,
+  type Card as LadderCard,
+  type Call,
+  type CallStatus,
+  type Player,
+  type Standing,
+} from "@/lib/higher-or-lower/board";
+import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
+import { postGameChoice } from "@/lib/lobbies/actions";
+import { createClient, createRealtimeClient } from "@/lib/supabase/client";
+
+/**
+ * The ladder, on one screen.
+ *
+ * The server deals the ladder, owns its phase and deadline, and publishes only
+ * revealed points. This client renders that projection, repeatedly asks the
+ * server to expire a passed deadline, and reconciles after reconnects.
+ *
+ * The withheld number is withheld by the server. The challenger's row simply
+ * does not carry its points until its question reveals, so the concealed panel
+ * below is an honest rendering of an absent value rather than a UI that knows
+ * something it is choosing not to say. See migration 0032.
+ */
+export function HigherOrLowerMatch({
+  matchId,
+  viewerId,
+  roomCode,
+  isHost,
+  initial,
+}: {
+  matchId: string;
+  viewerId: string;
+  roomCode: string | null;
+  isHost: boolean;
+  initial: {
+    board: Board;
+    cards: LadderCard[];
+    players: Player[];
+    calls: Call[];
+    statuses: CallStatus[];
+    standings: Standing[];
+  };
+}) {
+  const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const getClient = useCallback(() => (clientRef.current ??= createClient()), []);
+  const [board, setBoard] = useState<Board>(initial.board);
+  const [cards, setCards] = useState<LadderCard[]>(initial.cards);
+  const [players, setPlayers] = useState<Player[]>(initial.players);
+  const [calls, setCalls] = useState<Call[]>(initial.calls);
+  const [statuses, setStatuses] = useState<CallStatus[]>(initial.statuses);
+  const [standings, setStandings] = useState<Standing[]>(initial.standings);
+  const [pendingCall, setPendingCall] = useState(false);
+  const [callError, setCallError] = useState<string | null>(null);
+
+  const applyBoard = useCallback((row: Partial<Board>) => {
+    if (
+      row.questionCount == null || row.currentQuestion == null || row.scoringMode == null ||
+      row.seasonFrom == null || row.seasonTo == null || row.phase == null ||
+      row.phaseDeadline === undefined || row.serverNow == null
+    ) return;
+    setBoard({
+      questionCount: row.questionCount,
+      currentQuestion: row.currentQuestion,
+      scoringMode: row.scoringMode,
+      seasonFrom: row.seasonFrom,
+      seasonTo: row.seasonTo,
+      phase: row.phase,
+      phaseDeadline: row.phaseDeadline,
+      serverNow: row.serverNow,
+    });
+  }, []);
+
+  const refetch = useCallback(async () => {
+    const supabase = getClient();
+    const [state, cardRows, playerRows, callRows, statusRows, standingRows] = await Promise.all([
+      supabase.schema("higher_or_lower").rpc("state", { p_match_id: matchId }),
+      supabase.from("higher_or_lower_cards").select("*").eq("match_id", matchId).order("ordinal"),
+      // Named explicitly: the compound (match_id, user_id) FKs on the calls
+      // and call_statuses tables give PostgREST a second, many-to-many path to
+      // profiles alongside this table's direct one, so an unqualified
+      // `profiles(...)` embed 300s as ambiguous (PGRST201). See the matching
+      // note on the server fetch in app/match/[id]/page.tsx.
+      supabase.from("higher_or_lower_players").select("*, profiles!higher_or_lower_players_user_id_fkey(display_name)").eq("match_id", matchId).order("seat"),
+      supabase.from("higher_or_lower_calls").select("*").eq("match_id", matchId).order("created_at"),
+      supabase.from("higher_or_lower_call_statuses").select("*").eq("match_id", matchId),
+      supabase.from("match_players").select("*").eq("match_id", matchId),
+    ]);
+    if (state.data) applyBoard(boardFromState(state.data as HigherOrLowerState));
+    if (cardRows.data) setCards(cardRows.data as LadderCard[]);
+    if (playerRows.data) {
+      setPlayers(playerRows.data.map(({ profiles, ...seat }) => ({
+        ...seat,
+        display_name: profiles?.display_name ?? "Unknown player",
+      })) as Player[]);
+    }
+    if (callRows.data) setCalls(callRows.data as Call[]);
+    if (statusRows.data) setStatuses(statusRows.data as CallStatus[]);
+    if (standingRows.data) setStandings(standingRows.data);
+  }, [applyBoard, getClient, matchId]);
+
+  const { remainingMs, reconcile } = useMatchClock({
+    serverNow: board.serverNow,
+    deadline: board.phase === "complete" ? null : board.phaseDeadline,
+    visibleSlackMs: VISIBLE_SLACK_MS,
+    // The tick below is also how this player says they are still here. Asking
+    // only at a passed deadline would put nobody on the record inside a
+    // question, and the server latches a player who ticked nowhere in one
+    // absent at its reveal.
+    heartbeatMs: HEARTBEAT_MS,
+    expire: () => getClient().schema("higher_or_lower").rpc("tick", { p_match_id: matchId }).then(({ data }) => {
+      if (data) applyBoard(boardFromState(data as HigherOrLowerState));
+    }),
+    reconcile: refetch,
+  });
+
+  useEffect(() => {
+    let cleanup: (() => void) | null = null;
+    let cancelled = false;
+    void (async () => {
+      const supabase = await createRealtimeClient();
+      if (cancelled) return;
+      const channel = supabase
+        .channel(`higher-or-lower:${matchId}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "higher_or_lower_matches", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const row = payload.new as HigherOrLowerMatchRow;
+          // A row payload has no server timestamp. Keep the last one supplied
+          // by state() rather than quietly substituting this browser's clock;
+          // the next reconciliation supplies a fresh authoritative offset.
+          setBoard((previous) => ({ ...previous, ...boardFromRow(row) }));
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "higher_or_lower_cards", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const card = payload.new as LadderCard;
+          setCards((previous) => previous.map((candidate) => candidate.ordinal === card.ordinal ? card : candidate));
+          // A reveal changes which existing call rows RLS permits. Calls do not
+          // emit a new event at that moment, so re-read their policy projection.
+          if (card.revealed_at) void refetch();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "higher_or_lower_players", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const player = payload.new as Player;
+          setPlayers((previous) => previous.map((candidate) => candidate.user_id === player.user_id ? {
+            ...candidate, ...player,
+          } : candidate));
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "higher_or_lower_calls", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const call = payload.new as Call;
+          setCalls((previous) => previous.some((candidate) => candidate.user_id === call.user_id && candidate.question === call.question)
+            ? previous : [...previous, call]);
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "higher_or_lower_call_statuses", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const status = payload.new as CallStatus;
+          setStatuses((previous) => previous.some((candidate) => candidate.user_id === status.user_id && candidate.question === status.question)
+            ? previous : [...previous, status]);
+        })
+        // Written once, at completion (0009's finish_match, called from #28's
+        // ending), so there is never an existing row to merge into — an upsert
+        // into the standings the final screen reads.
+        .on("postgres_changes", { event: "*", schema: "public", table: "match_players", filter: `match_id=eq.${matchId}` }, (payload) => {
+          const row = payload.new as Standing;
+          setStandings((previous) => [...previous.filter((s) => s.user_id !== row.user_id), row]);
+        })
+        .subscribe((status) => { if (status === "SUBSCRIBED") reconcile(); });
+      cleanup = () => { void supabase.removeChannel(channel); };
+    })();
+    return () => { cancelled = true; cleanup?.(); };
+  }, [matchId, reconcile, refetch]);
+
+  const { anchor, challenger: dealtChallenger } = questionPair(cards, board.currentQuestion);
+  // The card and board changes commit together, but Realtime delivers table
+  // payloads independently. The board phase is the authoritative permission to
+  // display this question's answer, so a card event that wins that small race
+  // cannot show its points while this screen still renders a call.
+  const challenger = dealtChallenger && (
+    board.phase === "reveal" || board.phase === "sudden_death_reveal" || board.phase === "complete"
+  )
+    ? dealtChallenger
+    : dealtChallenger ? { ...dealtChallenger, points: null, revealed_at: null } : null;
+  const myCall = calls.find((call) => call.question === board.currentQuestion && call.user_id === viewerId);
+  const viewerPlayer = players.find((player) => player.user_id === viewerId);
+  const lockedIn = new Set(statuses.filter((status) => status.question === board.currentQuestion).map((status) => status.user_id));
+  const makeCall = async (direction: "higher" | "lower") => {
+    setPendingCall(true);
+    setCallError(null);
+    const { data, error } = await getClient().schema("higher_or_lower").rpc("call", {
+      p_match_id: matchId,
+      p_direction: direction,
+    });
+    setPendingCall(false);
+    if (error) {
+      setCallError(CALL_MESSAGES[error.message] ?? error.message);
+      return;
+    }
+    if (data) {
+      const call = data as Call;
+      setCalls((previous) => previous.some((candidate) => candidate.user_id === call.user_id && candidate.question === call.question)
+        ? previous : [...previous, call]);
+      setStatuses((previous) => previous.some((status) => status.user_id === call.user_id && status.question === call.question)
+        ? previous : [...previous, { match_id: call.match_id, question: call.question, user_id: call.user_id }]);
+      // A player who locks in after someone else needs the rows that became
+      // visible with their call. Future calls still arrive as individual
+      // Realtime inserts rather than a client-side reveal batch.
+      await refetch();
+    }
+  };
+
+  if (board.phase === "complete") {
+    return (
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 px-6 py-10">
+        <FinalScreen
+          standings={standings}
+          players={players}
+          viewerId={viewerId}
+          roomCode={roomCode}
+          matchId={matchId}
+          isHost={isHost}
+        />
+      </main>
+    );
+  }
+
+  return (
+    <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
+      <header className="flex shrink-0 items-baseline justify-between gap-3">
+        <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
+          {questionLabel(board, "visual")}
+        </p>
+        <p
+          role="note"
+          aria-label="Board format"
+          className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase"
+        >
+          {scoringModeLabel(board)} · {eraLabel(board)}
+        </p>
+      </header>
+
+      <MatchClock phase={board.phase} remainingMs={remainingMs} />
+
+      <CallControls
+        canCall={canCallNow(board, viewerPlayer)}
+        call={myCall ?? null}
+        pending={pendingCall}
+        error={callError}
+        onCall={makeCall}
+      />
+
+      {anchor && challenger ? (
+        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
+          <LadderCardPanel
+            label="Anchor"
+            card={anchor}
+            caption="What the challenger is priced against."
+          />
+          <LadderCardPanel
+            label="Challenger"
+            card={challenger}
+            caption="Higher or lower than the anchor?"
+          />
+        </div>
+      ) : (
+        <p className="text-sm text-fg-muted">Waiting for the next card…</p>
+      )}
+
+      {/* Both points panels are hidden from assistive technology, so this
+          region is the complete announcement of what is on screen. */}
+      <p role="status" className="sr-only">
+        {anchor && challenger
+          ? `${questionLabel(board, "spoken")}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
+          : ""}
+      </p>
+
+      <aside aria-label="The table" className="shrink-0">
+        <ul className="flex flex-wrap gap-2">
+          {players.map((player) => {
+            const call = calls.find((candidate) => candidate.question === board.currentQuestion && candidate.user_id === player.user_id);
+            return (
+            <li
+              key={player.user_id}
+              className="rounded border border-line px-3 py-1.5 font-slab text-[15px] leading-none -skew-x-7 uppercase"
+            >
+              {player.display_name}
+              {player.user_id === viewerId ? (
+                <span className="ml-1.5 font-mono text-[11px] tracking-[0.13em] text-fg-muted">
+                  YOU
+                </span>
+              ) : null}
+              <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                {player.current_streak} now · {player.best_streak} best · {player.correct_count} correct
+              </span>
+              {/* Absence is the server's judgement, latched over a whole
+                  question. Saying so is what makes the table's stopping to
+                  wait for someone legible rather than arbitrary. */}
+              {player.absent ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                  AWAY
+                </span>
+              ) : null}
+              {/* Sudden death narrows visibly: eliminated beats watching
+                  beats nothing, so at most one of these shows. */}
+              {player.eliminated_at !== null ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                  ELIMINATED
+                </span>
+              ) : isSuddenDeath(board.phase) && !player.sudden_death ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                  WATCHING
+                </span>
+              ) : null}
+              {/* Three things, one slot: they let the clock run out, they have
+                  locked in something this screen may not read yet, or they have
+                  locked in something it may. */}
+              {call?.timed_out ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                  TIMED OUT
+                </span>
+              ) : lockedIn.has(player.user_id) ? (
+                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
+                  {call ? call.direction : "LOCKED"}
+                </span>
+              ) : null}
+            </li>
+            );
+          })}
+        </ul>
+      </aside>
+    </main>
+  );
+}
+
+/**
+ * Names a winner, so the ladder ends rather than merely stopping. Standings
+ * are #28's ending — best streak, with a tied top resolved in sudden death —
+ * already ranked the way the auction's are, so this reads exactly the same
+ * platform record the auction's own final screen does.
+ */
+function FinalScreen({
+  standings,
+  players,
+  viewerId,
+  roomCode,
+  matchId,
+  isHost,
+}: {
+  standings: Standing[];
+  players: Player[];
+  viewerId: string;
+  roomCode: string | null;
+  matchId: string;
+  isHost: boolean;
+}) {
+  const ranked = byPlacement(standings);
+  const nameOf = (userId: string) => players.find((p) => p.user_id === userId)?.display_name ?? "Unknown player";
+  const winners = ranked.filter((s) => s.placement === 1);
+
+  return (
+    <>
+      <header className="flex flex-col gap-2 pt-4">
+        <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
+          Final
+        </p>
+        <h1 className="font-slab text-3xl leading-none -skew-x-7 uppercase">
+          {winners.length === 0
+            ? "Game over"
+            : winners.length === 1
+              ? `${nameOf(winners[0].user_id)} wins`
+              : `${winners.map((w) => nameOf(w.user_id)).join(" & ")} tie`}
+        </h1>
+      </header>
+
+      <ul className="flex flex-col gap-2.5">
+        {ranked.map((standing) => {
+          const player = players.find((p) => p.user_id === standing.user_id);
+          return (
+            <li key={standing.user_id}>
+              <Card edge={false}>
+                <div className="flex items-baseline justify-between gap-3 px-3 py-2.5">
+                  <span className="font-slab text-xl leading-none -skew-x-7 uppercase">
+                    <span className="mr-2 font-mono text-[11px] text-panel-muted tabular-nums">
+                      {standing.placement}
+                    </span>
+                    {nameOf(standing.user_id)}
+                    {standing.user_id === viewerId ? (
+                      <span className="ml-1.5 font-mono text-[11px] tracking-[0.13em] text-panel-muted">
+                        YOU
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="font-mono text-sm font-bold text-panel-fg tabular-nums">
+                    {player ? `${player.best_streak} best · ${player.correct_count} correct` : ""}
+                  </span>
+                </div>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+
+      {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} /> : null}
+      {roomCode ? (
+        <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} />
+      ) : null}
+
+      {!roomCode ? (
+        <div className="mt-2 flex flex-col gap-2">
+          <form action={postGameChoice}>
+            <input type="hidden" name="match_id" value={matchId} />
+            <input type="hidden" name="choice" value="replay" />
+            <Button type="submit" fullWidth>Play again</Button>
+          </form>
+          <Link
+            href="/"
+            className="text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
+          >
+            Back home
+          </Link>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+const CALL_MESSAGES: Record<string, string> = {
+  already_called: "You already locked in this question.",
+  call_not_open: "Calls are not open right now.",
+  call_deadline_passed: "The call window has closed.",
+  match_not_playing: "This match has ended.",
+};
+
+/**
+ * The two buttons, and what became of the call they make.
+ *
+ * A row with no direction is the miss the server wrote when the deadline
+ * passed. It is scored exactly as a wrong call — that is the point of writing
+ * it — so this line is the only place the difference is visible, and it says
+ * "ran out of time" rather than reporting a call nobody made.
+ */
+function CallControls({
+  canCall, call, pending, error, onCall,
+}: {
+  canCall: boolean;
+  call: Call | null;
+  pending: boolean;
+  error: string | null;
+  onCall: (direction: "higher" | "lower") => void;
+}) {
+  const disabled = !canCall || call !== null || pending;
+  return (
+    <section aria-label="Make your call" className="grid shrink-0 gap-2 sm:grid-cols-2">
+      <Button disabled={disabled} onClick={() => onCall("higher")}>Higher</Button>
+      <Button disabled={disabled} variant="ghost" onClick={() => onCall("lower")}>Lower</Button>
+      {call ? (
+        <p className="sm:col-span-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
+          {call.timed_out ? "You ran out of time." : `You called ${call.direction}.`}
+        </p>
+      ) : null}
+      {error ? <p role="alert" className="sm:col-span-2 text-sm text-red-700">{error}</p> : null}
+    </section>
+  );
+}
+
+type HigherOrLowerState = {
+  question_count: number | null;
+  current_question: number | null;
+  scoring_mode: string | null;
+  season_from: number | null;
+  season_to: number | null;
+  phase: Board["phase"] | null;
+  phase_deadline: string | null;
+  server_now: string | null;
+};
+
+type HigherOrLowerMatchRow = {
+  question_count: number;
+  current_question: number;
+  scoring_mode: string;
+  season_from: number;
+  season_to: number;
+  phase: Board["phase"];
+  phase_deadline: string | null;
+};
+
+function boardFromState(row: HigherOrLowerState): Partial<Board> {
+  return {
+    questionCount: row.question_count ?? undefined,
+    currentQuestion: row.current_question ?? undefined,
+    scoringMode: row.scoring_mode ?? undefined,
+    seasonFrom: row.season_from ?? undefined,
+    seasonTo: row.season_to ?? undefined,
+    phase: row.phase ?? undefined,
+    phaseDeadline: row.phase_deadline,
+    serverNow: row.server_now ?? undefined,
+  };
+}
+
+function boardFromRow(row: HigherOrLowerMatchRow): Omit<Board, "serverNow"> {
+  return {
+    questionCount: row.question_count,
+    currentQuestion: row.current_question,
+    scoringMode: row.scoring_mode,
+    seasonFrom: row.season_from,
+    seasonTo: row.season_to,
+    phase: row.phase,
+    phaseDeadline: row.phase_deadline,
+  };
+}
+
+/** The visible heading and screen-reader announcement must name a live board
+ * identically; only sudden death's punctuation differs for natural speech. */
+function questionLabel(board: Board, audience: "visual" | "spoken"): string {
+  if (isSuddenDeath(board.phase)) {
+    return audience === "visual"
+      ? `Sudden death · Round ${suddenDeathRound(board)}`
+      : `Sudden death, round ${suddenDeathRound(board)}`;
+  }
+  return board.currentQuestion > board.questionCount
+    ? `Question ${board.currentQuestion}`
+    : `Question ${board.currentQuestion} of ${board.questionCount}`;
+}
+
+function MatchClock({ phase, remainingMs }: { phase: Board["phase"]; remainingMs: number | null }) {
+  const seconds = remainingMs === null ? null : Math.ceil(remainingMs / 1_000);
+  const duration = phase === "board_intro" ? 5_000 : phase === "call" ? 12_000 : phase === "sudden_death_call" ? 8_000 : 4_000;
+  const fraction = remainingMs === null ? 0 : Math.min(1, remainingMs / (duration - VISIBLE_SLACK_MS));
+  const label = phase === "board_intro"
+    ? "The board is coming into view"
+    : phase === "call" || phase === "sudden_death_call"
+      ? "Make your call"
+      : phase === "reveal" || phase === "sudden_death_reveal"
+        ? "The answer is revealed"
+        : "Match complete";
+  return (
+    <section aria-label="Clock" className="rounded border border-line bg-surface-raised p-3">
+      <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
+      <p className="mt-1 font-slab text-3xl leading-none -skew-x-7 tabular-nums" aria-hidden>{seconds === null ? "—" : `${seconds}s`}</p>
+      <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
+        <div className="h-full bg-panel transition-[width]" style={{ width: `${fraction * 100}%`, transitionDuration: `${TICK_MS}ms` }} />
+      </div>
+    </section>
+  );
+}
+
+/**
+ * One card and its number. The same component for both sides of a question,
+ * because they are the same card at two moments — every challenger becomes the
+ * next anchor — and rendering them from two components is how the two drift.
+ */
+function LadderCardPanel({
+  label,
+  card,
+  caption,
+}: {
+  label: string;
+  card: LadderCard;
+  caption: string;
+}) {
+  return (
+    <section role="group" aria-label={label} className="flex min-h-0 flex-col gap-2">
+      <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
+
+      <Card className="flex min-h-0 flex-1 flex-col">
+        {/* The portrait band keeps its height whether or not a shot exists: a
+            player nflverse has no picture for must not change the geometry. */}
+        <div className="min-h-24 flex-1 border-b border-dashed border-[#c7bfac] bg-panel-shade">
+          {card.headshot_url ? (
+            <img
+              src={card.headshot_url}
+              alt=""
+              className="h-full w-full object-contain object-bottom [mask-image:linear-gradient(to_bottom,#000_58%,transparent_96%)]"
+            />
+          ) : null}
+        </div>
+        <CardTitle>{card.display_name}</CardTitle>
+        <CardMeta>{cardMetaLine(card)}</CardMeta>
+      </Card>
+
+      {/* Both faces are out of the accessibility tree: a weave with three
+          question marks and a big number are visual idioms, and the screen's
+          status region says the whole thing in one ordered sentence instead —
+          the same split the auction's reveal uses. */}
+      {card.points === null ? (
+        <Concealed label="Fantasy points, hidden until this question reveals" className="px-3.5 py-3">
+          <div aria-hidden className="relative flex items-baseline justify-between gap-3">
+            <span className="font-mono text-[11px] tracking-[0.15em] text-panel uppercase">
+              Fantasy points
+            </span>
+            <span className="font-slab text-lg leading-none -skew-x-7 text-panel">? ? ?</span>
+          </div>
+        </Concealed>
+      ) : (
+        <div aria-hidden className="flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
+          <span className="font-mono text-[11px] tracking-[0.15em] text-panel-muted uppercase">
+            Fantasy points
+          </span>
+          <span className="min-w-0 font-slab text-lg leading-none -skew-x-7 tabular-nums">
+            {formatPoints(card.points)}
+          </span>
+        </div>
+      )}
+
+      <p className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">{caption}</p>
+    </section>
+  );
+}

@@ -6,14 +6,24 @@
  * changes. It moves to the database when games gain state the platform has to
  * read — availability by region, say, or per-player unlocks.
  *
- * `status` means playable, not planned. The auction is the one game that is
- * actually built end to end; the other three are documented and unbuilt, and
- * saying otherwise on the home screen would be the product lying about itself.
+ * `status` means playable, not planned. The auction and Higher or Lower are
+ * built end to end; the remaining game is documented and unbuilt, and saying
+ * otherwise on the home screen would be the product lying about itself.
  */
 export type GameStatus = "live" | "development";
 
 export type Game = {
   slug: string;
+  /**
+   * The `matches.game` a tile starts, or null when nothing can start it yet.
+   *
+   * `status` is what the home screen may advertise; this is the stricter
+   * promise, that a run dispatcher and a setup RPC exist behind the tile. The
+   * two run in opposite directions while a game is being built in slices, so
+   * they are separate fields — and this is the only place the catalogue's slug
+   * and the durable record's name are tied together.
+   */
+  match: MatchGame | null;
   /** Split across lines the way it should wrap on a card. */
   name: readonly string[];
   /**
@@ -56,21 +66,33 @@ export function matchGameName(game: MatchGame): string {
   return MATCH_GAME_NAMES[game];
 }
 
+/** The games a room can actually start today, by their durable record name. */
+export function startableGames(): MatchGame[] {
+  return GAMES.map((game) => game.match).filter((game) => game !== null);
+}
+
+/** The games a lone player can actually start today, by their durable record name. */
+export function soloGames(): MatchGame[] {
+  return GAMES.filter((game) => game.solo).map((game) => game.match).filter((game) => game !== null);
+}
+
 export const GAMES: readonly Game[] = [
   {
     slug: "higher-or-lower",
+    match: "higher_or_lower",
     name: ["Higher", "or lower"],
     shortName: ["Higher", "or lower"],
-    kind: "Solo or group",
-    tagline: "Two stat lines, one call. Keep the streak alive or hand it over.",
-    players: "1–4 players",
-    duration: "3–6 min",
-    status: "development",
+    kind: "Group · simultaneous",
+    tagline: "Everyone calls higher or lower at once. Longest streak wins.",
+    players: "2–4 players",
+    duration: "3–5 min",
+    status: "live",
     solo: true,
     featured: false,
   },
   {
     slug: "auction-team-builder",
+    match: "auction_team_builder",
     name: ["Auction", "team builder"],
     shortName: ["Auction"],
     kind: "Group · hidden points",
@@ -83,6 +105,7 @@ export const GAMES: readonly Game[] = [
   },
   {
     slug: "wavelength",
+    match: null,
     name: ["2v2", "Wavelength"],
     shortName: ["2v2", "Wavelength"],
     kind: "2v2 · hidden target",

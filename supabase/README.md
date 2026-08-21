@@ -23,6 +23,10 @@ auction          one game's write API. Exposed through PostgREST.
 auction_private  that game's rules engine. Not exposed, and no usage granted
                  to anon or authenticated, so it is unreachable rather than
                  merely unrouted.
+
+higher_or_lower          the same pair for the second game. Its hidden state
+higher_or_lower_private  lives in its own private schema rather than in
+                         `private` — see 0032.
 ```
 
 0029 moved functions only. The auction's tables are still split across `public`
@@ -38,6 +42,14 @@ reaches it with `supabase.schema("auction").rpc(...)`.
 Note that `supabase db reset` does not re-read `config.toml`. Exposing a new
 schema locally takes `supabase stop && supabase start`, and until then every
 call to it returns PGRST106.
+
+**Deploying 0032 takes that dashboard step.** Migration 0032 adds
+`higher_or_lower` to `[api] schemas` above, which covers local development
+only. Before the hosted project can start a Higher or Lower match, add
+`higher_or_lower` to Settings → API → Exposed schemas (the "Data API" section,
+`db-schema` in the PostgREST config) and save. The migration applies fine
+without it, and every call to `higher_or_lower.start` fails with PGRST106 until
+it is done.
 
 ## Migrations
 

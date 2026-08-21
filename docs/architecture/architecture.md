@@ -41,7 +41,9 @@ owns `<game>` (its write API, exposed through PostgREST) and `<game>_private`
 platform and the contract. So "a game may never import lobbies" is a `grant`
 rather than a convention, deleting a game is `drop schema ... cascade`, and
 every game gets to call its function `state` instead of `wavelength_state`. The
-auction moved first, in `0029` — see [`supabase/README.md`](../../supabase/README.md).
+auction moved first, in `0029`, and Higher or Lower arrived with the pair
+already in place in `0032` — including its hidden state, which the auction
+still keeps in `private`. See [`supabase/README.md`](../../supabase/README.md).
 
 **Web UI layer — Next.js deployed in Vercel.** Durable, navigational actions —
 create a room, join by code — are server actions ending in a redirect. A move
