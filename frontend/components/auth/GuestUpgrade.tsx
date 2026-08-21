@@ -32,8 +32,8 @@ export function GuestUpgrade() {
       <h2 className="font-slab text-xl leading-none -skew-x-7 uppercase">Keep this record</h2>
       <p className="mt-2 text-sm leading-5 text-fg-muted">Add an account and your games stay right where they are.</p>
       <form action={upgrade} className="mt-4 flex flex-col gap-2.5">
-        <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className="h-12 rounded border border-line bg-surface px-3 text-sm" />
-        <input name="password" type="password" required minLength={PASSWORD_MIN} autoComplete="new-password" placeholder={`At least ${PASSWORD_MIN} characters`} className="h-12 rounded border border-line bg-surface px-3 text-sm" />
+        <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className="h-12 border border-line bg-surface px-3 text-sm" />
+        <input name="password" type="password" required minLength={PASSWORD_MIN} autoComplete="new-password" placeholder={`At least ${PASSWORD_MIN} characters`} className="h-12 border border-line bg-surface px-3 text-sm" />
         {error ? <p role="alert" className="text-sm text-hidden-text">{error}</p> : null}
         <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Keep my record"}</Button>
       </form>

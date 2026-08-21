@@ -112,7 +112,7 @@ export default async function ProfilePage() {
             </p>
             <Link
               href="/"
-              className="mt-5 inline-flex rounded-[3px] bg-hidden px-3.5 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-white uppercase transition-colors hover:bg-hidden-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-fg"
+              className="mt-5 inline-flex bg-hidden px-3.5 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-white uppercase transition-colors hover:bg-hidden-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-fg"
             >
               Find a game
             </Link>
@@ -148,7 +148,7 @@ function SignedOutProfile() {
           <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Player profile</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] -skew-x-7 uppercase sm:text-[46px]">Your record starts here</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Sign in to keep a record of your games, wins, and streaks.</p>
-          <Link href="/login?next=/profile" className="mt-6 inline-flex rounded-[3px] bg-panel px-4 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
+          <Link href="/login?next=/profile" className="mt-6 inline-flex bg-panel px-4 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
         </section>
       </main>
     </>

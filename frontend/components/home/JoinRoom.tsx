@@ -26,7 +26,7 @@ export function JoinRoom({
   return (
     <form
       action={goToLobby}
-      className={`flex h-12 items-center rounded border border-line transition-colors focus-within:border-panel/70 ${
+      className={`flex h-12 items-center border border-line transition-colors focus-within:border-panel/70 ${
         inPanel ? "bg-surface" : "bg-surface-raised"
       } ${className}`}
     >
@@ -48,7 +48,7 @@ export function JoinRoom({
       />
       <button
         type="submit"
-        className="my-1 mr-1 h-10 shrink-0 cursor-pointer rounded-[3px] bg-panel px-4 font-slab text-[13px] tracking-[0.04em] -skew-x-7 text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        className="my-1 mr-1 h-10 shrink-0 cursor-pointer bg-panel px-4 font-slab text-[13px] tracking-[0.04em] -skew-x-7 text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
       >
         Join
       </button>

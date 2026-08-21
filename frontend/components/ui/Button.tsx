@@ -23,7 +23,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const BASE =
-  "min-h-12 rounded px-4 font-slab text-[15px] tracking-[0.04em] uppercase " +
+  "min-h-12 px-4 font-slab text-[15px] tracking-[0.04em] uppercase " +
   "cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60 " +
   "focus-visible:outline-2 focus-visible:outline-offset-2";
 

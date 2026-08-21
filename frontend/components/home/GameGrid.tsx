@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Concealed } from "@/components/ui/Concealed";
 import { GAMES, type Game } from "@/lib/games/catalog";
-import { createLobby, playSolo } from "@/lib/lobbies/actions";
+import { createLobby } from "@/lib/lobbies/actions";
 import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
 
 /**
@@ -14,24 +14,17 @@ import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
  * Guests and signed-out visitors see a sign-up link instead of a form. Creating
  * a room needs an account, and a button that fails is worse than a link that explains.
  *
- * `canPlaySolo` gates a second, independent control on any tile whose game can
- * deal for one player — true for any session, guest included, since playing
- * solo carries none of hosting's account requirement. A signed-out visitor
- * sees neither: there is nothing here yet for `createLobby` or `playSolo` to
- * act on behalf of.
+ * Solo play used to live here too, as a tile's second control. It moved to its
+ * own section (see components/home/SoloGrid.tsx) — "start a room" and "play
+ * alone" are different promises, and folding them into one tile made the
+ * lesser one read as a footnote on the other rather than a real destination.
  *
  * Layout is a bento rather than four equal tiles: one game carries the product
  * and the grid should say so. The featured tile is placed explicitly at the
  * top-left 2×2, which reserves those cells so the remaining tiles auto-flow
  * down the last column regardless of catalog order.
  */
-export function GameGrid({
-  canCreateLobby,
-  canPlaySolo,
-}: {
-  canCreateLobby: boolean;
-  canPlaySolo: boolean;
-}) {
+export function GameGrid({ canCreateLobby }: { canCreateLobby: boolean }) {
   const live = GAMES.filter((game) => game.status === "live");
   const upcoming = GAMES.filter((game) => game.status === "development");
 
@@ -46,12 +39,7 @@ export function GameGrid({
               : "col-span-1 flex"
           }
         >
-          <GameCard
-            game={game}
-            canCreateLobby={canCreateLobby}
-            canPlaySolo={canPlaySolo}
-            featured={game.featured}
-          />
+          <GameCard game={game} canCreateLobby={canCreateLobby} featured={game.featured} />
         </li>
       ))}
 
@@ -67,12 +55,10 @@ export function GameGrid({
 function GameCard({
   game,
   canCreateLobby,
-  canPlaySolo,
   featured,
 }: {
   game: Game;
   canCreateLobby: boolean;
-  canPlaySolo: boolean;
   featured: boolean;
 }) {
   const meta = [game.players, game.duration].filter(Boolean).join(" · ");
@@ -136,12 +122,7 @@ function GameCard({
           <p className="font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
             {meta}
           </p>
-          <Action
-            game={game}
-            canCreateLobby={canCreateLobby}
-            canPlaySolo={canPlaySolo}
-            stretch={!featured}
-          />
+          <Action canCreateLobby={canCreateLobby} stretch={!featured} />
         </div>
       </div>
     </article>
@@ -154,7 +135,7 @@ function GameCard({
  * button, so the tile is one tab stop and the accessible name is the verb.
  */
 const ACTION =
-  "inline-flex h-9 cursor-pointer items-center rounded-[3px] bg-panel-fg px-3.5 " +
+  "inline-flex h-9 cursor-pointer items-center bg-panel-fg px-3.5 " +
   "font-slab text-[13px] tracking-[0.04em] -skew-x-7 text-panel uppercase " +
   "transition-colors hover:bg-[#2c2921] " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-fg";
@@ -172,80 +153,32 @@ const ACTION =
  */
 const OVERLAY = "absolute inset-0 cursor-pointer";
 
-/**
- * The ghost counterpart to ACTION, for a tile's second control. Only a tile
- * offering solo play ever has two, so this exists solely to read as secondary
- * beside it — same skew, same face, a ring instead of a fill.
- */
-const SOLO_ACTION =
-  "inline-flex h-9 cursor-pointer items-center rounded-[3px] px-3.5 " +
-  "font-slab text-[13px] tracking-[0.04em] -skew-x-7 text-panel-fg uppercase " +
-  "ring-1 ring-inset ring-panel-fg/35 transition-colors hover:bg-panel-fg/10 " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-fg";
-
-function Action({
-  game,
-  canCreateLobby,
-  canPlaySolo,
-  stretch,
-}: {
-  game: Game;
-  canCreateLobby: boolean;
-  canPlaySolo: boolean;
-  stretch: boolean;
-}) {
+function Action({ canCreateLobby, stretch }: { canCreateLobby: boolean; stretch: boolean }) {
   const width = stretch ? "w-full justify-center" : "";
-  const offerSolo = canPlaySolo && game.solo && game.match !== null;
 
-  // The whole-card overlay only makes sense with one control: it is what to
-  // click for the entire card's area, and a second real button beside it would
-  // have its clicks stolen by an overlay sized to cover the whole tile. A tile
-  // offering solo skips it and renders two ordinary buttons instead — same
-  // host control either way, via HostControl below.
-  if (!offerSolo) {
-    if (!canCreateLobby) {
-      return (
-        <>
-          <Link href={HOST_SIGN_UP_HREF} aria-hidden tabIndex={-1} className={OVERLAY} />
-          <HostControl canCreateLobby={false} width={width} />
-        </>
-      );
-    }
-
+  if (!canCreateLobby) {
     return (
-      <form action={createLobby} className={stretch ? "contents" : ""}>
-        <button type="submit" aria-hidden tabIndex={-1} className={OVERLAY} />
-        <HostControl canCreateLobby width={width} />
-      </form>
+      <>
+        <Link href={HOST_SIGN_UP_HREF} aria-hidden tabIndex={-1} className={OVERLAY} />
+        <HostControl canCreateLobby={false} width={width} />
+      </>
     );
   }
 
   return (
-    <div className={`flex gap-2 ${stretch ? "flex-col" : "flex-row"}`}>
-      {canCreateLobby ? (
-        <form action={createLobby} className={stretch ? "contents" : ""}>
-          <HostControl canCreateLobby width={width} />
-        </form>
-      ) : (
-        <HostControl canCreateLobby={false} width={width} />
-      )}
-      <form action={playSolo} className={stretch ? "contents" : ""}>
-        <input type="hidden" name="game" value={game.match ?? ""} />
-        <button type="submit" className={`${SOLO_ACTION} ${width}`}>
-          Play solo
-        </button>
-      </form>
-    </div>
+    <form action={createLobby} className={stretch ? "contents" : ""}>
+      <button type="submit" aria-hidden tabIndex={-1} className={OVERLAY} />
+      <HostControl canCreateLobby width={width} />
+    </form>
   );
 }
 
 /**
  * The host-gated visible control: "Start a room" once signed in as an account
- * holder, "Create an account to host" otherwise. Split out because that
- * decision was written out twice — once for the tile's only control, once
- * for its shared-with-solo half. The submit button still needs a `<form>`
- * around it; that stays with each caller, since only one of them also owns
- * the click-anywhere overlay.
+ * holder, "Create an account to host" otherwise. Split out from `Action` so
+ * that decision has one home rather than being copied at each call site. The
+ * submit button still needs a `<form>` around it; that stays with the caller,
+ * since only the hosting path also owns the click-anywhere overlay.
  */
 function HostControl({ canCreateLobby, width }: { canCreateLobby: boolean; width: string }) {
   if (!canCreateLobby) {
@@ -278,7 +211,7 @@ function Lots() {
       {tilt.map((rotation, i) => (
         <span
           key={i}
-          className={`pattern-concealed h-[74px] w-[54px] rounded-[4px] bg-hidden shadow-[0_6px_14px_rgb(0_0_0/0.28)] ${rotation}`}
+          className={`pattern-concealed h-[74px] w-[54px] bg-hidden shadow-[0_6px_14px_rgb(0_0_0/0.28)] ${rotation}`}
         />
       ))}
     </div>

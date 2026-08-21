@@ -51,7 +51,7 @@ export function CurrentRoom({ room }: { room: RoomSummary }) {
               {room.players.map((player) => (
                 <li
                   key={player.id}
-                  className="rounded-[3px] bg-panel-shade px-2 py-1 font-mono text-[10px] tracking-[0.1em] uppercase"
+                  className="bg-panel-shade px-2 py-1 font-mono text-[10px] tracking-[0.1em] uppercase"
                 >
                   {player.name}
                   {player.id === room.hostId || player.id === room.youId ? (
@@ -67,7 +67,7 @@ export function CurrentRoom({ room }: { room: RoomSummary }) {
               {Array.from({ length: openSeats }, (_, i) => (
                 <li
                   key={`open-${i}`}
-                  className="rounded-[3px] bg-hidden px-2 py-1 font-mono text-[10px] tracking-[0.1em] text-panel/90 uppercase"
+                  className="bg-hidden px-2 py-1 font-mono text-[10px] tracking-[0.1em] text-panel/90 uppercase"
                 >
                   Open spot
                 </li>
