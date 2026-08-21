@@ -95,7 +95,12 @@ export function HigherOrLowerMatch({
     const [state, cardRows, playerRows, callRows, statusRows, standingRows] = await Promise.all([
       supabase.schema("higher_or_lower").rpc("state", { p_match_id: matchId }),
       supabase.from("higher_or_lower_cards").select("*").eq("match_id", matchId).order("ordinal"),
-      supabase.from("higher_or_lower_players").select("*, profiles(display_name)").eq("match_id", matchId).order("seat"),
+      // Named explicitly: the compound (match_id, user_id) FKs on the calls
+      // and call_statuses tables give PostgREST a second, many-to-many path to
+      // profiles alongside this table's direct one, so an unqualified
+      // `profiles(...)` embed 300s as ambiguous (PGRST201). See the matching
+      // note on the server fetch in app/match/[id]/page.tsx.
+      supabase.from("higher_or_lower_players").select("*, profiles!higher_or_lower_players_user_id_fkey(display_name)").eq("match_id", matchId).order("seat"),
       supabase.from("higher_or_lower_calls").select("*").eq("match_id", matchId).order("created_at"),
       supabase.from("higher_or_lower_call_statuses").select("*").eq("match_id", matchId),
       supabase.from("match_players").select("*").eq("match_id", matchId),

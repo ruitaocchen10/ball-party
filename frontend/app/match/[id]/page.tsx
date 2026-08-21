@@ -122,7 +122,13 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       supabase.from("higher_or_lower_cards").select("*").eq("match_id", id).order("ordinal"),
       supabase
         .from("higher_or_lower_players")
-        .select("*, profiles(display_name)")
+        // The compound (match_id, user_id) FKs on higher_or_lower_calls and
+        // higher_or_lower_call_statuses give PostgREST a second, many-to-many
+        // path to profiles alongside this table's direct one — an unqualified
+        // `profiles(...)` embed is ambiguous between them (PGRST201). Naming
+        // the direct FK is how every other embed in this file stays a single
+        // choice.
+        .select("*, profiles!higher_or_lower_players_user_id_fkey(display_name)")
         .eq("match_id", id)
         .order("seat"),
       supabase.from("higher_or_lower_calls").select("*").eq("match_id", id).order("created_at"),
