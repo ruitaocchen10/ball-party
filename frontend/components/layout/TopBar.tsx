@@ -55,36 +55,34 @@ function Brand() {
 }
 
 /**
- * Party, Solo and Social, promoted from the home page's sections into global
- * chrome — the same names used there (see ColumnHead and ActionStrip in
- * app/page.tsx), so the bar isn't introducing a second vocabulary for the
- * same things. All three point at home-page anchors, since none has its own
- * route yet.
+ * Party, Solo and Social, each its own route — app/party, app/solo and
+ * app/social — rather than anchors into one long home page, so a link here
+ * survives a refresh and can be shared on its own.
  *
  * Party and Solo are both real destinations today — starting or joining a
  * room, and Higher or Lower's solo floor — so both read at full strength.
  * Social stays visibly the lesser of the three: it is real enough to link
- * to — the section it lands on tells the truth about it being unbuilt — but
- * dimming it here keeps the nav from promising a live destination the home
- * page itself doesn't promise.
+ * to — the page it lands on tells the truth about it being unbuilt — but
+ * dimming it here keeps the nav from promising a live destination the page
+ * itself doesn't promise.
  */
 function SectionsNav() {
   return (
     <nav aria-label="Sections" className={`${CHIP} justify-self-center gap-x-5 px-4 py-2`}>
       <Link
-        href="/#party-heading"
+        href="/party"
         className={`font-mono text-[10px] tracking-[0.13em] text-fg uppercase transition-colors hover:text-fg-muted ${FOCUS}`}
       >
         Party
       </Link>
       <Link
-        href="/#solo-heading"
+        href="/solo"
         className={`font-mono text-[10px] tracking-[0.13em] text-fg uppercase transition-colors hover:text-fg-muted ${FOCUS}`}
       >
         Solo
       </Link>
       <Link
-        href="/#social-heading"
+        href="/social"
         className={`font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase transition-colors hover:text-fg ${FOCUS}`}
       >
         Social
