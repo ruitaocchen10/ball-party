@@ -18,7 +18,7 @@ describe("StartRoom", () => {
 
     expect(screen.getByRole("link", { name: "Create an account to host" })).toHaveAttribute(
       "href",
-      "/signup?next=%2F",
+      "/signup?next=%2Fparty",
     );
     expect(screen.queryByRole("button", { name: "Start a room" })).not.toBeInTheDocument();
   });

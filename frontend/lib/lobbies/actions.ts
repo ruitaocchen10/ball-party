@@ -65,7 +65,7 @@ export async function createLobby() {
   const { data, error } = await supabase.rpc("create_lobby");
 
   // redirect() unwinds by throwing, so it must never sit inside a try/catch.
-  if (error) redirect(withError("/", error));
+  if (error) redirect(withError("/party", error));
 
   revalidatePath("/", "layout");
   redirect(`/lobby/${data.code}`);
@@ -164,7 +164,7 @@ function submittedSoloGame(value: FormDataEntryValue | null): MatchGame | null {
 export async function playSolo(formData: FormData) {
   const game = submittedSoloGame(formData.get("game"));
   if (!game) {
-    redirect(`/?error=${encodeURIComponent("Pick a game that's ready to play solo.")}`);
+    redirect(`/solo?error=${encodeURIComponent("Pick a game that's ready to play solo.")}`);
   }
 
   // `soloGames()` is catalogue-driven and already admits only Higher or Lower
@@ -174,18 +174,18 @@ export async function playSolo(formData: FormData) {
   // the catalogue, or this falls through to the same refusal rather than
   // silently dealing the wrong game.
   if (game !== "higher_or_lower") {
-    redirect(`/?error=${encodeURIComponent("Pick a game that's ready to play solo.")}`);
+    redirect(`/solo?error=${encodeURIComponent("Pick a game that's ready to play solo.")}`);
   }
 
   const supabase = await createClient();
 
   const { data: match, error } = await supabase.rpc("start_solo_run", { p_game: game });
-  if (error) redirect(withError("/", error));
+  if (error) redirect(withError("/solo", error));
 
   const { error: dealError } = await supabase.schema("higher_or_lower").rpc("start", {
     p_match_id: match.id,
   });
-  if (dealError) redirect(withError("/", dealError));
+  if (dealError) redirect(withError("/solo", dealError));
 
   revalidatePath("/", "layout");
   redirect(`/match/${match.id}`);
@@ -231,14 +231,14 @@ export async function postGameChoice(formData: FormData) {
  */
 export async function goToLobby(formData: FormData) {
   const code = normalizeCode(formData.get("code"));
-  if (!code) redirect(`/?error=${encodeURIComponent("Enter a room code.")}`);
+  if (!code) redirect(`/party?error=${encodeURIComponent("Enter a room code.")}`);
 
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   if (!isSignedInViewer(claimsData?.claims)) redirect(`/lobby/${code}`);
 
   const result = await joinLobbyRpc(supabase, code);
-  if (result.error) redirect(withError(`/?code=${code}`, result.error));
+  if (result.error) redirect(withError(`/party?code=${code}`, result.error));
 
   revalidatePath("/", "layout");
   redirect(`/lobby/${code}`);
