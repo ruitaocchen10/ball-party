@@ -428,6 +428,51 @@ begin
   perform higher_or_lower_private.expire(p_match_id);
 end $$;
 
+-- ------------------------------------------------------------ sabotage draft --
+
+-- A dealt sabotage draft match from a fixed seed, so the fourteen team spins
+-- can be asserted exactly. Goes through the private dealer rather than
+-- sabotage_draft.start because the seed is deliberately not an argument of
+-- the public entry point.
+create function tests.deal_sabotage_draft(p_n int, p_seed double precision, out match_id uuid)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.mkmatch(p_n, 'sabotage_draft');
+  perform tests.act_as_admin();
+  perform sabotage_draft_private.deal_board(match_id, p_seed);
+end $$;
+
+-- Force the current round's pick deadline past and let the server take
+-- exactly one expiry, the same shape as tests.hol_expire.
+create function tests.sd_expire(p_match_id uuid) returns void
+language plpgsql as $$
+begin
+  update public.sabotage_draft_matches
+     set pick_deadline = now() - interval '1 second'
+   where match_id = p_match_id;
+  perform sabotage_draft_private.expire(p_match_id);
+end $$;
+
+-- A real, valid pick for a round: a player id and season that the round's
+-- own franchise and category actually contain. Definer, because a test
+-- acting as a player has to source an honest submit_pick argument without
+-- itself holding a select grant on private.av_roster_players — correctly, it
+-- has none, the same reason tests.hol_answer is definer.
+create function tests.sd_pick_candidate(
+  p_match_id uuid, p_round smallint, p_category text,
+  out player_id text, out season smallint
+)
+language sql stable security definer as $$
+  select p.player_id, p.season
+    from private.av_roster_players p
+    join public.sabotage_draft_rounds r on r.franchise_code = p.franchise_code
+   where r.match_id = p_match_id and r.round_number = p_round
+     and p.slot_category = p_category
+   order by p.player_id
+   limit 1;
+$$;
+
 grant usage on schema tests to authenticated;
 grant execute on all functions in schema tests to authenticated;
 grant all on all tables in schema tests to authenticated;

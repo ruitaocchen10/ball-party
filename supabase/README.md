@@ -27,6 +27,13 @@ auction_private  that game's rules engine. Not exposed, and no usage granted
 higher_or_lower          the same pair for the second game. Its hidden state
 higher_or_lower_private  lives in its own private schema rather than in
                          `private` — see 0032.
+
+sabotage_draft           the third game's pair. Its hidden state (a pick's
+sabotage_draft_private   identity and season) is a column on a client-readable,
+                         Realtime-published table rather than a second
+                         physical table — RLS restricts it to the pick's own
+                         owner. See 0052 and its test file for why that is
+                         still leak-safe.
 ```
 
 0029 moved functions only. The auction's tables are still split across `public`
@@ -50,6 +57,12 @@ only. Before the hosted project can start a Higher or Lower match, add
 `db-schema` in the PostgREST config) and save. The migration applies fine
 without it, and every call to `higher_or_lower.start` fails with PGRST106 until
 it is done.
+
+**Deploying 0051 takes it again.** Migration 0051 adds `sabotage_draft` to
+`[api] schemas` above, local development only. Before the hosted project can
+start a sabotage draft match, add `sabotage_draft` to Settings → API →
+Exposed schemas the same way, and save. Until that step, `sabotage_draft.start`
+and every other call into the schema fails with PGRST106.
 
 ## Migrations
 
