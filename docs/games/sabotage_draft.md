@@ -146,6 +146,13 @@ seasons interesting to argue about. The direct cost of this choice: ties on
 record are common, not rare, which is why the tiebreak below has to treat
 "multiple teams tied" as the normal case.
 
+The concrete model is logistic: against a roster of strength `B`, strength
+`A` wins with probability `1 / (1 + exp(-((A - B) / 25)))`. Each player gets
+17 independent season games against the table's mean strength; a tiebreak
+uses the same formula with the paired player's actual strength. The match's
+stored board seed is reset before this simulation, so the season and bracket
+can be reproduced exactly.
+
 **Tiebreak — single-elimination bracket of one-off simulated games.** Take
 just the tied teams, pair them randomly (one random bye if the count is odd),
 and simulate exactly one game per pairing using the same strength-to-win-

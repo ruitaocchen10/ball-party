@@ -110,8 +110,8 @@ select is((select count(*)::int from public.sabotage_draft_guesses
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select throws_ok(format($$ select sabotage_draft.submit_guess(%L, %L, 'nope') $$,
   (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p0')),
-  'P0001', 'guess_window_closed',
-  'no player can target the decision after the round-14 guess window has closed');
+  'P0001', 'match_not_playing',
+  'no player can target the decision once the resulting season has completed');
 
 select tests.act_as_admin();
 select ok(has_function_privilege('authenticated', 'sabotage_draft.submit_x_factor_decision(uuid,text)', 'EXECUTE'),
