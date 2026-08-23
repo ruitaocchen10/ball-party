@@ -32,7 +32,13 @@ export function MatchSetup({ matchId }: { matchId: string }) {
           { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` },
           () => router.refresh(),
         )
-        .subscribe();
+        // The server action normally deals before redirecting here, but the
+        // match can still be read as `setup` from the first render. A change
+        // that committed before this subscription existed would be missed, so
+        // re-read once the channel is ready as well as on later updates.
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") router.refresh();
+        });
 
       cleanup = () => {
         void supabase.removeChannel(channel);
