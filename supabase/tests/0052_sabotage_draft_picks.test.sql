@@ -164,7 +164,8 @@ select bag_eq(
         and tablename like 'sabotage_draft%' $$,
   $$ values ('sabotage_draft_matches'), ('sabotage_draft_rounds'), ('sabotage_draft_players'),
             ('sabotage_draft_picks'), ('sabotage_draft_pick_statuses'),
-            ('sabotage_draft_guesses'), ('sabotage_draft_pick_hits') $$,
+            ('sabotage_draft_guesses'), ('sabotage_draft_pick_hits'),
+            ('sabotage_draft_x_factor_decisions') $$,
   'all public sabotage-draft state replicates; picks remain safe on the strength of their RLS policy'
 );
 
