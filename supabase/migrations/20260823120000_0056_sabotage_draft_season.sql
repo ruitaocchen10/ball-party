@@ -106,8 +106,8 @@ begin
       if v_b is null then
         v_winner := v_a;
       else
-        select roster_strength into v_strength_a from public.sabotage_draft_standings where match_id = p_match_id and user_id = v_a;
-        select roster_strength into v_strength_b from public.sabotage_draft_standings where match_id = p_match_id and user_id = v_b;
+        select s.roster_strength into v_strength_a from public.sabotage_draft_standings s where s.match_id = p_match_id and s.user_id = v_a;
+        select s.roster_strength into v_strength_b from public.sabotage_draft_standings s where s.match_id = p_match_id and s.user_id = v_b;
         v_winner := case when random() < sabotage_draft_private.win_probability(v_strength_a, v_strength_b) then v_a else v_b end;
       end if;
       insert into public.sabotage_draft_tiebreak_games
@@ -117,12 +117,12 @@ begin
     end loop;
     -- Everyone eliminated in this layer shares its next rank.  The winner is
     -- overwritten by a better rank on a later layer (ultimately rank 1).
-    update public.sabotage_draft_standings set tiebreak_rank = v_rank
-     where match_id = p_match_id and user_id = any(v_remaining) and user_id <> all(v_next);
+    update public.sabotage_draft_standings s set tiebreak_rank = v_rank
+     where s.match_id = p_match_id and s.user_id = any(v_remaining) and s.user_id <> all(v_next);
     v_remaining := v_next; v_rank := v_rank - array_length(v_next, 1); v_round := v_round + 1;
   end loop;
-  update public.sabotage_draft_standings set tiebreak_rank = 1
-   where match_id = p_match_id and user_id = v_remaining[1];
+  update public.sabotage_draft_standings s set tiebreak_rank = 1
+   where s.match_id = p_match_id and s.user_id = v_remaining[1];
   return query select s.user_id, s.tiebreak_rank from public.sabotage_draft_standings s
    where s.match_id = p_match_id and s.user_id = any(p_players);
 end;
