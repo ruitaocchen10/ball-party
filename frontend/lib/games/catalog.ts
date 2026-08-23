@@ -58,6 +58,7 @@ export const MATCH_GAME_NAMES = {
   cards_against_humanity: "Cards Against Humanity",
   higher_or_lower: "Higher or Lower",
   wavelength_2v2: "2v2 Wavelength",
+  sabotage_draft: "Sabotage Draft",
 } as const;
 
 export type MatchGame = keyof typeof MATCH_GAME_NAMES;
@@ -77,6 +78,19 @@ export function soloGames(): MatchGame[] {
 }
 
 export const GAMES: readonly Game[] = [
+  {
+    slug: "sabotage-draft",
+    match: "sabotage_draft",
+    name: ["Sabotage", "draft"],
+    shortName: ["Sabotage", "draft"],
+    kind: "Group · hidden picks",
+    tagline: "Draft from one shared team history, then try to wreck everyone else’s pick.",
+    players: "2–4 players",
+    duration: "15–20 min",
+    status: "live",
+    solo: false,
+    featured: false,
+  },
   {
     slug: "higher-or-lower",
     match: "higher_or_lower",

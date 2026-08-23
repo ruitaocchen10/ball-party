@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+/* eslint-disable @typescript-eslint/no-explicit-any -- Supabase types are regenerated after migration 0057 lands. */
 
 import { AuctionMatch } from "@/components/auction/AuctionMatch";
 import { MatchSetup } from "@/components/auction/MatchSetup";
 import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
+import { SabotageDraftMatch } from "@/components/sabotage-draft/SabotageDraftMatch";
 import { TopBar } from "@/components/layout/TopBar";
 import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
 import type { Board } from "@/lib/higher-or-lower/board";
@@ -116,6 +118,31 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // match screen becomes two. The shell above — who you are, whether the match
   // is yours, whether it has been dealt or abandoned — is the platform's and is
   // the same for every game.
+  if (match.game === "sabotage_draft") {
+    const sabotage = supabase as any;
+    const [stateResult, playersResult, picksResult, statusesResult, hitsResult, guessesResult, decisionsResult, standingsResult, tiebreaksResult] = await Promise.all([
+      sabotage.schema("sabotage_draft").rpc("state", { p_match_id: id }),
+      sabotage.from("sabotage_draft_players").select("*, profiles(display_name)").eq("match_id", id).order("seat"),
+      sabotage.from("sabotage_draft_picks").select("*").eq("match_id", id),
+      sabotage.from("sabotage_draft_pick_statuses").select("*").eq("match_id", id),
+      sabotage.from("sabotage_draft_pick_hits").select("*").eq("match_id", id),
+      sabotage.from("sabotage_draft_guesses").select("*").eq("match_id", id),
+      sabotage.from("sabotage_draft_x_factor_decisions").select("*").eq("match_id", id),
+      sabotage.from("sabotage_draft_standings").select("*").eq("match_id", id),
+      sabotage.from("sabotage_draft_tiebreak_games").select("*").eq("match_id", id),
+    ]);
+    const row = stateResult.data;
+    if (!row || row.round_count == null || row.current_round == null || !row.slot || !row.franchise_code || !row.server_now) {
+      return <Shell displayName={displayName}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
+    }
+    return <SabotageDraftMatch matchId={id} viewerId={claims.sub} initial={{
+      board: row,
+      players: (playersResult.data ?? []).map(({ profiles, ...player }: any) => ({ ...player, display_name: profiles?.display_name ?? "Unknown player" })),
+      picks: picksResult.data ?? [], statuses: statusesResult.data ?? [], hits: hitsResult.data ?? [], guesses: guessesResult.data ?? [],
+      decisions: decisionsResult.data ?? [], standings: standingsResult.data ?? [], tiebreaks: tiebreaksResult.data ?? [],
+    }} />;
+  }
+
   if (match.game === "higher_or_lower") {
     const [boardResult, cardsResult, seatsResult, callsResult, statusesResult, standingsResult] = await Promise.all([
       supabase.schema("higher_or_lower").rpc("state", { p_match_id: id }),

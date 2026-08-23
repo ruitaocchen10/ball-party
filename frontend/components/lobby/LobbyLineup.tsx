@@ -1,5 +1,6 @@
 import { StartHigherOrLower } from "@/components/lobby/StartHigherOrLower";
 import { StartRun, type Era } from "@/components/lobby/StartRun";
+import { StartSabotageDraft } from "@/components/lobby/StartSabotageDraft";
 import { Card } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
 import { GAMES } from "@/lib/games/catalog";
@@ -101,6 +102,8 @@ export function LobbyLineup({
                     <div className="border-t border-[#c7bfac] bg-panel-shade p-2.5">
                       {game.match === "higher_or_lower" ? (
                         <StartHigherOrLower lobbyId={lobbyId} code={code} players={members.length} era={higherOrLowerEra} />
+                      ) : game.match === "sabotage_draft" ? (
+                        <StartSabotageDraft lobbyId={lobbyId} code={code} players={members.length} />
                       ) : (
                         <StartRun lobbyId={lobbyId} code={code} players={members.length} era={era} />
                       )}
