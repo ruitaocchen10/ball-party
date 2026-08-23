@@ -214,15 +214,46 @@ given season needs to reflect who they played for *that year* including
 mid-season trades and franchise relocations, across every position, across
 however many decades of history the pool ends up covering.
 
+**Era floor — 2006, revised down from an earlier 1985 call.** Full scoping
+(PFR page structure, franchise-code stability across relocations, access
+constraints, scale, and a dedicated comparison of 1985 against other
+candidate cutoffs) lives in
+[`sabotage_draft_data_scoping.md`](./sabotage_draft_data_scoping.md). 1985 was
+the first tentative call and is defensible on the merits scored there, but it
+was walked back once the actual build cost became concrete: everything from
+2006 through 2019 is available from nflverse's `nfldata/rosters.csv` for
+free, with zero scraping against Pro Football Reference — the site the AV
+data itself only exists on, sitting behind a Cloudflare JS challenge, rate-
+limited to 20 requests/minute, under Terms of Use that are explicit and
+restrictive about automated access. A 1985 floor meant scraping PFR directly
+for 1985–2005 *and* 2020–present — roughly 780 team-season pages. A 2006
+floor confines the live scrape to 2020–present alone — roughly 192 team-season
+pages, about a quarter the exposure, in under 10 minutes at the rate limit
+instead of 40+. The 2006 floor also happens to sit past AV's own 1994
+tackle-counting seam, so unlike the 1985 window, every in-range season's
+defensive AV is built from the same formula inputs.
+
+The real cost, named plainly: this drops 21 years of history a 1985 floor
+would have kept, including the specific deep-cut names the earlier scoping
+called out as 1985's actual selling point — Marino's early prime, Walter
+Payton's final seasons, Lawrence Taylor, Reggie White's debut, the '85 Bears
+itself. That's a deliberate trade of recognizable history depth for a
+substantially smaller, faster, lower-exposure build — made once the scraping
+cost was concrete rather than estimated.
+
 **Modes** — unresolved. Like the auction, this game's whole hook is other
 people trying to wreck your draft, which argues against a solo mode existing
 at all in the same way "an auction needs opponents" argues against one there.
 
 ### Open questions
 
-- [ ] **Data scope** — is the OL/DL/LB/CB/S/ST + AV pipeline in scope at all,
-      given every other game in the app reads from one existing pool and this
-      is a second one? This is the load-bearing open question; everything
-      else here assumes it's solved.
+- [x] **Data scope** — resolved as in scope, with a 2006 era floor (revised
+      down from an earlier 1985 call once the live-scrape cost became
+      concrete). See
+      [`sabotage_draft_data_scoping.md`](./sabotage_draft_data_scoping.md) for
+      the full scoping and the 1985-vs-2006 tradeoff. What's still open at the
+      implementation level, not the design level — the position-vocabulary
+      folding table and the mid-season-trade attribution rule — is described
+      there rather than repeated here.
 - [ ] **Party point mapping** — cross-cutting, still unanswered for the other
       three games too. See `app.md`.
