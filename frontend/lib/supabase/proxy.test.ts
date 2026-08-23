@@ -14,7 +14,8 @@ describe("guest route access", () => {
     getClaims.mockResolvedValue({ data: { claims: { sub: "guest", is_anonymous: true } } });
   });
 
-  it("keeps a guest on Party so they can join an invited room", async () => {
+  it("keeps Party available when an anonymous session has not restored yet", async () => {
+    getClaims.mockResolvedValue({ data: { claims: null } });
     const response = await updateSession(new NextRequest("http://localhost/party"));
 
     expect(response.headers.get("location")).toBeNull();
