@@ -163,8 +163,9 @@ select bag_eq(
       where pubname = 'supabase_realtime' and schemaname = 'public'
         and tablename like 'sabotage_draft%' $$,
   $$ values ('sabotage_draft_matches'), ('sabotage_draft_rounds'), ('sabotage_draft_players'),
-            ('sabotage_draft_picks'), ('sabotage_draft_pick_statuses') $$,
-  'the picks table is replicated despite carrying the secret, on the strength of its RLS policy'
+            ('sabotage_draft_picks'), ('sabotage_draft_pick_statuses'),
+            ('sabotage_draft_guesses'), ('sabotage_draft_pick_hits') $$,
+  'all public sabotage-draft state replicates; picks remain safe on the strength of their RLS policy'
 );
 
 select ok(
