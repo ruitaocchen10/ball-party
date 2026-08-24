@@ -1,7 +1,7 @@
 -- A completed X-Factor phase atomically turns every final roster into a
 -- deterministic season and resolves every record tie before the match ends.
 begin;
-select plan(10);
+select plan(11);
 
 \ir support/harness.psql
 
@@ -57,6 +57,18 @@ select is((select status::text from public.matches where id = (select v from tes
   'season and any tiebreak bracket complete the match');
 select is((select count(*)::int from public.match_players where match_id = (select v from tests.fx where k = 'm')), 3,
   'the resolved standings are handed to the platform placements');
+
+-- A strictly better record must always outrank a strictly worse one. Before
+-- the standings-rank fix, every player who wasn't part of a tied win group
+-- was left at the literal tiebreak_rank the row was inserted with, so two
+-- players with different records could both show rank 1.
+select ok(not exists (
+  select 1 from public.sabotage_draft_standings a
+    join public.sabotage_draft_standings b
+      on b.match_id = a.match_id and b.user_id <> a.user_id
+   where a.match_id = (select v from tests.fx where k = 'm')
+     and a.wins > b.wins and a.tiebreak_rank >= b.tiebreak_rank
+), 'a strictly better record always gets a strictly better tiebreak_rank');
 
 select * from finish();
 rollback;
