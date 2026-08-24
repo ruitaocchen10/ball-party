@@ -17,26 +17,27 @@ update public.matches set status = 'playing', started_at = now()
 -- Lock all three picks, which opens the public guessing phase.
 select tests.act_as((select v from tests.fx where k = 'p0'));
 select sabotage_draft.submit_pick((select v from tests.fx where k = 'm'), c.player_id, c.season)
-  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, 'QB') c;
+  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p0'), 'QB') c;
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select sabotage_draft.submit_pick((select v from tests.fx where k = 'm'), c.player_id, c.season)
-  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, 'QB') c;
+  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c;
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select sabotage_draft.submit_pick((select v from tests.fx where k = 'm'), c.player_id, c.season)
-  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, 'QB') c;
+  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p2'), 'QB') c;
 
 select tests.act_as_admin();
 select ok((select pick_deadline is null and guess_deadline > now() from public.sabotage_draft_matches
   where match_id = (select v from tests.fx where k = 'm')),
   'the last pick opens a guess window instead of ending the round');
 
--- p2 knows the fixture's deterministic candidate and makes an exact call,
--- supplying the same eligible card as the replacement.  p0 then calls that
--- card by name only, proving the two hit kinds work in either order.
+-- p2 knows the fixture's deterministic candidate for p1's own spun franchise
+-- and makes an exact call, supplying the same eligible card as the
+-- replacement.  p0 then calls that card by name only, proving the two hit
+-- kinds work in either order.
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select is(
   (select g.result::text
-     from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, 'QB') c
+     from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c
      cross join lateral sabotage_draft.submit_guess(
        (select v from tests.fx where k = 'm'), (select v::uuid from tests.fx where k = 'p1'), c.player_id, c.season, c.player_id, c.season
      ) g),
@@ -50,7 +51,7 @@ select is((select count(*)::int from public.sabotage_draft_pick_hits where match
 select tests.act_as((select v from tests.fx where k = 'p0'));
 select is(
   (select g.result::text
-     from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, 'QB') c
+     from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c
      cross join lateral sabotage_draft.submit_guess(
        (select v from tests.fx where k = 'm'), (select v::uuid from tests.fx where k = 'p1'),
        c.player_id

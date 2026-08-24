@@ -8,7 +8,7 @@
 -- nothing tracks an exclusion set.
 
 begin;
-select plan(38);
+select plan(40);
 
 \ir support/harness.psql
 
@@ -39,9 +39,16 @@ select is(
 );
 
 select ok(
-  (select bool_and(franchise_code <> '') from public.sabotage_draft_rounds
+  (select bool_and(franchise_code <> '') from public.sabotage_draft_round_spins
     where match_id = (select v from tests.fx where k = 'm4')),
-  'every round spins a real franchise'
+  'every player spins a real franchise every round'
+);
+
+select is(
+  (select count(*)::int from public.sabotage_draft_round_spins
+    where match_id = (select v from tests.fx where k = 'm4')),
+  14 * 4,
+  'every one of the fourteen rounds spins a franchise for every seated player, not one shared per round'
 );
 
 select is(
@@ -101,16 +108,17 @@ select throws_ok(
   'a slot outside the fourteen named ones is refused rather than silently mapped'
 );
 
--- Every dealt round's franchise really does have players at the category
--- (or, for the X-Factor, categories) its slot allows — the query the dealer
--- itself runs, asserted against the real pool rather than trusted.
+-- Every dealt spin's franchise really does have players at the category
+-- (or, for the X-Factor, categories) its round's slot allows — the query the
+-- dealer itself runs, asserted against the real pool rather than trusted.
 select ok(
   not exists (
-    select 1 from public.sabotage_draft_rounds r
-     where r.match_id = (select v from tests.fx where k = 'm4')
+    select 1 from public.sabotage_draft_round_spins s
+      join public.sabotage_draft_rounds r on r.match_id = s.match_id and r.round_number = s.round_number
+     where s.match_id = (select v from tests.fx where k = 'm4')
        and not exists (
          select 1 from private.av_roster_players p
-          where p.franchise_code = r.franchise_code
+          where p.franchise_code = s.franchise_code
             and p.slot_category = any(sabotage_draft_private.pool_categories(r.slot))
        )
   ),
@@ -120,21 +128,22 @@ select ok(
 -- ------------------------------------------------------------ the repeat --
 
 -- The property the design doc names directly: no exclusion set, so a
--- franchise spun once can be spun again in a later round. Draws are
+-- franchise spun once can be spun again — for the same player in a later
+-- round, or for a different player in the very same round. Draws are
 -- independent of player count, so this holds regardless of table size; a
 -- fixed seed picked because it happens to produce one is enough to show the
 -- mechanism allows it, which is the thing under test — a constraint that
 -- forbade it would fail this rather than merely go untested.
 select ok(
-  (select count(*) > count(distinct franchise_code) from public.sabotage_draft_rounds
+  (select count(*) > count(distinct franchise_code) from public.sabotage_draft_round_spins
     where match_id = (select v from tests.fx where k = 'm4')),
-  'this board actually repeats a franchise across rounds'
+  'this board actually repeats a franchise, across rounds and/or players'
 );
 
 select ok(
   not exists (
     select 1 from pg_constraint
-     where conrelid = 'public.sabotage_draft_rounds'::regclass
+     where conrelid = 'public.sabotage_draft_round_spins'::regclass
        and contype in ('u', 'x')
        and pg_get_constraintdef(oid) ilike '%franchise_code%'
   ),
@@ -147,21 +156,34 @@ insert into tests.fx (k, v) values ('m4_same',  tests.deal_sabotage_draft(4, 0.2
 insert into tests.fx (k, v) values ('m4_other', tests.deal_sabotage_draft(4, 0.9));
 select tests.act_as_admin();
 
+-- user_id is freshly generated per dealt match, so the two boards being
+-- compared can never share a user_id — seat is the stable join key across
+-- separate deals of the same fixture player count.
 select is(
-  (select array_agg(slot || ':' || franchise_code order by round_number)
-     from public.sabotage_draft_rounds
-    where match_id = (select v from tests.fx where k = 'm4_same')),
-  (select array_agg(slot || ':' || franchise_code order by round_number)
-     from public.sabotage_draft_rounds
-    where match_id = (select v from tests.fx where k = 'm4')),
-  'the same seed deals an identical board, round for round'
+  (select array_agg(r.slot || ':' || sp.seat || ':' || s.franchise_code order by r.round_number, sp.seat)
+     from public.sabotage_draft_round_spins s
+     join public.sabotage_draft_rounds r on r.match_id = s.match_id and r.round_number = s.round_number
+     join public.sabotage_draft_players sp on sp.match_id = s.match_id and sp.user_id = s.user_id
+    where s.match_id = (select v from tests.fx where k = 'm4_same')),
+  (select array_agg(r.slot || ':' || sp.seat || ':' || s.franchise_code order by r.round_number, sp.seat)
+     from public.sabotage_draft_round_spins s
+     join public.sabotage_draft_rounds r on r.match_id = s.match_id and r.round_number = s.round_number
+     join public.sabotage_draft_players sp on sp.match_id = s.match_id and sp.user_id = s.user_id
+    where s.match_id = (select v from tests.fx where k = 'm4')),
+  'the same seed deals an identical board, round for round and seat for seat'
 );
 
 select isnt(
-  (select array_agg(franchise_code order by round_number) from public.sabotage_draft_rounds
-    where match_id = (select v from tests.fx where k = 'm4_other')),
-  (select array_agg(franchise_code order by round_number) from public.sabotage_draft_rounds
-    where match_id = (select v from tests.fx where k = 'm4')),
+  (select array_agg(r.round_number || ':' || sp.seat || ':' || s.franchise_code order by r.round_number, sp.seat)
+     from public.sabotage_draft_round_spins s
+     join public.sabotage_draft_rounds r on r.match_id = s.match_id and r.round_number = s.round_number
+     join public.sabotage_draft_players sp on sp.match_id = s.match_id and sp.user_id = s.user_id
+    where s.match_id = (select v from tests.fx where k = 'm4_other')),
+  (select array_agg(r.round_number || ':' || sp.seat || ':' || s.franchise_code order by r.round_number, sp.seat)
+     from public.sabotage_draft_round_spins s
+     join public.sabotage_draft_rounds r on r.match_id = s.match_id and r.round_number = s.round_number
+     join public.sabotage_draft_players sp on sp.match_id = s.match_id and sp.user_id = s.user_id
+    where s.match_id = (select v from tests.fx where k = 'm4')),
   'a different seed does not'
 );
 
@@ -217,7 +239,14 @@ select is(
   (select count(*)::int from public.sabotage_draft_rounds
     where match_id = (select v from tests.fx where k = 'm4')),
   14,
-  'a participant can read the whole spin board'
+  'a participant can read the whole round board'
+);
+
+select is(
+  (select count(*)::int from public.sabotage_draft_round_spins
+    where match_id = (select v from tests.fx where k = 'm4')),
+  14 * 4,
+  'and every player''s spin for every round, not just their own'
 );
 
 select throws_ok(

@@ -454,23 +454,33 @@ begin
   perform sabotage_draft_private.expire(p_match_id);
 end $$;
 
--- A real, valid pick for a round: a player id and season that the round's
--- own franchise and category actually contain. Definer, because a test
--- acting as a player has to source an honest submit_pick argument without
--- itself holding a select grant on private.av_roster_players — correctly, it
--- has none, the same reason tests.hol_answer is definer.
+-- A real, valid pick for a round: a player id and season that this player's
+-- own spun franchise and the given category actually contain. Definer,
+-- because a test acting as a player has to source an honest submit_pick
+-- argument without itself holding a select grant on private.av_roster_players
+-- — correctly, it has none, the same reason tests.hol_answer is definer.
 create function tests.sd_pick_candidate(
-  p_match_id uuid, p_round smallint, p_category text,
+  p_match_id uuid, p_round smallint, p_user_id uuid, p_category text,
   out player_id text, out season smallint
 )
 language sql stable security definer as $$
   select p.player_id, p.season
     from private.av_roster_players p
-    join public.sabotage_draft_rounds r on r.franchise_code = p.franchise_code
-   where r.match_id = p_match_id and r.round_number = p_round
+    join public.sabotage_draft_round_spins s on s.franchise_code = p.franchise_code
+   where s.match_id = p_match_id and s.round_number = p_round and s.user_id = p_user_id
      and p.slot_category = p_category
    order by p.player_id
    limit 1;
+$$;
+
+-- Two distinct real franchise codes at a category, so a test can force two
+-- players onto provably different pools instead of hoping a seed happens to
+-- deal them one. Definer for the same reason sd_pick_candidate is.
+create function tests.sd_distinct_franchises(p_category text, out f1 text, out f2 text)
+returns record
+language sql stable security definer as $$
+  select min(franchise_code), max(franchise_code)
+    from private.av_roster_players where slot_category = p_category;
 $$;
 
 grant usage on schema tests to authenticated;

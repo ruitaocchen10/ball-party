@@ -54,8 +54,8 @@ select throws_ok(
 select throws_ok(
   format(
     $$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
-         from tests.sd_pick_candidate(%L, 1::smallint, 'RB') c $$,
-    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm')
+         from tests.sd_pick_candidate(%L, 1::smallint, %L, 'RB') c $$,
+    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p1')
   ),
   'P0001', 'invalid_pick',
   'a real player, real season, but the wrong slot category for round one (QB) is refused'
@@ -64,10 +64,10 @@ select throws_ok(
 select lives_ok(
   format(
     $$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
-         from tests.sd_pick_candidate(%L, 1::smallint, 'QB') c $$,
-    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm')
+         from tests.sd_pick_candidate(%L, 1::smallint, %L, 'QB') c $$,
+    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p1')
   ),
-  'a participant can submit a pick sourced from the round''s own pool'
+  'a participant can submit a pick sourced from their own spun franchise'
 );
 
 select is(
@@ -88,8 +88,8 @@ select is(
 select throws_ok(
   format(
     $$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
-         from tests.sd_pick_candidate(%L, 1::smallint, 'QB') c $$,
-    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm')
+         from tests.sd_pick_candidate(%L, 1::smallint, %L, 'QB') c $$,
+    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p1')
   ),
   'P0001', 'already_picked',
   'a second pick for the same round is rejected'
@@ -130,7 +130,7 @@ select is(
 -- player regardless of what they themselves have done.
 select sabotage_draft.submit_pick(
   (select v from tests.fx where k = 'm'), c.player_id, c.season
-) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, 'QB') c;
+) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p2'), 'QB') c;
 
 select is(
   (select count(*)::int from public.sabotage_draft_picks
@@ -163,6 +163,7 @@ select bag_eq(
       where pubname = 'supabase_realtime' and schemaname = 'public'
         and tablename like 'sabotage_draft%' $$,
   $$ values ('sabotage_draft_matches'), ('sabotage_draft_rounds'), ('sabotage_draft_players'),
+            ('sabotage_draft_round_spins'),
             ('sabotage_draft_picks'), ('sabotage_draft_pick_statuses'),
             ('sabotage_draft_guesses'), ('sabotage_draft_pick_hits'),
             ('sabotage_draft_x_factor_decisions'), ('sabotage_draft_standings'),
@@ -193,7 +194,7 @@ select ok(
 select tests.act_as((select v from tests.fx where k = 'p3'));
 select sabotage_draft.submit_pick(
   (select v from tests.fx where k = 'm'), c.player_id, c.season
-) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, 'QB') c;
+) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p3'), 'QB') c;
 
 select tests.act_as_admin();
 select ok(
@@ -246,11 +247,15 @@ select ok(
 -- never be the highest-AV option, on pain of turning a disconnect into a
 -- strategy. Asserted directly, across a batch of draws, since a single draw
 -- landing on the maximum by chance would not itself disprove the property.
+-- Any one player's own round-one spin is enough to exercise the draw — the
+-- property under test (variety, not pinned to the max) doesn't depend on
+-- whose franchise it is.
 select ok(
   (select count(distinct (r).player_id) > 1 from (
      select sabotage_draft_private.random_pick(
-       (select franchise_code from public.sabotage_draft_rounds
-         where match_id = (select v from tests.fx where k = 'm2') and round_number = 1),
+       (select franchise_code from public.sabotage_draft_round_spins
+         where match_id = (select v from tests.fx where k = 'm2') and round_number = 1
+         order by user_id limit 1),
        array['QB']
      ) as r
      from generate_series(1, 20)
@@ -261,8 +266,9 @@ select ok(
 select isnt(
   (select array_agg((r).player_id) from (
      select sabotage_draft_private.random_pick(
-       (select franchise_code from public.sabotage_draft_rounds
-         where match_id = (select v from tests.fx where k = 'm2') and round_number = 1),
+       (select franchise_code from public.sabotage_draft_round_spins
+         where match_id = (select v from tests.fx where k = 'm2') and round_number = 1
+         order by user_id limit 1),
        array['QB']
      ) as r
      from generate_series(1, 20)
@@ -270,8 +276,9 @@ select isnt(
   (select array_agg(top.player_id) from (
      select p.player_id from private.av_roster_players p
       where p.franchise_code = (
-            select franchise_code from public.sabotage_draft_rounds
-             where match_id = (select v from tests.fx where k = 'm2') and round_number = 1)
+            select franchise_code from public.sabotage_draft_round_spins
+             where match_id = (select v from tests.fx where k = 'm2') and round_number = 1
+             order by user_id limit 1)
         and p.slot_category = 'QB'
       order by p.av desc limit 1
    ) top, generate_series(1, 20)),

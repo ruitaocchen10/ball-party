@@ -120,9 +120,10 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // the same for every game.
   if (match.game === "sabotage_draft") {
     const sabotage = supabase as any;
-    const [stateResult, playersResult, picksResult, statusesResult, hitsResult, guessesResult, decisionsResult, standingsResult, tiebreaksResult] = await Promise.all([
+    const [stateResult, playersResult, spinsResult, picksResult, statusesResult, hitsResult, guessesResult, decisionsResult, standingsResult, tiebreaksResult] = await Promise.all([
       sabotage.schema("sabotage_draft").rpc("state", { p_match_id: id }),
       sabotage.from("sabotage_draft_players").select("*, profiles(display_name)").eq("match_id", id).order("seat"),
+      sabotage.from("sabotage_draft_round_spins").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_picks").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_pick_statuses").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_pick_hits").select("*").eq("match_id", id),
@@ -132,12 +133,13 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       sabotage.from("sabotage_draft_tiebreak_games").select("*").eq("match_id", id),
     ]);
     const row = stateResult.data;
-    if (!row || row.round_count == null || row.current_round == null || !row.slot || !row.franchise_code || !row.server_now) {
+    if (!row || row.round_count == null || row.current_round == null || !row.slot || !row.server_now) {
       return <Shell displayName={displayName}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
     }
     return <SabotageDraftMatch matchId={id} viewerId={claims.sub} initial={{
       board: row,
       players: (playersResult.data ?? []).map(({ profiles, ...player }: any) => ({ ...player, display_name: profiles?.display_name ?? "Unknown player" })),
+      spins: spinsResult.data ?? [],
       picks: picksResult.data ?? [], statuses: statusesResult.data ?? [], hits: hitsResult.data ?? [], guesses: guessesResult.data ?? [],
       decisions: decisionsResult.data ?? [], standings: standingsResult.data ?? [], tiebreaks: tiebreaksResult.data ?? [],
     }} />;

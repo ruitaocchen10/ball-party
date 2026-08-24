@@ -38,18 +38,18 @@ select is((select current_round::int from public.sabotage_draft_matches
 -- Different skill categories all pass through the unchanged submit_pick API.
 select tests.act_as((select v from tests.fx where k = 'p0'));
 select lives_ok(format($$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
-  from tests.sd_pick_candidate(%L, 14::smallint, 'QB') c $$,
-  (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm')),
+  from tests.sd_pick_candidate(%L, 14::smallint, %L, 'QB') c $$,
+  (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p0')),
   'the X-Factor accepts a QB from its spun franchise');
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select lives_ok(format($$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
-  from tests.sd_pick_candidate(%L, 14::smallint, 'RB') c $$,
-  (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm')),
+  from tests.sd_pick_candidate(%L, 14::smallint, %L, 'RB') c $$,
+  (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p1')),
   'the same pick API accepts an RB');
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select lives_ok(format($$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
-  from tests.sd_pick_candidate(%L, 14::smallint, 'WR') c $$,
-  (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm')),
+  from tests.sd_pick_candidate(%L, 14::smallint, %L, 'WR') c $$,
+  (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p2')),
   'the same pick API accepts a WR');
 
 select tests.act_as((select v from tests.fx where k = 'p0'));

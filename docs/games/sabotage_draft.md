@@ -13,12 +13,16 @@ good pick and call another player's.
 
 ### Decided
 
-**Round structure — one shared team spin per slot, picks made against it.** The
-team spin is a single table-wide event, not a private one. Everyone at the
-table is drafting from the same team's history for that slot, which is what
-makes guessing possible at all — you can't call a shot on a search space you
-don't know. If team spins were private, sabotage would be a guess against pure
-noise, and the whole second half of the game disappears.
+**Round structure — one team spin per player per slot, picks made against your
+own.** Every seated player spins their own franchise each round — a 3-player
+table sees 3 spins in round 4, not 1 — but nothing about a spin is private:
+the whole table can see which franchise every player is drafting from, only
+not what they picked from it. That's still what makes guessing possible at
+all — you can't call a shot on a search space you don't know — it's just that
+the search space is now specific to whoever you're aiming at, rather than one
+pool the whole table shares. Round 4 might spin the Steelers for you and the
+Patriots for the player next to you; sabotaging them means knowing the
+Patriots' WR1 history, not your own team's.
 
 One consequence worth naming: a finished roster is fourteen players from
 fourteen different franchises, not one team's real history. That's a feature,
@@ -34,13 +38,15 @@ different slices of the same team's history get tested instead of one.
 ```
   ROUND 4 of 14 · SLOT: WR1
 
-  TEAM SPIN:  PITTSBURGH STEELERS
+  YOUR SPIN:  PITTSBURGH STEELERS
 
   Pick any WR who ever played for PIT, any year.
   ┌──────────────────────────────┐
   │  your pick (hidden)          │
   │  ??? · WR · PIT · ????       │
   └──────────────────────────────┘
+
+  OTHER SPINS THIS ROUND:  Maya — NE   ·   Sam — DAL
 ```
 
 **The pick itself is hidden — identity and year both.** Nobody sees what you
@@ -72,12 +78,13 @@ would make the harder guess pointless to ever attempt below certainty, since
 partial credit already got you most of the value.
 
 **Guess economy — one guess per player, per round, aimed at a single target.**
-Everyone who isn't the one being guessed at gets exactly one guess to spend
-that round, and chooses both who to aim it at and which of the two guess
-types to use. In a 3-player lobby where round 4 spins the Patriots for QB, the
-other two players each get one shot at the third player's hidden pick — one
-might try "Tom Brady, 2017", the other "Drew Bledsoe, 2000", and if the actual
-pick was Drake Maye 2025, both miss and the pick stands.
+Everyone gets exactly one guess to spend that round, and chooses both who to
+aim it at and which of the two guess types to use. In a 3-player lobby where
+round 4 spins the Patriots for one player's QB slot, the other two players
+each get one shot at that player's hidden pick — one might try "Tom Brady,
+2017", the other "Drew Bledsoe, 2000", and if the actual pick was Drake Maye
+2025, both miss and the pick stands. (Each of those two also spun their own,
+likely different, franchise that round, and is just as guessable in turn.)
 
 This is what actually bounds the sabotage economy, rather than a rule bolted
 on to stop spam: with only one guess a round, going after any one target means

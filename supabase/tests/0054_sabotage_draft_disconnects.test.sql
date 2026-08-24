@@ -60,13 +60,13 @@ select ok((select guess_deadline > now() from public.sabotage_draft_matches
 select tests.act_as_admin();
 update public.sabotage_draft_picks p
    set player_id = c.player_id, season = c.season
-  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, 'QB') c
+  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c
  where p.match_id = (select v from tests.fx where k = 'm') and p.round_number = 1
    and p.user_id = (select v::uuid from tests.fx where k = 'p1');
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select is(
   (select g.result::text
-     from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, 'QB') c
+     from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c
      cross join lateral sabotage_draft.submit_guess(
        (select v from tests.fx where k = 'm'),
        (select v::uuid from tests.fx where k = 'p1'), c.player_id
