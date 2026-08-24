@@ -84,7 +84,7 @@ export const GAMES: readonly Game[] = [
     name: ["Sabotage", "draft"],
     shortName: ["Sabotage", "draft"],
     kind: "Group · hidden picks",
-    tagline: "Draft from one shared team history, then try to wreck everyone else’s pick.",
+    tagline: "Spin your own team history, then try to wreck everyone else’s pick.",
     players: "2–4 players",
     duration: "15–20 min",
     status: "live",
