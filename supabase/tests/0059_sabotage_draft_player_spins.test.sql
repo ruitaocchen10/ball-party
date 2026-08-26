@@ -7,7 +7,7 @@
 -- only ever valid against the TARGET's spin — never the guesser's.
 
 begin;
-select plan(14);
+select plan(13);
 
 \ir support/harness.psql
 
@@ -54,61 +54,64 @@ select lives_ok(
   'the same card is valid sourced from the picker''s own spin'
 );
 
+-- p0 is the only seat on the clock this turn (see 0062): their pick alone
+-- does not close anything -- the shared clock (0063) was already open to
+-- both pick and guess from the start of the turn -- and p1, next in turn
+-- order but not yet up, cannot pick from even their own, different, spun
+-- franchise until it's their turn.
+select tests.act_as_admin();
+select ok(
+  (select turn_deadline > now() from public.sabotage_draft_matches
+    where match_id = (select v from tests.fx where k = 'm')),
+  'p0''s own pick leaves the shared turn clock open, still aimed at p0'
+);
 select tests.act_as((select v from tests.fx where k = 'p1'));
-select lives_ok(
+select throws_ok(
   format(
     $$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
          from tests.sd_pick_candidate(%L, 1::smallint, %L, 'QB') c $$,
     (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p1')
   ),
-  'p1 picks from their own, different, spun franchise'
-);
-
-select tests.act_as((select v from tests.fx where k = 'p2'));
-select lives_ok(
-  format(
-    $$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
-         from tests.sd_pick_candidate(%L, 1::smallint, %L, 'QB') c $$,
-    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p2')
-  ),
-  'p2 picks from their own spun franchise, closing the pick window'
-);
-
-select tests.act_as_admin();
-select ok(
-  (select guess_deadline > now() from public.sabotage_draft_matches
-    where match_id = (select v from tests.fx where k = 'm')),
-  'all three picks landed and opened the shared guess window'
+  'P0001', 'not_your_turn',
+  'p1''s own, different, spun franchise does not matter before it is p1''s turn'
 );
 
 -- ------------------------------------------------------------ the guess --
 
--- p2 tries to sabotage p0 by naming a card that is real, but only for p1's
--- pool. Resolving the guess against the guesser's own spin (or the wrong
--- target's) would be a different, undetected bug from resolving it against
--- nothing at all; resolving it correctly against p0's own spin is the only
--- path that raises invalid_guess here, since that card was never p0's to pick.
+-- p2 tries to sabotage p0 -- the only seat whose turn it is to be guessed at
+-- right now -- by naming a card that is real, but only for p1's pool.
+-- Resolving the guess against the guesser's own spin (or against the
+-- inactive p1's) would be a different, undetected bug from resolving it
+-- against nothing at all; resolving it correctly against the active turn's
+-- own spin is the only path that raises invalid_guess here, since that card
+-- was never p0's to pick.
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select throws_ok(
   format(
-    $$ select sabotage_draft.submit_guess(%L, %L, c.player_id)
+    $$ select sabotage_draft.submit_guess(%L, c.player_id)
          from tests.sd_pick_candidate(%L, 1::smallint, %L, 'QB') c $$,
-    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p0'),
+    (select v from tests.fx where k = 'm'),
     (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p1')
   ),
   'P0001', 'invalid_guess',
-  'a card only valid in the target''s teammate''s pool is not a legal guess at the target'
+  'a card only valid in a seated non-drafter''s pool is not a legal guess at the active turn'
 );
 
+select sabotage_draft.submit_guess(
+  (select v from tests.fx where k = 'm'), c.player_id
+) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p0'), 'QB') c;
+
+-- The guess is held pending until the turn completes (0063) -- p1 never
+-- acts here, so the shared clock is what settles it.
+select tests.act_as_admin();
+select tests.sd_expire((select v from tests.fx where k = 'm'));
 select is(
-  (select g.result::text
-     from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p0'), 'QB') c
-     cross join lateral sabotage_draft.submit_guess(
-       (select v from tests.fx where k = 'm'), (select v::uuid from tests.fx where k = 'p0'), c.player_id
-     ) g
-  ),
+  (select result::text from public.sabotage_draft_guesses
+    where match_id = (select v from tests.fx where k = 'm') and round_number = 1
+      and target_user_id = (select v::uuid from tests.fx where k = 'p0')
+      and user_id = (select v::uuid from tests.fx where k = 'p2')),
   'respun',
-  'the same guess, sourced from the target''s own spin, resolves as a genuine hit'
+  'the same guess, sourced from the active turn''s own spin, resolves as a genuine hit'
 );
 
 -- ----------------------------------------------------------------- options --

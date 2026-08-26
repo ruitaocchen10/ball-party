@@ -27,7 +27,7 @@ export function WayIn({
       >
         {kicker}
       </p>
-      <h3 className="mt-2 font-slab text-xl leading-none -skew-x-7 uppercase sm:text-[22px]">
+      <h3 className="mt-2 font-slab text-xl leading-none uppercase sm:text-[22px]">
         {title}
       </h3>
       <p

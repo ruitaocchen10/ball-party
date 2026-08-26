@@ -14,6 +14,10 @@ type Options = {
   format?: AuctionFormat | null;
   /** Seat 0 by default; pass null to render as a non-participant spectator. */
   viewerId?: string | null;
+  /** False by default. Only the host gets a pause control. */
+  isHost?: boolean;
+  /** False by default — the match is running. */
+  paused?: boolean;
 };
 
 /** Mounts the match screen with the shared supabase mock wired in. */
@@ -27,6 +31,8 @@ export function renderMatch(options: Options) {
       viewerId={options.viewerId === undefined ? "u0" : (options.viewerId ?? "nobody")}
       displayName="Ava"
       roomCode="ABCD"
+      isHost={options.isHost ?? false}
+      paused={options.paused ?? false}
       initial={{
         turn: options.turn,
         serverNow: new Date().toISOString(),

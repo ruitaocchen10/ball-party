@@ -37,7 +37,7 @@ export function CardTitle({
 }) {
   return (
     <h2
-      className={`px-3 pt-3 pb-1 font-slab text-2xl leading-none -skew-x-7 uppercase ${className}`}
+      className={`px-3 pt-3 pb-1 font-slab text-2xl leading-none uppercase ${className}`}
     >
       {children}
     </h2>

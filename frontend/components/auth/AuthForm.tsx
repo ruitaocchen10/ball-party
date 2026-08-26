@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { AnimatedMessage } from "@/components/motion/AnimatedMessage";
 import { Button } from "@/components/ui/Button";
 import { signInWithEmail, signUpWithEmail } from "@/lib/auth/actions";
 import {
@@ -41,7 +42,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
   return (
     <div className="flex w-full flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <h1 className="font-slab text-3xl leading-none -skew-x-7 uppercase">
+        <h1 className="font-slab text-3xl leading-none uppercase">
           {isSignup ? "Get in the game" : "Ball Party"}
         </h1>
         <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">
@@ -106,11 +107,9 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
 
         {/* The one place red isn't about hidden information. Inventing a second
             alarm colour would cost more than reusing this one. */}
-        {state.error && (
-          <p role="alert" className="text-sm text-hidden-text">
-            {state.error}
-          </p>
-        )}
+        <AnimatedMessage role="alert" className="text-sm text-hidden-text">
+          {state.error}
+        </AnimatedMessage>
 
         <div className="pt-1">
           <Submit label={isSignup ? "Create account" : "Sign in"} />

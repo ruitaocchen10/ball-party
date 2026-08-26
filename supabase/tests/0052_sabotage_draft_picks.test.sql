@@ -1,5 +1,8 @@
 -- Tests for the sabotage draft pick, its clock, and the timeout substitution
--- (migration 0052).
+-- (migration 0052). Turn order (0062) and the merged pick/guess turn clock
+-- (0063) are exercised here too, since a pick's whole lifecycle -- whose
+-- turn it is, when the turn's shared clock closes, what a timeout does -- is
+-- one story, not three.
 --
 -- The leak test is the point of this file: a pick's identity and season sit
 -- directly on a client-readable, Realtime-published table, protected by RLS
@@ -14,7 +17,7 @@
 -- qualifying player and season, not the best available one.
 
 begin;
-select plan(26);
+select plan(35);
 
 \ir support/harness.psql
 
@@ -39,6 +42,8 @@ update public.matches set status = 'playing', started_at = now()
 
 -- ------------------------------------------------------------- the pick --
 
+-- p1 sits at seat 0, the first seat on the clock every round, so it's their
+-- turn from the moment the board is dealt.
 select tests.act_as((select v from tests.fx where k = 'p1'));
 
 -- Invalid-pick checks come before p1's own real submission below, since
@@ -61,13 +66,27 @@ select throws_ok(
   'a real player, real season, but the wrong slot category for round one (QB) is refused'
 );
 
+-- p2 sits later in turn order and cannot pick before it's their turn, no
+-- matter how valid the pick itself would be.
+select tests.act_as((select v from tests.fx where k = 'p2'));
+select throws_ok(
+  format(
+    $$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
+         from tests.sd_pick_candidate(%L, 1::smallint, %L, 'QB') c $$,
+    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p2')
+  ),
+  'P0001', 'not_your_turn',
+  'a seat not yet on the clock cannot submit a pick, however valid'
+);
+
+select tests.act_as((select v from tests.fx where k = 'p1'));
 select lives_ok(
   format(
     $$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
          from tests.sd_pick_candidate(%L, 1::smallint, %L, 'QB') c $$,
     (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p1')
   ),
-  'a participant can submit a pick sourced from their own spun franchise'
+  'the seat on the clock can submit a pick sourced from their own spun franchise'
 );
 
 select is(
@@ -85,6 +104,11 @@ select is(
   'and the presence projection records the lock-in'
 );
 
+-- The turn's shared clock stays open after just the picker acts -- 0063
+-- merged the pick and guess windows into one, and this turn's other two
+-- seats have not yet guessed or passed, so the turn is not complete. A
+-- second pick attempt therefore reaches the seat's own already_picked guard
+-- directly, not a closed window.
 select throws_ok(
   format(
     $$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
@@ -92,7 +116,7 @@ select throws_ok(
     (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p1')
   ),
   'P0001', 'already_picked',
-  'a second pick for the same round is rejected'
+  'a second pick for the same turn is rejected even while the shared clock is still open'
 );
 
 select tests.act_as_admin();
@@ -107,9 +131,10 @@ select throws_ok(
 
 -- --------------------------------------------------------------- the leak --
 
--- p2 has not picked yet. Before p2 picks, RLS still hides p1's identity and
--- season, even though p2 is a full match member who can see the round's
--- public spin freely.
+-- p2 has not acted yet, and is not yet on the clock as a drafter — p1's turn
+-- is still open, waiting on p2 and p3's guess-or-pass. RLS still hides p1's
+-- identity and season, even though p2 is a full match member who can see
+-- the round's public spin freely.
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select is(
   (select count(*)::int from public.sabotage_draft_pick_statuses
@@ -123,11 +148,32 @@ select is(
   0,
   'but reads back none of that pick''s identity — RLS filters the row, not a column within it'
 );
+select throws_ok(
+  format($$ select sabotage_draft.submit_pick(%L, 'whoever', 2020::smallint) $$,
+    (select v from tests.fx where k = 'm')),
+  'P0001', 'not_your_turn',
+  'and cannot pick yet regardless — this turn belongs to p1'
+);
+
+-- p1's turn closes with nobody having guessed or passed, once the shared
+-- clock runs out, handing the turn to p2 — the ordinary transition, not
+-- anything the leak test itself exercises.
+select tests.act_as_admin();
+update public.sabotage_draft_matches set turn_deadline = now() - interval '1 second'
+ where match_id = (select v from tests.fx where k = 'm');
+select ok(sabotage_draft_private.expire((select v from tests.fx where k = 'm')),
+  'the server closes p1''s expired turn');
+select is(
+  (select v::uuid from tests.fx where k = 'p2'),
+  tests.sd_active_user((select v from tests.fx where k = 'm')),
+  'and hands the turn to the next seat in order'
+);
 
 -- p2 picks their own. This is the load-bearing assertion of the whole file:
 -- unlike higher_or_lower_calls, having picked does NOT unlock a view of
 -- someone else's pick. A sabotage draft pick stays a secret from every other
 -- player regardless of what they themselves have done.
+select tests.act_as((select v from tests.fx where k = 'p2'));
 select sabotage_draft.submit_pick(
   (select v from tests.fx where k = 'm'), c.player_id, c.season
 ) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p2'), 'QB') c;
@@ -165,7 +211,7 @@ select bag_eq(
   $$ values ('sabotage_draft_matches'), ('sabotage_draft_rounds'), ('sabotage_draft_players'),
             ('sabotage_draft_round_spins'),
             ('sabotage_draft_picks'), ('sabotage_draft_pick_statuses'),
-            ('sabotage_draft_guesses'), ('sabotage_draft_pick_hits'),
+            ('sabotage_draft_guesses'), ('sabotage_draft_passes'), ('sabotage_draft_pick_hits'),
             ('sabotage_draft_x_factor_decisions'), ('sabotage_draft_standings'),
             ('sabotage_draft_tiebreak_games') $$,
   'all public sabotage-draft state replicates; picks remain safe on the strength of their RLS policy'
@@ -180,55 +226,84 @@ select ok(
   'but not the timeout draw it is built from — the engine schema stays private'
 );
 
--- ------------------------------------------------------ simultaneous lock --
+-- ------------------------------------------------------------ turn order --
 
--- p3 is the last to pick. The moment their pick lands, the window closes on
--- its own — "picks lock simultaneously" per the design doc — rather than
--- waiting on the clock that is no longer needed.
-select ok(
-  (select pick_deadline is not null from public.sabotage_draft_matches
-    where match_id = (select v from tests.fx where k = 'm')),
-  'the pick window is still open with one seat left'
-);
-
-select tests.act_as((select v from tests.fx where k = 'p3'));
-select sabotage_draft.submit_pick(
-  (select v from tests.fx where k = 'm'), c.player_id, c.season
-) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p3'), 'QB') c;
-
-select tests.act_as_admin();
-select ok(
-  (select pick_deadline is null from public.sabotage_draft_matches
-    where match_id = (select v from tests.fx where k = 'm')),
-  'and closes the instant the last seat''s pick lands'
-);
-
--- Acting as p1 (who already picked): the deadline check runs before the
--- already-picked check, so this still proves the window itself is shut
--- rather than merely re-proving already_picked.
+-- p1 already went this round; the turn has moved on and does not come back.
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select throws_ok(
   format($$ select sabotage_draft.submit_pick(%L, 'whoever', 2020::smallint) $$,
     (select v from tests.fx where k = 'm')),
-  'P0001', 'pick_window_closed',
-  'a pick after the window has closed is refused'
+  'P0001', 'not_your_turn',
+  'a seat that already went this round cannot pick again out of turn'
+);
+
+-- Close p2's turn on the clock and let p3 take theirs — the last seat in
+-- this three-player match.
+select tests.act_as_admin();
+update public.sabotage_draft_matches set turn_deadline = now() - interval '1 second'
+ where match_id = (select v from tests.fx where k = 'm');
+select ok(sabotage_draft_private.expire((select v from tests.fx where k = 'm')),
+  'p2''s turn closes on the clock');
+select is(
+  (select v::uuid from tests.fx where k = 'p3'),
+  tests.sd_active_user((select v from tests.fx where k = 'm')),
+  'and the last seat is now on the clock'
+);
+
+select tests.act_as((select v from tests.fx where k = 'p3'));
+select lives_ok(
+  format(
+    $$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
+         from tests.sd_pick_candidate(%L, 1::smallint, %L, 'QB') c $$,
+    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p3')
+  ),
+  'the last seat picks on their own turn'
+);
+
+-- Once the last seat's own turn closes, the round itself advances — back to
+-- seat 0 — rather than handing the turn to a seat that has none left to
+-- take this round.
+select tests.act_as_admin();
+update public.sabotage_draft_matches set turn_deadline = now() - interval '1 second'
+ where match_id = (select v from tests.fx where k = 'm');
+select ok(sabotage_draft_private.expire((select v from tests.fx where k = 'm')),
+  'the last seat''s turn closes too');
+select is(
+  (select current_round::int from public.sabotage_draft_matches
+    where match_id = (select v from tests.fx where k = 'm')),
+  2,
+  'and the round advances only once every seat has had its turn'
+);
+select ok(
+  (select turn_deadline > now() from public.sabotage_draft_matches
+    where match_id = (select v from tests.fx where k = 'm')),
+  'the new round opens its own shared clock'
+);
+select is(
+  (select v::uuid from tests.fx where k = 'p1'),
+  tests.sd_active_user((select v from tests.fx where k = 'm')),
+  'and turn order resets to seat 0'
 );
 
 -- ------------------------------------------------------------- the timeout --
 
--- A fresh match, this time letting the clock do the work for every seat.
+-- A fresh match, this time letting the clock do the work for every seat in
+-- turn — nobody picks, guesses, or passes, so each seat's turn resolves by
+-- timeout alone, one shared-clock expiry per seat.
 select tests.act_as_admin();
 insert into tests.fx (k, v) values ('m2', tests.deal_sabotage_draft(3, 0.55));
 update public.matches set status = 'playing', started_at = now()
  where id = (select v from tests.fx where k = 'm2');
 
 select tests.sd_expire((select v from tests.fx where k = 'm2'));
+select tests.sd_expire((select v from tests.fx where k = 'm2'));
+select tests.sd_expire((select v from tests.fx where k = 'm2'));
 
 select is(
   (select count(*)::int from public.sabotage_draft_picks
     where match_id = (select v from tests.fx where k = 'm2') and round_number = 1),
   3,
-  'every seat gets a substituted pick once the deadline passes with nothing submitted'
+  'every seat gets a substituted pick once its own deadline passes with nothing submitted'
 );
 
 select ok(
@@ -237,10 +312,11 @@ select ok(
   'and every one of them is recorded as timed out rather than chosen'
 );
 
-select ok(
-  (select pick_deadline is null from public.sabotage_draft_matches
+select is(
+  (select current_round::int from public.sabotage_draft_matches
     where match_id = (select v from tests.fx where k = 'm2')),
-  'the window closes once the timeout has filled every seat'
+  2,
+  'once every seat has timed out its turn, the round advances on its own'
 );
 
 -- Not the best available player: the design doc is explicit that this must
@@ -293,15 +369,12 @@ update public.matches set status = 'playing', started_at = now()
  where id = (select v from tests.fx where k = 'm3');
 
 select ok(
-  (select pick_deadline > now() from public.sabotage_draft_matches
+  (select turn_deadline > now() from public.sabotage_draft_matches
     where match_id = (select v from tests.fx where k = 'm3')),
-  'a dealt match opens with a live pick deadline in the future'
+  'a dealt match opens with a live shared clock in the future'
 );
 
-select tests.act_as((
-  select user_id from public.sabotage_draft_players
-   where match_id = (select v from tests.fx where k = 'm3') order by seat limit 1
-));
+select tests.act_as((select tests.sd_active_user((select v from tests.fx where k = 'm3'))));
 select lives_ok(
   format($$ select sabotage_draft.tick(%L) $$, (select v from tests.fx where k = 'm3')),
   'any participant can tick the clock'

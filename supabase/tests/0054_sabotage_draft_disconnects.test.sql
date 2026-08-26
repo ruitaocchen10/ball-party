@@ -1,6 +1,18 @@
 -- Disconnects add presence state, not a second set of game resolutions.
+--
+-- Since 0063 merged the pick and guess windows into one shared clock, the
+-- three disconnect cases the design doc names map onto it like this:
+--   - mid-pick timeout: the active seat is absent and never picks -- the
+--     ordinary random-respin substitution fires when the shared clock runs
+--     out, same as it always has.
+--   - already picked, then disconnects: the pick is locked in server-side
+--     before the absence happens, so a guess against it -- while the turn
+--     is still open -- resolves exactly as if the drafter were present.
+--   - mid-turn, no guess or pass submitted: this was already a legal
+--     default for a present player, so an absent one just defaults to it
+--     too, and the shared clock is what eventually settles the turn anyway.
 begin;
-select plan(14);
+select plan(20);
 
 \ir support/harness.psql
 
@@ -25,14 +37,14 @@ select is(
   'absence is one flag on the existing seated-player state'
 );
 
-select tests.act_as((select v from tests.fx where k = 'p1'));
+select tests.act_as((select v from tests.fx where k = 'p0'));
 select lives_ok(
   format($$ select sabotage_draft.mark_absent(%L) $$, (select v from tests.fx where k = 'm')),
   'a player can mark only their own live seat absent'
 );
 select tests.act_as_admin();
 select ok((select absent from public.sabotage_draft_players
-  where match_id = (select v from tests.fx where k = 'm') and user_id = (select v::uuid from tests.fx where k = 'p1')),
+  where match_id = (select v from tests.fx where k = 'm') and user_id = (select v::uuid from tests.fx where k = 'p0')),
   'the disconnected seat is visibly latched absent'
 );
 select is((select count(*)::int from public.sabotage_draft_players
@@ -40,64 +52,106 @@ select is((select count(*)::int from public.sabotage_draft_players
   3, 'absence does not remove the seat or its eventual roster from the match'
 );
 
--- The absent player makes no pick.  Expiry uses 0052's ordinary random draw,
--- then 0053's normal transition opens the guess window.
+-- ------------------------------------------------------ mid-pick timeout --
+
+-- p0 sits at seat 0 and is on the clock from the deal, so their disconnect
+-- lands on their own turn. Nobody else has anything pending to resolve, so
+-- the shared clock running out both substitutes p0's pick and immediately
+-- hands the turn on to p1.
+select is(
+  (select v::uuid from tests.fx where k = 'p0'),
+  tests.sd_active_user((select v from tests.fx where k = 'm')),
+  'the absent player happens to be on the clock already'
+);
 select tests.sd_expire((select v from tests.fx where k = 'm'));
 select ok((select by_timeout from public.sabotage_draft_picks
   where match_id = (select v from tests.fx where k = 'm') and round_number = 1
-    and user_id = (select v::uuid from tests.fx where k = 'p1')),
+    and user_id = (select v::uuid from tests.fx where k = 'p0')),
   'an absent player follows the existing random-respin timeout path'
 );
-select ok((select guess_deadline > now() from public.sabotage_draft_matches
-  where match_id = (select v from tests.fx where k = 'm')),
-  'the timeout enters the ordinary shared guess window'
-);
-
--- p2 guesses p1's already-locked timeout pick.  The target's absence is not
--- consulted by submit_guess, so this resolves exactly like any other target.
--- Make the test card deterministic after proving the timeout path above; the
--- card is private to p1, so p2 must not read it back to construct the guess.
-select tests.act_as_admin();
-update public.sabotage_draft_picks p
-   set player_id = c.player_id, season = c.season
-  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c
- where p.match_id = (select v from tests.fx where k = 'm') and p.round_number = 1
-   and p.user_id = (select v::uuid from tests.fx where k = 'p1');
-select tests.act_as((select v from tests.fx where k = 'p2'));
 select is(
-  (select g.result::text
-     from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c
-     cross join lateral sabotage_draft.submit_guess(
-       (select v from tests.fx where k = 'm'),
-       (select v::uuid from tests.fx where k = 'p1'), c.player_id
-     ) g
-  ),
-  'respun',
-  'a guess against an absent player''s locked pick resolves normally'
+  (select v::uuid from tests.fx where k = 'p1'),
+  tests.sd_active_user((select v from tests.fx where k = 'm')),
+  'and the turn moves straight on -- nothing was pending to resolve against p0''s card'
 );
 
--- p1 spends no guess: no record is required, and expiry advances normally.
+-- ------------------------------------------------ already picked, then gone --
+
+-- p1 picks for real, then disconnects. The pick is already locked in
+-- server-side, so a guess against it -- made while the turn is still
+-- open -- resolves exactly as if p1 were still present.
+select tests.act_as((select v from tests.fx where k = 'p1'));
+select sabotage_draft.submit_pick(
+  (select v from tests.fx where k = 'm'), c.player_id, c.season
+) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c;
+
+select tests.act_as((select v from tests.fx where k = 'p1'));
+select lives_ok(
+  format($$ select sabotage_draft.mark_absent(%L) $$, (select v from tests.fx where k = 'm')),
+  'the active drafter can go absent right after locking in their own pick'
+);
+
+select tests.act_as((select v from tests.fx where k = 'p2'));
+select sabotage_draft.submit_guess(
+  (select v from tests.fx where k = 'm'), c.player_id
+) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c;
+
+-- p0 never acts against p1's turn -- the third disconnect case, "no guess
+-- submitted" is already a legal default, so an absent seat just defaults to
+-- it. The turn is still short one action (p0's), so it stays open on its
+-- own -- p2's guess alone did not complete it.
 select tests.act_as_admin();
-update public.sabotage_draft_matches set guess_deadline = now() - interval '1 second'
+select is(
+  (select v::uuid from tests.fx where k = 'p1'),
+  tests.sd_active_user((select v from tests.fx where k = 'm')),
+  'p1''s turn has not advanced yet -- p0''s absence leaves one action unaccounted for'
+);
+select ok(
+  (select turn_deadline > now() from public.sabotage_draft_matches
+    where match_id = (select v from tests.fx where k = 'm')),
+  'so the shared clock, not early completion, is what will eventually settle it'
+);
+
+-- The shared clock is the backstop: it settles the turn regardless of p0's
+-- silence, resolving p2's pending guess against p1's absent-but-locked card.
+update public.sabotage_draft_matches set turn_deadline = now() - interval '1 second'
  where match_id = (select v from tests.fx where k = 'm');
 select ok(sabotage_draft_private.expire((select v from tests.fx where k = 'm')),
-  'an expired guess window resolves without an absent player guessing');
+  'an expired turn resolves without the absent seat ever acting');
+select is(
+  (select result::text from public.sabotage_draft_guesses
+    where match_id = (select v from tests.fx where k = 'm') and round_number = 1
+      and target_user_id = (select v::uuid from tests.fx where k = 'p1')),
+  'respun',
+  'a guess against an absent drafter''s already-locked pick resolves normally'
+);
 select is((select count(*)::int from public.sabotage_draft_guesses
-  where match_id = (select v from tests.fx where k = 'm') and user_id = (select v::uuid from tests.fx where k = 'p1')),
+  where match_id = (select v from tests.fx where k = 'm') and user_id = (select v::uuid from tests.fx where k = 'p0')),
   0, 'no guess row is the same pass an absent player defaults to');
 select is((select current_round::int from public.sabotage_draft_matches
   where match_id = (select v from tests.fx where k = 'm')),
-  2, 'the ordinary guess expiry advances the match');
+  1, 'the shared clock advances the turn, not necessarily the round');
+select is(
+  (select v::uuid from tests.fx where k = 'p2'),
+  tests.sd_active_user((select v from tests.fx where k = 'm')),
+  'and the turn has moved on from the absent-but-already-resolved drafter'
+);
 
-select tests.act_as((select v from tests.fx where k = 'p1'));
+-- ------------------------------------------------------------- reconnect --
+
+select tests.act_as((select v from tests.fx where k = 'p0'));
 select lives_ok(
   format($$ select sabotage_draft.tick(%L) $$, (select v from tests.fx where k = 'm')),
   'the ordinary clock ping works after reconnecting'
 );
 select tests.act_as_admin();
 select ok((select not absent from public.sabotage_draft_players
-  where match_id = (select v from tests.fx where k = 'm') and user_id = (select v::uuid from tests.fx where k = 'p1')),
+  where match_id = (select v from tests.fx where k = 'm') and user_id = (select v::uuid from tests.fx where k = 'p0')),
   'the first ordinary ping clears absence with no rehydration RPC'
+);
+select ok((select absent from public.sabotage_draft_players
+  where match_id = (select v from tests.fx where k = 'm') and user_id = (select v::uuid from tests.fx where k = 'p1')),
+  'a different seat''s absence is unaffected by p0''s reconnect'
 );
 select ok(has_function_privilege('authenticated', 'sabotage_draft.mark_absent(uuid)', 'EXECUTE'),
   'participants can report their own disconnect through the public API');

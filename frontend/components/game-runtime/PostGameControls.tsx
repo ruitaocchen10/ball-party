@@ -1,9 +1,12 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 
+import { AnimatedMessage } from "@/components/motion/AnimatedMessage";
 import { Button } from "@/components/ui/Button";
 import type { AuctionFormat } from "@/lib/auction/board";
+import { expandCollapse } from "@/lib/motion";
 import { postGameChoice } from "@/lib/lobbies/actions";
 
 type Era = { seasonMin: number; seasonMax: number; minSpan: number };
@@ -41,8 +44,17 @@ export function PostGameControls({
 
   return (
     <div className="mt-2 flex flex-col gap-2">
+      <AnimatePresence mode="wait" initial={false}>
       {configuringReplay ? (
-        <form action={postGameChoice} className="flex flex-col gap-2 rounded border border-line bg-surface-raised p-3">
+        <motion.form
+          key="form"
+          action={postGameChoice}
+          variants={expandCollapse}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="flex flex-col gap-2 overflow-hidden rounded bg-surface-raised p-3 shadow-well"
+        >
           <p className="font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">Next auction settings</p>
           {format ? (
             <>
@@ -73,11 +85,16 @@ export function PostGameControls({
           <input type="hidden" name="room_code" value={roomCode} />
           <input type="hidden" name="choice" value="replay" />
           <Button type="submit" disabled={replayDisabled} fullWidth>Start replay</Button>
-          {reason ? <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{reason}</p> : null}
-        </form>
+          <AnimatedMessage className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
+            {reason}
+          </AnimatedMessage>
+        </motion.form>
       ) : (
-        <Button type="button" onClick={() => setConfiguringReplay(true)} fullWidth>Replay</Button>
+        <motion.div key="trigger" variants={expandCollapse} initial="initial" animate="animate" exit="exit">
+          <Button type="button" onClick={() => setConfiguringReplay(true)} fullWidth>Replay</Button>
+        </motion.div>
       )}
+      </AnimatePresence>
       <form action={postGameChoice}>
         <input type="hidden" name="match_id" value={matchId} />
         <input type="hidden" name="room_code" value={roomCode} />

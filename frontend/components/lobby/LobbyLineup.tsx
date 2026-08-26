@@ -1,8 +1,8 @@
+import { MemberRoster } from "@/components/lobby/MemberRoster";
 import { StartHigherOrLower } from "@/components/lobby/StartHigherOrLower";
 import { StartRun, type Era } from "@/components/lobby/StartRun";
 import { StartSabotageDraft } from "@/components/lobby/StartSabotageDraft";
 import { Card } from "@/components/ui/Card";
-import { Concealed } from "@/components/ui/Concealed";
 import { GAMES } from "@/lib/games/catalog";
 
 const CAPACITY = 4;
@@ -16,8 +16,7 @@ type Member = {
 /**
  * The room is a durable party table, rather than an antechamber for one game.
  * A catalogue card is therefore the contract a new game gets when it arrives:
- * what it is, how many people it needs, how long it lasts, and whether it can
- * be started today.
+ * what it is, how many people it needs, and whether it can be started today.
  */
 export function LobbyLineup({
   lobbyId,
@@ -45,8 +44,6 @@ export function LobbyLineup({
   era?: Era | null;
   higherOrLowerEra?: { seasonMin: number; seasonMax: number } | null;
 }) {
-  const emptySeats = Math.max(0, CAPACITY - members.length);
-
   return (
     <section aria-labelledby="lineup-heading" className="flex flex-col gap-5 lg:gap-6">
       <div>
@@ -55,7 +52,7 @@ export function LobbyLineup({
         </p>
         <h2
           id="lineup-heading"
-          className="mt-1 font-slab text-2xl leading-none -skew-x-7 uppercase sm:text-3xl"
+          className="mt-1 font-slab text-2xl leading-none uppercase sm:text-3xl"
         >
           Tonight&apos;s lineup
         </h2>
@@ -76,7 +73,6 @@ export function LobbyLineup({
           // opposite directions while a game is being built in slices — so the
           // kicker below says which of the two this card is.
           const launchable = game.match !== null;
-          const meta = [game.players, game.duration].join(" · ");
 
           return (
             <li key={game.slug} className="w-[15.5rem] shrink-0 snap-start md:w-auto">
@@ -86,7 +82,7 @@ export function LobbyLineup({
                     <p className="font-mono text-[10px] tracking-[0.13em] text-hidden-ink uppercase">
                       {game.status === "live" ? "Next up · live" : "Next up · in development"}
                     </p>
-                    <h3 className="mt-2 font-slab text-xl leading-[1.04] -skew-x-7 uppercase">
+                    <h3 className="mt-2 font-slab text-xl leading-[1.04] uppercase">
                       {game.name.map((line) => (
                         <span key={line} className="block">
                           {line}
@@ -95,7 +91,7 @@ export function LobbyLineup({
                     </h3>
                     <p className="mt-2 text-sm leading-5 text-[#4c4739]">{game.tagline}</p>
                     <p className="mt-auto border-t border-dashed border-[#c7bfac] pt-3 font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
-                      {meta}
+                      {game.players}
                     </p>
                   </div>
                   {isHost && !inFlight ? (
@@ -113,7 +109,7 @@ export function LobbyLineup({
               ) : (
                 <article className="flex h-full flex-col rounded-card border border-line bg-surface-raised p-3.5">
                   <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Coming soon</p>
-                  <h3 className="mt-2 font-slab text-xl leading-[1.04] -skew-x-7 text-fg uppercase">
+                  <h3 className="mt-2 font-slab text-xl leading-[1.04] text-fg uppercase">
                     {game.name.map((line) => (
                       <span key={line} className="block">
                         {line}
@@ -122,7 +118,7 @@ export function LobbyLineup({
                   </h3>
                   <p className="mt-2 text-sm leading-5 text-fg-muted">{game.tagline}</p>
                   <p className="mt-auto border-t border-line pt-3 font-mono text-[10px] tracking-[0.11em] text-fg-muted uppercase">
-                    {meta}
+                    {game.players}
                   </p>
                 </article>
               )}
@@ -138,38 +134,13 @@ export function LobbyLineup({
         </p>
       </div>
 
-      <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4 lg:gap-4 xl:gap-5">
-        {members.map((member) => (
-          <li key={member.user_id}>
-            <Card edge={false} className="h-full border-t-[5px] border-hidden">
-              <div className="px-3 pt-2.5 pb-3">
-                <span className="block font-slab text-lg leading-none -skew-x-7 uppercase">
-                  {member.profiles?.display_name ?? "Unknown player"}
-                </span>
-                <span className="mt-2 block font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
-                  {[
-                    member.user_id === hostId ? "host" : null,
-                    member.user_id === hostId && !hostIsActive ? "away" : null,
-                    member.profiles?.is_guest ? "guest" : null,
-                    member.user_id === viewerId ? "you" : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "at the table"}
-                </span>
-              </div>
-            </Card>
-          </li>
-        ))}
-        {Array.from({ length: emptySeats }, (_, index) => (
-          <li key={`empty-${index}`}>
-            <Concealed label="Open spot, waiting for a player" className="flex h-full min-h-[73px] items-center">
-              <span className="relative w-full text-center font-mono text-[10px] tracking-[0.15em] text-panel uppercase">
-                Invite friend
-              </span>
-            </Concealed>
-          </li>
-        ))}
-      </ul>
+      <MemberRoster
+        members={members}
+        hostId={hostId}
+        viewerId={viewerId}
+        hostIsActive={hostIsActive}
+        capacity={CAPACITY}
+      />
     </section>
   );
 }

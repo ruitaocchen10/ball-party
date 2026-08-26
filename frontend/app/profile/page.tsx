@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ProfileEditor } from "@/components/profile/ProfileEditor";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { TopBar } from "@/components/layout/TopBar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { canViewProfile, isSignedInViewer } from "@/lib/auth/viewer";
 import { GuestUpgrade } from "@/components/auth/GuestUpgrade";
 import { matchGameName, type MatchGame } from "@/lib/games/catalog";
@@ -62,10 +62,11 @@ export default async function ProfilePage() {
   });
   const summary = summarizeProfile(matches);
   const displayName = profile?.display_name ?? (claims.email as string | undefined) ?? "Player";
+  const email = (claims.email as string | undefined) ?? null;
 
   return (
     <>
-      <TopBar displayName={displayName} />
+      <Sidebar displayName={displayName} email={email} />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-10 pb-16 sm:px-6 sm:pt-12 lg:px-8 lg:pt-14 lg:pb-20">
         <header className="flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:items-end">
           <ProfileAvatar name={displayName} avatarUrl={profile?.avatar_url ?? null} />
@@ -73,7 +74,7 @@ export default async function ProfilePage() {
             <p className="mb-2 font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">
               Player profile
             </p>
-            <h1 className="font-slab text-[36px] leading-[.94] -skew-x-7 uppercase sm:text-[46px]">
+            <h1 className="font-slab text-[36px] leading-[.94] uppercase sm:text-[46px]">
               {displayName}
             </h1>
             <p className="mt-2 text-sm text-fg-muted">
@@ -104,7 +105,7 @@ export default async function ProfilePage() {
 
           <aside className="self-start rounded-card bg-panel p-5 text-panel-fg shadow-card sm:p-6">
             <p className="font-mono text-[10px] tracking-[0.15em] text-panel-muted uppercase">Your next game</p>
-            <h2 className="mt-2 font-slab text-[25px] leading-[.98] -skew-x-7 uppercase">
+            <h2 className="mt-2 font-slab text-[25px] leading-[.98] uppercase">
               Make the record
             </h2>
             <p className="mt-3 max-w-[32ch] text-sm leading-6 text-panel-muted">
@@ -126,11 +127,11 @@ export default async function ProfilePage() {
 function GuestProfile() {
   return (
     <>
-      <TopBar />
+      <Sidebar />
       <main className="mx-auto flex w-full max-w-7xl flex-1 px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
         <section className="max-w-xl">
           <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Guest game</p>
-          <h1 className="mt-3 font-slab text-[36px] leading-[.96] -skew-x-7 uppercase sm:text-[46px]">Make your record yours</h1>
+          <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Make your record yours</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Guest names are just for the current game. Create an account to save a profile and keep your results.</p>
           <div className="mt-6"><GuestUpgrade /></div>
         </section>
@@ -142,11 +143,11 @@ function GuestProfile() {
 function SignedOutProfile() {
   return (
     <>
-      <TopBar />
+      <Sidebar />
       <main className="mx-auto flex w-full max-w-7xl flex-1 px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
         <section className="max-w-xl">
           <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Player profile</p>
-          <h1 className="mt-3 font-slab text-[36px] leading-[.96] -skew-x-7 uppercase sm:text-[46px]">Your record starts here</h1>
+          <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Your record starts here</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Sign in to keep a record of your games, wins, and streaks.</p>
           <Link href="/login?next=/profile" className="mt-6 inline-flex bg-panel px-4 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
         </section>
@@ -156,7 +157,7 @@ function SignedOutProfile() {
 }
 
 function Stat({ value, label }: { value: string | number; label: string }) {
-  return <div className="rounded-card bg-panel-shade px-4 py-4 text-panel-fg"><strong className="block font-slab text-[28px] leading-none -skew-x-7">{value}</strong><span className="mt-1.5 block font-mono text-[9px] tracking-[0.12em] text-panel-muted uppercase">{label}</span></div>;
+  return <div className="rounded-card bg-panel-shade px-4 py-4 text-panel-fg"><strong className="block font-slab text-[28px] leading-none">{value}</strong><span className="mt-1.5 block font-mono text-[9px] tracking-[0.12em] text-panel-muted uppercase">{label}</span></div>;
 }
 
 function SectionHeading({ id, children }: { id: string; children: React.ReactNode }) {
@@ -165,11 +166,11 @@ function SectionHeading({ id, children }: { id: string; children: React.ReactNod
 
 function RecentGame({ match }: { match: CompletedMatch }) {
   const score = match.rawScore === null ? null : Number.isInteger(match.rawScore) ? String(match.rawScore) : match.rawScore.toFixed(1);
-  return <li className="grid grid-cols-[5px_minmax(0,1fr)_auto] gap-x-4 bg-panel py-4 pr-4 text-panel-fg shadow-card"><span className="bg-hidden" /><div><h3 className="font-slab text-xl leading-none -skew-x-7 uppercase">{matchGameName(match.game)}</h3><p className="mt-1.5 text-sm text-panel-muted"><time dateTime={match.endedAt}>{shortDate(match.endedAt)}</time>{score === null ? "" : ` · Score ${score}`}</p></div><div className="self-center text-right"><strong className="block font-slab text-2xl leading-none -skew-x-7">{formatPlacement(match.placement)}</strong><span className="font-mono text-[9px] tracking-[0.1em] text-hidden-ink uppercase">{match.placement === 1 ? "Win" : "Finish"}</span></div></li>;
+  return <li className="grid grid-cols-[5px_minmax(0,1fr)_auto] gap-x-4 bg-panel py-4 pr-4 text-panel-fg shadow-card"><span className="bg-hidden" /><div><h3 className="font-slab text-xl leading-none uppercase">{matchGameName(match.game)}</h3><p className="mt-1.5 text-sm text-panel-muted"><time dateTime={match.endedAt}>{shortDate(match.endedAt)}</time>{score === null ? "" : ` · Score ${score}`}</p></div><div className="self-center text-right"><strong className="block font-slab text-2xl leading-none">{formatPlacement(match.placement)}</strong><span className="font-mono text-[9px] tracking-[0.1em] text-hidden-ink uppercase">{match.placement === 1 ? "Win" : "Finish"}</span></div></li>;
 }
 
 function EmptyRecord() {
-  return <div className="mt-3 rounded-card border border-line bg-surface-raised px-5 py-6 text-sm leading-6 text-fg-muted">No completed games yet. Your first result will show up here after the final score is in.</div>;
+  return <div className="mt-3 rounded-card bg-surface-raised px-5 py-6 text-sm leading-6 text-fg-muted shadow-well">No completed games yet. Your first result will show up here after the final score is in.</div>;
 }
 
 function joinedMonth(date?: string) { return date ? new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(new Date(date)) : "today"; }

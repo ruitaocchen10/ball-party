@@ -35,6 +35,22 @@
   --fg: #e8e3d6;
   --fg-muted: #8f8b7f;
   --line: rgb(232 227 214 / 0.13);
+
+  /* The sidebar's reserved width. Applied below as body's own padding rather
+     than as a per-page margin, so it can't fight each page's `mx-auto`
+     centering — the padding shifts body's whole content box, and every
+     page's existing `mx-auto max-w-*` still centers correctly inside it. */
+  --sidebar-w-expanded: 15rem;
+  --sidebar-w-collapsed: 4.5rem;
+  --sidebar-w: var(--sidebar-w-expanded);
+}
+
+/* The inline script in app/layout.tsx stamps this onto <html> from
+   localStorage before first paint, so a reload lands at the right width
+   instead of flashing expanded-then-collapsing. Sidebar's own toggle keeps
+   this attribute in sync with its React state after mount. */
+html[data-sidebar-collapsed] {
+  --sidebar-w: var(--sidebar-w-collapsed);
 }
 
 @theme inline {
@@ -51,15 +67,25 @@
   --color-fg-muted: var(--fg-muted);
   --color-line: var(--line);
 
-  --font-sans: var(--font-karla);
-  --font-slab: var(--font-alfa-slab);
-  --font-mono: var(--font-roboto-mono);
+  --font-sans: var(--font-barlow);
+  --font-slab: var(--font-bebas-neue);
+  --font-mono: var(--font-jetbrains-mono);
 
   /* Panels are lit objects: a drop shadow plus a 1px top highlight. The
      highlight is why they read as raised rather than as pale rectangles. */
   --shadow-card:
     0 10px 24px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.7);
   --shadow-concealed: 0 10px 24px rgb(0 0 0 / 0.5);
+
+  /* --surface-raised's own token comment calls it "inset wells" — this is
+     what actually makes one read as recessed rather than just a hard-edged
+     box. Inverse of --shadow-card: a shadow inset from the top instead of a
+     highlight, no outward drop shadow (a well doesn't sit on top of
+     anything). Reserved for passive, non-interactive surfaces — a notice, an
+     empty state, a static container; a control that changes its border on
+     hover or focus keeps that border, since the border there is carrying a
+     state, not just an edge. */
+  --shadow-well: inset 0 2px 6px rgb(0 0 0 / 0.4);
 
   /* A panel you can press. Same light, one step closer to it. */
   --shadow-card-hover:
@@ -91,7 +117,23 @@ body {
   );
   background-attachment: fixed;
   color: var(--fg);
-  font-family: var(--font-karla), system-ui, sans-serif;
+  font-family: var(--font-barlow), system-ui, sans-serif;
+}
+
+/* Reserves room for the fixed sidebar rail (see components/layout/Sidebar.tsx)
+   on every page at once, instead of a class repeated across each page's own
+   <main>. Scoped to body:has(aside[data-sidebar-rail]) rather than a bare
+   `body` rule so a page that mounts no Sidebar at all — AuctionMatch's
+   full-bleed workspace view — gets no dead gutter carved out of it. A
+   descendant selector, not a direct-child one, so it keeps working
+   regardless of how deep inside <body> a page happens to nest its
+   <Sidebar> — this rule only needs to know a rail exists somewhere in the
+   page, not exactly how deep. Below `md` the rail is a drawer, not fixed
+   chrome, so nothing here applies and mobile is unaffected either way. */
+@media (min-width: 48rem) {
+  body:has(aside[data-sidebar-rail]) {
+    padding-left: var(--sidebar-w);
+  }
 }
 
 @layer components {
@@ -116,6 +158,21 @@ body {
     .animate-sold-headline {
       animation: sold-headline 360ms ease-out both;
     }
+
+    /* Sabotage draft's spin reel (SabotageDraftMatch's TurnPanel): a fixed
+       list of names translating up to land on the last one. --reel-count is
+       set inline per render since the decoy list length can vary; the math
+       stays in the keyframe so the component never has to compute a pixel
+       offset itself. */
+    .animate-reel-spin {
+      animation: reel-spin 1.3s cubic-bezier(.16, .86, .23, 1) both;
+    }
+  }
+
+  @keyframes reel-spin {
+    0% { transform: translateY(0); }
+    70% { transform: translateY(calc(-100% * (var(--reel-count) - 1) / var(--reel-count) - 4%)); }
+    100% { transform: translateY(calc(-100% * (var(--reel-count) - 1) / var(--reel-count))); }
   }
 
   @keyframes player-to-roster {
@@ -127,6 +184,21 @@ body {
   @keyframes sold-headline {
     0% { opacity: 0; transform: translateY(0.5rem); }
     100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Sabotage draft's roster board (SabotageDraftMatch's RosterBoard): a
+     native <details> per player instead of useState, the same instinct as
+     the auction's own PlayerRail, just backed by the platform. Scoped under
+     .sabotage-roster-board so removing <summary>'s native disclosure
+     triangle never reaches any other <summary> in the app. */
+  .sabotage-roster-board summary {
+    list-style: none;
+  }
+  .sabotage-roster-board summary::-webkit-details-marker {
+    display: none;
+  }
+  .sabotage-roster-board details[open] > summary .roster-chev {
+    transform: rotate(90deg);
   }
 
   /* The diagonal weave that marks concealed information. Applied by

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { AnimatedMessage } from "@/components/motion/AnimatedMessage";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 import { DISPLAY_NAME_MAX, DISPLAY_NAME_MIN } from "@/lib/auth/types";
@@ -58,7 +59,9 @@ export function GuestJoin({ code }: { code: string }) {
           className="h-12 rounded border border-line bg-surface-raised px-3 text-sm text-fg outline-none placeholder:text-fg-muted focus:border-panel"
         />
       </label>
-      {error ? <p role="alert" className="text-sm text-hidden-text">{error}</p> : null}
+      <AnimatedMessage role="alert" className="text-sm text-hidden-text">
+        {error}
+      </AnimatedMessage>
       <Button type="submit" disabled={pending}>{pending ? "Joining…" : "Join as guest"}</Button>
       <p className="text-xs leading-5 text-fg-muted">You&apos;re playing without an account. Add one later to keep this record.</p>
     </form>

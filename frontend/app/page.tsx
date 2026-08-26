@@ -2,7 +2,7 @@ import { CurrentRoom, type RoomSummary } from "@/components/home/CurrentRoom";
 import { WayIn } from "@/components/home/WayIn";
 import { ButtonLink } from "@/components/ui/Button";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { TopBar } from "@/components/layout/TopBar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { isSignedInViewer } from "@/lib/auth/viewer";
 
@@ -13,7 +13,7 @@ type Client = Awaited<ReturnType<typeof createClient>>;
 /**
  * The slim landing page. Party, Solo and Social used to all live here as
  * sections of one long page; each is now its own route (see
- * components/layout/TopBar.tsx), so this keeps only what does not belong to
+ * components/layout/Sidebar.tsx), so this keeps only what does not belong to
  * any one of them — the room you are already in, if any, and a way into the
  * three — rather than duplicating their content.
  */
@@ -34,13 +34,14 @@ export default async function Home(props: PageProps<"/">) {
     : [{ data: null }, null];
 
   const displayName = profileResult.data?.display_name ?? (viewer ? (claims!.email as string) : null);
+  const email = viewer ? ((claims!.email as string | undefined) ?? null) : null;
 
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
 
   return (
     <>
-      <TopBar displayName={displayName} />
+      <Sidebar displayName={displayName} email={email} />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
@@ -94,7 +95,7 @@ function Overview({ hasRoom }: { hasRoom: boolean }) {
   return (
     <section className={hasRoom ? "pt-6" : "pt-10 lg:pt-14"}>
       <Heading
-        className={`font-slab leading-[1.02] -skew-x-7 uppercase ${
+        className={`font-slab leading-[1.02] uppercase ${
           hasRoom ? "text-2xl sm:text-3xl" : "text-[34px] sm:text-[43px]"
         }`}
       >

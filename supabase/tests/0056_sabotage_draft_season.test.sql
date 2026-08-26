@@ -15,28 +15,31 @@ update public.matches set status = 'playing', started_at = now()
 
 -- Timeout cards are legitimate finished rosters, including for an absent
 -- player.  This also exercises the shared ordinary resolution path all the
--- way through round fourteen.
+-- way through round fourteen — one turn (timed-out pick, unused guess
+-- window) per seat, thirteen rounds, then the same per-seat turn once more
+-- for round 14 before each seat's own X-Factor decision.
 update public.sabotage_draft_players set absent = true
  where match_id = (select v from tests.fx where k = 'm') and user_id = (select v from tests.fx where k = 'p2');
 do $$
-declare i int;
+declare i int; v_match uuid := (select v::uuid from tests.fx where k = 'm');
 begin
-  for i in 1 .. 14 loop
-    update public.sabotage_draft_matches set pick_deadline = now() - interval '1 second'
-     where match_id = (select v::uuid from tests.fx where k = 'm');
-    perform sabotage_draft_private.expire((select v::uuid from tests.fx where k = 'm'));
-    update public.sabotage_draft_matches set guess_deadline = now() - interval '1 second'
-     where match_id = (select v::uuid from tests.fx where k = 'm');
-    perform sabotage_draft_private.expire((select v::uuid from tests.fx where k = 'm'));
+  for i in 1 .. 39 loop
+    perform tests.sd_expire_turn(v_match);
   end loop;
 end $$;
 
+select tests.act_as_admin();
+select tests.sd_expire_turn((select v from tests.fx where k = 'm'));
 select tests.act_as((select v from tests.fx where k = 'p0'));
 select lives_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, 'QB') $$,
   (select v from tests.fx where k = 'm')), 'an X-Factor replacement remains a valid final roster');
+select tests.act_as_admin();
+select tests.sd_expire_turn((select v from tests.fx where k = 'm'));
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select lives_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, null) $$,
   (select v from tests.fx where k = 'm')), 'an X-Factor discard remains a valid final roster');
+select tests.act_as_admin();
+select tests.sd_expire_turn((select v from tests.fx where k = 'm'));
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select lives_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, 'WR1') $$,
   (select v from tests.fx where k = 'm')), 'the last decision triggers the season simulation');

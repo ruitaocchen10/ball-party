@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
 import { startRun } from "@/lib/lobbies/actions";
 
 /**
@@ -43,10 +44,15 @@ export function StartHigherOrLower({
       <input type="hidden" name="game" value="higher_or_lower" />
       <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
         Scoring
-        <select aria-label="Scoring" name="scoring_mode" defaultValue="season_total" className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case">
-          <option value="season_total">Season total</option>
-          <option value="weekly">Weekly PPR</option>
-        </select>
+        <Select
+          ariaLabel="Scoring"
+          name="scoring_mode"
+          defaultValue="season_total"
+          options={[
+            { value: "season_total", label: "Season total" },
+            { value: "weekly", label: "Weekly PPR" },
+          ]}
+        />
       </label>
       {era ? <div className="flex gap-2">
         <Season label="First season" name="season_from" value={from} era={era} onChange={setFrom} />
@@ -70,9 +76,14 @@ export function StartHigherOrLower({
 }
 
 function Season({ label, name, value, era, onChange }: { label: string; name: string; value: number; era: { seasonMin: number; seasonMax: number }; onChange: (value: number) => void }) {
+  const seasons = Array.from({ length: era.seasonMax - era.seasonMin + 1 }, (_, index) => era.seasonMin + index);
   return <label className="flex flex-1 flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">{label}
-    <select aria-label={label} name={name} value={value} onChange={(event) => onChange(Number(event.target.value))} className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case">
-      {Array.from({ length: era.seasonMax - era.seasonMin + 1 }, (_, index) => era.seasonMin + index).map((season) => <option key={season} value={season}>{season}</option>)}
-    </select>
+    <Select
+      ariaLabel={label}
+      name={name}
+      value={String(value)}
+      onValueChange={(next) => onChange(Number(next))}
+      options={seasons.map((season) => ({ value: String(season), label: season }))}
+    />
   </label>;
 }

@@ -104,31 +104,6 @@ export type Database = {
       }
     }
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   higher_or_lower: {
     Tables: {
       [_ in never]: never
@@ -853,6 +828,7 @@ export type Database = {
           ended_at: string | null
           game: string
           id: string
+          paused_at: string | null
           run_id: string
           seq: number
           started_at: string | null
@@ -862,6 +838,7 @@ export type Database = {
           ended_at?: string | null
           game: string
           id?: string
+          paused_at?: string | null
           run_id: string
           seq: number
           started_at?: string | null
@@ -871,6 +848,7 @@ export type Database = {
           ended_at?: string | null
           game?: string
           id?: string
+          paused_at?: string | null
           run_id?: string
           seq?: number
           started_at?: string | null
@@ -1023,6 +1001,533 @@ export type Database = {
           },
         ]
       }
+      sabotage_draft_guesses: {
+        Row: {
+          created_at: string
+          id: number
+          match_id: string
+          player_id: string
+          replacement_player_id: string | null
+          replacement_season: number | null
+          result: Database["sabotage_draft"]["Enums"]["guess_result"] | null
+          round_number: number
+          season: number | null
+          target_user_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          match_id: string
+          player_id: string
+          replacement_player_id?: string | null
+          replacement_season?: number | null
+          result?: Database["sabotage_draft"]["Enums"]["guess_result"] | null
+          round_number: number
+          season?: number | null
+          target_user_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          match_id?: string
+          player_id?: string
+          replacement_player_id?: string | null
+          replacement_season?: number | null
+          result?: Database["sabotage_draft"]["Enums"]["guess_result"] | null
+          round_number?: number
+          season?: number | null
+          target_user_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_guesses_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_guesses_match_id_target_user_id_fkey"
+            columns: ["match_id", "target_user_id"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_guesses_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
+      sabotage_draft_matches: {
+        Row: {
+          active_seat: number
+          current_round: number
+          match_id: string
+          round_count: number
+          turn_deadline: string | null
+          x_factor_open: boolean
+        }
+        Insert: {
+          active_seat?: number
+          current_round?: number
+          match_id: string
+          round_count?: number
+          turn_deadline?: string | null
+          x_factor_open?: boolean
+        }
+        Update: {
+          active_seat?: number
+          current_round?: number
+          match_id?: string
+          round_count?: number
+          turn_deadline?: string | null
+          x_factor_open?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_matches_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sabotage_draft_passes: {
+        Row: {
+          created_at: string
+          match_id: string
+          round_number: number
+          target_user_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          match_id: string
+          round_number: number
+          target_user_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          match_id?: string
+          round_number?: number
+          target_user_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_passes_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_passes_match_id_target_user_id_fkey"
+            columns: ["match_id", "target_user_id"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_passes_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
+      sabotage_draft_pick_hits: {
+        Row: {
+          created_at: string
+          guesser_user_id: string
+          kind: string
+          match_id: string
+          round_number: number
+          target_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          guesser_user_id: string
+          kind: string
+          match_id: string
+          round_number: number
+          target_user_id: string
+        }
+        Update: {
+          created_at?: string
+          guesser_user_id?: string
+          kind?: string
+          match_id?: string
+          round_number?: number
+          target_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_pick_hits_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_pick_hits_match_id_guesser_user_id_fkey"
+            columns: ["match_id", "guesser_user_id"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_pick_hits_match_id_target_user_id_fkey"
+            columns: ["match_id", "target_user_id"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
+      sabotage_draft_pick_statuses: {
+        Row: {
+          created_at: string
+          match_id: string
+          round_number: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          match_id: string
+          round_number: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          match_id?: string
+          round_number?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_pick_statuses_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_pick_statuses_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
+      sabotage_draft_picks: {
+        Row: {
+          by_timeout: boolean
+          created_at: string
+          display_name: string
+          match_id: string
+          player_id: string
+          round_number: number
+          season: number
+          user_id: string
+        }
+        Insert: {
+          by_timeout?: boolean
+          created_at?: string
+          display_name: string
+          match_id: string
+          player_id: string
+          round_number: number
+          season: number
+          user_id: string
+        }
+        Update: {
+          by_timeout?: boolean
+          created_at?: string
+          display_name?: string
+          match_id?: string
+          player_id?: string
+          round_number?: number
+          season?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_picks_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_picks_match_id_round_number_fkey"
+            columns: ["match_id", "round_number"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_rounds"
+            referencedColumns: ["match_id", "round_number"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_picks_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
+      sabotage_draft_players: {
+        Row: {
+          absent: boolean
+          match_id: string
+          seat: number
+          user_id: string
+        }
+        Insert: {
+          absent?: boolean
+          match_id: string
+          seat: number
+          user_id: string
+        }
+        Update: {
+          absent?: boolean
+          match_id?: string
+          seat?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_players_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sabotage_draft_round_spins: {
+        Row: {
+          franchise_code: string
+          match_id: string
+          round_number: number
+          user_id: string
+        }
+        Insert: {
+          franchise_code: string
+          match_id: string
+          round_number: number
+          user_id: string
+        }
+        Update: {
+          franchise_code?: string
+          match_id?: string
+          round_number?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_round_spins_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_round_spins_match_id_round_number_fkey"
+            columns: ["match_id", "round_number"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_rounds"
+            referencedColumns: ["match_id", "round_number"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_round_spins_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
+      sabotage_draft_rounds: {
+        Row: {
+          match_id: string
+          round_number: number
+          slot: string
+        }
+        Insert: {
+          match_id: string
+          round_number: number
+          slot: string
+        }
+        Update: {
+          match_id?: string
+          round_number?: number
+          slot?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_rounds_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sabotage_draft_standings: {
+        Row: {
+          losses: number
+          match_id: string
+          roster_strength: number
+          tiebreak_rank: number
+          user_id: string
+          wins: number
+        }
+        Insert: {
+          losses: number
+          match_id: string
+          roster_strength: number
+          tiebreak_rank: number
+          user_id: string
+          wins: number
+        }
+        Update: {
+          losses?: number
+          match_id?: string
+          roster_strength?: number
+          tiebreak_rank?: number
+          user_id?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_standings_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_standings_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: true
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
+      sabotage_draft_tiebreak_games: {
+        Row: {
+          bracket_round: number
+          game_number: number
+          match_id: string
+          player_a: string
+          player_b: string | null
+          record_wins: number
+          winner_user_id: string
+        }
+        Insert: {
+          bracket_round: number
+          game_number: number
+          match_id: string
+          player_a: string
+          player_b?: string | null
+          record_wins: number
+          winner_user_id: string
+        }
+        Update: {
+          bracket_round?: number
+          game_number?: number
+          match_id?: string
+          player_a?: string
+          player_b?: string | null
+          record_wins?: number
+          winner_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_tiebreak_games_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_tiebreak_games_match_id_player_a_fkey"
+            columns: ["match_id", "player_a"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_tiebreak_games_match_id_player_b_fkey"
+            columns: ["match_id", "player_b"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_tiebreak_games_match_id_winner_user_id_fkey"
+            columns: ["match_id", "winner_user_id"]
+            isOneToOne: false
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
+      sabotage_draft_x_factor_decisions: {
+        Row: {
+          created_at: string
+          match_id: string
+          replace_slot: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          match_id: string
+          replace_slot?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          match_id?: string
+          replace_slot?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sabotage_draft_x_factor_decisions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sabotage_draft_x_factor_decisions_match_id_user_id_fkey"
+            columns: ["match_id", "user_id"]
+            isOneToOne: true
+            referencedRelation: "sabotage_draft_players"
+            referencedColumns: ["match_id", "user_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1088,9 +1593,47 @@ export type Database = {
       }
       leave_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       lobby_host_is_active: { Args: { p_lobby_id: string }; Returns: boolean }
+      pause_match: {
+        Args: { p_match_id: string }
+        Returns: {
+          ended_at: string | null
+          game: string
+          id: string
+          paused_at: string | null
+          run_id: string
+          seq: number
+          started_at: string | null
+          status: Database["public"]["Enums"]["match_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_guest_account_collision: {
         Args: { p_nonce: string }
         Returns: undefined
+      }
+      resume_match: {
+        Args: { p_match_id: string }
+        Returns: {
+          ended_at: string | null
+          game: string
+          id: string
+          paused_at: string | null
+          run_id: string
+          seq: number
+          started_at: string | null
+          status: Database["public"]["Enums"]["match_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       start_run: {
         Args: {
@@ -1102,6 +1645,7 @@ export type Database = {
           ended_at: string | null
           game: string
           id: string
+          paused_at: string | null
           run_id: string
           seq: number
           started_at: string | null
@@ -1120,6 +1664,7 @@ export type Database = {
           ended_at: string | null
           game: string
           id: string
+          paused_at: string | null
           run_id: string
           seq: number
           started_at: string | null
@@ -1134,13 +1679,124 @@ export type Database = {
       }
     }
     Enums: {
-      match_status: "setup" | "playing" | "complete" | "abandoned"
+      match_status: "setup" | "playing" | "complete" | "abandoned" | "paused"
       post_game_choice: "replay" | "lobby"
       run_mode: "arcade" | "party" | "solo"
       run_status: "active" | "finished" | "abandoned"
     }
     CompositeTypes: {
       [_ in never]: never
+    }
+  }
+  sabotage_draft: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      mark_absent: { Args: { p_match_id: string }; Returns: undefined }
+      options: {
+        Args: { p_match_id: string; p_target_user_id?: string }
+        Returns: {
+          display_name: string
+          player_id: string
+          season: number
+          slot_category: string
+        }[]
+      }
+      start: {
+        Args: { p_match_id: string }
+        Returns: Database["sabotage_draft"]["CompositeTypes"]["round"]
+        SetofOptions: {
+          from: "*"
+          to: "round"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      state: {
+        Args: { p_match_id: string }
+        Returns: Database["sabotage_draft"]["CompositeTypes"]["round"]
+        SetofOptions: {
+          from: "*"
+          to: "round"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_guess: {
+        Args: {
+          p_match_id: string
+          p_player_id: string
+          p_replacement_player_id?: string
+          p_replacement_season?: number
+          p_season?: number
+        }
+        Returns: Database["public"]["Tables"]["sabotage_draft_guesses"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "sabotage_draft_guesses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_pass: {
+        Args: { p_match_id: string }
+        Returns: Database["public"]["Tables"]["sabotage_draft_passes"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "sabotage_draft_passes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_pick: {
+        Args: { p_match_id: string; p_player_id: string; p_season: number }
+        Returns: Database["public"]["Tables"]["sabotage_draft_picks"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "sabotage_draft_picks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_x_factor_decision: {
+        Args: { p_match_id: string; p_replace_slot?: string }
+        Returns: Database["public"]["Tables"]["sabotage_draft_x_factor_decisions"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "sabotage_draft_x_factor_decisions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tick: {
+        Args: { p_match_id: string }
+        Returns: Database["sabotage_draft"]["CompositeTypes"]["round"]
+        SetofOptions: {
+          from: "*"
+          to: "round"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+    }
+    Enums: {
+      guess_result: "miss" | "respun" | "sabotaged"
+    }
+    CompositeTypes: {
+      round: {
+        match_id: string | null
+        round_count: number | null
+        current_round: number | null
+        slot: string | null
+        server_now: string | null
+        x_factor_open: boolean | null
+        active_user_id: string | null
+        turn_deadline: string | null
+      }
     }
   }
 }
@@ -1266,18 +1922,20 @@ export const Constants = {
   auction: {
     Enums: {},
   },
-  graphql_public: {
-    Enums: {},
-  },
   higher_or_lower: {
     Enums: {},
   },
   public: {
     Enums: {
-      match_status: ["setup", "playing", "complete", "abandoned"],
+      match_status: ["setup", "playing", "complete", "abandoned", "paused"],
       post_game_choice: ["replay", "lobby"],
       run_mode: ["arcade", "party", "solo"],
       run_status: ["active", "finished", "abandoned"],
+    },
+  },
+  sabotage_draft: {
+    Enums: {
+      guess_result: ["miss", "respun", "sabotaged"],
     },
   },
 } as const

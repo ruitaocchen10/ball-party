@@ -242,11 +242,15 @@ select is(
   'a participant can read the whole round board'
 );
 
+-- Round 1's spin only -- every seated player's, not just their own, but
+-- nothing past the round the table is actually on. 0064 narrows this from
+-- the whole board being readable at once; see that migration's header for
+-- why.
 select is(
   (select count(*)::int from public.sabotage_draft_round_spins
     where match_id = (select v from tests.fx where k = 'm4')),
-  14 * 4,
-  'and every player''s spin for every round, not just their own'
+  4,
+  'and every player''s spin for the current round, not just their own -- but nothing further ahead'
 );
 
 select throws_ok(

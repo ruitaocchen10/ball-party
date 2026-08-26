@@ -37,7 +37,6 @@ export type Game = {
   kind: string;
   tagline: string;
   players: string;
-  duration: string;
   status: GameStatus;
   /** Whether one person alone gets anything out of it. */
   solo: boolean;
@@ -86,7 +85,6 @@ export const GAMES: readonly Game[] = [
     kind: "Group · hidden picks",
     tagline: "Spin your own team history, then try to wreck everyone else’s pick.",
     players: "2–4 players",
-    duration: "15–20 min",
     status: "live",
     solo: false,
     featured: false,
@@ -99,7 +97,6 @@ export const GAMES: readonly Game[] = [
     kind: "Group · simultaneous",
     tagline: "Everyone calls higher or lower at once. Longest streak wins.",
     players: "2–4 players",
-    duration: "3–5 min",
     status: "live",
     solo: true,
     featured: false,
@@ -112,7 +109,6 @@ export const GAMES: readonly Game[] = [
     kind: "Group · hidden points",
     tagline: "Bid on mystery player-weeks. Fantasy points stay hidden until the bidding closes.",
     players: "2–4 players",
-    duration: "10–28 min",
     status: "live",
     solo: false,
     featured: true,
@@ -125,7 +121,6 @@ export const GAMES: readonly Game[] = [
     kind: "2v2 · hidden target",
     tagline: "One clue, one dial, one partner who carves up a fuzzy scale differently than you do.",
     players: "4 players",
-    duration: "8–12 min",
     status: "development",
     solo: false,
     featured: false,

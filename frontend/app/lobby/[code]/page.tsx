@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { TopBar } from "@/components/layout/TopBar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { LobbyRealtime } from "@/components/lobby/LobbyRealtime";
 import { LobbyLineup } from "@/components/lobby/LobbyLineup";
@@ -34,7 +34,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     );
   }
 
-  // The top bar shows who you are on every screen, so the viewer's own name is
+  // The sidebar shows who you are on every screen, so the viewer's own name is
   // needed here whether or not they turn out to be in this room.
   const { data: viewer } = await supabase
     .from("profiles")
@@ -42,6 +42,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     .eq("id", claims.sub)
     .single();
   const displayName = viewer?.display_name ?? (claims.email as string | undefined) ?? null;
+  const email = (claims.email as string | undefined) ?? null;
 
   // RLS returns nothing for a room you are not a member of, so maybeSingle()
   // rather than single() — "no row" is a normal state here, not a failure. It
@@ -57,7 +58,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
 
   if (!lobby) {
     return (
-      <Shell code={code} error={errorText} displayName={displayName}>
+      <Shell code={code} error={errorText} displayName={displayName} email={email}>
         <AutoJoinRoom code={code} />
       </Shell>
     );
@@ -66,7 +67,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   if (lobby.closed_at) {
     if (isGuestViewer(claims)) redirect(guestSessionFinishedHref("/"));
     return (
-      <Shell code={code} error={errorText} displayName={displayName}>
+      <Shell code={code} error={errorText} displayName={displayName} email={email}>
         <p className="text-sm leading-6 text-fg-muted">This room has closed.</p>
         <HomeLink />
       </Shell>
@@ -90,7 +91,9 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     .maybeSingle();
 
   const inFlight =
-    live?.matches.find((m) => m.status === "setup" || m.status === "playing") ?? null;
+    live?.matches.find(
+      (m) => m.status === "setup" || m.status === "playing" || m.status === "paused",
+    ) ?? null;
   const seated = live?.run_participants.some((p) => p.user_id === claims.sub) ?? false;
 
   if (inFlight && seated) redirect(`/match/${inFlight.id}`);
@@ -113,11 +116,11 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const hostIsActive = activeHost ?? true;
   const canTakeHostControls = !isHost && !hostIsActive && canCreateLobby(claims);
   return (
-    <Shell code={code} error={errorText} displayName={displayName}>
+    <Shell code={code} error={errorText} displayName={displayName} email={email}>
       <LobbyRealtime lobbyId={lobby.id} />
 
       {inFlight ? (
-        <p className="rounded border border-line bg-surface-raised px-3.5 py-2.5 text-sm text-fg-muted">
+        <p className="rounded bg-surface-raised px-3.5 py-2.5 text-sm text-fg-muted shadow-well">
           A game is in progress. You&apos;re in for the next one.
         </p>
       ) : null}
@@ -191,16 +194,18 @@ function Shell({
   code,
   error,
   displayName = null,
+  email = null,
   children,
 }: {
   code: string;
   error?: string;
   displayName?: string | null;
+  email?: string | null;
   children: React.ReactNode;
 }) {
   return (
     <>
-      <TopBar displayName={displayName} />
+      <Sidebar displayName={displayName} email={email} />
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-10 pb-16 sm:px-6 sm:py-12 lg:gap-8 lg:px-8 lg:py-14 lg:pb-20">
         <header className="flex flex-col gap-2">
           <Label>Join code</Label>

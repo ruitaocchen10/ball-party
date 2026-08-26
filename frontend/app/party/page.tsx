@@ -6,7 +6,7 @@ import { StartRoom } from "@/components/home/StartRoom";
 import { WayIn } from "@/components/home/WayIn";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { GAMES } from "@/lib/games/catalog";
-import { TopBar } from "@/components/layout/TopBar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { canCreateLobby, isSignedInViewer } from "@/lib/auth/viewer";
 
@@ -17,8 +17,8 @@ type Client = Awaited<ReturnType<typeof createClient>>;
 /**
  * The room flow, and the shop window it leads into: start or join a room,
  * then pick what to play once people are in it. Split out of the home page
- * once Party, Solo and Social each got their own route in the top bar (see
- * components/layout/TopBar.tsx) — this page is what "Party" points at.
+ * once Party, Solo and Social each got their own route in the sidebar (see
+ * components/layout/Sidebar.tsx) — this page is what "Party" points at.
  *
  * Play stayed with Party rather than moving to its own route: a game tile
  * here still just opens a room, so it is the same flow as the action strip
@@ -42,16 +42,16 @@ export default async function PartyPage(props: PageProps<"/party">) {
     : [{ data: null }, null];
 
   const displayName = profileResult.data?.display_name ?? (viewer ? (claims!.email as string) : null);
+  const email = viewer ? ((claims!.email as string | undefined) ?? null) : null;
 
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
 
   const live = GAMES.filter((game) => game.status === "live").length;
-  const upcoming = GAMES.length - live;
 
   return (
     <>
-      <TopBar displayName={displayName} />
+      <Sidebar displayName={displayName} email={email} />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
@@ -63,7 +63,7 @@ export default async function PartyPage(props: PageProps<"/party">) {
           <ColumnHead
             id="play-heading"
             title="Play"
-            meta={`${live} live · ${upcoming} in development`}
+            meta={`${live} live`}
           />
           <GameGrid canCreateLobby={canHost} />
         </section>
@@ -135,7 +135,7 @@ function ActionStrip({
   return (
     <section id="party-heading" className={hasRoom ? "pt-6" : "pt-10 lg:pt-14"}>
       <Heading
-        className={`font-slab leading-[1.02] -skew-x-7 uppercase ${
+        className={`font-slab leading-[1.02] uppercase ${
           hasRoom ? "text-2xl sm:text-3xl" : "text-[34px] sm:text-[43px]"
         }`}
       >

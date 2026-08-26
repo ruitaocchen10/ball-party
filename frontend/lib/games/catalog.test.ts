@@ -8,7 +8,6 @@ describe("home game catalog", () => {
       match: "higher_or_lower",
       tagline: "Everyone calls higher or lower at once. Longest streak wins.",
       players: "2–4 players",
-      duration: "3–5 min",
       status: "live",
       kind: "Group · simultaneous",
       solo: true,

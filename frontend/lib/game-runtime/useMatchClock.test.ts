@@ -318,6 +318,86 @@ describe("the heartbeat", () => {
   });
 });
 
+describe("pausing", () => {
+  it("freezes remainingMs instead of letting it keep counting down", async () => {
+    await withFakeTimers(async () => {
+      const { result } = renderHook(() =>
+        useMatchClock({
+          serverNow: iso(0),
+          deadline: iso(10_000),
+          paused: true,
+          expire: vi.fn(),
+          reconcile: vi.fn(),
+        }),
+      );
+      await advance(0);
+      const first = result.current.remainingMs;
+      await advance(4_000);
+      expect(result.current.remainingMs).toBe(first);
+    });
+  });
+
+  it("asks nothing while paused, even with a passed deadline", async () => {
+    await withFakeTimers(async () => {
+      const expire = vi.fn();
+      renderHook(() =>
+        useMatchClock({
+          serverNow: iso(0),
+          deadline: iso(-200),
+          paused: true,
+          expire,
+          reconcile: vi.fn(),
+        }),
+      );
+
+      await advance(4_000);
+      expect(expire).not.toHaveBeenCalled();
+    });
+  });
+
+  it("does not reconcile a stale deadline while paused", async () => {
+    await withFakeTimers(async () => {
+      const reconcile = vi.fn();
+      renderHook(() =>
+        useMatchClock({
+          serverNow: iso(0),
+          deadline: iso(-100),
+          paused: true,
+          expire: vi.fn(),
+          reconcile,
+        }),
+      );
+
+      await advance(5_000);
+      expect(reconcile).not.toHaveBeenCalled();
+    });
+  });
+
+  it("picks the countdown back up once unpaused", async () => {
+    await withFakeTimers(async () => {
+      const { result, rerender } = renderHook(
+        ({ paused }: { paused: boolean }) =>
+          useMatchClock({
+            serverNow: iso(0),
+            deadline: iso(10_000),
+            paused,
+            expire: vi.fn(),
+            reconcile: vi.fn(),
+          }),
+        { initialProps: { paused: true } },
+      );
+      await advance(0);
+      const frozen = result.current.remainingMs;
+      await advance(4_000);
+      expect(result.current.remainingMs).toBe(frozen);
+
+      rerender({ paused: false });
+      await advance(2_000);
+      expect(result.current.remainingMs).toBeLessThan(frozen!);
+    });
+  });
+});
+
 describe("reconciliation", () => {
   it("re-reads state once a deadline has stayed past long enough to distrust expiry", async () => {
     await withFakeTimers(async () => {

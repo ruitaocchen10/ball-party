@@ -156,7 +156,11 @@ export function supabaseMock() {
       return client;
     },
     removeChannel: vi.fn(),
-    realtime: { setAuth: vi.fn() },
+    // getChannels backs the sabotage draft screen's stale-channel check on
+    // remount (see its realtime effect's doc comment) — an empty list is
+    // "nothing stale to tear down", which is the correct answer for a fresh
+    // mount in every suite here.
+    realtime: { setAuth: vi.fn(), getChannels: () => [] },
     auth: { getSession: async () => ({ data: { session: null } }) },
   };
   return client;

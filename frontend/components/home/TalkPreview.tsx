@@ -19,7 +19,7 @@ export function TalkPreview() {
       <p className="font-mono text-[10px] tracking-[0.16em] text-panel/80 uppercase">
         Coming soon
       </p>
-      <p className="font-slab text-xl leading-[1.05] -skew-x-7 text-panel uppercase sm:text-2xl">
+      <p className="font-slab text-xl leading-[1.05] text-panel uppercase sm:text-2xl">
         Social prompts
         <br />
         are in development

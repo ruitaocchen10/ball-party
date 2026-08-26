@@ -443,16 +443,41 @@ begin
   perform sabotage_draft_private.deal_board(match_id, p_seed);
 end $$;
 
--- Force the current round's pick deadline past and let the server take
--- exactly one expiry, the same shape as tests.hol_expire.
+-- Force the current turn's shared clock past and let the server take
+-- exactly one expiry, the same shape as tests.hol_expire. Since 0063, a turn
+-- has one clock covering both the active seat's pick and everyone else's
+-- guess-or-pass, and expire() resolves and advances the whole turn in this
+-- one call — there is no second phase left to force separately.
 create function tests.sd_expire(p_match_id uuid) returns void
 language plpgsql as $$
 begin
   update public.sabotage_draft_matches
-     set pick_deadline = now() - interval '1 second'
+     set turn_deadline = now() - interval '1 second'
    where match_id = p_match_id;
   perform sabotage_draft_private.expire(p_match_id);
 end $$;
+
+-- Kept as an alias: pre-0063 tests fast-forwarded a whole turn in two calls
+-- (a pick-timeout expiry, then a separate guess-window expiry). One shared
+-- clock collapses that into the single call tests.sd_expire already makes.
+create function tests.sd_expire_turn(p_match_id uuid) returns void
+language plpgsql as $$
+begin
+  perform tests.sd_expire(p_match_id);
+end $$;
+
+-- The seat currently on the clock. Definer for the same reason
+-- sd_pick_candidate is: a test acting as a player should not need its own
+-- grant on the engine schema just to ask a convenience question the match
+-- already answers publicly via sabotage_draft.state.
+create function tests.sd_active_user(p_match_id uuid) returns uuid
+language sql stable security definer as $$
+  select sp.user_id
+    from public.sabotage_draft_matches sm
+    join public.sabotage_draft_players sp
+      on sp.match_id = sm.match_id and sp.seat = sm.active_seat
+   where sm.match_id = p_match_id;
+$$;
 
 -- A real, valid pick for a round: a player id and season that this player's
 -- own spun franchise and the given category actually contain. Definer,

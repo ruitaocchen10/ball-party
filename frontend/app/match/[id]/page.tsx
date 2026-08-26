@@ -6,7 +6,7 @@ import { AuctionMatch } from "@/components/auction/AuctionMatch";
 import { MatchSetup } from "@/components/auction/MatchSetup";
 import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
 import { SabotageDraftMatch } from "@/components/sabotage-draft/SabotageDraftMatch";
-import { TopBar } from "@/components/layout/TopBar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
 import type { Board } from "@/lib/higher-or-lower/board";
 import { createClient } from "@/lib/supabase/server";
@@ -45,6 +45,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     .eq("id", claims.sub)
     .single();
   const displayName = viewer?.display_name ?? (claims.email as string | undefined) ?? null;
+  const email = (claims.email as string | undefined) ?? null;
 
   // RLS returns nothing for a match you are not in, so "no row" is a normal
   // state here rather than a failure.
@@ -56,7 +57,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
   if (!match) {
     return (
-      <Shell displayName={displayName}>
+      <Shell displayName={displayName} email={email}>
         <p className="text-sm leading-6 text-fg-muted">
           This game isn&apos;t yours, or it no longer exists.
         </p>
@@ -72,7 +73,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // refusal visible instead of immediately following the winner's action.
   if (error) {
     return (
-      <Shell displayName={displayName}>
+      <Shell displayName={displayName} email={email}>
         <p role="alert" className="text-sm leading-6 text-fg-muted">{error}</p>
         {code ? <BackToRoom code={code} /> : <HomeLink />}
       </Shell>
@@ -99,7 +100,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // yet. Normally a blink. If it sticks, the janitor abandons the match.
   if (match.status === "setup") {
     return (
-      <Shell displayName={displayName}>
+      <Shell displayName={displayName} email={email}>
         <MatchSetup matchId={match.id} />
       </Shell>
     );
@@ -107,7 +108,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
   if (match.status === "abandoned") {
     return (
-      <Shell displayName={displayName}>
+      <Shell displayName={displayName} email={email}>
         <p className="text-sm leading-6 text-fg-muted">This game was abandoned.</p>
         {code ? <BackToRoom code={code} /> : <HomeLink />}
       </Shell>
@@ -120,7 +121,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // the same for every game.
   if (match.game === "sabotage_draft") {
     const sabotage = supabase as any;
-    const [stateResult, playersResult, spinsResult, picksResult, statusesResult, hitsResult, guessesResult, decisionsResult, standingsResult, tiebreaksResult] = await Promise.all([
+    const [stateResult, playersResult, spinsResult, picksResult, statusesResult, hitsResult, guessesResult, passesResult, decisionsResult, standingsResult, tiebreaksResult] = await Promise.all([
       sabotage.schema("sabotage_draft").rpc("state", { p_match_id: id }),
       sabotage.from("sabotage_draft_players").select("*, profiles(display_name)").eq("match_id", id).order("seat"),
       sabotage.from("sabotage_draft_round_spins").select("*").eq("match_id", id),
@@ -128,19 +129,20 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       sabotage.from("sabotage_draft_pick_statuses").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_pick_hits").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_guesses").select("*").eq("match_id", id),
+      sabotage.from("sabotage_draft_passes").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_x_factor_decisions").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_standings").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_tiebreak_games").select("*").eq("match_id", id),
     ]);
     const row = stateResult.data;
     if (!row || row.round_count == null || row.current_round == null || !row.slot || !row.server_now) {
-      return <Shell displayName={displayName}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
+      return <Shell displayName={displayName} email={email}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
     }
-    return <SabotageDraftMatch matchId={id} viewerId={claims.sub} initial={{
+    return <SabotageDraftMatch matchId={id} viewerId={claims.sub} isHost={isHost} paused={match.status === "paused"} initial={{
       board: row,
       players: (playersResult.data ?? []).map(({ profiles, ...player }: any) => ({ ...player, display_name: profiles?.display_name ?? "Unknown player" })),
       spins: spinsResult.data ?? [],
-      picks: picksResult.data ?? [], statuses: statusesResult.data ?? [], hits: hitsResult.data ?? [], guesses: guessesResult.data ?? [],
+      picks: picksResult.data ?? [], statuses: statusesResult.data ?? [], hits: hitsResult.data ?? [], guesses: guessesResult.data ?? [], passes: passesResult.data ?? [],
       decisions: decisionsResult.data ?? [], standings: standingsResult.data ?? [], tiebreaks: tiebreaksResult.data ?? [],
     }} />;
   }
@@ -172,7 +174,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       row.phase === null || row.server_now === null
     ) {
       return (
-        <Shell displayName={displayName}>
+        <Shell displayName={displayName} email={email}>
           <p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p>
           <HomeLink />
         </Shell>
@@ -185,6 +187,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         viewerId={claims.sub}
         roomCode={code}
         isHost={isHost}
+        paused={match.status === "paused"}
         initial={{
           board: {
             questionCount: row.question_count,
@@ -230,7 +233,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   const state = turnResult.data;
   if (!state) {
     return (
-      <Shell displayName={displayName}>
+      <Shell displayName={displayName} email={email}>
         <p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p>
         <HomeLink />
       </Shell>
@@ -260,6 +263,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         displayName={displayName}
         roomCode={code}
         isHost={isHost}
+        paused={match.status === "paused"}
         initial={{
         turn,
         // The server's clock, so the client can offset its own rather than
@@ -314,14 +318,16 @@ function auctionFormat(row: {
 
 function Shell({
   displayName,
+  email = null,
   children,
 }: {
   displayName: string | null;
+  email?: string | null;
   children: React.ReactNode;
 }) {
   return (
     <>
-      <TopBar displayName={displayName} />
+      <Sidebar displayName={displayName} email={email} />
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-6 py-14">
         {children}
       </main>
