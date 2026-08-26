@@ -1,13 +1,19 @@
 "use client";
 
+import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
+import { PauseBanner } from "@/components/game-runtime/PauseBanner";
+import { PauseButton } from "@/components/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/game-runtime/PostGameControls";
 import { PostGameNavigation } from "@/components/game-runtime/PostGameNavigation";
+import { AnimatedMessage } from "@/components/motion/AnimatedMessage";
+import { Reveal } from "@/components/motion/Reveal";
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Concealed } from "@/components/ui/Concealed";
+import { staggerRow } from "@/lib/motion";
 import {
   byPlacement,
   canCallNow,
@@ -46,12 +52,14 @@ export function HigherOrLowerMatch({
   viewerId,
   roomCode,
   isHost,
+  paused = false,
   initial,
 }: {
   matchId: string;
   viewerId: string;
   roomCode: string | null;
   isHost: boolean;
+  paused?: boolean;
   initial: {
     board: Board;
     cards: LadderCard[];
@@ -71,6 +79,7 @@ export function HigherOrLowerMatch({
   const [standings, setStandings] = useState<Standing[]>(initial.standings);
   const [pendingCall, setPendingCall] = useState(false);
   const [callError, setCallError] = useState<string | null>(null);
+  const [isPaused, setIsPaused] = useState(paused);
 
   const applyBoard = useCallback((row: Partial<Board>) => {
     if (
@@ -127,6 +136,7 @@ export function HigherOrLowerMatch({
     // question, and the server latches a player who ticked nowhere in one
     // absent at its reveal.
     heartbeatMs: HEARTBEAT_MS,
+    paused: isPaused,
     expire: () => getClient().schema("higher_or_lower").rpc("tick", { p_match_id: matchId }).then(({ data }) => {
       if (data) applyBoard(boardFromState(data as HigherOrLowerState));
     }),
@@ -177,6 +187,9 @@ export function HigherOrLowerMatch({
         .on("postgres_changes", { event: "*", schema: "public", table: "match_players", filter: `match_id=eq.${matchId}` }, (payload) => {
           const row = payload.new as Standing;
           setStandings((previous) => [...previous.filter((s) => s.user_id !== row.user_id), row]);
+        })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` }, (payload) => {
+          setIsPaused((payload.new as { status?: string }).status === "paused");
         })
         .subscribe((status) => { if (status === "SUBSCRIBED") reconcile(); });
       cleanup = () => { void supabase.removeChannel(channel); };
@@ -243,14 +256,19 @@ export function HigherOrLowerMatch({
         <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
           {questionLabel(board, "visual")}
         </p>
-        <p
-          role="note"
-          aria-label="Board format"
-          className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase"
-        >
-          {scoringModeLabel(board)} · {eraLabel(board)}
-        </p>
+        <div className="flex items-center gap-3">
+          <p
+            role="note"
+            aria-label="Board format"
+            className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase"
+          >
+            {scoringModeLabel(board)} · {eraLabel(board)}
+          </p>
+          {isHost ? <PauseButton matchId={matchId} paused={isPaused} /> : null}
+        </div>
       </header>
+
+      {isPaused ? <PauseBanner /> : null}
 
       <MatchClock phase={board.phase} remainingMs={remainingMs} />
 
@@ -258,6 +276,7 @@ export function HigherOrLowerMatch({
         canCall={canCallNow(board, viewerPlayer)}
         call={myCall ?? null}
         pending={pendingCall}
+        paused={isPaused}
         error={callError}
         onCall={makeCall}
       />
@@ -294,7 +313,7 @@ export function HigherOrLowerMatch({
             return (
             <li
               key={player.user_id}
-              className="rounded border border-line px-3 py-1.5 font-slab text-[15px] leading-none -skew-x-7 uppercase"
+              className="rounded border border-line px-3 py-1.5 font-slab text-[15px] leading-none uppercase"
             >
               {player.display_name}
               {player.user_id === viewerId ? (
@@ -376,7 +395,7 @@ function FinalScreen({
         <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
           Final
         </p>
-        <h1 className="font-slab text-3xl leading-none -skew-x-7 uppercase">
+        <h1 className="font-slab text-3xl leading-none uppercase">
           {winners.length === 0
             ? "Game over"
             : winners.length === 1
@@ -386,13 +405,13 @@ function FinalScreen({
       </header>
 
       <ul className="flex flex-col gap-2.5">
-        {ranked.map((standing) => {
+        {ranked.map((standing, index) => {
           const player = players.find((p) => p.user_id === standing.user_id);
           return (
-            <li key={standing.user_id}>
+            <motion.li key={standing.user_id} variants={staggerRow(index)} initial="initial" animate="animate">
               <Card edge={false}>
                 <div className="flex items-baseline justify-between gap-3 px-3 py-2.5">
-                  <span className="font-slab text-xl leading-none -skew-x-7 uppercase">
+                  <span className="font-slab text-xl leading-none uppercase">
                     <span className="mr-2 font-mono text-[11px] text-panel-muted tabular-nums">
                       {standing.placement}
                     </span>
@@ -408,7 +427,7 @@ function FinalScreen({
                   </span>
                 </div>
               </Card>
-            </li>
+            </motion.li>
           );
         })}
       </ul>
@@ -441,7 +460,7 @@ const CALL_MESSAGES: Record<string, string> = {
   already_called: "You already locked in this question.",
   call_not_open: "Calls are not open right now.",
   call_deadline_passed: "The call window has closed.",
-  match_not_playing: "This match has ended.",
+  match_not_playing: "This match isn't accepting moves right now.",
 };
 
 /**
@@ -453,25 +472,26 @@ const CALL_MESSAGES: Record<string, string> = {
  * "ran out of time" rather than reporting a call nobody made.
  */
 function CallControls({
-  canCall, call, pending, error, onCall,
+  canCall, call, pending, paused, error, onCall,
 }: {
   canCall: boolean;
   call: Call | null;
   pending: boolean;
+  paused: boolean;
   error: string | null;
   onCall: (direction: "higher" | "lower") => void;
 }) {
-  const disabled = !canCall || call !== null || pending;
+  const disabled = !canCall || call !== null || pending || paused;
   return (
     <section aria-label="Make your call" className="grid shrink-0 gap-2 sm:grid-cols-2">
       <Button disabled={disabled} onClick={() => onCall("higher")}>Higher</Button>
       <Button disabled={disabled} variant="ghost" onClick={() => onCall("lower")}>Lower</Button>
-      {call ? (
-        <p className="sm:col-span-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
-          {call.timed_out ? "You ran out of time." : `You called ${call.direction}.`}
-        </p>
-      ) : null}
-      {error ? <p role="alert" className="sm:col-span-2 text-sm text-red-700">{error}</p> : null}
+      <AnimatedMessage className="sm:col-span-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
+        {call ? (call.timed_out ? "You ran out of time." : `You called ${call.direction}.`) : null}
+      </AnimatedMessage>
+      <AnimatedMessage role="alert" className="sm:col-span-2 text-sm text-red-700">
+        {error}
+      </AnimatedMessage>
     </section>
   );
 }
@@ -547,9 +567,9 @@ function MatchClock({ phase, remainingMs }: { phase: Board["phase"]; remainingMs
         ? "The answer is revealed"
         : "Match complete";
   return (
-    <section aria-label="Clock" className="rounded border border-line bg-surface-raised p-3">
+    <section aria-label="Clock" className="rounded bg-surface-raised p-3 shadow-well">
       <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
-      <p className="mt-1 font-slab text-3xl leading-none -skew-x-7 tabular-nums" aria-hidden>{seconds === null ? "—" : `${seconds}s`}</p>
+      <p className="mt-1 font-slab text-3xl leading-none tabular-nums" aria-hidden>{seconds === null ? "—" : `${seconds}s`}</p>
       <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
         <div className="h-full bg-panel transition-[width]" style={{ width: `${fraction * 100}%`, transitionDuration: `${TICK_MS}ms` }} />
       </div>
@@ -594,26 +614,30 @@ function LadderCardPanel({
       {/* Both faces are out of the accessibility tree: a weave with three
           question marks and a big number are visual idioms, and the screen's
           status region says the whole thing in one ordered sentence instead —
-          the same split the auction's reveal uses. */}
-      {card.points === null ? (
-        <Concealed label="Fantasy points, hidden until this question reveals" className="px-3.5 py-3">
-          <div aria-hidden className="relative flex items-baseline justify-between gap-3">
-            <span className="font-mono text-[11px] tracking-[0.15em] text-panel uppercase">
-              Fantasy points
-            </span>
-            <span className="font-slab text-lg leading-none -skew-x-7 text-panel">? ? ?</span>
-          </div>
-        </Concealed>
-      ) : (
+          the same split the auction's reveal uses. Reveal (see
+          components/motion/Reveal.tsx) is that same split's shared "pop". */}
+      <Reveal
+        revealed={card.points !== null}
+        concealed={
+          <Concealed label="Fantasy points, hidden until this question reveals" className="px-3.5 py-3">
+            <div aria-hidden className="relative flex items-baseline justify-between gap-3">
+              <span className="font-mono text-[11px] tracking-[0.15em] text-panel uppercase">
+                Fantasy points
+              </span>
+              <span className="font-slab text-lg leading-none text-panel">? ? ?</span>
+            </div>
+          </Concealed>
+        }
+      >
         <div aria-hidden className="flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
           <span className="font-mono text-[11px] tracking-[0.15em] text-panel-muted uppercase">
             Fantasy points
           </span>
-          <span className="min-w-0 font-slab text-lg leading-none -skew-x-7 tabular-nums">
+          <span className="min-w-0 font-slab text-lg leading-none tabular-nums">
             {formatPoints(card.points)}
           </span>
         </div>
-      )}
+      </Reveal>
 
       <p className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">{caption}</p>
     </section>

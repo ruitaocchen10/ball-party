@@ -1,9 +1,12 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { signOut } from "@/lib/auth/actions";
+import { dropdown, dropdownUp } from "@/lib/motion";
 
 /**
  * The signed-in account control in the top bar: the avatar chip opens a menu of
@@ -16,8 +19,27 @@ import { signOut } from "@/lib/auth/actions";
  * It also earns back space on small screens. The display name and sign-out used
  * to sit in the bar beside the chip, which left a phone with brand, room code,
  * name and a sign-out button competing for one row. Both live in here now.
+ *
+ * `placement` flips the menu to open upward and anchor left rather than
+ * down and right — the sidebar pins this control to the bottom-left of a
+ * rail, where the default top-right-anchored menu would clip off the bottom
+ * of the viewport. `compact` drops the name/email stack, the chevron, and
+ * the trigger's own box so it's just the avatar, for the collapsed rail and
+ * the mobile strip, where the `lg:` breakpoint alone can't tell the
+ * difference between "narrow viewport" and "narrow because the rail is
+ * collapsed."
  */
-export function AccountMenu({ displayName }: { displayName: string }) {
+export function AccountMenu({
+  displayName,
+  email = null,
+  placement = "down",
+  compact = false,
+}: {
+  displayName: string;
+  email?: string | null;
+  placement?: "down" | "up";
+  compact?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -97,51 +119,81 @@ export function AccountMenu({ displayName }: { displayName: string }) {
           event.preventDefault();
           setOpen(true);
         }}
-        className="flex cursor-pointer items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        className={`flex cursor-pointer items-center gap-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel ${
+          compact ? "" : "w-full"
+        }`}
       >
         <span
           aria-hidden
-          className="flex h-7 w-7 items-center justify-center bg-panel font-slab text-xs leading-none -skew-x-7 text-panel-fg shadow-card"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel font-slab text-sm leading-none text-panel-fg shadow-card"
         >
           {initials(displayName)}
         </span>
-        <span className="hidden max-w-[15ch] min-w-0 truncate font-mono text-[10px] tracking-[0.11em] text-fg uppercase lg:block">
-          {displayName}
-        </span>
-        <Chevron open={open} />
+        {!compact ? (
+          <span className="min-w-0 flex-1 text-left">
+            <span className="block truncate font-mono text-xs font-semibold tracking-[0.06em] text-fg uppercase">
+              {displayName}
+            </span>
+            {email ? (
+              <span className="mt-0.5 block truncate font-mono text-[10px] tracking-[0.02em] text-fg-muted normal-case">
+                {email}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+        {!compact ? (
+          <ChevronDown
+            aria-hidden
+            className={`h-3.5 w-3.5 shrink-0 text-fg-muted transition-transform ${open ? "rotate-180" : ""}`}
+            strokeWidth={1.5}
+          />
+        ) : null}
         <span className="sr-only">Account menu</span>
       </button>
 
-      {open ? (
-        <div
-          ref={menuRef}
-          role="menu"
-          aria-label="Account"
-          onKeyDown={onMenuKeyDown}
-          className="absolute top-full right-0 z-20 mt-2 w-56 overflow-hidden rounded-card bg-panel text-panel-fg shadow-card"
-        >
-          {/* The bar hides the name below `lg`, so for most phones this is the
-              only place it appears. Not a menu item — it isn't an action. */}
-          <p className="truncate border-b border-panel-fg/10 px-3 pt-2.5 pb-2.5 font-slab text-[15px] leading-[1.1] -skew-x-7 uppercase">
-            {displayName}
-          </p>
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            key="menu"
+            ref={menuRef}
+            role="menu"
+            aria-label="Account"
+            onKeyDown={onMenuKeyDown}
+            variants={placement === "up" ? dropdownUp : dropdown}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ transformOrigin: placement === "up" ? "bottom left" : "top right" }}
+            className={`absolute z-20 w-56 overflow-hidden rounded-card bg-panel text-panel-fg shadow-card ${
+              placement === "up" ? "bottom-full left-0 mb-2" : "top-full right-0 mt-2"
+            }`}
+          >
+            {/* The bar hides the name/email below `lg` and whenever the trigger
+                is compact, so for most phones and the collapsed rail this is
+                the only place either appears. Not a menu item — it isn't an
+                action. */}
+            <div className="border-b border-panel-fg/10 px-3 pt-2.5 pb-2.5">
+              <p className="truncate font-slab text-[20px] leading-[1.1] uppercase">{displayName}</p>
+              {email ? <p className="mt-1 truncate font-mono text-[10px] tracking-[0.02em] text-panel-muted">{email}</p> : null}
+            </div>
 
-          <MenuLink href="/profile">View profile</MenuLink>
-          <MenuLink href="/settings">Settings</MenuLink>
+            <MenuLink href="/profile">View profile</MenuLink>
+            <MenuLink href="/settings">Settings</MenuLink>
 
-          <form action={signOut} className="border-t border-panel-fg/10">
-            <button type="submit" role="menuitem" className={ITEM}>
-              Sign out
-            </button>
-          </form>
-        </div>
-      ) : null}
+            <form action={signOut} className="border-t border-panel-fg/10">
+              <button type="submit" role="menuitem" className={ITEM}>
+                Sign out
+              </button>
+            </form>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
 
 const ITEM =
-  "block w-full cursor-pointer px-3 py-2.5 text-left font-mono text-[10px] tracking-[0.13em] uppercase " +
+  "block w-full cursor-pointer px-3 py-4 text-left font-mono text-[10px] tracking-[0.13em] uppercase " +
   "transition-colors hover:bg-panel-shade focus:bg-panel-shade focus:outline-none";
 
 function MenuLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -149,20 +201,6 @@ function MenuLink({ href, children }: { href: string; children: React.ReactNode 
     <Link href={href} role="menuitem" className={ITEM}>
       {children}
     </Link>
-  );
-}
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 10 6"
-      className={`h-[5px] w-[9px] shrink-0 fill-none stroke-fg-muted stroke-[1.5] transition-transform ${
-        open ? "rotate-180" : ""
-      }`}
-    >
-      <path d="M1 1l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
 

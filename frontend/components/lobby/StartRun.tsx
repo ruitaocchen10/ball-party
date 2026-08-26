@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
 import { startRun } from "@/lib/lobbies/actions";
 
 /**
@@ -65,62 +66,50 @@ export function StartRun({
       <input type="hidden" name="game" value="auction_team_builder" />
       <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
         Scoring
-        <select
-          aria-label="Scoring"
+        <Select
+          ariaLabel="Scoring"
           name="scoring_mode"
           defaultValue="weekly"
-          className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case"
-        >
-          <option value="weekly">Weekly</option>
-          <option value="season_total">Season total</option>
-        </select>
+          options={[
+            { value: "weekly", label: "Weekly" },
+            { value: "season_total", label: "Season total" },
+          ]}
+        />
       </label>
       <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
         Roster
-        <select
-          aria-label="Roster"
+        <Select
+          ariaLabel="Roster"
           name="roster_preset"
           defaultValue="standard"
-          className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case"
-        >
-          <option value="standard">Standard · 20 lots</option>
-          <option value="full">Full · 28 lots</option>
-          <option value="deep">Deep · 40 lots</option>
-        </select>
+          options={[
+            { value: "standard", label: "Standard · 20 lots" },
+            { value: "full", label: "Full · 28 lots" },
+            { value: "deep", label: "Deep · 40 lots" },
+          ]}
+        />
       </label>
       {era ? (
         <div className="flex gap-2">
           <label className="flex flex-1 flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
             First season
-            <select
-              aria-label="First season"
+            <Select
+              ariaLabel="First season"
               name="season_from"
-              value={from}
-              onChange={(event) => setFrom(Number(event.target.value))}
-              className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case"
-            >
-              {seasons(era).map((season) => (
-                <option key={season} value={season}>
-                  {season}
-                </option>
-              ))}
-            </select>
+              value={String(from)}
+              onValueChange={(next) => setFrom(Number(next))}
+              options={seasons(era).map((season) => ({ value: String(season), label: season }))}
+            />
           </label>
           <label className="flex flex-1 flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
             Last season
-            <select
-              aria-label="Last season"
+            <Select
+              ariaLabel="Last season"
               name="season_to"
-              value={to}
-              onChange={(event) => setTo(Number(event.target.value))}
-              className="min-h-10 rounded border border-[#c7bfac] bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case"
-            >
-              {seasons(era).map((season) => (
-                <option key={season} value={season}>
-                  {season}
-                </option>
-              ))}
-            </select>
+              value={String(to)}
+              onValueChange={(next) => setTo(Number(next))}
+              options={seasons(era).map((season) => ({ value: String(season), label: season }))}
+            />
           </label>
         </div>
       ) : null}

@@ -21,7 +21,7 @@ export function ColumnHead({
 }) {
   return (
     <div className="mb-4 flex items-baseline gap-3.5">
-      <Heading id={id} className="font-slab text-base leading-none -skew-x-7 uppercase sm:text-lg">
+      <Heading id={id} className="font-slab text-base leading-none uppercase sm:text-lg">
         {title}
       </Heading>
       <span aria-hidden className="h-px flex-1 bg-line" />

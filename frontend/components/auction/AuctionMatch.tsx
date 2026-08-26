@@ -1,14 +1,19 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 import Link from "next/link";
 
-import { TopBar } from "@/components/layout/TopBar";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { PauseBanner } from "@/components/game-runtime/PauseBanner";
+import { PauseButton } from "@/components/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/game-runtime/PostGameControls";
 import { PostGameNavigation } from "@/components/game-runtime/PostGameNavigation";
+import { Reveal } from "@/components/motion/Reveal";
 import { Button } from "@/components/ui/Button";
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
+import { dropdown, staggerRow } from "@/lib/motion";
 import {
   BLOCKED_TEXT,
   INCREMENTS,
@@ -88,7 +93,7 @@ const MESSAGES: Record<string, string> = {
   bid_not_whole: "Bids are in whole dollars.",
   bid_not_increasing: "Your bid must be higher than the current price.",
   bidding_not_open: "Bidding has not opened yet.",
-  match_not_playing: "This game has ended.",
+  match_not_playing: "This game isn't accepting moves right now.",
   not_a_participant: "You're not in this game.",
   not_authenticated: "Sign in first.",
 };
@@ -110,6 +115,7 @@ export function AuctionMatch({
   displayName,
   roomCode,
   isHost = false,
+  paused = false,
   initial,
 }: {
   matchId: string;
@@ -117,6 +123,7 @@ export function AuctionMatch({
   displayName: string | null;
   roomCode: string | null;
   isHost?: boolean;
+  paused?: boolean;
   initial: Initial;
 }) {
   // Built on first use rather than during render. createClient() reaches for
@@ -136,6 +143,7 @@ export function AuctionMatch({
   const format = initial.format;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPaused, setIsPaused] = useState(paused);
 
   // Server time as of the most recently applied state. The shared match clock
   // measures how far this browser's clock is from the server's against it, so
@@ -216,6 +224,7 @@ export function AuctionMatch({
     deadline: activeDeadline,
     visibleSlackMs: bidding ? VISIBLE_SLACK_MS : 0,
     skipExpiry,
+    paused: isPaused,
     expire: () =>
       getClient()
         .schema("auction")
@@ -301,6 +310,11 @@ export function AuctionMatch({
             setStandings((prev) => [...prev.filter((s) => s.user_id !== row.user_id), row]);
           },
         )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` },
+          (payload) => setIsPaused((payload.new as { status?: string }).status === "paused"),
+        )
         // A rejoin is precisely when this client may have missed something, so
         // the state is read again rather than assumed to have kept up -- the
         // third of the match clock's three reconciliation triggers. Fires on
@@ -370,6 +384,12 @@ export function AuctionMatch({
 
   return (
     <Screen displayName={displayName} workspace>
+      {isHost || isPaused ? (
+        <div className="flex items-start justify-between gap-3">
+          {isPaused ? <PauseBanner /> : <div />}
+          {isHost ? <PauseButton matchId={matchId} paused={isPaused} /> : null}
+        </div>
+      ) : null}
       <LotStrip lots={lots} players={players} turn={turn} phase={phase} />
       {/* DOM order is the phone's decision order: understand the lot, decide
           what to do, then inspect the other seats. Desktop placement gives
@@ -398,21 +418,22 @@ export function AuctionMatch({
       {/* The payoff occupies the concealed surface rather than arriving as a
           second card. Its face is hidden from assistive technology; the status
           region below is the complete announcement. */}
-      {phase === "sold" ? (
-        <>
-          <SoldHeadline lot={lot} players={players} />
-          <PointsReveal lot={lot} />
-        </>
-      ) : (
-        <Concealed label="Fantasy points, hidden until this lot is won" className="px-3.5 py-3">
-          <div className="relative flex items-baseline justify-between gap-3">
-            <span className="font-mono text-[11px] tracking-[0.15em] text-panel uppercase">
-              Fantasy points
-            </span>
-            <span className="font-slab text-lg leading-none -skew-x-7 text-panel">? ? ?</span>
-          </div>
-        </Concealed>
-      )}
+      {phase === "sold" ? <SoldHeadline lot={lot} players={players} /> : null}
+      <Reveal
+        revealed={phase === "sold"}
+        concealed={
+          <Concealed label="Fantasy points, hidden until this lot is won" className="px-3.5 py-3">
+            <div className="relative flex items-baseline justify-between gap-3">
+              <span className="font-mono text-[11px] tracking-[0.15em] text-panel uppercase">
+                Fantasy points
+              </span>
+              <span className="font-slab text-lg leading-none text-panel">? ? ?</span>
+            </div>
+          </Concealed>
+        }
+      >
+        <PointsReveal lot={lot} />
+      </Reveal>
 
       {/* Mounted for the whole lot rather than created with the reveal. A
           status region that enters the DOM already holding its text is
@@ -439,6 +460,7 @@ export function AuctionMatch({
             isMine={phase === "bidding_self"}
             blocked={blocked}
             pending={pending}
+            paused={isPaused}
             error={error}
             slot={slotFor(lot)}
             onRaise={(amount) => act(getClient().schema("auction").rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
@@ -495,7 +517,7 @@ function Screen({
 }) {
   return (
     <>
-      {workspace ? null : <TopBar displayName={displayName} />}
+      {workspace ? null : <Sidebar displayName={displayName} />}
       <main className={`mx-auto flex w-full flex-1 flex-col ${workspace ? "min-h-0 gap-4 overflow-hidden px-4 pt-3 pb-4" : "max-w-md gap-4 px-5 pt-4 pb-4"}`}>
         {children}
       </main>
@@ -552,7 +574,11 @@ function LotStrip({
   );
 }
 
-const BOARD_CELL = "h-[74px] shrink-0 rounded border px-1.5 py-1";
+// No bare `border` here anymore — Settled is a passive, filled cell (a
+// recessed well instead), while Current and Undealt each carry a border with
+// real meaning (an active-lot highlight, a dashed not-dealt-yet outline) and
+// declare it themselves.
+const BOARD_CELL = "h-[74px] shrink-0 rounded px-1.5 py-1";
 
 function SettledBoardCell({ lot, players }: { lot: Lot; players: Player[] }) {
   const winner = players.find((player) => player.user_id === lot.winner_id) ?? null;
@@ -562,7 +588,7 @@ function SettledBoardCell({ lot, players }: { lot: Lot; players: Player[] }) {
   return (
     <li
       aria-label={`Lot ${lot.seq}, ${lot.display_name}, ${lot.slot ?? "unfilled"}, ${price}, ${winnerCopy}`}
-      className={`${BOARD_CELL} flex w-[84px] flex-col border-line bg-surface-raised`}
+      className={`${BOARD_CELL} flex w-[84px] flex-col bg-surface-raised shadow-well`}
     >
       <p className="flex items-baseline justify-between gap-1 font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">
         <span>{lot.slot}</span>
@@ -571,7 +597,7 @@ function SettledBoardCell({ lot, players }: { lot: Lot; players: Player[] }) {
       <span className="mx-auto mt-1 block h-7 w-7 shrink-0 overflow-hidden rounded-full bg-panel-shade">
         {lot.headshot_url ? <img src={lot.headshot_url} alt="" className="h-full w-full object-cover object-top" /> : null}
       </span>
-      <p className="mt-1 truncate text-center font-slab text-[10px] leading-none -skew-x-7 uppercase">{abbreviate(lot.display_name)}</p>
+      <p className="mt-1 truncate text-center font-slab text-[10px] leading-none uppercase">{abbreviate(lot.display_name)}</p>
       <p className="mt-1 truncate text-center font-mono text-[8px] leading-none tracking-[0.08em] text-fg-muted uppercase">
         {winner?.display_name ?? "No bids"}
       </p>
@@ -594,9 +620,9 @@ function CurrentBoardCell({
     <li
       ref={ref}
       aria-current="step"
-      className={`${BOARD_CELL} flex w-[164px] flex-col justify-center border-panel/45 bg-panel/10 px-3`}
+      className={`${BOARD_CELL} flex w-[164px] flex-col justify-center border border-panel/45 bg-panel/10 px-3`}
     >
-      <p className="font-slab text-lg leading-none -skew-x-7 uppercase">
+      <p className="font-slab text-lg leading-none uppercase">
         Lot {seq}
         <span className="ml-1.5 font-mono text-[10px] tracking-[0.1em] text-fg-muted">/ {lotCount}</span>
       </p>
@@ -611,7 +637,7 @@ function UndealtBoardCell({ seq }: { seq: number }) {
   return (
     <li
       aria-label={`Lot ${seq}, not yet dealt`}
-      className={`${BOARD_CELL} flex w-[84px] flex-col items-center justify-center gap-2 border-dashed border-line bg-transparent`}
+      className={`${BOARD_CELL} flex w-[84px] flex-col items-center justify-center gap-2 border border-dashed border-line bg-transparent`}
     >
       <span aria-hidden className="block h-7 w-7 rounded-full border border-dashed border-line" />
       <span className="font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted tabular-nums">{seq}</span>
@@ -635,7 +661,7 @@ function SoldHeadline({ lot, players }: { lot: Lot; players: Player[] }) {
 
   if (!lot.winner_id) {
     return (
-      <p className="rounded border border-line bg-surface-raised px-3.5 py-2 font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
+      <p className="rounded bg-surface-raised px-3.5 py-2 font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase shadow-well">
         No sale
       </p>
     );
@@ -644,7 +670,7 @@ function SoldHeadline({ lot, players }: { lot: Lot; players: Player[] }) {
   return (
     <div aria-hidden className="animate-sold-headline rounded border border-panel bg-panel px-3.5 py-2.5 text-panel-fg shadow-card">
       <p className="font-mono text-[10px] tracking-[0.15em] text-panel-muted uppercase">Sold to</p>
-      <p className="mt-1 flex items-baseline justify-between gap-3 font-slab text-xl leading-none -skew-x-7 uppercase">
+      <p className="mt-1 flex items-baseline justify-between gap-3 font-slab text-xl leading-none uppercase">
         <span className="truncate">{winner?.display_name ?? "Unknown buyer"}</span>
         <span className="shrink-0 font-mono text-sm tabular-nums">${lot.price ?? 0}</span>
       </p>
@@ -659,11 +685,11 @@ function soldRosterName(name: string): string {
 
 function PointsReveal({ lot }: { lot: Lot }) {
   return (
-    <div aria-hidden className="animate-points-reveal flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
+    <div aria-hidden className="flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
       <span className="font-mono text-[11px] tracking-[0.15em] text-panel-muted uppercase">
         Fantasy points
       </span>
-      <span className="min-w-0 font-slab text-lg leading-none -skew-x-7 tabular-nums">
+      <span className="min-w-0 font-slab text-lg leading-none tabular-nums">
         {fmt(lot.points)}
       </span>
     </div>
@@ -728,7 +754,7 @@ function PlayerRail({
             >
               <span className="flex items-center gap-2">
                 <span aria-hidden className={`shrink-0 font-mono text-[11px] leading-none text-fg-muted transition-transform ${isOpen ? "rotate-90" : ""}`}>▶</span>
-                <span className="truncate font-slab text-[15px] leading-none -skew-x-7 uppercase">
+                <span className="truncate font-slab text-[15px] leading-none uppercase">
                   {player.display_name}
                 </span>
                 <span className="shrink-0 rounded border border-line px-1.5 py-0.5 font-mono text-[11px] text-fg-muted tabular-nums">
@@ -818,6 +844,7 @@ function BidBar({
   isMine,
   blocked,
   pending,
+  paused,
   error,
   slot,
   onRaise,
@@ -830,6 +857,7 @@ function BidBar({
   isMine: boolean;
   blocked: ReturnType<typeof blockedReason>;
   pending: boolean;
+  paused: boolean;
   onRaise: (amount: number) => void;
   onPass: () => void;
   phase: "lot_preview" | "bidding_self" | "bidding_other" | "sold";
@@ -847,7 +875,7 @@ function BidBar({
   // against simply stops being the current one.
   const interactionKey = `${phase}:${onClock?.seat ?? "none"}:${price}`;
   const custom = customFor === interactionKey;
-  const actionable = phase === "bidding_self" && blocked === null && !pending;
+  const actionable = phase === "bidding_self" && blocked === null && !pending && !paused;
 
   // Focus goes back where it came from on Escape and Cancel. It cannot on an
   // auto-close -- the phase change that closed the popover is the same one that
@@ -886,7 +914,9 @@ function BidBar({
   // The visible timer changes ten times a second. The live region stays empty
   // except at the agreed moments, so it never narrates the intervening ticks.
   const announcement = live && seconds !== null && [10, 5, 3].includes(seconds) ? `${seconds} seconds left` : "";
-  const status = phase === "lot_preview"
+  const status = paused
+    ? "The host paused the game."
+    : phase === "lot_preview"
     ? "This player enters the auction."
     : phase === "sold"
       ? "The next player is coming up."
@@ -902,7 +932,7 @@ function BidBar({
     <div
       ref={surface}
       tabIndex={-1}
-      className="relative grid gap-2 rounded border border-line bg-surface-raised p-3 outline-none"
+      className="relative grid gap-2 rounded bg-surface-raised p-3 shadow-well outline-none"
     >
       <section aria-label="Clock" className={`rounded border p-3 transition-colors ${tone}`}>
         <p className={`font-mono text-[11px] tracking-[0.15em] uppercase ${isMine ? "text-panel-muted" : "text-fg-muted"}`}>
@@ -910,7 +940,7 @@ function BidBar({
         </p>
         {/* The countdown runs to 9.5s against a real 10s deadline, preserving
             half a second of real deadline after the visible clock empties. */}
-        <p className={`mt-1 font-slab text-5xl leading-none -skew-x-7 tabular-nums ${urgent ? "text-hidden-text" : ""}`} aria-hidden>
+        <p className={`mt-1 font-slab text-5xl leading-none tabular-nums ${urgent ? "text-hidden-text" : ""}`} aria-hidden>
           {seconds === null ? "—" : `${seconds}s`}
         </p>
         <p aria-live="polite" className="sr-only">{announcement}</p>
@@ -922,7 +952,7 @@ function BidBar({
       <section aria-label="Bid controls" className="rounded border border-line bg-surface px-3 py-3">
         <div className="flex items-baseline justify-between gap-3">
           <span className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">Standing bid</span>
-          <span className="font-slab text-2xl leading-none -skew-x-7 tabular-nums">{phase === "lot_preview" ? "—" : `$${price}`}</span>
+          <span className="font-slab text-2xl leading-none tabular-nums">{phase === "lot_preview" ? "—" : `$${price}`}</span>
         </div>
         <p className="mt-1 font-mono text-[11px] text-fg-muted tabular-nums">Your budget · ${budget} left</p>
         <div className="mt-3 flex gap-2">
@@ -952,22 +982,29 @@ function BidBar({
           </Button>
         </div>
       </section>
-      {custom && (
-        <form
-          role="dialog"
-          aria-label="Custom bid"
-          className="absolute right-3 bottom-3 left-3 rounded-card bg-panel p-3 text-panel-fg shadow-card"
-          onSubmit={(event) => { event.preventDefault(); if (!invalid) onRaise(Number(amount)); }}
-          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeCustom(); } }}
-        >
-          <label className="block font-mono text-[11px] tracking-[.13em] text-panel-muted uppercase">Custom bid
-            <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full rounded border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
-          </label>
-          <p className="mt-1 text-xs text-panel-muted">Minimum is ${minimum}. Your maximum is ${budget}.</p>
-          {error ? <p role="alert" className="mt-1 text-xs text-hidden-ink">{error}</p> : null}
-          <div className="mt-2 flex gap-2"><Button type="submit" variant="ink" fullWidth={false} disabled={invalid || pending}>Bid ${amount}</Button><button type="button" onClick={closeCustom} className="text-xs text-panel-muted underline">Cancel</button></div>
-        </form>
-      )}
+      <AnimatePresence>
+        {custom && (
+          <motion.form
+            role="dialog"
+            aria-label="Custom bid"
+            variants={dropdown}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ transformOrigin: "bottom center" }}
+            className="absolute right-3 bottom-3 left-3 rounded-card bg-panel p-3 text-panel-fg shadow-card"
+            onSubmit={(event) => { event.preventDefault(); if (!invalid) onRaise(Number(amount)); }}
+            onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeCustom(); } }}
+          >
+            <label className="block font-mono text-[11px] tracking-[.13em] text-panel-muted uppercase">Custom bid
+              <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full rounded border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
+            </label>
+            <p className="mt-1 text-xs text-panel-muted">Minimum is ${minimum}. Your maximum is ${budget}.</p>
+            {error ? <p role="alert" className="mt-1 text-xs text-hidden-ink">{error}</p> : null}
+            <div className="mt-2 flex gap-2"><Button type="submit" variant="ink" fullWidth={false} disabled={invalid || pending}>Bid ${amount}</Button><button type="button" onClick={closeCustom} className="text-xs text-panel-muted underline">Cancel</button></div>
+          </motion.form>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1005,7 +1042,7 @@ function FinalScreen({
         <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
           Final
         </p>
-        <h1 className="font-slab text-3xl leading-none -skew-x-7 uppercase">
+        <h1 className="font-slab text-3xl leading-none uppercase">
           {winners.length === 0
             ? "Game over"
             : winners.length === 1
@@ -1015,11 +1052,11 @@ function FinalScreen({
       </header>
 
       <ul className="flex flex-col gap-2.5">
-        {ranked.map((standing) => (
-          <li key={standing.user_id}>
+        {ranked.map((standing, index) => (
+          <motion.li key={standing.user_id} variants={staggerRow(index)} initial="initial" animate="animate">
             <Card edge={false}>
               <div className="flex items-baseline justify-between gap-3 px-3 pt-2.5 pb-1">
-                <span className="font-slab text-xl leading-none -skew-x-7 uppercase">
+                <span className="font-slab text-xl leading-none uppercase">
                   <span className="mr-2 font-mono text-[11px] text-panel-muted tabular-nums">
                     {standing.placement}
                   </span>
@@ -1038,7 +1075,7 @@ function FinalScreen({
                 <RosterFinal lots={lots} userId={standing.user_id} format={format} />
               </div>
             </Card>
-          </li>
+          </motion.li>
         ))}
       </ul>
 

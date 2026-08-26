@@ -428,6 +428,86 @@ begin
   perform higher_or_lower_private.expire(p_match_id);
 end $$;
 
+-- ------------------------------------------------------------ sabotage draft --
+
+-- A dealt sabotage draft match from a fixed seed, so the fourteen team spins
+-- can be asserted exactly. Goes through the private dealer rather than
+-- sabotage_draft.start because the seed is deliberately not an argument of
+-- the public entry point.
+create function tests.deal_sabotage_draft(p_n int, p_seed double precision, out match_id uuid)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.mkmatch(p_n, 'sabotage_draft');
+  perform tests.act_as_admin();
+  perform sabotage_draft_private.deal_board(match_id, p_seed);
+end $$;
+
+-- Force the current turn's shared clock past and let the server take
+-- exactly one expiry, the same shape as tests.hol_expire. Since 0063, a turn
+-- has one clock covering both the active seat's pick and everyone else's
+-- guess-or-pass, and expire() resolves and advances the whole turn in this
+-- one call — there is no second phase left to force separately.
+create function tests.sd_expire(p_match_id uuid) returns void
+language plpgsql as $$
+begin
+  update public.sabotage_draft_matches
+     set turn_deadline = now() - interval '1 second'
+   where match_id = p_match_id;
+  perform sabotage_draft_private.expire(p_match_id);
+end $$;
+
+-- Kept as an alias: pre-0063 tests fast-forwarded a whole turn in two calls
+-- (a pick-timeout expiry, then a separate guess-window expiry). One shared
+-- clock collapses that into the single call tests.sd_expire already makes.
+create function tests.sd_expire_turn(p_match_id uuid) returns void
+language plpgsql as $$
+begin
+  perform tests.sd_expire(p_match_id);
+end $$;
+
+-- The seat currently on the clock. Definer for the same reason
+-- sd_pick_candidate is: a test acting as a player should not need its own
+-- grant on the engine schema just to ask a convenience question the match
+-- already answers publicly via sabotage_draft.state.
+create function tests.sd_active_user(p_match_id uuid) returns uuid
+language sql stable security definer as $$
+  select sp.user_id
+    from public.sabotage_draft_matches sm
+    join public.sabotage_draft_players sp
+      on sp.match_id = sm.match_id and sp.seat = sm.active_seat
+   where sm.match_id = p_match_id;
+$$;
+
+-- A real, valid pick for a round: a player id and season that this player's
+-- own spun franchise and the given category actually contain. Definer,
+-- because a test acting as a player has to source an honest submit_pick
+-- argument without itself holding a select grant on private.av_roster_players
+-- — correctly, it has none, the same reason tests.hol_answer is definer.
+create function tests.sd_pick_candidate(
+  p_match_id uuid, p_round smallint, p_user_id uuid, p_category text,
+  out player_id text, out season smallint
+)
+language sql stable security definer as $$
+  select p.player_id, p.season
+    from private.av_roster_players p
+    join public.sabotage_draft_round_spins s on s.franchise_code = p.franchise_code
+   where s.match_id = p_match_id and s.round_number = p_round and s.user_id = p_user_id
+     and p.slot_category = p_category
+   order by p.player_id
+   limit 1;
+$$;
+
+-- Two distinct real franchise codes at a category, so a test can force two
+-- players onto provably different pools instead of hoping a seed happens to
+-- deal them one. Definer for the same reason sd_pick_candidate is.
+create function tests.sd_distinct_franchises(p_category text, out f1 text, out f2 text)
+returns record
+language sql stable security definer as $$
+  select min(franchise_code), max(franchise_code)
+    from private.av_roster_players where slot_category = p_category;
+$$;
+
 grant usage on schema tests to authenticated;
 grant execute on all functions in schema tests to authenticated;
 grant all on all tables in schema tests to authenticated;

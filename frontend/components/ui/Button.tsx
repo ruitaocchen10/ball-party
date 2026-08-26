@@ -1,5 +1,12 @@
+"use client";
+
+import { motion } from "motion/react";
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
+
+import { springSnappy } from "@/lib/motion";
+
+const MotionLink = motion.create(Link);
 
 /**
  * Buttons are cream, because a button is a known thing and everything known in
@@ -13,7 +20,16 @@ import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
  * Focus rings are cream rather than red: red is reserved for hidden state, and
  * a focus ring is the opposite of hidden. On a panel it inverts with the rest.
  */
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
+// motion.button redefines these few event props with its own animation-aware
+// signatures (see framer-motion's HTMLMotionProps); omitted from the native
+// HTML type here so the two declarations don't conflict. Nothing in this app
+// wires a CSS animation/drag handler onto a <Button>, so nothing is lost.
+type NativeButtonProps = Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "onDrag" | "onDragStart" | "onDragEnd" | "onAnimationStart" | "onAnimationEnd" | "onAnimationIteration"
+>;
+
+type Props = NativeButtonProps & {
   variant?: "solid" | "ghost" | "ink";
   /** Full width is the common case; turn it off to sit inline beside a field. */
   fullWidth?: boolean;
@@ -22,12 +38,16 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   ref?: Ref<HTMLButtonElement>;
 };
 
+// Every Button/ButtonLink in the app is this same element, so the tap
+// feedback lands everywhere at once instead of being added button-by-button.
+// Skipped while disabled — a control that can't be pressed shouldn't feel
+// pressable.
+const PRESS = { whileTap: { scale: 0.97 }, transition: springSnappy };
+
 const BASE =
   "min-h-12 px-4 font-slab text-[15px] tracking-[0.04em] uppercase " +
   "cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60 " +
   "focus-visible:outline-2 focus-visible:outline-offset-2";
-
-const LABEL = "inline-block -skew-x-7";
 
 const VARIANTS = {
   solid: "bg-panel text-panel-fg hover:bg-[#fffdf7] focus-visible:outline-panel",
@@ -45,12 +65,13 @@ export function Button({
   ...props
 }: Props) {
   return (
-    <button
+    <motion.button
       {...props}
+      {...(props.disabled ? null : PRESS)}
       className={`${BASE} ${VARIANTS[variant]} ${fullWidth ? "block w-full" : "shrink-0"} ${className}`}
     >
-      <span className={LABEL}>{children}</span>
-    </button>
+      {children}
+    </motion.button>
   );
 }
 
@@ -73,13 +94,14 @@ export function ButtonLink({
   children: ReactNode;
 }) {
   return (
-    <Link
+    <MotionLink
       href={href}
+      {...PRESS}
       className={`${BASE} ${VARIANTS[variant]} inline-flex items-center justify-center ${
         fullWidth ? "flex w-full" : "shrink-0"
       } ${className}`}
     >
-      <span className={LABEL}>{children}</span>
-    </Link>
+      {children}
+    </MotionLink>
   );
 }

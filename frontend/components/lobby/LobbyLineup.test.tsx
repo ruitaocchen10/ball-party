@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/lobby/StartRun", () => ({
@@ -36,8 +36,10 @@ describe("LobbyLineup", () => {
     expect(screen.getAllByText(/next up · live/i)).toHaveLength(2);
     expect(screen.queryByText(/next up · in development/i)).not.toBeInTheDocument();
     expect(screen.getAllByText(/coming soon/i)).toHaveLength(1);
-    expect(screen.getByText("Everyone calls higher or lower at once. Longest streak wins.")).toBeInTheDocument();
-    expect(screen.getByText("2–4 players · 3–5 min")).toBeInTheDocument();
+    const higherOrLowerTile = screen
+      .getByText("Everyone calls higher or lower at once. Longest streak wins.")
+      .closest("article, div");
+    expect(within(higherOrLowerTile as HTMLElement).getByText("2–4 players")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /start auction with 2 players/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /start higher or lower with 2 players/i }),

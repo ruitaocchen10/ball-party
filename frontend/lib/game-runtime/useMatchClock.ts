@@ -103,6 +103,14 @@ export type MatchClockOptions = {
    *  asked early. Pass `HEARTBEAT_MS` for one whose server reads presence off
    *  the same call. */
   heartbeatMs?: number | null;
+  /** True while a host has paused the match. Freezes `remainingMs` at
+   *  whatever it last read, rather than letting it keep counting down (or
+   *  sitting at zero) against a deadline the server has stopped enforcing,
+   *  and stops asking the server to expire or reconcile anything until
+   *  unpaused. The server already rejects expiry/actions on a paused match
+   *  on its own — this is the client not bothering to ask, not the thing
+   *  that makes pausing safe. */
+  paused?: boolean;
   /** Calls the game's expiry RPC and applies whatever it returns. Resolves
    *  once the round trip (and any resulting state application) is done; its
    *  return value is not inspected; a rejection is not caught here, the same
@@ -121,6 +129,7 @@ export function useMatchClock({
   visibleSlackMs = 0,
   skipExpiry = false,
   heartbeatMs = null,
+  paused = false,
   expire,
   reconcile,
 }: MatchClockOptions): { remainingMs: number | null; reconcile: () => void } {
@@ -128,6 +137,12 @@ export function useMatchClock({
   // a fresh `serverNow` arrives, which is also the only thing the ticking
   // effect below depends on — restarting the interval on a state update is
   // cheap and self-correcting, not a bug.
+  //
+  // Paused skips starting the interval, but still measures the offset and
+  // ticks once, so `now` — and therefore `remainingMs` below — freezes at
+  // whatever it reads right when the pause takes hold instead of holding
+  // whatever stale value it last had. Resuming (paused flips back to false)
+  // re-runs this and picks the countdown back up.
   const offset = useRef(0);
   const [now, setNow] = useState(0);
 
@@ -135,9 +150,10 @@ export function useMatchClock({
     offset.current = Date.parse(serverNow) - Date.now();
     const tick = () => setNow(Date.now() + offset.current);
     tick();
+    if (paused) return;
     const id = setInterval(tick, TICK_MS);
     return () => clearInterval(id);
-  }, [serverNow]);
+  }, [serverNow, paused]);
 
   const deadlineMs = deadline ? Date.parse(deadline) : null;
   const remainingMs =
@@ -164,14 +180,14 @@ export function useMatchClock({
   // match has no deadline, and a screen that kept beating at one would be
   // asking a server that has stopped listening.
   useEffect(() => {
-    if (deadlineMs === null || now === 0 || skipExpiry) return;
+    if (deadlineMs === null || now === 0 || skipExpiry || paused) return;
     const passed = now >= deadlineMs + jitter.current;
     const interval = passed ? RETRY_MS : heartbeatMs;
     if (interval === null) return;
     if (now - attempted.current < interval) return;
     attempted.current = now;
     void expire();
-  }, [now, deadlineMs, skipExpiry, heartbeatMs, expire]);
+  }, [now, deadlineMs, skipExpiry, paused, heartbeatMs, expire]);
 
   // The watchdog. Expiry above is the mechanism; this is the admission that it
   // might not have worked -- because a tab was backgrounded and its interval
@@ -180,12 +196,12 @@ export function useMatchClock({
   // once a deadline is well past, so a healthy match never reaches it.
   const reconciled = useRef(0);
   useEffect(() => {
-    if (deadlineMs === null || now === 0) return;
+    if (deadlineMs === null || now === 0 || paused) return;
     if (now < deadlineMs + STALE_MS) return;
     if (now - reconciled.current < STALE_MS) return;
     reconciled.current = now;
     void reconcile();
-  }, [now, deadlineMs, reconcile]);
+  }, [now, deadlineMs, paused, reconcile]);
 
   // Coming back to a tab is the other moment a screen is likely to be wrong:
   // background throttling means the clock above may have barely run at all.

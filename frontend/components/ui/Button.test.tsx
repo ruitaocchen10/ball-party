@@ -11,7 +11,7 @@ describe("Button", () => {
     ["ghost", false],
     ["ink", true],
     ["ink", false],
-  ] as const)("keeps the %s button hit target rectangular at every width", (variant, fullWidth) => {
+  ] as const)("sizes the %s button correctly for fullWidth %s", (variant, fullWidth) => {
     render(
       <Button variant={variant} fullWidth={fullWidth}>
         Place bid
@@ -19,22 +19,15 @@ describe("Button", () => {
     );
 
     const button = screen.getByRole("button", { name: "Place bid" });
-    const label = screen.getByText("Place bid");
 
-    expect(button).not.toHaveClass("-skew-x-7");
     expect(button).toHaveClass(fullWidth ? "w-full" : "shrink-0");
-    expect(label.tagName).toBe("SPAN");
-    expect(label).toHaveClass("-skew-x-7");
   });
 
-  it("keeps the navigation button's hit target rectangular", () => {
+  it("renders the navigation button's label directly", () => {
     render(<ButtonLink href="/room">Join room</ButtonLink>);
 
     const link = screen.getByRole("link", { name: "Join room" });
-    const label = screen.getByText("Join room");
 
-    expect(link).not.toHaveClass("-skew-x-7");
-    expect(label.tagName).toBe("SPAN");
-    expect(label).toHaveClass("-skew-x-7");
+    expect(link).toHaveTextContent("Join room");
   });
 });

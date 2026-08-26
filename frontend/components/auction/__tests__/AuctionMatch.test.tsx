@@ -635,11 +635,63 @@ describe("the shape of the screen", () => {
 
     expect(screen.getByText("Ava wins")).toBeInTheDocument();
     expect(screen.getByText(/Saquon Barkley/)).toBeInTheDocument();
-    // The game ending hands the player back to the app.
-    expect(screen.getByRole("link", { name: "Ball Party" })).toBeInTheDocument();
+    // The game ending hands the player back to the app. Sidebar mounts both
+    // its desktop rail and its mobile strip at once — CSS shows one at a
+    // time, out of reach here (see the file docstring) — so at least one
+    // "Ball Party" link is what "chrome is back" actually means to this test.
+    expect(screen.getAllByRole("link", { name: "Ball Party" }).length).toBeGreaterThan(0);
   });
 });
 
+
+describe("pausing", () => {
+  it("gives only the host a pause control", () => {
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }), isHost: false });
+    expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }), isHost: true });
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+  });
+
+  it("asks the server to pause the match", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderMatch({ turn: turn("bidding", { turnSeat: 0 }), isHost: true });
+
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+    expect(supabase.rpc).toHaveBeenCalledWith("pause_match", { p_match_id: MATCH });
+  });
+
+  it("offers Resume instead once the match is paused, and asks the server to resume it", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderMatch({
+      turn: turn("bidding", { turnSeat: 0 }),
+      isHost: true,
+      paused: true,
+    });
+
+    expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Resume" }));
+    expect(supabase.rpc).toHaveBeenCalledWith("resume_match", { p_match_id: MATCH });
+  });
+
+  it("surfaces a rejection from the server", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderMatch({ turn: turn("bidding", { turnSeat: 0 }), isHost: true });
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: "not_host" } });
+
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Only the host can pause the game.");
+  });
+
+  it("shows everybody the paused banner and disables bidding, even for the player on the clock", () => {
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }), paused: true });
+
+    expect(screen.getByText("Paused")).toBeInTheDocument();
+    expect(screen.getAllByText(/The host paused the game/).length).toBeGreaterThan(0);
+    for (const button of raiseButtons()) expect(button).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Pass" })).toBeDisabled();
+  });
+});
 
 /**
  * The screen's two self-healing loops, both added after a playtest where three

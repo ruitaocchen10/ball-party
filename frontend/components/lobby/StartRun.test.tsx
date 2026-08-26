@@ -9,15 +9,19 @@ import { StartRun } from "./StartRun";
 
 const era = { seasonMin: 2010, seasonMax: 2025, minSpan: 4 };
 
+/** Opens a themed Select by its label and picks the option with this text. */
+async function choose(user: ReturnType<typeof userEvent.setup>, label: string, optionName: string) {
+  await user.click(screen.getByRole("combobox", { name: label }));
+  await user.click(await screen.findByRole("option", { name: optionName }));
+}
+
 describe("StartRun", () => {
   it("submits the host's selected auction format to the start action", async () => {
     const user = userEvent.setup();
     render(<StartRun lobbyId="lobby" code="BLTZ" players={2} era={era} />);
 
-    expect(screen.getByRole("combobox", { name: "Scoring" })).toHaveValue("weekly");
-    expect(screen.getByRole("combobox", { name: "Roster" })).toHaveValue("standard");
-    expect(screen.getByRole("combobox", { name: "Scoring" })).toHaveAttribute("name", "scoring_mode");
-    expect(screen.getByRole("combobox", { name: "Roster" })).toHaveAttribute("name", "roster_preset");
+    expect(screen.getByRole("combobox", { name: "Scoring" })).toHaveTextContent("Weekly");
+    expect(screen.getByRole("combobox", { name: "Roster" })).toHaveTextContent("Standard · 20 lots");
 
     await user.click(screen.getByRole("button", { name: "Start the auction" }));
 
@@ -32,12 +36,11 @@ describe("StartRun", () => {
     const user = userEvent.setup();
     render(<StartRun lobbyId="lobby" code="BLTZ" players={2} era={era} />);
 
-    const roster = screen.getByRole("combobox", { name: "Roster" });
-    expect(roster).toHaveTextContent("Standard · 20 lots");
-    expect(roster).toHaveTextContent("Full · 28 lots");
-    expect(roster).toHaveTextContent("Deep · 40 lots");
+    await user.click(screen.getByRole("combobox", { name: "Roster" }));
+    expect(screen.getByRole("option", { name: "Standard · 20 lots" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Full · 28 lots" })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "Deep · 40 lots" }));
 
-    await user.selectOptions(roster, "deep");
     await user.click(screen.getByRole("button", { name: "Start the auction" }));
 
     const submitted = vi.mocked(startRun).mock.calls.at(-1)![0];
@@ -48,10 +51,10 @@ describe("StartRun", () => {
     const user = userEvent.setup();
     render(<StartRun lobbyId="lobby" code="BLTZ" players={2} era={era} />);
 
-    expect(screen.getByRole("combobox", { name: "First season" })).toHaveValue("2010");
-    expect(screen.getByRole("combobox", { name: "Last season" })).toHaveValue("2025");
+    expect(screen.getByRole("combobox", { name: "First season" })).toHaveTextContent("2010");
+    expect(screen.getByRole("combobox", { name: "Last season" })).toHaveTextContent("2025");
 
-    await user.selectOptions(screen.getByRole("combobox", { name: "First season" }), "2020");
+    await choose(user, "First season", "2020");
     await user.click(screen.getByRole("button", { name: "Start the auction" }));
 
     const submitted = vi.mocked(startRun).mock.calls.at(-1)![0];
@@ -63,7 +66,7 @@ describe("StartRun", () => {
     const user = userEvent.setup();
     render(<StartRun lobbyId="lobby" code="BLTZ" players={2} era={era} />);
 
-    await user.selectOptions(screen.getByRole("combobox", { name: "First season" }), "2023");
+    await choose(user, "First season", "2023");
 
     expect(screen.getByRole("button", { name: "Start the auction" })).toBeDisabled();
     expect(screen.getByText("Pick a span of at least 4 seasons")).toBeInTheDocument();
@@ -73,8 +76,8 @@ describe("StartRun", () => {
     const user = userEvent.setup();
     render(<StartRun lobbyId="lobby" code="BLTZ" players={2} era={era} />);
 
-    await user.selectOptions(screen.getByRole("combobox", { name: "Last season" }), "2010");
-    await user.selectOptions(screen.getByRole("combobox", { name: "First season" }), "2020");
+    await choose(user, "Last season", "2010");
+    await choose(user, "First season", "2020");
 
     expect(screen.getByRole("button", { name: "Start the auction" })).toBeDisabled();
     expect(screen.getByText("The last season has to come after the first")).toBeInTheDocument();

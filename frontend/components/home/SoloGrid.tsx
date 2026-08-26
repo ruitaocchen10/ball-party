@@ -30,8 +30,6 @@ export function SoloGrid({ canPlaySolo }: { canPlaySolo: boolean }) {
 }
 
 function SoloCard({ game, canPlaySolo }: { game: Game; canPlaySolo: boolean }) {
-  const meta = [game.players, game.duration].filter(Boolean).join(" · ");
-
   return (
     <article className="flex w-full flex-col bg-panel text-panel-fg shadow-card">
       <span aria-hidden className="block h-[5px] shrink-0 bg-hidden" />
@@ -41,7 +39,7 @@ function SoloCard({ game, canPlaySolo }: { game: Game; canPlaySolo: boolean }) {
           {game.kind}
         </p>
 
-        <h3 className="mb-2.5 font-slab text-base leading-[1.04] -skew-x-7 uppercase sm:text-xl">
+        <h3 className="mb-2.5 font-slab text-base leading-[1.04] uppercase sm:text-xl">
           {game.name.map((line) => (
             <span key={line} className="block">
               {line}
@@ -51,7 +49,7 @@ function SoloCard({ game, canPlaySolo }: { game: Game; canPlaySolo: boolean }) {
 
         <div className="mt-auto flex flex-col items-stretch gap-2.5 border-t border-dashed border-[#c7bfac] pt-3">
           <p className="font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
-            {meta}
+            {game.players}
           </p>
 
           {canPlaySolo ? (
@@ -59,7 +57,7 @@ function SoloCard({ game, canPlaySolo }: { game: Game; canPlaySolo: boolean }) {
               <input type="hidden" name="game" value={game.match ?? ""} />
               <button
                 type="submit"
-                className="inline-flex h-9 w-full cursor-pointer items-center justify-center bg-panel-fg px-3.5 font-slab text-[13px] tracking-[0.04em] -skew-x-7 text-panel uppercase transition-colors hover:bg-[#2c2921] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-fg"
+                className="inline-flex h-9 w-full cursor-pointer items-center justify-center bg-panel-fg px-3.5 font-slab text-[13px] tracking-[0.04em] text-panel uppercase transition-colors hover:bg-[#2c2921] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-fg"
               >
                 Play solo
               </button>
@@ -72,10 +70,10 @@ function SoloCard({ game, canPlaySolo }: { game: Game; canPlaySolo: boolean }) {
 }
 
 /** Solo's honest-empty state, for the day the catalog's one solo game isn't
- *  live — the same rule GameGrid's InDevelopment strip already follows. */
+ *  live — say so plainly rather than showing nothing. */
 function NoSoloGames() {
   return (
-    <div className="rounded-card border border-line bg-surface-raised px-5 py-6 text-sm leading-6 text-fg-muted">
+    <div className="rounded-card bg-surface-raised px-5 py-6 text-sm leading-6 text-fg-muted shadow-well">
       No game deals for one player right now. Check back soon.
     </div>
   );

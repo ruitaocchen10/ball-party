@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { Concealed } from "@/components/ui/Concealed";
 import { GAMES, type Game } from "@/lib/games/catalog";
 import { createLobby } from "@/lib/lobbies/actions";
 import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
@@ -26,7 +25,6 @@ import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
  */
 export function GameGrid({ canCreateLobby }: { canCreateLobby: boolean }) {
   const live = GAMES.filter((game) => game.status === "live");
-  const upcoming = GAMES.filter((game) => game.status === "development");
 
   return (
     <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4 xl:gap-5">
@@ -42,12 +40,6 @@ export function GameGrid({ canCreateLobby }: { canCreateLobby: boolean }) {
           <GameCard game={game} canCreateLobby={canCreateLobby} featured={game.featured} />
         </li>
       ))}
-
-      {upcoming.length > 0 ? (
-        <li className="col-span-2 lg:col-span-3">
-          <InDevelopment count={upcoming.length} />
-        </li>
-      ) : null}
     </ul>
   );
 }
@@ -61,8 +53,6 @@ function GameCard({
   canCreateLobby: boolean;
   featured: boolean;
 }) {
-  const meta = [game.players, game.duration].filter(Boolean).join(" · ");
-
   return (
     <article
       className={
@@ -83,7 +73,7 @@ function GameCard({
           </p>
 
           <h3
-            className={`mb-2.5 font-slab leading-[1.04] -skew-x-7 uppercase ${
+            className={`mb-2.5 font-slab leading-[1.04] uppercase ${
               featured ? "text-2xl sm:text-4xl" : "text-base sm:text-xl"
             }`}
           >
@@ -120,7 +110,7 @@ function GameCard({
           }`}
         >
           <p className="font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
-            {meta}
+            {game.players}
           </p>
           <Action canCreateLobby={canCreateLobby} stretch={!featured} />
         </div>
@@ -136,17 +126,18 @@ function GameCard({
  */
 const ACTION =
   "inline-flex h-9 cursor-pointer items-center bg-panel-fg px-3.5 " +
-  "font-slab text-[13px] tracking-[0.04em] -skew-x-7 text-panel uppercase " +
+  "font-slab text-[13px] tracking-[0.04em] text-panel uppercase " +
   "transition-colors hover:bg-[#2c2921] " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-fg";
 
 /**
  * The rest of the tile, made to do what the tile looks like it does.
  *
- * A second control rather than a pseudo-element stretched off the first: the
- * visible one is skewed, and a transform makes an element the containing block
- * for its own absolute children, so `inset-0` there sizes to the button. This
- * sits in the form instead, where the nearest positioned ancestor is the card.
+ * A second control rather than a pseudo-element stretched off the first: a
+ * pseudo-element can't be a real `<a>` or `<button>`, so it can't carry the
+ * href or form submission that makes the whole card clickable. This sits in
+ * the form instead, where the nearest positioned ancestor is the card, so
+ * `inset-0` covers the full tile.
  *
  * Hidden from assistive tech and off the tab order on purpose — it is the same
  * action as the button beside it, and the tile should be one stop, not two.
@@ -215,25 +206,5 @@ function Lots() {
         />
       ))}
     </div>
-  );
-}
-
-/** A game nobody can play yet is concealed, not greyed out — red already means
- *  "not revealed" everywhere else in the product. A strip rather than a tile:
- *  it is an announcement, and it was taking a quarter of the shop window to
- *  advertise nothing. */
-function InDevelopment({ count }: { count: number }) {
-  return (
-    <Concealed
-      label={`${count} more game in development`}
-      className="flex flex-col items-start gap-1.5 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
-    >
-      <p className="relative font-slab text-[13px] leading-none -skew-x-7 text-panel uppercase">
-        {count === 1 ? "One more game" : `${count} more games`} in development
-      </p>
-      <p className="relative font-mono text-[9px] tracking-[0.15em] text-panel uppercase">
-        Coming soon
-      </p>
-    </Concealed>
   );
 }

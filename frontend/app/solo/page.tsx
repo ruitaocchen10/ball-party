@@ -2,14 +2,14 @@ import { ColumnHead } from "@/components/home/ColumnHead";
 import { SoloGrid } from "@/components/home/SoloGrid";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { GAMES } from "@/lib/games/catalog";
-import { TopBar } from "@/components/layout/TopBar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { isSignedInViewer } from "@/lib/auth/viewer";
 
 /**
  * The games a lone player can start right now, on its own route — split out
- * of the home page once Party, Solo and Social each got a top-bar link of
- * their own (see components/layout/TopBar.tsx). No lobby to start or join
+ * of the home page once Party, Solo and Social each got a sidebar link of
+ * their own (see components/layout/Sidebar.tsx). No lobby to start or join
  * here, so this page skips straight to the grid rather than carrying Party's
  * two-panel action strip.
  */
@@ -26,6 +26,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
     : { data: null };
 
   const displayName = profile?.display_name ?? (viewer ? (claims!.email as string) : null);
+  const email = viewer ? ((claims!.email as string | undefined) ?? null) : null;
 
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
@@ -34,7 +35,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
 
   return (
     <>
-      <TopBar displayName={displayName} />
+      <Sidebar displayName={displayName} email={email} />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}

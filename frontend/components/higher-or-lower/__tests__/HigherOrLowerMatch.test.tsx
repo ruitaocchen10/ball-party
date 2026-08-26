@@ -118,6 +118,7 @@ function renderMatch(over: {
   standings?: Standing[];
   roomCode?: string | null;
   isHost?: boolean;
+  paused?: boolean;
   viewerId?: string;
 } = {}) {
   return render(
@@ -126,6 +127,7 @@ function renderMatch(over: {
       viewerId={over.viewerId ?? "u0"}
       roomCode={over.roomCode === undefined ? "ABCD" : over.roomCode}
       isHost={over.isHost ?? true}
+      paused={over.paused ?? false}
       initial={{
         board: { ...BOARD, ...over.board },
         cards: over.cards ?? ladder(),
@@ -515,6 +517,36 @@ describe("the final screen", () => {
 
     expect(screen.getByRole("button", { name: /play again/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back home/i })).toBeInTheDocument();
+  });
+});
+
+describe("pausing", () => {
+  beforeEach(() => {
+    globalThis.__supabaseMock = supabaseMock();
+  });
+
+  it("gives only the host a pause control", () => {
+    renderMatch({ isHost: false });
+    expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+
+    renderMatch({ isHost: true });
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+  });
+
+  it("asks the server to pause the match", async () => {
+    const user = userEvent.setup();
+    renderMatch({ isHost: true });
+
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+    expect(globalThis.__supabaseMock.rpc).toHaveBeenCalledWith("pause_match", { p_match_id: MATCH });
+  });
+
+  it("shows everybody the paused banner and disables the call buttons", () => {
+    renderMatch({ paused: true });
+
+    expect(screen.getByText("Paused")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Higher" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Lower" })).toBeDisabled();
   });
 });
 
