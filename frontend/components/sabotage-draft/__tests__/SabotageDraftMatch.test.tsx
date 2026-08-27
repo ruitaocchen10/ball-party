@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,8 +7,8 @@ import { TURN_REVEAL_MS } from "@/lib/sabotage-draft/useTurnReveal";
 import { MATCH, supabaseMock } from "@/test/factories";
 
 const PLAYERS = [
-  { match_id: MATCH, user_id: "u0", seat: 0, absent: false, display_name: "Ava" },
-  { match_id: MATCH, user_id: "u1", seat: 1, absent: false, display_name: "Ben" },
+  { match_id: MATCH, user_id: "u0", seat: 0, absent: false, display_name: "Ava", avatar_url: null },
+  { match_id: MATCH, user_id: "u1", seat: 1, absent: false, display_name: "Ben", avatar_url: null },
 ];
 
 const BOARD: {
@@ -37,6 +37,10 @@ function renderMatch(over: {
   viewerId?: string;
   spins?: { match_id: string; round_number: number; user_id: string; franchise_code: string }[];
   board?: typeof BOARD;
+  picks?: { match_id: string; round_number: number; user_id: string; player_id: string; display_name: string; season: number; by_timeout: boolean; headshot_url: string | null }[];
+  statuses?: { match_id: string; round_number: number; user_id: string }[];
+  hits?: { match_id: string; round_number: number; target_user_id: string; kind: "respin" | "sabotage" }[];
+  guesses?: { match_id: string; round_number: number; user_id: string; target_user_id: string; result: "miss" | "respun" | "sabotaged" | null }[];
 } = {}) {
   return render(
     <SabotageDraftMatch
@@ -48,10 +52,10 @@ function renderMatch(over: {
         board: over.board ?? BOARD,
         players: PLAYERS,
         spins: over.spins ?? [],
-        picks: [],
-        statuses: [],
-        hits: [],
-        guesses: [],
+        picks: over.picks ?? [],
+        statuses: over.statuses ?? [],
+        hits: over.hits ?? [],
+        guesses: over.guesses ?? [],
         passes: [],
         decisions: [],
         standings: [],
@@ -215,6 +219,88 @@ describe("the turn's spin reveal", () => {
 });
 
 /**
+ * The recap that fills the "Your move" column's spinning window with what
+ * the *previous* turn resolved to (TurnResultCard, built from a snapshot the
+ * effect in SabotageDraftMatch takes the instant the turn changes), plus the
+ * matching flash on that player's row in "Everyone's teams" (RosterBoard's
+ * `resolvedHere`). Driven through the same real refetch cycle as "the turn's
+ * spin reveal" above, not a prop change — this is the case that matters most
+ * to get right: a turn resolving for someone other than the viewer, where
+ * `sabotage_draft_picks`' RLS means their pick never reaches this client at
+ * all, resolved or not, so the recap has to fall back to the franchise/slot
+ * shape instead of a name.
+ */
+describe("the turn result recap", () => {
+  const withFakeTimers = async (body: () => Promise<void>) => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      await body();
+    } finally {
+      vi.useRealTimers();
+    }
+  };
+
+  function queryReturning(table: string, rows: unknown) {
+    const q: Record<string, unknown> = { table };
+    for (const method of ["select", "eq", "order", "limit", "maybeSingle", "single"]) q[method] = () => q;
+    q.then = (resolve: (value: { data: unknown; error: null }) => unknown) =>
+      Promise.resolve({ data: rows, error: null }).then(resolve);
+    return q;
+  }
+
+  it("recaps someone else's sabotaged turn without their identity, and flashes their roster row", async () => {
+    await withFakeTimers(async () => {
+      const spins = [
+        { match_id: MATCH, round_number: 1, user_id: "u0", franchise_code: "atl" },
+        { match_id: MATCH, round_number: 1, user_id: "u1", franchise_code: "buf" },
+      ];
+      const hits = [{ match_id: MATCH, round_number: 1, target_user_id: "u0", kind: "sabotage" as const }];
+      const guesses = [{ match_id: MATCH, round_number: 1, user_id: "u1", target_user_id: "u0", result: "sabotaged" as const }];
+      let activeUserId = "u0";
+      const client = supabaseMock();
+      client.rpc = vi.fn(async (...args: unknown[]) => {
+        if (args[0] === "state") return { data: { ...BOARD, active_user_id: activeUserId }, error: null };
+        return { data: null, error: null };
+      });
+      client.from = vi.fn((table: string) => {
+        if (table === "sabotage_draft_round_spins") return queryReturning(table, spins);
+        if (table === "sabotage_draft_pick_hits") return queryReturning(table, hits);
+        if (table === "sabotage_draft_guesses") return queryReturning(table, guesses);
+        // No row for u0's own pick — the same shape u1's client actually
+        // gets back from a pick it isn't allowed to see, resolved or not.
+        if (table === "sabotage_draft_picks") return queryReturning(table, []);
+        if (table === "sabotage_draft_players") {
+          return queryReturning(table, PLAYERS.map(p => ({ ...p, profiles: { display_name: p.display_name } })));
+        }
+        return queryReturning(table, null);
+      });
+      globalThis.__supabaseMock = client;
+
+      renderMatch({ viewerId: "u1", spins });
+
+      const passButton = screen.getByRole("button", { name: "Pass" });
+      activeUserId = "u1";
+      await act(async () => {
+        fireEvent.click(passButton);
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      // Still inside the new turn's spinning window: the recap names the
+      // actor and the target, but the target's own pick never surfaces —
+      // only the slot and the franchise it came from, the same withheld
+      // shape RosterBoard's own concealed rows already use.
+      expect(screen.getByText(/Ben sabotaged Ava/)).toBeInTheDocument();
+      expect(screen.getByText(/QB.*Atlanta Falcons/)).toBeInTheDocument();
+
+      const roster = within(screen.getByRole("complementary", { name: "Everyone's teams" }));
+      const avaRow = roster.getByText("Ava").closest("summary");
+      expect(avaRow).toHaveClass("motion-safe:animate-sold-once");
+      expect(avaRow).toHaveClass("bg-hidden/15");
+    });
+  });
+});
+
+/**
  * The left column's other half — the countdown replacing what used to be a
  * plain-text `Your pick · 30s` in the page header. A `<section
  * aria-label="Clock">` picks up an implicit `region` role from its
@@ -261,5 +347,66 @@ describe("the turn clock", () => {
   it("labels the clock with the active player's name for everyone else", () => {
     renderMatch({ viewerId: "u1" });
     expect(screen.getByRole("region", { name: "Clock" })).toHaveTextContent("Sabotage Ava");
+  });
+});
+
+/**
+ * Regression coverage for the strip cell that used to spill its own box: a
+ * long drafted-player name plus a two-part hit badge stacked past the cell's
+ * fixed height with no `overflow-hidden` guard. MatchStrip's shared
+ * `StripCell` (components/ui/MatchStrip.tsx) fixes this for both sabotage
+ * draft and auction at once, so this asserts the guard actually lands here
+ * rather than trusting the shared component was wired in correctly.
+ */
+describe("the turn strip", () => {
+  beforeEach(() => {
+    globalThis.__supabaseMock = supabaseMock();
+  });
+
+  it("clips a past cell instead of letting a long name and a hit badge overflow it", () => {
+    renderMatch({
+      viewerId: "u0",
+      board: { ...BOARD, current_round: 2 },
+      picks: [{ match_id: MATCH, round_number: 1, user_id: "u0", player_id: "p1", display_name: "Christian McCaffrey-Watson Jr.", season: 2019, by_timeout: false, headshot_url: null }],
+      statuses: [{ match_id: MATCH, round_number: 1, user_id: "u0" }],
+      hits: [
+        { match_id: MATCH, round_number: 1, target_user_id: "u0", kind: "respin" },
+        { match_id: MATCH, round_number: 1, target_user_id: "u0", kind: "sabotage" },
+      ],
+    });
+    const cell = screen.getByRole("listitem", {
+      name: "Round 1, Ava, QB, Christian McCaffrey-Watson Jr. · 2019, Respun · Sabotaged",
+    });
+    expect(cell).toHaveClass("overflow-hidden");
+    expect(screen.getByText("Respun · Sabotaged")).toBeInTheDocument();
+  });
+
+  it("leads a revealed past cell with the drafted player, not the drafter, once its identity is visible", () => {
+    renderMatch({
+      viewerId: "u0",
+      board: { ...BOARD, current_round: 2 },
+      picks: [{ match_id: MATCH, round_number: 1, user_id: "u0", player_id: "p1", display_name: "Christian McCaffrey", season: 2019, by_timeout: false, headshot_url: null }],
+      statuses: [{ match_id: MATCH, round_number: 1, user_id: "u0" }],
+    });
+    // The drafter's own name moves up to the label a round/slot pair used to
+    // occupy; the player they drafted takes over the name/icon spot instead.
+    expect(screen.getByText("C. McCaffrey")).toBeInTheDocument();
+    expect(screen.getByText("2019")).toBeInTheDocument();
+    expect(screen.queryByText("Christian McCaffrey")).not.toBeInTheDocument();
+  });
+
+  it("keeps a concealed past cell showing only the drafter and 'Locked'", () => {
+    // The server itself is what withholds the row for a still-open round or
+    // a round that isn't this viewer's own (see migration 0069) — simulated
+    // here the same way: `statuses` says u0 has locked in a pick, but
+    // `picks` carries none of it, exactly what u1's own query would get
+    // back from Supabase in that situation.
+    renderMatch({
+      viewerId: "u1",
+      board: { ...BOARD, current_round: 2 },
+      statuses: [{ match_id: MATCH, round_number: 1, user_id: "u0" }],
+    });
+    expect(screen.queryByText("C. McCaffrey")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Locked").length).toBeGreaterThan(0);
   });
 });

@@ -81,7 +81,11 @@ export default async function ProfilePage() {
               Playing since {joinedMonth(profile?.created_at)}
             </p>
           </div>
-          <ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} />
+          <ProfileEditor
+            displayName={displayName}
+            avatarUrl={profile?.avatar_url ?? null}
+            userId={claims.sub}
+          />
         </header>
 
         <section aria-label="Career stats" className="grid grid-cols-2 gap-2.5 py-6 sm:grid-cols-4 sm:gap-3">

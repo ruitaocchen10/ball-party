@@ -29,21 +29,28 @@ fourteen different franchises, not one team's real history. That's a feature,
 not an accident — it's what keeps every round's pool fresh instead of the table
 mentally exhausting one franchise's depth chart by round three.
 
-**A round's spin is only public once the table actually reaches it — revised
-from an earlier version of this design that dealt and revealed all fourteen
-rounds' franchises up front.** The reasoning at the time was that nothing
-about a spin is a secret, so there was no reason to withhold round 9's from a
-table still on round 1. Playtesting showed that reasoning wrong: seeing every
-future round's franchise from turn one hands out real information nobody is
-supposed to have yet, including a player's own future spins, and quietly
-kills the "you don't know your board yet" tension the rest of this design
-leans on. What the earlier version got right stays true: the *current*
-round's spin is visible to the whole table, cross-seat, the moment that round
-opens — "Round 4 might spin the Steelers for you and the Patriots for the
-player next to you" above still needs to hold, or a guess aimed at whoever's
-turn hasn't come up yet has no search space to aim at. Only rounds strictly
-ahead of the one in progress are now withheld, and they unlock the instant
-the table reaches them — nothing is redealt or reshuffled by revealing late.
+**A seat's spin is only public once that seat's own turn actually arrives —
+revised twice now from an earlier version of this design that dealt and
+revealed all fourteen rounds' franchises up front.** The reasoning at the
+time was that nothing about a spin is a secret, so there was no reason to
+withhold round 9's from a table still on round 1. Playtesting showed that
+reasoning wrong: seeing every future round's franchise from turn one hands
+out real information nobody is supposed to have yet, including a player's
+own future spins, and quietly kills the "you don't know your board yet"
+tension the rest of this design leans on. The first fix drew the line at the
+round: the *current* round's spin became visible to the whole table,
+cross-seat, the moment that round opened. That still gave away too much —
+"Round 4 might spin the Steelers for you and the Patriots for the player
+next to you" above still needs to hold *once it's relevant*, but a seat
+several turns out having its franchise visible before anyone could possibly
+guess against it is the same tension leak by another name, just scoped to a
+round instead of the whole board. The line now sits at the seat, not the
+round: a spin is visible once its round is strictly in the past, or once
+it's the current round and that seat's own turn has actually been reached —
+seat order, tracked by the match's `active_seat`, gates it the same way
+`current_round` gates a whole round. Nothing is redealt or reshuffled by
+revealing late; a spin that already exists just becomes readable the instant
+its seat's turn opens.
 
 **A franchise can be spun more than once in a game.** No no-repeat rule across
 rounds — e.g. the Patriots can come up for QB in round 1 and again for LB in
@@ -62,7 +69,7 @@ different slices of the same team's history get tested instead of one.
   │  ??? · WR · PIT · ????       │
   └──────────────────────────────┘
 
-  OTHER SPINS THIS ROUND:  Maya — NE   ·   Sam — DAL
+  OTHER SPINS THIS ROUND (SEATS ALREADY UP):  Maya — NE
 ```
 
 **The pick itself is hidden — identity and year both.** Nobody sees what you
