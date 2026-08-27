@@ -508,6 +508,41 @@ language sql stable security definer as $$
     from private.av_roster_players where slot_category = p_category;
 $$;
 
+-- A real player with at least two seasons in the same franchise/category
+-- pool, plus two of those seasons named explicitly -- so a test that needs
+-- the name-only-guess respin's same-player-different-year branch to
+-- actually fire doesn't have to hope the seed happens to deal one. Definer
+-- for the same reason sd_pick_candidate is.
+create function tests.sd_multi_season_player(
+  p_category text, out franchise_code text, out player_id text, out season1 smallint, out season2 smallint
+)
+language sql stable security definer as $$
+  select p.franchise_code, p.player_id, min(p.season), max(p.season)
+    from private.av_roster_players p
+   where p.slot_category = p_category
+   group by p.franchise_code, p.player_id
+  having count(*) >= 2
+   order by p.franchise_code, p.player_id
+   limit 1;
+$$;
+
+-- The counterpart: a real player with exactly one season in their
+-- franchise/category pool, so a test can exercise the "no other year to
+-- respin to" no-op case deliberately rather than stumbling into it.
+-- Definer for the same reason sd_pick_candidate is.
+create function tests.sd_single_season_player(
+  p_category text, out franchise_code text, out player_id text, out season smallint
+)
+language sql stable security definer as $$
+  select p.franchise_code, p.player_id, min(p.season)
+    from private.av_roster_players p
+   where p.slot_category = p_category
+   group by p.franchise_code, p.player_id
+  having count(*) = 1
+   order by p.franchise_code, p.player_id
+   limit 1;
+$$;
+
 grant usage on schema tests to authenticated;
 grant execute on all functions in schema tests to authenticated;
 grant all on all tables in schema tests to authenticated;

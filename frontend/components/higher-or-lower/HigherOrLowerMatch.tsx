@@ -1,9 +1,9 @@
 "use client";
 
-import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
+import { FinalStandings, type FinalStandingsRow } from "@/components/game-runtime/FinalStandings";
 import { PauseBanner } from "@/components/game-runtime/PauseBanner";
 import { PauseButton } from "@/components/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/game-runtime/PostGameControls";
@@ -13,7 +13,6 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Concealed } from "@/components/ui/Concealed";
-import { staggerRow } from "@/lib/motion";
 import {
   byPlacement,
   canCallNow,
@@ -109,7 +108,7 @@ export function HigherOrLowerMatch({
       // profiles alongside this table's direct one, so an unqualified
       // `profiles(...)` embed 300s as ambiguous (PGRST201). See the matching
       // note on the server fetch in app/match/[id]/page.tsx.
-      supabase.from("higher_or_lower_players").select("*, profiles!higher_or_lower_players_user_id_fkey(display_name)").eq("match_id", matchId).order("seat"),
+      supabase.from("higher_or_lower_players").select("*, profiles!higher_or_lower_players_user_id_fkey(display_name, avatar_url)").eq("match_id", matchId).order("seat"),
       supabase.from("higher_or_lower_calls").select("*").eq("match_id", matchId).order("created_at"),
       supabase.from("higher_or_lower_call_statuses").select("*").eq("match_id", matchId),
       supabase.from("match_players").select("*").eq("match_id", matchId),
@@ -120,6 +119,7 @@ export function HigherOrLowerMatch({
       setPlayers(playerRows.data.map(({ profiles, ...seat }) => ({
         ...seat,
         display_name: profiles?.display_name ?? "Unknown player",
+        avatar_url: profiles?.avatar_url ?? null,
       })) as Player[]);
     }
     if (callRows.data) setCalls(callRows.data as Call[]);
@@ -237,7 +237,7 @@ export function HigherOrLowerMatch({
 
   if (board.phase === "complete") {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 px-6 py-10">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-6 py-10">
         <FinalScreen
           standings={standings}
           players={players}
@@ -387,50 +387,33 @@ function FinalScreen({
 }) {
   const ranked = byPlacement(standings);
   const nameOf = (userId: string) => players.find((p) => p.user_id === userId)?.display_name ?? "Unknown player";
+  const avatarOf = (userId: string) => players.find((p) => p.user_id === userId)?.avatar_url ?? null;
   const winners = ranked.filter((s) => s.placement === 1);
+  const headline =
+    winners.length === 0
+      ? "Game over"
+      : winners.length === 1
+        ? `${nameOf(winners[0].user_id)} wins`
+        : `${winners.map((w) => nameOf(w.user_id)).join(" & ")} tie`;
+
+  // No per-user roster here — the ladder has nothing to draft — so every
+  // row renders with no `roster` and, per FinalStandings, no disclosure
+  // chevron at all rather than an empty one.
+  const rows: FinalStandingsRow[] = ranked.map((standing) => {
+    const player = players.find((p) => p.user_id === standing.user_id);
+    return {
+      userId: standing.user_id,
+      rank: standing.placement ?? ranked.length,
+      name: nameOf(standing.user_id),
+      avatarUrl: avatarOf(standing.user_id),
+      isViewer: standing.user_id === viewerId,
+      statLine: player ? `${player.best_streak} best · ${player.correct_count} correct` : "",
+    };
+  });
 
   return (
     <>
-      <header className="flex flex-col gap-2 pt-4">
-        <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
-          Final
-        </p>
-        <h1 className="font-slab text-3xl leading-none uppercase">
-          {winners.length === 0
-            ? "Game over"
-            : winners.length === 1
-              ? `${nameOf(winners[0].user_id)} wins`
-              : `${winners.map((w) => nameOf(w.user_id)).join(" & ")} tie`}
-        </h1>
-      </header>
-
-      <ul className="flex flex-col gap-2.5">
-        {ranked.map((standing, index) => {
-          const player = players.find((p) => p.user_id === standing.user_id);
-          return (
-            <motion.li key={standing.user_id} variants={staggerRow(index)} initial="initial" animate="animate">
-              <Card edge={false}>
-                <div className="flex items-baseline justify-between gap-3 px-3 py-2.5">
-                  <span className="font-slab text-xl leading-none uppercase">
-                    <span className="mr-2 font-mono text-[11px] text-panel-muted tabular-nums">
-                      {standing.placement}
-                    </span>
-                    {nameOf(standing.user_id)}
-                    {standing.user_id === viewerId ? (
-                      <span className="ml-1.5 font-mono text-[11px] tracking-[0.13em] text-panel-muted">
-                        YOU
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="font-mono text-sm font-bold text-panel-fg tabular-nums">
-                    {player ? `${player.best_streak} best · ${player.correct_count} correct` : ""}
-                  </span>
-                </div>
-              </Card>
-            </motion.li>
-          );
-        })}
-      </ul>
+      <FinalStandings headline={headline} rows={rows} />
 
       {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} /> : null}
       {roomCode ? (

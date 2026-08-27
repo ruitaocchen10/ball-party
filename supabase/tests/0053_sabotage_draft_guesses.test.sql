@@ -22,6 +22,15 @@ select tests.act_as_admin();
 update public.matches set status = 'playing', started_at = now()
  where id = (select v from tests.fx where k = 'm');
 
+-- p0's round-1 franchise is forced onto a real player with a second season
+-- in that same franchise/category pool, so the name-only guess below has
+-- somewhere to respin to rather than hoping the seed happens to deal one.
+update public.sabotage_draft_round_spins s
+   set franchise_code = ms.franchise_code
+  from tests.sd_multi_season_player('QB') ms
+ where s.match_id = (select v from tests.fx where k = 'm') and s.round_number = 1
+   and s.user_id = (select v::uuid from tests.fx where k = 'p0');
+
 -- p0 sits at seat 0 and is on the clock from the deal.
 select is(
   (select v::uuid from tests.fx where k = 'p0'),
@@ -30,8 +39,8 @@ select is(
 );
 
 select tests.act_as((select v from tests.fx where k = 'p0'));
-select sabotage_draft.submit_pick((select v from tests.fx where k = 'm'), c.player_id, c.season)
-  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p0'), 'QB') c;
+select sabotage_draft.submit_pick((select v from tests.fx where k = 'm'), ms.player_id, ms.season1)
+  from tests.sd_multi_season_player('QB') ms;
 
 -- p0's own pick does not by itself close anything: p1 and p2 have not yet
 -- guessed or passed, so the turn's shared clock stays open and the turn
@@ -57,14 +66,14 @@ select throws_ok(
   'P0001', 'not_your_turn', 'the active drafter cannot guess during their own turn'
 );
 
--- p2 knows the fixture's deterministic candidate for p0's own spun franchise
--- and makes an exact call, supplying the same eligible card as the
--- replacement. It is held pending — p1 has not acted yet, so the turn is
--- not complete and nothing has been checked against the actual pick.
+-- p2 knows p0's actual card (the forced multi-season player, season1) and
+-- makes an exact call, supplying the same eligible card as the replacement.
+-- It is held pending — p1 has not acted yet, so the turn is not complete
+-- and nothing has been checked against the actual pick.
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select sabotage_draft.submit_guess(
-  (select v from tests.fx where k = 'm'), c.player_id, c.season, c.player_id, c.season
-) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p0'), 'QB') c;
+  (select v from tests.fx where k = 'm'), ms.player_id, ms.season1, ms.player_id, ms.season1
+) from tests.sd_multi_season_player('QB') ms;
 
 select tests.act_as_admin();
 select ok(
@@ -92,12 +101,15 @@ select throws_ok(
 -- waiting on -- p0 has picked, and now both p1 and p2 have acted -- so it
 -- resolves both pending guesses, in the order they were made, in the same
 -- call: p2's exact guess first (a sabotage hit, since it lands on the real
--- card), then p1's name-only guess against the now-sabotaged card (a
--- respin hit, a different kind, so the per-turn cap does not block it).
+-- card -- itself the same player/season it already was, since p2 named its
+-- own guess as the replacement), then p1's name-only guess against that
+-- same card (a respin hit, a different kind, so the per-turn cap does not
+-- block it) -- which redraws the player's season to some other year in the
+-- pool, not the player itself.
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select sabotage_draft.submit_guess(
-  (select v from tests.fx where k = 'm'), c.player_id
-) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p0'), 'QB') c;
+  (select v from tests.fx where k = 'm'), ms.player_id
+) from tests.sd_multi_season_player('QB') ms;
 
 select tests.act_as_admin();
 select is(
@@ -120,9 +132,11 @@ select is(
   2, 'a turn can take the design maximum of one respin and one sabotage'
 );
 select ok(
-  (select player_id is not null and season is not null from public.sabotage_draft_picks
-    where match_id = (select v from tests.fx where k = 'm') and round_number = 1 and user_id = (select v::uuid from tests.fx where k = 'p0')),
-  'the respin leaves the target with a complete eligible card'
+  (select p.player_id = ms.player_id and p.season is distinct from ms.season1
+     from public.sabotage_draft_picks p, tests.sd_multi_season_player('QB') ms
+    where p.match_id = (select v from tests.fx where k = 'm') and p.round_number = 1
+      and p.user_id = (select v::uuid from tests.fx where k = 'p0')),
+  'the name-only respin keeps the same player and lands on a different year'
 );
 select is(
   (select v::uuid from tests.fx where k = 'p1'),
@@ -130,12 +144,15 @@ select is(
   'resolving the last pending guess is itself what completes and advances the turn — no separate clock expiry needed'
 );
 
--- Public guesses give the table an outcome without leaking the target's card.
+-- Public guesses give the table an outcome without the guess log itself
+-- leaking the target's card -- the log's own `result` column is a hit kind,
+-- not the pick. By this point p0's card is visible anyway, but for the
+-- separate reason 0073 governs: p0's own turn just resolved above.
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select is((select count(*)::int from public.sabotage_draft_guesses where match_id = (select v from tests.fx where k = 'm')), 2,
   'participants can see the shared guess log');
-select is((select count(*)::int from public.sabotage_draft_picks where match_id = (select v from tests.fx where k = 'm') and user_id = (select v::uuid from tests.fx where k = 'p0')), 0,
-  'but a target card remains hidden from every other participant');
+select is((select count(*)::int from public.sabotage_draft_picks where match_id = (select v from tests.fx where k = 'm') and user_id = (select v::uuid from tests.fx where k = 'p0')), 1,
+  'and now also the target card itself, since p0''s own turn already resolved');
 
 -- p1 (now active) picks; p2 already spent a guess this round_number —
 -- against p0's turn, above — but a guess is scoped to (round, target), not

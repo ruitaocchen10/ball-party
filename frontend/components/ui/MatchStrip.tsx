@@ -19,7 +19,7 @@ import { useState, type ReactNode, type Ref } from "react";
 // a label, an enlarged avatar, a name, and (when there's one) an outcome
 // line plus a hit badge — with room to spare, since `overflow-hidden` below
 // is the actual guarantee here, not this number.
-export const STRIP_CELL_HEIGHT = "h-[96px]";
+export const STRIP_CELL_HEIGHT = "h-[104px]";
 const STRIP_CELL_BASE = `${STRIP_CELL_HEIGHT} shrink-0 overflow-hidden flex px-1.5 py-2`;
 
 export function MatchStrip({
@@ -48,19 +48,23 @@ type Tone = "settled" | "current" | "upcoming";
 // name/status to the bottom edge (justify-between) rather than centering
 // the whole stack as one block — the label reads as a header, not as
 // whatever happens to be the first line of a floating group. The trade-off:
-// a cell with more lines (a hit badge, a spin caption) packs tighter than a
-// sparser one, so the avatar in between sits a few px lower on a sparse
-// cell than a dense one — content-driven breathing room, not a fixed grid
-// position. "current" carries the on-the-clock highlight and, alone among
-// the three, lays out sideways — an avatar beside its text stack, the same
-// asymmetry a snake draft board gives its one highlighted pick.
+// a cell with more lines (a spin caption) packs tighter than a sparser one,
+// so the avatar in between sits a few px lower on a sparse cell than a
+// dense one — content-driven breathing room, not a fixed grid position. A
+// hit/result callout stays out of that count entirely: `StripCellMediaBadge`
+// floats it above the avatar/portrait rather than adding a line, so it no
+// longer sways this rhythm at all. "current" carries the on-the-clock
+// highlight and, alone among the three, lays out sideways — an avatar
+// beside its text stack, the same asymmetry a snake draft board gives its
+// one highlighted pick.
 const TONE_CLASS: Record<Tone, string> = {
   // A border, not just the background delta from the page — `surface-raised`
   // alone is only a few percent lighter than the page's own `surface`, easy
   // to lose entirely once cells are this small and packed edge to edge in a
   // row. "current" and "upcoming" already had one; this brings "settled" in
   // line with them instead of being the one tone with no defined edge.
-  settled: "flex-col justify-between border border-line bg-surface-raised shadow-well",
+  settled:
+    "flex-col justify-between border border-line bg-surface-raised shadow-well",
   current:
     "flex-row items-center gap-2.5 border border-panel/45 bg-panel/10 px-2.5",
   upcoming:
@@ -229,6 +233,25 @@ export function StripCellCaption({
 export function StripCellBadge({ children }: { children: ReactNode }) {
   return (
     <span className="mt-1 w-fit shrink-0 rounded-full bg-hidden/15 px-1.5 py-0.5 font-mono text-[8px] leading-none tracking-[0.06em] text-hidden-text uppercase">
+      {children}
+    </span>
+  );
+}
+
+/**
+ * A hit/result callout pinned to the bottom edge of a cell's avatar or
+ * portrait — between the icon and the name below it — instead of stacked as
+ * its own line under the name. The same information `StripCellBadge`
+ * carries, but off the text column entirely, so a cell's height and
+ * internal rhythm no longer depend on whether that round happens to have
+ * one. Give the avatar/portrait a `relative w-fit` wrapper and drop this in
+ * as its sibling; it overlaps the wrapper's bottom edge rather than adding a
+ * line to it. A solid fill (not `StripCellBadge`'s tinted one) since this
+ * sits on top of photo art rather than the cell's own background.
+ */
+export function StripCellMediaBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="absolute -bottom-1 left-1/2 z-10 w-max -translate-x-1/2 rounded-full bg-hidden px-1.5 py-0.5 font-mono text-[7px] leading-none tracking-[0.05em] text-panel uppercase shadow-well">
       {children}
     </span>
   );

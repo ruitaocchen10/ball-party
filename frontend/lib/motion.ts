@@ -87,3 +87,65 @@ export function staggerRow(index: number): Variants {
     },
   };
 }
+
+/**
+ * The delay a countdown reveal gives a row at `index` (0 = first place) out
+ * of `total` ranked rows. Last place reveals first, at zero delay; first
+ * place reveals last. The step between reveals is constant almost the whole
+ * way down, then widens for the final two — 2nd, then 1st — so the pause
+ * visibly grows right when the winner is about to appear instead of ticking
+ * down at the same rate throughout. Exported on its own (not just baked
+ * into `standingsCountdown`) so a caller can time a flourish — a glow, a
+ * confetti burst — to land exactly when the winner's row does.
+ */
+export function countdownDelay(index: number, total: number): number {
+  const step = 0.16;
+  const fromBottom = total - 1 - index;
+  const holdBeforeSecond = total >= 2 ? 0.35 : 0;
+  const holdBeforeFirst = total >= 1 ? 0.55 : 0;
+  const extra =
+    fromBottom >= total - 1 && total > 1 ? holdBeforeSecond + holdBeforeFirst
+      : fromBottom >= total - 2 ? holdBeforeSecond
+      : 0;
+  return fromBottom * step + extra;
+}
+
+/**
+ * A final-standings row, revealed in countdown order (see `countdownDelay`)
+ * rather than top-to-bottom. First place gets a small spring overshoot
+ * instead of the flat fade every other row gets — the one row this
+ * animation exists to build up to should land differently than the rest.
+ */
+export function standingsCountdown(index: number, total: number): Variants {
+  const delay = countdownDelay(index, total);
+  const isWinner = index === 0;
+  return {
+    initial: { opacity: 0, y: 10, scale: isWinner ? 0.9 : 1 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: isWinner
+        ? { type: "spring", stiffness: 340, damping: 20, delay }
+        : { duration: DURATION.base, ease: EASE_OUT, delay },
+    },
+  };
+}
+
+/**
+ * A one-shot ring pulse for the winner's row, timed (via the `custom` prop
+ * carrying a delay from `countdownDelay(0, total)`) to land just after that
+ * row's own reveal settles — the flourish that marks it as the answer the
+ * countdown was building toward, not just another row in the list.
+ */
+export const winnerPulse: Variants = {
+  initial: { boxShadow: "0 0 0 0 rgba(17,17,17,0)" },
+  animate: (delay: number) => ({
+    boxShadow: [
+      "0 0 0 0 rgba(17,17,17,0)",
+      "0 0 0 6px rgba(17,17,17,0.16)",
+      "0 0 0 0 rgba(17,17,17,0)",
+    ],
+    transition: { duration: 0.9, ease: EASE_OUT, delay: delay + DURATION.base, times: [0, 0.45, 1] },
+  }),
+};

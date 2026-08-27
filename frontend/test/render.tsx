@@ -29,7 +29,6 @@ export function renderMatch(options: Options) {
     <AuctionMatch
       matchId={MATCH}
       viewerId={options.viewerId === undefined ? "u0" : (options.viewerId ?? "nobody")}
-      displayName="Ava"
       roomCode="ABCD"
       isHost={options.isHost ?? false}
       paused={options.paused ?? false}

@@ -33,7 +33,7 @@ describe("LobbyLineup", () => {
     );
 
     expect(screen.getByRole("heading", { name: /tonight's lineup/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/next up · live/i)).toHaveLength(2);
+    expect(screen.getAllByText(/next up · live/i)).toHaveLength(3);
     expect(screen.queryByText(/next up · in development/i)).not.toBeInTheDocument();
     expect(screen.getAllByText(/coming soon/i)).toHaveLength(1);
     const higherOrLowerTile = screen

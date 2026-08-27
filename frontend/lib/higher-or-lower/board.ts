@@ -15,7 +15,7 @@ export type Seat = Database["public"]["Tables"]["higher_or_lower_players"]["Row"
 export type Call = Database["public"]["Tables"]["higher_or_lower_calls"]["Row"];
 export type CallStatus = Database["public"]["Tables"]["higher_or_lower_call_statuses"]["Row"];
 
-export type Player = Seat & { display_name: string };
+export type Player = Seat & { display_name: string; avatar_url: string | null };
 
 /** The platform's per-match standings row — the shape #28 writes into. */
 export type Standing = Database["public"]["Tables"]["match_players"]["Row"];
