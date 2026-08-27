@@ -14,6 +14,15 @@ select tests.act_as_admin();
 update public.matches set status = 'playing', started_at = now()
  where id = (select v from tests.fx where k = 'm');
 
+-- p0's round-1 franchise is forced onto a real player with a second season
+-- in that same franchise/category pool, so the name-only guess below (the
+-- respin branch) has somewhere to land rather than hoping the seed deals it.
+update public.sabotage_draft_round_spins s
+   set franchise_code = ms.franchise_code
+  from tests.sd_multi_season_player('QB') ms
+ where s.match_id = (select v from tests.fx where k = 'm') and s.round_number = 1
+   and s.user_id = (select v::uuid from tests.fx where k = 'p0');
+
 -- ------------------------------------------------------- guess before pick --
 
 -- p1 and p2 may guess against p0's turn before p0 has picked at all — the
@@ -22,9 +31,9 @@ update public.matches set status = 'playing', started_at = now()
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select lives_ok(
   format(
-    $$ select sabotage_draft.submit_guess(%L, c.player_id)
-         from tests.sd_pick_candidate(%L, 1::smallint, %L, 'QB') c $$,
-    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p0')
+    $$ select sabotage_draft.submit_guess(%L, ms.player_id)
+         from tests.sd_multi_season_player('QB') ms $$,
+    (select v from tests.fx where k = 'm')
   ),
   'a guess is accepted before the active seat has picked anything'
 );
@@ -71,8 +80,8 @@ select is(
 -- p0's own pick is the last action the turn needed. It resolves p1's
 -- pending guess in the same call, then hands the turn on to p1.
 select tests.act_as((select v from tests.fx where k = 'p0'));
-select sabotage_draft.submit_pick((select v from tests.fx where k = 'm'), c.player_id, c.season)
-  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p0'), 'QB') c;
+select sabotage_draft.submit_pick((select v from tests.fx where k = 'm'), ms.player_id, ms.season1)
+  from tests.sd_multi_season_player('QB') ms;
 
 select tests.act_as_admin();
 select is(

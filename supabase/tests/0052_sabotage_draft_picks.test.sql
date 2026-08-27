@@ -8,9 +8,13 @@
 -- directly on a client-readable, Realtime-published table, protected by RLS
 -- rather than by a second physical table (see the header comment on the
 -- migration for why). It asserts, from a participant's own session, that
--- nobody but a pick's owner can ever read it back — not through a plain
--- select, and not through anything a Realtime subscription would replicate,
--- since Realtime evaluates the same RLS a select does.
+-- nobody but a pick's owner can read it back while its own turn is still
+-- open — not through a plain select, and not through anything a Realtime
+-- subscription would replicate, since Realtime evaluates the same RLS a
+-- select does. Concealment is turn-scoped, not indefinite: once a pick's
+-- own turn resolves, 0073 makes it readable to the whole table regardless
+-- of what any other seat has done — see 0069_sabotage_draft_reveal_past_
+-- picks.test.sql for that half of the story.
 --
 -- The timeout test is the other property the design doc names by name: a
 -- pick timer that expires with nothing submitted substitutes a random
@@ -169,10 +173,11 @@ select is(
   'and hands the turn to the next seat in order'
 );
 
--- p2 picks their own. This is the load-bearing assertion of the whole file:
--- unlike higher_or_lower_calls, having picked does NOT unlock a view of
--- someone else's pick. A sabotage draft pick stays a secret from every other
--- player regardless of what they themselves have done.
+-- p2 picks their own. Unlike higher_or_lower_calls, having picked does NOT
+-- itself unlock a view of someone else's pick — see the still-open-turn
+-- assertion above, made before p2 had picked anything at all. What p2 can
+-- read now comes entirely from p1's own turn having already resolved
+-- (0073), not from anything p2 just did.
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select sabotage_draft.submit_pick(
   (select v from tests.fx where k = 'm'), c.player_id, c.season
@@ -189,8 +194,8 @@ select is(
   (select count(*)::int from public.sabotage_draft_picks
     where match_id = (select v from tests.fx where k = 'm') and round_number = 1
       and user_id = (select v from tests.fx where k = 'p1')),
-  0,
-  'but still cannot read p1''s, even after having picked themselves'
+  1,
+  'and also reads p1''s, whose turn already resolved on the clock a moment ago -- concealment lifted for them regardless of p2''s own pick'
 );
 
 select tests.act_as_admin();

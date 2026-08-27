@@ -2,6 +2,10 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/components/game-runtime/PostGameNavigation", () => ({
+  PostGameNavigation: () => null,
+}));
+
 import { SabotageDraftMatch } from "@/components/sabotage-draft/SabotageDraftMatch";
 import { TURN_REVEAL_MS } from "@/lib/sabotage-draft/useTurnReveal";
 import { MATCH, supabaseMock } from "@/test/factories";
@@ -35,17 +39,23 @@ function renderMatch(over: {
   isHost?: boolean;
   paused?: boolean;
   viewerId?: string;
+  roomCode?: string | null;
   spins?: { match_id: string; round_number: number; user_id: string; franchise_code: string }[];
   board?: typeof BOARD;
   picks?: { match_id: string; round_number: number; user_id: string; player_id: string; display_name: string; season: number; by_timeout: boolean; headshot_url: string | null }[];
   statuses?: { match_id: string; round_number: number; user_id: string }[];
   hits?: { match_id: string; round_number: number; target_user_id: string; kind: "respin" | "sabotage" }[];
   guesses?: { match_id: string; round_number: number; user_id: string; target_user_id: string; result: "miss" | "respun" | "sabotaged" | null }[];
+  decisions?: { match_id: string; user_id: string; replace_slot: string | null }[];
+  standings?: { user_id: string; roster_strength: number; wins: number; losses: number; tiebreak_rank: number }[];
+  tiebreaks?: { record_wins: number; bracket_round: number; game_number: number; player_a: string; player_b: string | null; winner_user_id: string }[];
+  pickAvs?: { user_id: string; round_number: number; av: number }[];
 } = {}) {
   return render(
     <SabotageDraftMatch
       matchId={MATCH}
       viewerId={over.viewerId ?? "u0"}
+      roomCode={over.roomCode ?? "ABCD"}
       isHost={over.isHost ?? false}
       paused={over.paused ?? false}
       initial={{
@@ -57,9 +67,10 @@ function renderMatch(over: {
         hits: over.hits ?? [],
         guesses: over.guesses ?? [],
         passes: [],
-        decisions: [],
-        standings: [],
-        tiebreaks: [],
+        decisions: over.decisions ?? [],
+        standings: over.standings ?? [],
+        tiebreaks: over.tiebreaks ?? [],
+        pickAvs: over.pickAvs ?? [],
       }}
     />,
   );
@@ -334,7 +345,16 @@ describe("the turn clock", () => {
   });
 
   it("turns urgent once three seconds or fewer remain, from the very first render", () => {
-    renderMatch({ board: { ...BOARD, turn_deadline: new Date(Date.now() + 2_500).toISOString() } });
+    // Anchored to the same instant rather than BOARD's own module-load-time
+    // server_now: useMatchClock derives its clock from the offset between
+    // the two, so a turn_deadline computed fresh against a server_now
+    // captured whenever this file was imported drifts further apart the
+    // longer the suite runs before reaching this test -- flaky in exactly
+    // the way a boundary this tight (2.5s against a 3s threshold) notices.
+    const now = new Date();
+    renderMatch({
+      board: { ...BOARD, server_now: now.toISOString(), turn_deadline: new Date(now.getTime() + 2_500).toISOString() },
+    });
     const clock = screen.getByRole("region", { name: "Clock" });
     expect(clock).toHaveClass("border-hidden");
   });
@@ -408,5 +428,56 @@ describe("the turn strip", () => {
     });
     expect(screen.queryByText("C. McCaffrey")).not.toBeInTheDocument();
     expect(screen.getAllByText("Locked").length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * The season's ending (components/game-runtime/FinalStandings): rank,
+ * avatar, record, and AV for every table, each expandable into the roster
+ * behind that AV total, plus the same host-drives-the-room navigation the
+ * auction and higher-or-lower final screens already offer.
+ */
+describe("the final screen", () => {
+  beforeEach(() => {
+    globalThis.__supabaseMock = supabaseMock();
+  });
+
+  const standings = [
+    { user_id: "u0", roster_strength: 500, wins: 14, losses: 3, tiebreak_rank: 1 },
+    { user_id: "u1", roster_strength: 400, wins: 10, losses: 7, tiebreak_rank: 1 },
+  ];
+
+  it("names the winner and ranks the table under them, with each row's record and AV", () => {
+    renderMatch({ standings });
+
+    expect(screen.getByRole("heading", { name: "Ava wins" })).toBeInTheDocument();
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("Ava");
+    expect(rows[0]).toHaveTextContent("14-3");
+    expect(rows[0]).toHaveTextContent("500 AV");
+    expect(rows[1]).toHaveTextContent("Ben");
+    expect(rows[1]).toHaveTextContent("10-7");
+  });
+
+  it("keeps a table's roster collapsed until expanded, then shows each pick's AV", async () => {
+    const user = userEvent.setup();
+    renderMatch({
+      standings,
+      picks: [{ match_id: MATCH, round_number: 1, user_id: "u0", player_id: "p1", display_name: "Patrick Mahomes", season: 2022, by_timeout: false, headshot_url: null }],
+      pickAvs: [{ user_id: "u0", round_number: 1, av: 19 }],
+    });
+
+    expect(screen.getByText(/Patrick Mahomes/)).not.toBeVisible();
+
+    await user.click(screen.getByText("Ava").closest("summary")!);
+
+    expect(screen.getByText(/Patrick Mahomes/)).toBeVisible();
+    expect(screen.getByText(/19 AV/)).toBeVisible();
+  });
+
+  it("offers the host a way back to the lobby", () => {
+    renderMatch({ standings, isHost: true });
+
+    expect(screen.getByRole("button", { name: /back to lobby/i })).toBeInTheDocument();
   });
 });

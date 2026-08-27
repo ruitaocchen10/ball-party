@@ -77,13 +77,23 @@ select is(
 
 -- ------------------------------------------------ already picked, then gone --
 
+-- p1's round-1 franchise is forced onto a real player with a second season
+-- in that same franchise/category pool, so p2's name-only guess below (the
+-- respin branch) has somewhere to land rather than hoping the seed deals it.
+select tests.act_as_admin();
+update public.sabotage_draft_round_spins s
+   set franchise_code = ms.franchise_code
+  from tests.sd_multi_season_player('QB') ms
+ where s.match_id = (select v from tests.fx where k = 'm') and s.round_number = 1
+   and s.user_id = (select v::uuid from tests.fx where k = 'p1');
+
 -- p1 picks for real, then disconnects. The pick is already locked in
 -- server-side, so a guess against it -- made while the turn is still
 -- open -- resolves exactly as if p1 were still present.
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select sabotage_draft.submit_pick(
-  (select v from tests.fx where k = 'm'), c.player_id, c.season
-) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c;
+  (select v from tests.fx where k = 'm'), ms.player_id, ms.season1
+) from tests.sd_multi_season_player('QB') ms;
 
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select lives_ok(
@@ -93,8 +103,8 @@ select lives_ok(
 
 select tests.act_as((select v from tests.fx where k = 'p2'));
 select sabotage_draft.submit_guess(
-  (select v from tests.fx where k = 'm'), c.player_id
-) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p1'), 'QB') c;
+  (select v from tests.fx where k = 'm'), ms.player_id
+) from tests.sd_multi_season_player('QB') ms;
 
 -- p0 never acts against p1's turn -- the third disconnect case, "no guess
 -- submitted" is already a legal default, so an absent seat just defaults to

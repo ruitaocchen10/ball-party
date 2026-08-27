@@ -80,13 +80,15 @@ priced against: a correct guess is real information recovered from nothing.
 so it's worth being exact about what each one does and why they're priced so
 differently:
 
-- **Guess the player only.** If right, the pick is voided and instantly
-  re-spun — a brand new random player *and* year from that same team/position,
-  no choice involved for anyone. This is a coin flip you're forcing on your
-  target: it might land on someone worse than what they had, might land on
-  someone better. You're allowed to be right about *who* without knowing
-  *when*, and the game's answer is to hand the outcome to chance rather than
-  to you.
+- **Guess the player only.** If right, the pick keeps its player but is
+  instantly re-spun to a different year of that same player's career, drawn
+  at random from whatever other seasons they have in that team/position pool
+  — no choice involved for anyone. You're allowed to be right about *who*
+  without knowing *when*, and the game's answer is to hand the *when* to
+  chance rather than to you, without erasing the *who* you actually got
+  right. If the player you named only has the one season in that pool, there
+  is no other year to land on and the guess simply misses — the pick stands,
+  untouched.
 - **Guess the player and the exact year.** If right, the guesser — not the
   victim, not the dice — chooses any player and year from that same
   team/position and assigns it directly into the victim's roster. This is the
@@ -282,13 +284,13 @@ limit.
 case.** Every resolution a dropped player needs already exists for a present
 one; the disconnect story is just routing through it automatically:
 
-- **Mid-pick, timer expires with no choice made** — auto-resolve through the
-  same random respin a successful name-only guess already triggers: a fresh
-  random player and year from that round's team/position. Not the single
-  highest-AV player available, on purpose — auto-picking the best option
-  would make disconnecting (or stalling deliberately) a viable strategy, where
-  a random outcome keeps it a real penalty for not being there, the same
-  spirit as getting sniped.
+- **Mid-pick, timer expires with no choice made** — auto-resolve to a fresh
+  random player and year from that round's team/position, the same full pool
+  draw a name-only guess used to trigger before it narrowed to the same
+  player's other seasons. Not the single highest-AV player available, on
+  purpose — auto-picking the best option would make disconnecting (or
+  stalling deliberately) a viable strategy, where a random outcome keeps it a
+  real penalty for not being there, the same spirit as getting sniped.
 - **Mid-turn, no guess or pass submitted** — declining to guess is already a
   legal choice for a present player (explicitly, via pass, or implicitly by
   never acting), so an absent one just defaults to silence. The one

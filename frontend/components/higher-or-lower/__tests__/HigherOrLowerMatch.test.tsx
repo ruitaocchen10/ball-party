@@ -92,8 +92,8 @@ const BOARD: Board = {
 const SEEN = "2026-08-15T12:00:00Z";
 
 const PLAYERS: Player[] = [
-  { match_id: MATCH, user_id: "u0", seat: 0, current_streak: 2, best_streak: 3, correct_count: 5, absent: false, last_seen_at: SEEN, sudden_death: false, eliminated_at: null, display_name: "Ava" },
-  { match_id: MATCH, user_id: "u1", seat: 1, current_streak: 0, best_streak: 1, correct_count: 1, absent: false, last_seen_at: SEEN, sudden_death: false, eliminated_at: null, display_name: "Ben" },
+  { match_id: MATCH, user_id: "u0", seat: 0, current_streak: 2, best_streak: 3, correct_count: 5, absent: false, last_seen_at: SEEN, sudden_death: false, eliminated_at: null, display_name: "Ava", avatar_url: null },
+  { match_id: MATCH, user_id: "u1", seat: 1, current_streak: 0, best_streak: 1, correct_count: 1, absent: false, last_seen_at: SEEN, sudden_death: false, eliminated_at: null, display_name: "Ben", avatar_url: null },
 ];
 
 function standing(over: Partial<Standing> = {}): Standing {

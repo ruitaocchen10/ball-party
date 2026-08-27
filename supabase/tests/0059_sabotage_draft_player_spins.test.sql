@@ -19,16 +19,22 @@ select tests.act_as_admin();
 update public.matches set status = 'playing', started_at = now()
  where id = (select v from tests.fx where k = 'm');
 
--- Force a known mismatch rather than hope the seed deals one: p0 and p1 spin
--- two provably different, real franchises for round one.
+-- Force a known mismatch rather than hope the seed deals one: p0 spins a
+-- real franchise built around a player with a second season in that pool
+-- (so the eventual name-only guess below has somewhere to respin to), and
+-- p1 spins a provably different real franchise.
 update public.sabotage_draft_round_spins s
-   set franchise_code = f.f1
-  from tests.sd_distinct_franchises('QB') f
+   set franchise_code = ms.franchise_code
+  from tests.sd_multi_season_player('QB') ms
  where s.match_id = (select v from tests.fx where k = 'm') and s.round_number = 1
    and s.user_id = (select v::uuid from tests.fx where k = 'p0');
 update public.sabotage_draft_round_spins s
-   set franchise_code = f.f2
-  from tests.sd_distinct_franchises('QB') f
+   set franchise_code = (
+     select franchise_code from private.av_roster_players
+      where slot_category = 'QB' and franchise_code <> ms.franchise_code
+      order by franchise_code limit 1
+   )
+  from tests.sd_multi_season_player('QB') ms
  where s.match_id = (select v from tests.fx where k = 'm') and s.round_number = 1
    and s.user_id = (select v::uuid from tests.fx where k = 'p1');
 
@@ -47,9 +53,9 @@ select throws_ok(
 
 select lives_ok(
   format(
-    $$ select sabotage_draft.submit_pick(%L, c.player_id, c.season)
-         from tests.sd_pick_candidate(%L, 1::smallint, %L, 'QB') c $$,
-    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p0')
+    $$ select sabotage_draft.submit_pick(%L, ms.player_id, ms.season1)
+         from tests.sd_multi_season_player('QB') ms $$,
+    (select v from tests.fx where k = 'm')
   ),
   'the same card is valid sourced from the picker''s own spin'
 );
@@ -98,8 +104,8 @@ select throws_ok(
 );
 
 select sabotage_draft.submit_guess(
-  (select v from tests.fx where k = 'm'), c.player_id
-) from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 1::smallint, (select v from tests.fx where k = 'p0'), 'QB') c;
+  (select v from tests.fx where k = 'm'), ms.player_id
+) from tests.sd_multi_season_player('QB') ms;
 
 -- The guess is held pending until the turn completes (0063) -- p1 never
 -- acts here, so the shared clock is what settles it.

@@ -1,10 +1,12 @@
--- Tests for revealing a pick once its own round has closed (migration
--- 0069). Mirror image of 0064's "hide a future round's spin" coverage: the
--- current round stays exactly as concealed as 0052 made it, but nothing
--- behind it stays hidden from anyone seated at the table.
+-- Tests for revealing a pick once its own turn has resolved (migrations
+-- 0069, restated by 0073 to draw the line at the turn rather than the whole
+-- round). Mirror image of 0064/0071's "hide a future spin until the table
+-- has actually reached it" coverage: a pick stays exactly as hidden as 0052
+-- made it while its own turn is still live, but nothing whose guessing
+-- window has actually closed stays hidden from anyone seated at the table.
 
 begin;
-select plan(7);
+select plan(8);
 
 \ir support/harness.psql
 
@@ -57,12 +59,33 @@ select is(
   'but someone not seated at this table still sees none of it, closed round included'
 );
 
--- ------------------------------------------------------- round 2, current --
+-- --------------------------------------------------- round 2, turn still open --
 
--- One expired turn: closes out p0's own turn in round 2 without finishing
--- the round, so round 2 stays current while p0's pick already exists.
+-- p0 (seat 0) is active in round 2 and picks for real, but neither p1 nor
+-- p2 has guessed or passed yet -- the turn has not resolved, so the pick
+-- stays hidden exactly as 0052 made it, even though it now exists.
+select tests.act_as((select v from tests.fx where k = 'p0'));
+select sabotage_draft.submit_pick((select v from tests.fx where k = 'm'), c.player_id, c.season)
+  from tests.sd_pick_candidate((select v from tests.fx where k = 'm'), 2::smallint, (select v from tests.fx where k = 'p0'), 'RB') c;
+
+select tests.act_as((select v from tests.fx where k = 'p1'));
+select is(
+  (select count(*)::int from public.sabotage_draft_picks
+    where match_id = (select v from tests.fx where k = 'm') and round_number = 2),
+  0,
+  'p0''s round-2 pick exists but stays hidden from a teammate while the turn''s own guessing window is still open'
+);
+
+-- ------------------------------------------------- round 2, turn resolved --
+
+-- p1 and p2 both pass -- the turn's last two actions, resolving p0's turn
+-- and handing the clock to p1, without closing out round 2 itself.
+select tests.act_as((select v from tests.fx where k = 'p1'));
+select sabotage_draft.submit_pass((select v from tests.fx where k = 'm'));
+select tests.act_as((select v from tests.fx where k = 'p2'));
+select sabotage_draft.submit_pass((select v from tests.fx where k = 'm'));
+
 select tests.act_as_admin();
-select tests.sd_expire((select v from tests.fx where k = 'm'));
 select is(
   (select current_round::int from public.sabotage_draft_matches
     where match_id = (select v from tests.fx where k = 'm')),
@@ -74,14 +97,14 @@ select tests.act_as((select v from tests.fx where k = 'p1'));
 select is(
   (select count(*)::int from public.sabotage_draft_picks
     where match_id = (select v from tests.fx where k = 'm') and round_number = 2),
-  0,
-  'p0''s round-2 pick stays exactly as hidden from a teammate as 0052 made it -- the round is still open'
+  1,
+  'p0''s round-2 pick is now readable by a teammate the moment p0''s own turn resolves -- the round itself staying open no longer matters'
 );
 select is(
   (select count(*)::int from public.sabotage_draft_picks
     where match_id = (select v from tests.fx where k = 'm') and round_number = 1),
   3,
-  'round 1 stays readable regardless -- advancing round 2''s own turns does not re-hide it'
+  'round 1 stays readable regardless -- resolving round 2''s first turn does not re-hide it'
 );
 
 select * from finish();

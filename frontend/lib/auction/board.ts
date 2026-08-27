@@ -15,7 +15,7 @@ export type Seat = Database["public"]["Tables"]["auction_players"]["Row"];
 export type Bid = Database["public"]["Tables"]["auction_bids"]["Row"];
 export type Standing = Database["public"]["Tables"]["match_players"]["Row"];
 
-export type Player = Seat & { display_name: string };
+export type Player = Seat & { display_name: string; avatar_url: string | null };
 
 /** The state of the board, as `auction_turn` hands it over. */
 export type Turn = {

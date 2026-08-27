@@ -121,7 +121,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // the same for every game.
   if (match.game === "sabotage_draft") {
     const sabotage = supabase as any;
-    const [stateResult, playersResult, spinsResult, picksResult, statusesResult, hitsResult, guessesResult, passesResult, decisionsResult, standingsResult, tiebreaksResult] = await Promise.all([
+    const [stateResult, playersResult, spinsResult, picksResult, statusesResult, hitsResult, guessesResult, passesResult, decisionsResult, standingsResult, tiebreaksResult, avResult] = await Promise.all([
       sabotage.schema("sabotage_draft").rpc("state", { p_match_id: id }),
       sabotage.from("sabotage_draft_players").select("*, profiles(display_name, avatar_url)").eq("match_id", id).order("seat"),
       sabotage.from("sabotage_draft_round_spins").select("*").eq("match_id", id),
@@ -133,17 +133,18 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       sabotage.from("sabotage_draft_x_factor_decisions").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_standings").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_tiebreak_games").select("*").eq("match_id", id),
+      sabotage.schema("sabotage_draft").rpc("pick_avs", { p_match_id: id }),
     ]);
     const row = stateResult.data;
     if (!row || row.round_count == null || row.current_round == null || !row.slot || !row.server_now) {
       return <Shell displayName={displayName} email={email}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
     }
-    return <SabotageDraftMatch matchId={id} viewerId={claims.sub} isHost={isHost} paused={match.status === "paused"} initial={{
+    return <SabotageDraftMatch matchId={id} viewerId={claims.sub} roomCode={code} isHost={isHost} paused={match.status === "paused"} initial={{
       board: row,
       players: (playersResult.data ?? []).map(({ profiles, ...player }: any) => ({ ...player, display_name: profiles?.display_name ?? "Unknown player", avatar_url: profiles?.avatar_url ?? null })),
       spins: spinsResult.data ?? [],
       picks: picksResult.data ?? [], statuses: statusesResult.data ?? [], hits: hitsResult.data ?? [], guesses: guessesResult.data ?? [], passes: passesResult.data ?? [],
-      decisions: decisionsResult.data ?? [], standings: standingsResult.data ?? [], tiebreaks: tiebreaksResult.data ?? [],
+      decisions: decisionsResult.data ?? [], standings: standingsResult.data ?? [], tiebreaks: tiebreaksResult.data ?? [], pickAvs: avResult.data ?? [],
     }} />;
   }
 
@@ -159,7 +160,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         // `profiles(...)` embed is ambiguous between them (PGRST201). Naming
         // the direct FK is how every other embed in this file stays a single
         // choice.
-        .select("*, profiles!higher_or_lower_players_user_id_fkey(display_name)")
+        .select("*, profiles!higher_or_lower_players_user_id_fkey(display_name, avatar_url)")
         .eq("match_id", id)
         .order("seat"),
       supabase.from("higher_or_lower_calls").select("*").eq("match_id", id).order("created_at"),
@@ -203,6 +204,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
           players: (seatsResult.data ?? []).map(({ profiles, ...seat }) => ({
             ...seat,
             display_name: profiles?.display_name ?? "Unknown player",
+            avatar_url: profiles?.avatar_url ?? null,
           })),
           calls: callsResult.data ?? [],
           statuses: statusesResult.data ?? [],
@@ -217,7 +219,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     supabase.from("auction_lots").select("*").eq("match_id", id).order("seq"),
     supabase
       .from("auction_players")
-      .select("*, profiles(display_name)")
+      .select("*, profiles(display_name, avatar_url)")
       .eq("match_id", id)
       .order("seat"),
     supabase.from("auction_bids").select("*").eq("match_id", id).order("bid_seq"),
@@ -253,6 +255,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   const players: Player[] = (seatsResult.data ?? []).map(({ profiles, ...seat }) => ({
     ...seat,
     display_name: profiles?.display_name ?? "Unknown player",
+    avatar_url: profiles?.avatar_url ?? null,
   }));
   const format = auctionFormat(formatResult.data);
 
@@ -260,7 +263,6 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     <AuctionMatch
         matchId={id}
         viewerId={claims.sub}
-        displayName={displayName}
         roomCode={code}
         isHost={isHost}
         paused={match.status === "paused"}

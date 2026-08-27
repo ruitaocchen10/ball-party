@@ -28,7 +28,6 @@ const matchWith = (over: Partial<Parameters<typeof AuctionMatch>[0]["initial"]>)
   <AuctionMatch
     matchId={MATCH}
     viewerId="u0"
-    displayName="Ava"
     roomCode="ABCD"
     initial={{
       turn: turn("bidding", { turnSeat: 0 }),
@@ -614,13 +613,14 @@ describe("the shape of the screen", () => {
     expect(screen.getByRole("button", { name: "Pass" })).toHaveClass("min-h-12");
   });
 
-  it("runs the live match with no app chrome, so no mis-tap navigates out of a lot", () => {
+  it("runs with no app chrome throughout, live or final, so no mis-tap ever navigates out of the match", () => {
     renderMatch({ turn: turn("bidding", { turnSeat: 0 }) });
 
     expect(screen.queryByRole("link", { name: "Ball Party" })).not.toBeInTheDocument();
   });
 
-  it("keeps the final standings and every roster once the board runs out", () => {
+  it("keeps the final standings, revealing a roster once its row is expanded", async () => {
+    const user = userEvent.setup();
     renderMatch({
       turn: turn("sold", { currentLot: 5, lotCount: 4 }),
       lots: board([
@@ -634,12 +634,14 @@ describe("the shape of the screen", () => {
     });
 
     expect(screen.getByText("Ava wins")).toBeInTheDocument();
-    expect(screen.getByText(/Saquon Barkley/)).toBeInTheDocument();
-    // The game ending hands the player back to the app. Sidebar mounts both
-    // its desktop rail and its mobile strip at once — CSS shows one at a
-    // time, out of reach here (see the file docstring) — so at least one
-    // "Ball Party" link is what "chrome is back" actually means to this test.
-    expect(screen.getAllByRole("link", { name: "Ball Party" }).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Saquon Barkley/)).not.toBeVisible();
+
+    await user.click(within(screen.getAllByRole("listitem")[0]).getByText("Ava").closest("summary")!);
+    expect(screen.getByText(/Saquon Barkley/)).toBeVisible();
+    // The final screen stays chrome-free too, same as the other two games'
+    // own endings (components/game-runtime/PostGameControls is the way
+    // back, not app navigation reappearing around it).
+    expect(screen.queryByRole("link", { name: "Ball Party" })).not.toBeInTheDocument();
   });
 });
 

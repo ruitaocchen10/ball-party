@@ -22,6 +22,7 @@ export function players(over: Partial<Player>[] = []): Player[] {
     seat: seat.seat,
     budget: 20,
     display_name: seat.display_name,
+    avatar_url: null,
     ...over[i],
   }));
 }

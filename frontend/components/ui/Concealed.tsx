@@ -28,7 +28,7 @@ export function Concealed({
       {/* the inset hairline that reads the weave as a deliberate surface */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-[4px] rounded-[3px] border border-panel/35"
+        className="pointer-events-none absolute inset-[4px] border border-panel/35"
       />
       {children}
     </div>

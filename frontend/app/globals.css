@@ -210,6 +210,20 @@ body {
     transform: rotate(90deg);
   }
 
+  /* The final standings screen's per-user roster disclosure
+     (components/game-runtime/FinalStandings.tsx) — same <details>-per-row,
+     same chevron-rotates-on-open contract as .sabotage-roster-board above,
+     just scoped to its own class so the two never depend on each other. */
+  .final-standings-roster > summary {
+    list-style: none;
+  }
+  .final-standings-roster > summary::-webkit-details-marker {
+    display: none;
+  }
+  .final-standings-roster[open] > summary .final-standings-chev {
+    transform: rotate(90deg);
+  }
+
   /* The diagonal weave that marks concealed information. Applied by
      <Concealed>, and by any surface standing in for it. */
   .pattern-concealed {

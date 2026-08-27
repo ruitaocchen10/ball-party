@@ -85,8 +85,9 @@ export function Sidebar({
       <aside
         // Targeted by the body:has() rule in globals.css, which reserves
         // --sidebar-w of body padding only on pages that actually mount a
-        // rail — AuctionMatch's full-bleed workspace view renders no
-        // Sidebar at all and must not get a dead gutter carved out of it.
+        // rail — a live match screen (AuctionMatch, SabotageDraftMatch,
+        // HigherOrLowerMatch) renders no Sidebar at all, live or final, and
+        // must not get a dead gutter carved out of it.
         data-sidebar-rail
         className={`fixed top-0 left-0 z-20 hidden h-dvh flex-col bg-surface-raised ring-1 ring-line ring-inset transition-[width] duration-150 md:flex ${
           collapsed ? "w-18" : "w-60"

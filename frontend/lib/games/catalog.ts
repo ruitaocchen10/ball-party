@@ -6,9 +6,10 @@
  * changes. It moves to the database when games gain state the platform has to
  * read — availability by region, say, or per-player unlocks.
  *
- * `status` means playable, not planned. The auction and Higher or Lower are
- * built end to end; the remaining game is documented and unbuilt, and saying
- * otherwise on the home screen would be the product lying about itself.
+ * `status` means playable, not planned. The auction, Higher or Lower, and
+ * Sabotage Draft are built end to end; Wavelength is documented and unbuilt,
+ * and saying otherwise on the home screen would be the product lying about
+ * itself.
  */
 export type GameStatus = "live" | "development";
 
