@@ -1081,7 +1081,7 @@ function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass 
     </Card>
   );
 }
-function xFactorReplacementSlots(pick: Pick | undefined, options: Option[]): string[] {
+export function xFactorReplacementSlots(pick: Pick | undefined, options: Option[]): string[] {
   const category = pick && options.find(option => option.player_id === pick.player_id && option.season === pick.season)?.slot_category;
   if (category === "QB" || category === "TE") return [category];
   if (category === "RB") return ["RB1", "RB2"];
