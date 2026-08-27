@@ -2,7 +2,7 @@
 -- at a time, then opens that seat's own self-only replacement-or-discard
 -- decision once their guess window has settled — before the turn moves on.
 begin;
-select plan(24);
+select plan(25);
 
 \ir support/harness.psql
 
@@ -67,6 +67,10 @@ select throws_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, 'O
   (select v from tests.fx where k = 'm')),
   'P0001', 'invalid_x_factor_slot',
   'only the seven named offensive skill slots are valid replacement targets');
+select throws_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, 'RB1') $$,
+  (select v from tests.fx where k = 'm')),
+  'P0001', 'x_factor_position_mismatch',
+  'a QB X-Factor cannot replace an RB slot');
 select is((select replace_slot from sabotage_draft.submit_x_factor_decision(
   (select v from tests.fx where k = 'm'), 'QB')),
   'QB', 'the drafter can replace exactly one named existing skill slot');

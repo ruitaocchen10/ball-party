@@ -20,7 +20,7 @@ import { abbreviate, MatchStrip, StripCell, StripCellAvatar, StripCellCaption, S
 import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
 import { dropdownUp, springSnappy } from "@/lib/motion";
 import { FRANCHISE_NAMES, franchiseName } from "@/lib/sabotage-draft/franchises";
-import { slotForRound } from "@/lib/sabotage-draft/rounds";
+import { ROUND_SLOTS, X_FACTOR_ROUND, slotForRound } from "@/lib/sabotage-draft/rounds";
 import { TURN_REVEAL_MS, useTurnReveal } from "@/lib/sabotage-draft/useTurnReveal";
 import { createClient, createRealtimeClient } from "@/lib/supabase/client";
 
@@ -54,8 +54,7 @@ type PickAv = { user_id: string; round_number: number; av: number };
 type TurnResultData = { round: number; userId: string; playerName: string; mine: boolean; pick: Pick | null; spin: Spin | null; slot: string; outcome: "kept" | "respun" | "sabotaged"; actorName: string | null };
 type Tiebreak = { record_wins: number; bracket_round: number; game_number: number; player_a: string; player_b: string | null; winner_user_id: string };
 
-const MESSAGE: Record<string, string> = { already_picked: "Your pick is already locked.", already_acted: "You have already guessed or passed on this turn.", turn_closed: "This turn has closed.", invalid_pick: "Choose a player from this round's pool.", invalid_guess: "Choose a player from this round's pool.", match_not_playing: "This match isn't accepting moves right now.", not_your_turn: "It isn't your turn right now." };
-const skillSlots = ["QB", "RB1", "RB2", "WR1", "WR2", "WR3", "TE"];
+const MESSAGE: Record<string, string> = { already_picked: "Your pick is already locked.", already_acted: "You have already guessed or passed on this turn.", turn_closed: "This turn has closed.", invalid_pick: "Choose a player from this round's pool.", invalid_guess: "Choose a player from this round's pool.", x_factor_position_mismatch: "Your X-Factor can only replace a slot at the same position.", match_not_playing: "This match isn't accepting moves right now.", not_your_turn: "It isn't your turn right now." };
 // The one duration every sabotage draft turn shares -- unlike the auction's
 // (which varies by phase), this is set identically in deal_board,
 // advance_turn, and submit_x_factor_decision (see
@@ -203,7 +202,7 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
           {board.turn_deadline && !turnRevealed ? (lastTurnResult ? <TurnResultCard result={lastTurnResult} /> : <Card edge={false}><CardTitle>Spinning…</CardTitle><CardMeta>The board is picking {isActive ? "your" : `${activePlayer?.display_name ?? "their"}`} team</CardMeta></Card>) : null}
           {board.turn_deadline && turnRevealed && isActive ? <PickForm options={options} mine={myPick} pending={disabled} onSubmit={(o) => call("submit_pick", { p_match_id: matchId, p_player_id: o.player_id, p_season: o.season })} /> : null}
           {board.turn_deadline && turnRevealed && !isActive ? <GuessForm targetName={activePlayer?.display_name ?? "them"} status={myGuess ? "guessed" : myPass ? "passed" : "open"} pending={disabled} loadOptions={loadActiveOptions} onSubmit={(choice, exact, replacement) => call("submit_guess", { p_match_id: matchId, p_player_id: choice.player_id, p_season: exact ? choice.season : null, p_replacement_player_id: exact ? replacement?.player_id : null, p_replacement_season: exact ? replacement?.season : null })} onPass={() => call("submit_pass", { p_match_id: matchId })} /> : null}
-          {board.x_factor_open && isActive ? <Decision mine={myDecision} pending={disabled} onSubmit={(slot) => call("submit_x_factor_decision", { p_match_id: matchId, p_replace_slot: slot })} /> : null}
+          {board.x_factor_open && isActive ? <Decision mine={myDecision} pending={disabled} replacementSlots={xFactorReplacementSlots(picks.find(p => p.round_number === 14 && p.user_id === viewerId), options)} onSubmit={(slot) => call("submit_x_factor_decision", { p_match_id: matchId, p_replace_slot: slot })} /> : null}
           {board.x_factor_open && !isActive ? <Card edge={false}><CardTitle>{activePlayer?.display_name ?? "…"}&apos;s X-Factor</CardTitle><CardMeta>Waiting on their decision</CardMeta></Card> : null}
           {!board.turn_deadline && !board.x_factor_open ? <Card edge={false}><CardTitle>Between turns</CardTitle><CardMeta>Waiting on the next turn to open</CardMeta></Card> : null}
         </section>
@@ -1082,7 +1081,15 @@ function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass 
     </Card>
   );
 }
-function Decision({ mine, pending, onSubmit }: { mine?: Decision; pending: boolean; onSubmit: (slot: string | null) => void }) { if (mine) return <Card><CardTitle>X-Factor decision locked</CardTitle><CardMeta>{mine.replace_slot ? `Replaces ${mine.replace_slot}` : "Discarded"}</CardMeta></Card>; return <Card><CardTitle>Assign or discard your X-Factor</CardTitle><div className="grid grid-cols-2 gap-2 p-3 pt-0">{skillSlots.map(slot => <Button key={slot} variant="ink" disabled={pending} onClick={() => onSubmit(slot)}>Replace {slot}</Button>)}<Button className="col-span-2" disabled={pending} onClick={() => onSubmit(null)}>Discard X-Factor</Button></div></Card>; }
+function xFactorReplacementSlots(pick: Pick | undefined, options: Option[]): string[] {
+  const category = pick && options.find(option => option.player_id === pick.player_id && option.season === pick.season)?.slot_category;
+  if (category === "QB" || category === "TE") return [category];
+  if (category === "RB") return ["RB1", "RB2"];
+  if (category === "WR") return ["WR1", "WR2", "WR3"];
+  return [];
+}
+
+function Decision({ mine, pending, replacementSlots, onSubmit }: { mine?: Decision; pending: boolean; replacementSlots: string[]; onSubmit: (slot: string | null) => void }) { if (mine) return <Card><CardTitle>X-Factor decision locked</CardTitle><CardMeta>{mine.replace_slot ? `Replaces ${mine.replace_slot}` : "Discarded"}</CardMeta></Card>; return <Card><CardTitle>Assign or discard your X-Factor</CardTitle><div className="grid grid-cols-2 gap-2 p-3 pt-0">{replacementSlots.map(slot => <Button key={slot} variant="ink" disabled={pending} onClick={() => onSubmit(slot)}>Replace {slot}</Button>)}<Button className="col-span-2" disabled={pending} onClick={() => onSubmit(null)}>Discard X-Factor</Button></div></Card>; }
 /**
  * The season's ending: seventeen simulated games boiled down to a record and
  * an AV per table, ranked and shown the same way every other game's own

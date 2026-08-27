@@ -213,10 +213,10 @@ round — this is not a special case in the sabotage machinery, just a round
 whose eligible position is wider than usual.
 
 Once *that seat's own turn* — not the whole round — completes and the pick
-is settled, that drafter alone makes one final call: slot the new player
-into *any* one of their existing offensive skill slots (QB, RB1, RB2,
-WR1-3, or TE), bumping whoever was there out of the roster entirely, or
-discard the pick and leave the roster exactly as round 13 left it. This is
+is settled, that drafter alone makes one final call: replace an existing
+slot of that player's own position (QB→QB, RB→RB1/RB2, WR→WR1-3, or TE→TE),
+bumping whoever was there out of the roster entirely, or discard the pick
+and leave the roster exactly as round 13 left it. This is
 the one place a turn does something extra: the decision happens before the
 turn passes to the next seat, not after every seat has taken theirs, so a
 player can be deciding their own X-Factor while the rest of the table is
