@@ -9,6 +9,7 @@ Run with: python3 -m unittest discover scripts/av_roster_pool
 
 import unittest
 
+import build_pool
 from transform import transform
 
 
@@ -168,6 +169,67 @@ class BothSourcesTogether(unittest.TestCase):
         )
         self.assertEqual([(r.season, r.franchise_code) for r in rows],
                           [(2015, "kan"), (2016, "dal")])
+
+
+class HeadshotEmitter(unittest.TestCase):
+    """The headshot artifact, which is the second thing a pool build writes.
+
+    Covered here rather than by a build guard because these are properties of
+    the emitter itself — what it selects, how it orders, how it quotes — and a
+    guard only ever sees one real run's output. Mirrors
+    `scripts/player_pool/test_transform.py`'s own HeadshotEmitter, keyed on
+    the PFR id this pool already carries instead of a GSIS crosswalk.
+    """
+
+    def pool(self):
+        return transform(
+            [nflverse_row(playerid="a"), nflverse_row(playerid="b"),
+             nflverse_row(playerid="c")],
+            [],
+        )
+
+    def test_emits_only_players_the_pool_can_deal(self):
+        shots = {"a": "https://x/a", "b": "https://x/b", "zzz": "https://x/zzz"}
+        sql = build_pool.emit_headshot_sql(self.pool(), shots)
+        self.assertIn("'a'", sql)
+        self.assertIn("'b'", sql)
+        self.assertNotIn("zzz", sql)
+
+    def test_a_player_with_no_shot_is_skipped_rather_than_emitted_null(self):
+        sql = build_pool.emit_headshot_sql(self.pool(), {"a": "https://x/a"})
+        self.assertNotIn("null", sql.lower())
+        values = [line for line in sql.splitlines() if line.startswith("  (")]
+        self.assertEqual(values, ["  ('a', 'https://x/a');"])
+
+    def test_one_row_per_player_not_per_franchise_season(self):
+        rows = transform(
+            [nflverse_row(playerid="a", season=2015, team="NYG"),
+             nflverse_row(playerid="a", season=2016, team="NYG")],
+            [],
+        )
+        self.assertGreater(len(rows), 1)
+        sql = build_pool.emit_headshot_sql(rows, {"a": "https://x/a"})
+        self.assertEqual(sql.count("https://x/a"), 1)
+
+    def test_output_is_deterministic_regardless_of_row_order(self):
+        rows = self.pool()
+        shots = {"a": "https://x/a", "b": "https://x/b", "c": "https://x/c"}
+        self.assertEqual(
+            build_pool.emit_headshot_sql(rows, shots),
+            build_pool.emit_headshot_sql(list(reversed(rows)), shots),
+        )
+
+    def test_quotes_are_escaped(self):
+        sql = build_pool.emit_headshot_sql(self.pool(), {"a": "https://x/o'brien"})
+        self.assertIn("'https://x/o''brien'", sql)
+
+    def test_coverage_floor_fails_the_build_when_the_join_collapses(self):
+        with self.assertRaises(build_pool.GuardFailure):
+            build_pool.check_headshot_coverage(self.pool(), {})
+
+    def test_coverage_floor_tolerates_a_few_misses(self):
+        shots = {"a": "https://x/a", "b": "https://x/b", "c": "https://x/c"}
+        self.assertEqual(build_pool.check_headshot_coverage(self.pool(), shots), 1.0)
 
 
 if __name__ == "__main__":
