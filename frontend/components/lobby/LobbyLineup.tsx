@@ -10,7 +10,7 @@ const CAPACITY = 4;
 type Member = {
   user_id: string;
   last_seen_at?: string;
-  profiles: { display_name: string; is_guest?: boolean } | null;
+  profiles: { display_name: string; avatar_url?: string | null; is_guest?: boolean } | null;
 };
 
 /**
@@ -46,21 +46,34 @@ export function LobbyLineup({
 }) {
   return (
     <section aria-labelledby="lineup-heading" className="flex flex-col gap-5 lg:gap-6">
-      <div>
-        <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">
-          Tonight&apos;s lineup
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">At the table</p>
+          <h2 id="lineup-heading" className="mt-1 font-slab text-3xl leading-none uppercase sm:text-4xl">
+            Your party
+          </h2>
+        </div>
+        <p className="pb-0.5 text-right font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
+          {members.length} of {CAPACITY} seats
         </p>
-        <h2
-          id="lineup-heading"
-          className="mt-1 font-slab text-2xl leading-none uppercase sm:text-3xl"
-        >
-          Tonight&apos;s lineup
-        </h2>
+      </div>
+
+      <MemberRoster
+        members={members}
+        hostId={hostId}
+        viewerId={viewerId}
+        hostIsActive={hostIsActive}
+        capacity={CAPACITY}
+      />
+
+      <div className="border-t border-line pt-5 lg:pt-6">
+        <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Next up</p>
+        <h3 className="mt-1 font-slab text-2xl leading-none uppercase sm:text-3xl">Choose the next game</h3>
         <p className="mt-2 text-sm leading-5 text-fg-muted">
           {isHost
-            ? "Pick a game when the party is ready. More are on their way."
+            ? "Pick a game when the party is ready."
             : hostIsActive
-              ? "The host starts when the party is ready. More games are on their way."
+              ? "The host picks the next game when the party is ready."
               : "The host is away. You can take host controls to keep the party moving."}
         </p>
       </div>
@@ -127,20 +140,6 @@ export function LobbyLineup({
         })}
       </ul>
 
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">At the table</p>
-        <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
-          {members.length} of {CAPACITY} players
-        </p>
-      </div>
-
-      <MemberRoster
-        members={members}
-        hostId={hostId}
-        viewerId={viewerId}
-        hostIsActive={hostIsActive}
-        capacity={CAPACITY}
-      />
     </section>
   );
 }

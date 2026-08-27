@@ -19,7 +19,7 @@ describe("LobbyLineup", () => {
     { user_id: "guest", profiles: { display_name: "Devin", is_guest: true } },
   ];
 
-  it("puts the live games alongside an honest upcoming game and open seats", () => {
+  it("centers the party table before the games and keeps the game catalogue honest", () => {
     render(
       <LobbyLineup
         lobbyId="lobby"
@@ -32,7 +32,8 @@ describe("LobbyLineup", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: /tonight's lineup/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /your party/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /choose the next game/i })).toBeInTheDocument();
     expect(screen.getAllByText(/next up · live/i)).toHaveLength(3);
     expect(screen.queryByText(/next up · in development/i)).not.toBeInTheDocument();
     expect(screen.getAllByText(/coming soon/i)).toHaveLength(1);
@@ -44,14 +45,15 @@ describe("LobbyLineup", () => {
     expect(
       screen.getByRole("button", { name: /start higher or lower with 2 players/i }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Invite friend")).toHaveLength(2);
+    expect(screen.getAllByText("Invite a friend")).toHaveLength(2);
+    expect(screen.getAllByText("Open seat")).toHaveLength(2);
     expect(screen.getByText(/guest/i)).toBeInTheDocument();
 
     // The carousel bleeds to the same small-screen gutter as the home page,
     // then becomes the same roomy grid at wider breakpoints.
-    const [games, seats] = screen.getAllByRole("list");
-    expect(games.className).toContain("-mx-4");
-    expect(seats.className).toContain("xl:gap-5");
+    const [roster, gameCarousel] = screen.getAllByRole("list");
+    expect(roster).toHaveAccessibleName("Players at the table");
+    expect(gameCarousel.className).toContain("-mx-4");
   });
 
   it("does not offer a start control to a guest", () => {
@@ -69,6 +71,6 @@ describe("LobbyLineup", () => {
 
     expect(screen.queryByRole("button", { name: /start auction/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /start higher or lower/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/host starts when the party is ready/i)).toBeInTheDocument();
+    expect(screen.getByText(/host picks the next game when the party is ready/i)).toBeInTheDocument();
   });
 });

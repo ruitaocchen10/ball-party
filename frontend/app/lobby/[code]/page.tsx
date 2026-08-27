@@ -51,7 +51,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { data: lobby } = await supabase
     .from("lobbies")
     .select(
-      "id, code, host_id, closed_at, lobby_members(user_id, joined_at, last_seen_at, left_at, profiles(display_name, is_guest))",
+      "id, code, host_id, closed_at, lobby_members(user_id, joined_at, last_seen_at, left_at, profiles(display_name, avatar_url, is_guest))",
     )
     .eq("code", code)
     .maybeSingle();

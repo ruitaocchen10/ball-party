@@ -4,12 +4,13 @@ import { AnimatePresence, motion } from "motion/react";
 
 import { Card } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
+import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { DURATION, EASE_OUT } from "@/lib/motion";
 
 type Member = {
   user_id: string;
   last_seen_at?: string;
-  profiles: { display_name: string; is_guest?: boolean } | null;
+  profiles: { display_name: string; avatar_url?: string | null; is_guest?: boolean } | null;
 };
 
 /**
@@ -39,9 +40,9 @@ export function MemberRoster({
   const emptySeats = Math.max(0, capacity - members.length);
 
   return (
-    <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4 lg:gap-4 xl:gap-5">
+    <ul aria-label="Players at the table" className="grid grid-cols-2 gap-2.5 md:grid-cols-4 lg:gap-4 xl:gap-5">
       <AnimatePresence>
-        {members.map((member) => (
+        {members.map((member, seat) => (
           <motion.li
             key={member.user_id}
             layout
@@ -50,12 +51,21 @@ export function MemberRoster({
             exit={{ opacity: 0, scale: 0.94 }}
             transition={{ duration: DURATION.base, ease: EASE_OUT }}
           >
-            <Card edge={false} className="h-full border-t-[5px] border-hidden">
-              <div className="px-3 pt-2.5 pb-3">
-                <span className="block font-slab text-lg leading-none uppercase">
+            <Card edge={false} className="h-full min-h-52 border-t-[5px] border-hidden">
+              <div className="flex h-full flex-col items-center px-3 py-4 text-center sm:py-5">
+                <span className="self-start font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+                  Seat {seat + 1}
+                </span>
+                <div className="my-auto py-3">
+                  <ProfileAvatar
+                    name={member.profiles?.display_name ?? "Unknown player"}
+                    avatarUrl={member.profiles?.avatar_url ?? null}
+                  />
+                </div>
+                <span className="block font-slab text-2xl leading-none uppercase">
                   {member.profiles?.display_name ?? "Unknown player"}
                 </span>
-                <span className="mt-2 block font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
+                <span className="mt-2 block min-h-3 font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
                   {[
                     member.user_id === hostId ? "host" : null,
                     member.user_id === hostId && !hostIsActive ? "away" : null,
@@ -72,9 +82,10 @@ export function MemberRoster({
       </AnimatePresence>
       {Array.from({ length: emptySeats }, (_, index) => (
         <li key={`empty-${index}`}>
-          <Concealed label="Open spot, waiting for a player" className="flex h-full min-h-[73px] items-center">
-            <span className="relative w-full text-center font-mono text-[10px] tracking-[0.15em] text-panel uppercase">
-              Invite friend
+          <Concealed label="Open spot, waiting for a player" className="flex min-h-52 items-center justify-center">
+            <span className="relative px-3 text-center">
+              <span className="block font-slab text-2xl leading-none uppercase">Open seat</span>
+              <span className="mt-2 block font-mono text-[10px] tracking-[0.15em] text-panel uppercase">Invite a friend</span>
             </span>
           </Concealed>
         </li>
