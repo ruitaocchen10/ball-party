@@ -123,7 +123,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     const sabotage = supabase as any;
     const [stateResult, playersResult, spinsResult, picksResult, statusesResult, hitsResult, guessesResult, passesResult, decisionsResult, standingsResult, tiebreaksResult] = await Promise.all([
       sabotage.schema("sabotage_draft").rpc("state", { p_match_id: id }),
-      sabotage.from("sabotage_draft_players").select("*, profiles(display_name)").eq("match_id", id).order("seat"),
+      sabotage.from("sabotage_draft_players").select("*, profiles(display_name, avatar_url)").eq("match_id", id).order("seat"),
       sabotage.from("sabotage_draft_round_spins").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_picks").select("*").eq("match_id", id),
       sabotage.from("sabotage_draft_pick_statuses").select("*").eq("match_id", id),
@@ -140,7 +140,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     }
     return <SabotageDraftMatch matchId={id} viewerId={claims.sub} isHost={isHost} paused={match.status === "paused"} initial={{
       board: row,
-      players: (playersResult.data ?? []).map(({ profiles, ...player }: any) => ({ ...player, display_name: profiles?.display_name ?? "Unknown player" })),
+      players: (playersResult.data ?? []).map(({ profiles, ...player }: any) => ({ ...player, display_name: profiles?.display_name ?? "Unknown player", avatar_url: profiles?.avatar_url ?? null })),
       spins: spinsResult.data ?? [],
       picks: picksResult.data ?? [], statuses: statusesResult.data ?? [], hits: hitsResult.data ?? [], guesses: guessesResult.data ?? [], passes: passesResult.data ?? [],
       decisions: decisionsResult.data ?? [], standings: standingsResult.data ?? [], tiebreaks: tiebreaksResult.data ?? [],

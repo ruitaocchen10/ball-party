@@ -1,12 +1,12 @@
 -- Tests for hiding a round's spin until the table has actually reached it
--- (migration 0064). Reverses what 0051 and 0059 both argued on purpose --
--- see 0064's own header for why -- so this is the mirror image of 0059's
--- "the whole table can see which franchise every player is drafting from"
--- coverage: the current round stays exactly that open, but nothing ahead
--- of it is readable by anyone, including the row's own owner.
+-- (migration 0064), tightened by 0071 to gate on seat order too -- see its
+-- header. The current round is no longer uniformly open the moment it
+-- starts: only seats whose own turn has already been reached (seat <=
+-- active_seat) are visible, same as an already-past round; a seat still
+-- waiting its turn this round is exactly as hidden as a future round.
 
 begin;
-select plan(8);
+select plan(10);
 
 \ir support/harness.psql
 
@@ -29,25 +29,26 @@ select is(
 
 -- -------------------------------------------------------------- round 1 --
 
+-- Seat 0 (p0) is on the clock from deal -- active_seat defaults to 0.
 select tests.act_as((select v from tests.fx where k = 'p0'));
 select is(
   (select count(*)::int from public.sabotage_draft_round_spins
     where match_id = (select v from tests.fx where k = 'm') and round_number = 1),
-  3,
-  'round 1''s spin is visible for every seated player the moment the match starts'
+  1,
+  'round 1''s spin is visible only for the seat whose turn has actually been reached -- just p0''s own, at deal time'
 );
 select is(
   (select count(*)::int from public.sabotage_draft_round_spins
     where match_id = (select v from tests.fx where k = 'm')
       and round_number = 1 and user_id = (select v::uuid from tests.fx where k = 'p1')),
-  1,
-  'including a teammate''s round-1 franchise -- the current round''s cross-seat visibility is unaffected'
+  0,
+  'a teammate two seats out this round is exactly as hidden as a future round -- their turn hasn''t come up yet'
 );
 select is(
   (select count(*)::int from public.sabotage_draft_round_spins
     where match_id = (select v from tests.fx where k = 'm') and round_number > 1),
   0,
-  'but nothing past the current round is -- not even the viewer''s own future spin'
+  'and nothing past the current round is visible either, same as before'
 );
 
 select tests.act_as((select v from tests.fx where k = 'outsider'));
@@ -58,33 +59,56 @@ select is(
   'and someone not seated at this table sees none of it, current round included'
 );
 
--- -------------------------------------------------------- reaching round 2 --
+-- ------------------------------------------------------- p0's turn closes --
 
--- Three players, three expired turns: exactly enough to close out round 1
--- without anyone submitting anything, the ordinary timeout path.
+-- One expired turn: p0's pick-and-guess window times out, active_seat moves
+-- to p1 without the round itself advancing.
 select tests.act_as_admin();
 select tests.sd_expire((select v from tests.fx where k = 'm'));
+
+select tests.act_as((select v from tests.fx where k = 'p1'));
+select is(
+  (select count(*)::int from public.sabotage_draft_round_spins
+    where match_id = (select v from tests.fx where k = 'm') and round_number = 1),
+  2,
+  'once p1''s own turn is reached, round 1 opens up to seat 0 and seat 1 -- p1 can now see their own franchise too'
+);
+select is(
+  (select count(*)::int from public.sabotage_draft_round_spins
+    where match_id = (select v from tests.fx where k = 'm')
+      and round_number = 1 and user_id = (select v::uuid from tests.fx where k = 'p2')),
+  0,
+  'but seat 2, still two turns out, stays hidden -- reaching the round is not the same as reaching the seat'
+);
+
+-- -------------------------------------------------------- reaching round 2 --
+
+-- Two more expired turns: p1's and p2's, closing out round 1 the ordinary
+-- timeout path (three seats, three turns, per round).
+select tests.act_as_admin();
 select tests.sd_expire((select v from tests.fx where k = 'm'));
 select tests.sd_expire((select v from tests.fx where k = 'm'));
 select is(
   (select current_round::int from public.sabotage_draft_matches
     where match_id = (select v from tests.fx where k = 'm')),
   2,
-  'three expired turns close out a three-player round 1, advancing the round'
+  'three expired turns close out a three-player round 1, advancing the round and resetting active_seat to 0'
 );
 
+-- p0 is back on the clock for round 2 -- same seat-order gate applies there
+-- as it did for round 1, on top of round 1 now being entirely in the past.
 select tests.act_as((select v from tests.fx where k = 'p0'));
 select is(
   (select count(*)::int from public.sabotage_draft_round_spins
     where match_id = (select v from tests.fx where k = 'm') and round_number <= 2),
-  6,
-  'round 2''s spin becomes readable the moment the table actually reaches it'
+  4,
+  'round 1 is now fully readable (3) plus just p0''s own round-2 spin (1) -- not every seat''s round 2 franchise yet'
 );
 select is(
   (select count(*)::int from public.sabotage_draft_round_spins
     where match_id = (select v from tests.fx where k = 'm') and round_number > 2),
   0,
-  'round 3 onward stays exactly as hidden as round 2 just was'
+  'round 3 onward stays exactly as hidden as it was before'
 );
 
 select * from finish();

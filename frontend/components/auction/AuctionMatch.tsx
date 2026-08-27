@@ -13,6 +13,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Button } from "@/components/ui/Button";
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
+import { abbreviate, MatchStrip, StripCell, StripCellAvatar, StripCellCaption, StripCellMedia, StripCellName, StripCellTextColumn, StripCellTitle, StripCellTop } from "@/components/ui/MatchStrip";
 import { dropdown, staggerRow } from "@/lib/motion";
 import {
   BLOCKED_TEXT,
@@ -543,6 +544,10 @@ function LotStrip({
   phase: ReturnType<typeof viewerPhase>;
 }) {
   const current = useRef<HTMLLIElement>(null);
+  // Whose turn it is, not just which lot is up — the same "who" a snake
+  // board's own icon leads with, and public the moment a turn opens even
+  // though the lot itself may still be unsold.
+  const onClock = players.find((player) => player.seat === turn.turnSeat) ?? null;
 
   useEffect(() => {
     current.current?.scrollIntoView({
@@ -553,14 +558,11 @@ function LotStrip({
   }, [turn.currentLot]);
 
   return (
-    <ol
-      aria-label="Auction board"
-      className="flex shrink-0 gap-1.5 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:thin]"
-    >
+    <MatchStrip ariaLabel="Auction board">
       {Array.from({ length: turn.lotCount }, (_, index) => {
         const seq = index + 1;
         if (seq === turn.currentLot) {
-          return <CurrentBoardCell key={seq} ref={current} seq={seq} lotCount={turn.lotCount} phase={phase} />;
+          return <CurrentBoardCell key={seq} ref={current} seq={seq} lotCount={turn.lotCount} phase={phase} onClock={onClock} />;
         }
 
         const settled = lots.find((candidate) => candidate.seq === seq) ?? null;
@@ -570,15 +572,9 @@ function LotStrip({
           <UndealtBoardCell key={seq} seq={seq} />
         );
       })}
-    </ol>
+    </MatchStrip>
   );
 }
-
-// No bare `border` here anymore — Settled is a passive, filled cell (a
-// recessed well instead), while Current and Undealt each carry a border with
-// real meaning (an active-lot highlight, a dashed not-dealt-yet outline) and
-// declare it themselves.
-const BOARD_CELL = "h-[74px] shrink-0 rounded px-1.5 py-1";
 
 function SettledBoardCell({ lot, players }: { lot: Lot; players: Player[] }) {
   const winner = players.find((player) => player.user_id === lot.winner_id) ?? null;
@@ -586,22 +582,12 @@ function SettledBoardCell({ lot, players }: { lot: Lot; players: Player[] }) {
   const winnerCopy = winner ? `won by ${winner.display_name}` : "no winner";
 
   return (
-    <li
-      aria-label={`Lot ${lot.seq}, ${lot.display_name}, ${lot.slot ?? "unfilled"}, ${price}, ${winnerCopy}`}
-      className={`${BOARD_CELL} flex w-[84px] flex-col bg-surface-raised shadow-well`}
-    >
-      <p className="flex items-baseline justify-between gap-1 font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">
-        <span>{lot.slot}</span>
-        <span className="font-bold text-fg tabular-nums">{lot.price === null ? "—" : `$${lot.price}`}</span>
-      </p>
-      <span className="mx-auto mt-1 block h-7 w-7 shrink-0 overflow-hidden rounded-full bg-panel-shade">
-        {lot.headshot_url ? <img src={lot.headshot_url} alt="" className="h-full w-full object-cover object-top" /> : null}
-      </span>
-      <p className="mt-1 truncate text-center font-slab text-[10px] leading-none uppercase">{abbreviate(lot.display_name)}</p>
-      <p className="mt-1 truncate text-center font-mono text-[8px] leading-none tracking-[0.08em] text-fg-muted uppercase">
-        {winner?.display_name ?? "No bids"}
-      </p>
-    </li>
+    <StripCell tone="settled" width={92} ariaLabel={`Lot ${lot.seq}, ${lot.display_name}, ${lot.slot ?? "unfilled"}, ${price}, ${winnerCopy}`}>
+      <StripCellTop left={lot.slot ?? "—"} right={lot.price === null ? "—" : `$${lot.price}`} />
+      <StripCellMedia>{lot.headshot_url ? <img src={lot.headshot_url} alt="" className="h-full w-full object-cover object-top" /> : null}</StripCellMedia>
+      <StripCellName center>{abbreviate(lot.display_name)}</StripCellName>
+      <StripCellCaption center>{winner?.display_name ?? "No bids"}</StripCellCaption>
+    </StripCell>
   );
 }
 
@@ -609,46 +595,34 @@ function CurrentBoardCell({
   seq,
   lotCount,
   phase,
+  onClock,
   ref,
 }: {
   seq: number;
   lotCount: number;
   phase: ReturnType<typeof viewerPhase>;
+  onClock: Player | null;
   ref?: Ref<HTMLLIElement>;
 }) {
   return (
-    <li
-      ref={ref}
-      aria-current="step"
-      className={`${BOARD_CELL} flex w-[164px] flex-col justify-center border border-panel/45 bg-panel/10 px-3`}
-    >
-      <p className="font-slab text-lg leading-none uppercase">
-        Lot {seq}
-        <span className="ml-1.5 font-mono text-[10px] tracking-[0.1em] text-fg-muted">/ {lotCount}</span>
-      </p>
-      <p className="mt-1.5 font-mono text-[9px] tracking-[0.13em] text-fg-muted uppercase">
-        {phase === "lot_preview" ? "Coming up" : phase === "sold" ? "Sold" : "On the clock"}
-      </p>
-    </li>
+    <StripCell tone="current" width={176} ref={ref}>
+      {onClock ? <StripCellAvatar name={onClock.display_name} big /> : null}
+      <StripCellTextColumn>
+        <StripCellTitle meta={`/ ${lotCount}`}>Lot {seq}</StripCellTitle>
+        <StripCellCaption>{phase === "lot_preview" ? "Coming up" : phase === "sold" ? "Sold" : "On the clock"}</StripCellCaption>
+        {onClock ? <StripCellCaption>{onClock.display_name}</StripCellCaption> : null}
+      </StripCellTextColumn>
+    </StripCell>
   );
 }
 
 function UndealtBoardCell({ seq }: { seq: number }) {
   return (
-    <li
-      aria-label={`Lot ${seq}, not yet dealt`}
-      className={`${BOARD_CELL} flex w-[84px] flex-col items-center justify-center gap-2 border border-dashed border-line bg-transparent`}
-    >
-      <span aria-hidden className="block h-7 w-7 rounded-full border border-dashed border-line" />
-      <span className="font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted tabular-nums">{seq}</span>
-    </li>
+    <StripCell tone="upcoming" width={92} ariaLabel={`Lot ${seq}, not yet dealt`} className="gap-2">
+      <span aria-hidden className="mx-auto block h-7 w-7 rounded-full border border-dashed border-line" />
+      <span className="text-center font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted tabular-nums">{seq}</span>
+    </StripCell>
   );
-}
-
-function abbreviate(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length < 2) return name;
-  return `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
 }
 
 /**

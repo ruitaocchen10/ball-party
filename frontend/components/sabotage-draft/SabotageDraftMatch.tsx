@@ -2,7 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Supabase types are regenerated after this migration lands. */
 
 import { motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type Ref } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Ref } from "react";
+import { createPortal } from "react-dom";
 
 import { PauseBanner } from "@/components/game-runtime/PauseBanner";
 import { PauseButton } from "@/components/game-runtime/PauseButton";
@@ -11,8 +12,9 @@ import { TeamLogo } from "@/components/sabotage-draft/TeamLogo";
 import { Button } from "@/components/ui/Button";
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
+import { abbreviate, MatchStrip, StripCell, StripCellAvatar, StripCellBadge, StripCellCaption, StripCellName, StripCellTextColumn, StripCellTitle } from "@/components/ui/MatchStrip";
 import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
-import { staggerRow } from "@/lib/motion";
+import { dropdownUp, springSnappy, staggerRow } from "@/lib/motion";
 import { FRANCHISE_NAMES, franchiseName } from "@/lib/sabotage-draft/franchises";
 import { slotForRound } from "@/lib/sabotage-draft/rounds";
 import { TURN_REVEAL_MS, useTurnReveal } from "@/lib/sabotage-draft/useTurnReveal";
@@ -26,7 +28,7 @@ import { createClient, createRealtimeClient } from "@/lib/supabase/client";
 // longer a separate pick/guess phase to key UI off of, only "is the turn
 // open" and "have I already acted."
 type Board = { match_id: string; round_count: number; current_round: number; slot: string; turn_deadline: string | null; server_now: string; x_factor_open: boolean; active_user_id: string };
-type Player = { match_id: string; user_id: string; seat: number; absent: boolean; display_name: string };
+type Player = { match_id: string; user_id: string; seat: number; absent: boolean; display_name: string; avatar_url: string | null };
 type Spin = { match_id: string; round_number: number; user_id: string; franchise_code: string };
 type Pick = { match_id: string; round_number: number; user_id: string; player_id: string; display_name: string; season: number; by_timeout: boolean; headshot_url: string | null };
 type PickStatus = { match_id: string; round_number: number; user_id: string };
@@ -36,6 +38,15 @@ type Pass = { match_id: string; round_number: number; target_user_id: string; us
 type Option = { player_id: string; display_name: string; season: number; slot_category: string; headshot_url: string | null };
 type Decision = { match_id: string; user_id: string; replace_slot: string | null };
 type Standing = { user_id: string; roster_strength: number; wins: number; losses: number; tiebreak_rank: number };
+// A snapshot of what a turn resolved to, captured once (see the effect in
+// SabotageDraftMatch that builds this) the instant the board moves on to the
+// next one. `pick` is only ever populated when the turn was the viewer's own
+// -- sabotage_draft_picks' RLS (user_id = auth.uid()) means a pick's identity
+// never reaches anyone else's client at all, resolved or not, so a viewer
+// watching someone else's turn resolve gets `spin`/`slot` instead: the same
+// franchise-and-slot, name-withheld shape RosterBoard's own concealed rows
+// already show for a still-open pick.
+type TurnResultData = { round: number; userId: string; playerName: string; mine: boolean; pick: Pick | null; spin: Spin | null; slot: string; outcome: "kept" | "respun" | "sabotaged"; actorName: string | null };
 type Tiebreak = { record_wins: number; bracket_round: number; game_number: number; player_a: string; player_b: string | null; winner_user_id: string };
 
 const MESSAGE: Record<string, string> = { already_picked: "Your pick is already locked.", already_acted: "You have already guessed or passed on this turn.", turn_closed: "This turn has closed.", invalid_pick: "Choose a player from this round's pool.", invalid_guess: "Choose a player from this round's pool.", match_not_playing: "This match isn't accepting moves right now.", not_your_turn: "It isn't your turn right now." };
@@ -59,9 +70,9 @@ export function SabotageDraftMatch({ matchId, viewerId, isHost = false, paused =
   const stateFrom = (row: Partial<Board>) => row.server_now && row.current_round && row.slot ? setBoard(previous => ({ ...previous, ...row } as Board)) : undefined;
   const refetch = useCallback(async () => {
     const s: any = getClient(); const [state, ps, spinResult, picksResult, statusResult, hitResult, guessResult, passResult, decisionResult, standingResult, tieResult] = await Promise.all([
-      s.schema("sabotage_draft" as never).rpc("state" as never, { p_match_id: matchId } as never), s.from("sabotage_draft_players").select("*, profiles(display_name)").eq("match_id", matchId).order("seat"), s.from("sabotage_draft_round_spins").select("*").eq("match_id", matchId), s.from("sabotage_draft_picks").select("*").eq("match_id", matchId), s.from("sabotage_draft_pick_statuses").select("*").eq("match_id", matchId), s.from("sabotage_draft_pick_hits").select("*").eq("match_id", matchId), s.from("sabotage_draft_guesses").select("*").eq("match_id", matchId), s.from("sabotage_draft_passes").select("*").eq("match_id", matchId), s.from("sabotage_draft_x_factor_decisions").select("*").eq("match_id", matchId), s.from("sabotage_draft_standings").select("*").eq("match_id", matchId), s.from("sabotage_draft_tiebreak_games").select("*").eq("match_id", matchId),
+      s.schema("sabotage_draft" as never).rpc("state" as never, { p_match_id: matchId } as never), s.from("sabotage_draft_players").select("*, profiles(display_name, avatar_url)").eq("match_id", matchId).order("seat"), s.from("sabotage_draft_round_spins").select("*").eq("match_id", matchId), s.from("sabotage_draft_picks").select("*").eq("match_id", matchId), s.from("sabotage_draft_pick_statuses").select("*").eq("match_id", matchId), s.from("sabotage_draft_pick_hits").select("*").eq("match_id", matchId), s.from("sabotage_draft_guesses").select("*").eq("match_id", matchId), s.from("sabotage_draft_passes").select("*").eq("match_id", matchId), s.from("sabotage_draft_x_factor_decisions").select("*").eq("match_id", matchId), s.from("sabotage_draft_standings").select("*").eq("match_id", matchId), s.from("sabotage_draft_tiebreak_games").select("*").eq("match_id", matchId),
     ]);
-    if (state.data) stateFrom(state.data as Board); if (ps.data) setPlayers(ps.data.map(({ profiles, ...p }: any) => ({ ...p, display_name: profiles?.display_name ?? "Unknown player" })));
+    if (state.data) stateFrom(state.data as Board); if (ps.data) setPlayers(ps.data.map(({ profiles, ...p }: any) => ({ ...p, display_name: profiles?.display_name ?? "Unknown player", avatar_url: profiles?.avatar_url ?? null })));
     if (spinResult.data) setSpins(spinResult.data as Spin[]);
     if (picksResult.data) setPicks(picksResult.data as Pick[]); if (statusResult.data) setStatuses(statusResult.data as PickStatus[]); if (hitResult.data) setHits(hitResult.data as Hit[]); if (guessResult.data) setGuesses(guessResult.data as Guess[]); if (passResult.data) setPasses(passResult.data as Pass[]); if (decisionResult.data) setDecisions(decisionResult.data as Decision[]); if (standingResult.data) setStandings(standingResult.data as Standing[]); if (tieResult.data) setTiebreaks(tieResult.data as Tiebreak[]);
   }, [getClient, matchId]);
@@ -105,6 +116,45 @@ export function SabotageDraftMatch({ matchId, viewerId, isHost = false, paused =
   // animation actually plays. Called unconditionally, above the standings
   // early-return below, because it's a hook.
   const { revealed: turnRevealed } = useTurnReveal(`${board.current_round}-${board.active_user_id}`);
+  // What the *previous* turn resolved to, captured the instant the board
+  // moves on -- not on a timer of its own. It rides the same "still
+  // spinning" window useTurnReveal already opens for the new turn's reel
+  // (see !turnRevealed below): the result stays up for exactly as long as
+  // the "Your move" column would otherwise just say "Spinning…", and clears
+  // itself the moment that column has real work to show again. `prevTurnRef`
+  // starts null on mount for the same reason useTurnReveal's own lastKey
+  // does -- a viewer landing mid-turn has no "previous" turn to report on.
+  const prevTurnRef = useRef<{ round: number; userId: string } | null>(null);
+  const [lastTurnResult, setLastTurnResult] = useState<TurnResultData | null>(null);
+  useEffect(() => {
+    const prev = prevTurnRef.current;
+    prevTurnRef.current = { round: board.current_round, userId: board.active_user_id };
+    if (!prev || (prev.round === board.current_round && prev.userId === board.active_user_id)) return;
+    const mine = prev.userId === viewerId;
+    const pick = mine ? (picks.find(p => p.round_number === prev.round && p.user_id === prev.userId) ?? null) : null;
+    const spin = spins.find(s => s.round_number === prev.round && s.user_id === prev.userId) ?? null;
+    // A turn that produced nothing to show (mine with no pick row somehow,
+    // or someone else's with no spin on record) is skipped rather than
+    // rendered empty -- this is a nice-to-have flourish, not something
+    // anyone should be blocked by.
+    if (mine ? !pick : !spin) return;
+    const roundHits = hits.filter(h => h.round_number === prev.round && h.target_user_id === prev.userId);
+    const sabotaged = roundHits.some(h => h.kind === "sabotage");
+    const respun = !sabotaged && roundHits.some(h => h.kind === "respin");
+    const outcome: TurnResultData["outcome"] = sabotaged ? "sabotaged" : respun ? "respun" : "kept";
+    const actorGuess = outcome !== "kept" ? guesses.find(g => g.round_number === prev.round && g.target_user_id === prev.userId && g.result === outcome) : undefined;
+    setLastTurnResult({
+      round: prev.round,
+      userId: prev.userId,
+      playerName: players.find(p => p.user_id === prev.userId)?.display_name ?? "Someone",
+      mine,
+      pick,
+      spin,
+      slot: slotForRound(prev.round),
+      outcome,
+      actorName: actorGuess ? (players.find(p => p.user_id === actorGuess.user_id)?.display_name ?? null) : null,
+    });
+  }, [board.current_round, board.active_user_id, picks, spins, hits, guesses, players, viewerId]);
   if (standings.length) return <Final standings={standings} players={players} tiebreaks={tiebreaks} />;
   const disabled = pending || isPaused;
   // The turn clock's status label. Computed once here, where isActive and
@@ -144,7 +194,7 @@ export function SabotageDraftMatch({ matchId, viewerId, isHost = false, paused =
         </section>
         <section className="flex min-h-0 flex-col gap-3 lg:col-start-2" aria-label="Your move">
           <AnimatedMessage role="alert" className="text-sm text-hidden-text">{error}</AnimatedMessage>
-          {board.turn_deadline && !turnRevealed ? <Card edge={false}><CardTitle>Spinning…</CardTitle><CardMeta>The board is picking {isActive ? "your" : `${activePlayer?.display_name ?? "their"}`} team</CardMeta></Card> : null}
+          {board.turn_deadline && !turnRevealed ? (lastTurnResult ? <TurnResultCard result={lastTurnResult} /> : <Card edge={false}><CardTitle>Spinning…</CardTitle><CardMeta>The board is picking {isActive ? "your" : `${activePlayer?.display_name ?? "their"}`} team</CardMeta></Card>) : null}
           {board.turn_deadline && turnRevealed && isActive ? <PickForm options={options} mine={myPick} pending={disabled} onSubmit={(o) => call("submit_pick", { p_match_id: matchId, p_player_id: o.player_id, p_season: o.season })} /> : null}
           {board.turn_deadline && turnRevealed && !isActive ? <GuessForm targetName={activePlayer?.display_name ?? "them"} status={myGuess ? "guessed" : myPass ? "passed" : "open"} pending={disabled} loadOptions={loadActiveOptions} onSubmit={(choice, exact, replacement) => call("submit_guess", { p_match_id: matchId, p_player_id: choice.player_id, p_season: exact ? choice.season : null, p_replacement_player_id: exact ? replacement?.player_id : null, p_replacement_season: exact ? replacement?.season : null })} onPass={() => call("submit_pass", { p_match_id: matchId })} /> : null}
           {board.x_factor_open && isActive ? <Decision mine={myDecision} pending={disabled} onSubmit={(slot) => call("submit_x_factor_decision", { p_match_id: matchId, p_replace_slot: slot })} /> : null}
@@ -152,7 +202,7 @@ export function SabotageDraftMatch({ matchId, viewerId, isHost = false, paused =
           {!board.turn_deadline && !board.x_factor_open ? <Card edge={false}><CardTitle>Between turns</CardTitle><CardMeta>Waiting on the next turn to open</CardMeta></Card> : null}
         </section>
         <aside className="min-h-0 overflow-y-auto lg:col-start-3" aria-label="Everyone's teams">
-          <RosterBoard board={board} players={players} spins={spins} picks={picks} statuses={statuses} hits={hits} viewerId={viewerId} />
+          <RosterBoard board={board} players={players} spins={spins} picks={picks} statuses={statuses} hits={hits} viewerId={viewerId} justResolved={!turnRevealed ? lastTurnResult : null} />
         </aside>
       </div>
     </main>
@@ -200,6 +250,48 @@ function PlayerPortrait({ name, headshotUrl, className = "h-6 w-6" }: { name: st
 function initials(name: string) {
   return (
     name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join("") || "?"
+  );
+}
+
+/**
+ * The one "this expands" affordance in the app — a real stroked chevron
+ * rather than the ▸/▾ glyphs this used to be. Those sit tiny and off-center
+ * inside their own character box no matter how large the font-size gets, so
+ * bumping the text size around them barely moved the needle; an actual
+ * sized SVG scales the way a reader expects an icon to.
+ */
+function Chevron({ className = "" }: { className?: string }) {
+  // Points right at rest, matching the old ▸ glyph this replaced — a caller
+  // that wants it resting some other way rotates it itself. Deliberately
+  // *not* right-pointing via a Tailwind rotate utility layered on top of a
+  // down-pointing base: Tailwind's utilities live in a cascade layer above
+  // this file's @layer components rules, so a components-layer override
+  // (like .roster-chev's open-state rotate below) can never beat a rotate
+  // utility on the same element regardless of selector specificity — the
+  // layer order settles it first. Baking the resting orientation into the
+  // path sidesteps that fight entirely.
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className={className}>
+      <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/**
+ * RosterBoard's own seat avatar — a human player's profile photo, not a
+ * drafted player's headshot (that's PlayerPortrait above). Same
+ * onError-falls-back-to-initials posture, sized to match PlayerPortrait's
+ * circular chips (see the comment at its call site).
+ */
+function RosterAvatar({ name, avatarUrl, mine }: { name: string; avatarUrl: string | null; mine: boolean }) {
+  const [failed, setFailed] = useState(false);
+  if (avatarUrl && !failed) {
+    return <img src={avatarUrl} alt="" onError={() => setFailed(true)} className="h-7 w-7 shrink-0 rounded-full object-cover" />;
+  }
+  return (
+    <span aria-hidden="true" className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-slab text-base ${mine ? "bg-hidden text-panel" : "bg-surface text-fg"}`}>
+      {name.slice(0, 1).toUpperCase()}
+    </span>
   );
 }
 
@@ -255,17 +347,21 @@ function TurnSpinner({ board, players, spins, revealed }: { board: Board; player
 
   return (
     <Card edge={false} className="flex flex-col">
-      <div className="relative mx-3 mt-3 h-14 overflow-hidden bg-panel-fg" aria-hidden="true">
+      <div className="relative mx-3 mt-3 h-24 overflow-hidden bg-panel-fg" aria-hidden="true">
         <span className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-panel-fg to-transparent" />
         <span className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-4 bg-gradient-to-t from-panel-fg to-transparent" />
         {!reelItems.length ? (
-          <p className="flex h-14 items-center justify-center font-mono text-xs text-panel-muted uppercase">Waiting on the next spin…</p>
+          <p className="flex h-24 items-center justify-center font-mono text-xs text-panel-muted uppercase">Waiting on the next spin…</p>
         ) : revealed ? (
           // The only place the real team is ever rendered idle -- not a side
           // effect of an animation having finished, so this is correct
-          // whether or not motion played at all.
-          <div className="flex h-14 items-center justify-center gap-2">
-            <TeamLogo code={landedCode!} className="h-7 w-7" />
+          // whether or not motion played at all. Logo stacked above the name
+          // and sized up so it reads as the headline element, the name a
+          // caption underneath -- same idea as PastTurnCell/RosterBoard's
+          // portrait-above-label pattern, applied here instead of the old
+          // side-by-side row.
+          <div className="flex h-24 flex-col items-center justify-center gap-1">
+            <TeamLogo code={landedCode!} className="h-12 w-12" />
             <span className="font-slab text-lg tracking-[0.02em] text-panel uppercase">{landedName}</span>
           </div>
         ) : (
@@ -274,15 +370,17 @@ function TurnSpinner({ board, players, spins, revealed }: { board: Board; player
                 real team exactly as useTurnReveal's delay elapses --
                 animation-duration is set from TURN_REVEAL_MS inline so the
                 two can't drift apart (see globals.css's .animate-reel-spin
-                comment). */}
+                comment). Row height only needs to stay consistent across
+                rows and match the container -- the keyframes translate by
+                percentages of --reel-count, not a hardcoded pixel height. */}
             <div
               key={reelKey}
               className="animate-reel-spin motion-reduce:hidden flex flex-col"
               style={{ "--reel-count": reelItems.length, animationDuration: `${TURN_REVEAL_MS}ms` } as CSSProperties}
             >
               {reelItems.map(([code, name], index) => (
-                <span key={`${code}-${index}`} className="flex h-14 shrink-0 items-center justify-center gap-1.5 font-slab text-lg tracking-[0.02em] text-panel uppercase">
-                  <TeamLogo code={code} className="h-5 w-5" />
+                <span key={`${code}-${index}`} className="flex h-24 shrink-0 flex-col items-center justify-center gap-1 font-slab text-lg tracking-[0.02em] text-panel uppercase">
+                  <TeamLogo code={code} className="h-12 w-12" />
                   {name}
                 </span>
               ))}
@@ -290,7 +388,7 @@ function TurnSpinner({ board, players, spins, revealed }: { board: Board; player
             {/* Motion-reduce: no animation to land on anything, so this never
                 depends on one -- a plain "still choosing" state instead of a
                 reel frozen on whichever decoy rendered first. */}
-            <p className="hidden motion-reduce:flex h-14 items-center justify-center font-mono text-xs text-panel-muted uppercase">Spinning…</p>
+            <p className="hidden motion-reduce:flex h-24 items-center justify-center font-mono text-xs text-panel-muted uppercase">Spinning…</p>
           </>
         )}
       </div>
@@ -384,7 +482,7 @@ function TurnStrip({ board, players, spins, picks, statuses, hits, viewerId }: {
   useEffect(() => { current.current?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }); }, [board.current_round, board.active_user_id]);
 
   return (
-    <ol aria-label="Draft order" className="flex shrink-0 gap-1.5 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:thin]">
+    <MatchStrip ariaLabel="Draft order">
       {Array.from({ length: board.round_count }, (_, i) => i + 1).flatMap(round => {
         const slot = slotForRound(round);
         return seated.map((player, seatIndex) => {
@@ -401,68 +499,94 @@ function TurnStrip({ board, players, spins, picks, statuses, hits, viewerId }: {
           return <PastTurnCell key={key} round={round} slot={slot} player={player} pick={pick} locked={locked} hits={turnHits} mine={player.user_id === viewerId} />;
         });
       })}
-    </ol>
+    </MatchStrip>
   );
 }
-
-const TURN_CELL = "h-[68px] shrink-0 rounded px-1.5 py-1";
 
 function PastTurnCell({ round, slot, player, pick, locked, hits, mine }: { round: number; slot: string; player: Player; pick: Pick | null; locked: boolean; hits: Hit[]; mine: boolean }) {
   const respun = hits.some(h => h.kind === "respin");
   const sabotaged = hits.some(h => h.kind === "sabotage");
   const badge = respun && sabotaged ? "Respun · Sabotaged" : sabotaged ? "Sabotaged" : respun ? "Respun" : null;
-  const outcome = mine && pick ? `${pick.display_name} · ${pick.season}` : locked ? "Locked" : "—";
+  // `pick` is already scoped by RLS to exactly what this viewer may see —
+  // their own pick any time, or anyone's once that pick's own round has
+  // closed (see migration 0069's header) — so its presence alone is the
+  // reveal signal. Once revealed, the cell's icon and name belong to the
+  // drafted player, not the drafter; the drafter's own name moves up to the
+  // label a round/slot pair used to occupy there, since that pairing is
+  // already redundant with the cell's own position in the strip (the same
+  // call RosterBoard already makes for its own round rows).
   return (
-    <li
-      aria-label={`Round ${round}, ${player.display_name}, ${slot.replace("_", " ")}, ${outcome}${badge ? `, ${badge}` : ""}`}
-      className={`${TURN_CELL} flex w-[76px] flex-col bg-surface-raised shadow-well`}
-    >
-      <p className="flex items-baseline justify-between gap-1 font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">
-        <span>{slot.replace("_", " ")}</span>
-        <span className="tabular-nums">R{round}</span>
-      </p>
-      <p className="mt-1 truncate font-slab text-[11px] leading-none uppercase">{player.display_name}</p>
-      <span className="mt-1 flex items-center gap-1">
-        {mine && pick ? <PlayerPortrait name={pick.display_name} headshotUrl={pick.headshot_url} className="h-4 w-4" /> : null}
-        <span className="truncate font-mono text-[9px] leading-none tracking-[0.08em] text-fg-muted uppercase">{outcome}</span>
-      </span>
-      {badge ? <p className="mt-1 truncate font-mono text-[8px] leading-none tracking-[0.08em] text-hidden-text uppercase">{badge}</p> : null}
-    </li>
+    <StripCell tone="settled" width={92} ariaLabel={`Round ${round}, ${player.display_name}, ${slot.replace("_", " ")}, ${pick ? `${pick.display_name} · ${pick.season}` : locked ? "Locked" : "not yet drafted"}${badge ? `, ${badge}` : ""}`}>
+      <p className="truncate text-center font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">{player.display_name}</p>
+      {pick ? (
+        <PlayerPortrait name={pick.display_name} headshotUrl={pick.headshot_url} className="mx-auto mt-1 h-8 w-8" />
+      ) : (
+        <StripCellAvatar name={player.display_name} avatarUrl={player.avatar_url} mine={mine} />
+      )}
+      <StripCellName center>{pick ? abbreviate(pick.display_name) : locked ? "Locked" : "—"}</StripCellName>
+      {pick ? <StripCellCaption center>{pick.season}</StripCellCaption> : null}
+      {badge ? <StripCellBadge>{badge}</StripCellBadge> : null}
+    </StripCell>
   );
 }
 
 function CurrentTurnCell({ round, slot, player, spin, ref }: { round: number; slot: string; player: Player; spin: Spin | null; ref?: Ref<HTMLLIElement> }) {
   return (
-    <li ref={ref} aria-current="step" className={`${TURN_CELL} flex w-[140px] flex-col justify-center border border-panel/45 bg-panel/10 px-2.5`}>
-      <p className="font-slab text-sm leading-none uppercase">
-        R{round} <span className="font-mono text-[10px] tracking-[0.1em] text-fg-muted">· {slot.replace("_", " ")}</span>
-      </p>
-      <p className="mt-1 truncate font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">{player.display_name} on the clock</p>
-      {spin ? (
-        <p className="flex items-center gap-1 truncate font-mono text-[9px] tracking-[0.08em] text-fg-muted uppercase">
-          <TeamLogo code={spin.franchise_code} className="h-3 w-3" />
-          {franchiseName(spin.franchise_code)}
-        </p>
-      ) : null}
-    </li>
+    <StripCell tone="current" width={176} ref={ref}>
+      <StripCellAvatar name={player.display_name} avatarUrl={player.avatar_url} big />
+      <StripCellTextColumn>
+        <StripCellTitle meta={`· ${slot.replace("_", " ")}`}>R{round}</StripCellTitle>
+        <StripCellCaption>{player.display_name} on the clock</StripCellCaption>
+        {spin ? <StripCellCaption icon={<TeamLogo code={spin.franchise_code} className="h-3 w-3" />}>{franchiseName(spin.franchise_code)}</StripCellCaption> : null}
+      </StripCellTextColumn>
+    </StripCell>
   );
 }
 
 function FutureTurnCell({ round, slot, player, spin }: { round: number; slot: string; player: Player; spin: Spin | null }) {
   return (
-    <li
-      aria-label={`Round ${round}, ${player.display_name}, ${slot.replace("_", " ")}, not yet drafted`}
-      className={`${TURN_CELL} flex w-[76px] flex-col items-center justify-center gap-0.5 border border-dashed border-line bg-transparent px-1`}
-    >
-      <p className="font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">R{round} · {slot.replace("_", " ")}</p>
-      <p className="truncate font-mono text-[9px] leading-none text-fg-muted uppercase">{player.display_name}</p>
-      {spin ? (
-        <p className="flex items-center gap-1 truncate font-mono text-[8px] leading-none tracking-[0.08em] text-fg-muted/70 uppercase">
-          <TeamLogo code={spin.franchise_code} className="h-2.5 w-2.5" />
-          {franchiseName(spin.franchise_code)}
-        </p>
-      ) : null}
-    </li>
+    <StripCell tone="upcoming" width={92} ariaLabel={`Round ${round}, ${player.display_name}, ${slot.replace("_", " ")}, not yet drafted`}>
+      <p className="w-full truncate text-center font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">R{round} · {slot.replace("_", " ")}</p>
+      <StripCellAvatar name={player.display_name} avatarUrl={player.avatar_url} muted />
+      <StripCellName center>{player.display_name}</StripCellName>
+      {spin ? <StripCellCaption center icon={<TeamLogo code={spin.franchise_code} className="h-2.5 w-2.5" />}><span className="text-fg-muted/70">{franchiseName(spin.franchise_code)}</span></StripCellCaption> : null}
+    </StripCell>
+  );
+}
+
+/**
+ * What the previous turn resolved to, standing in for "Spinning…" for as
+ * long as the new turn's own reel is still spinning (see the effect that
+ * builds `TurnResultData` in SabotageDraftMatch). `edge` reuses Card's own
+ * "concealed from someone" rule: false for the viewer's own resolved turn --
+ * nothing here is hidden from the one person reading it -- true for anyone
+ * else's, where the identity behind `spin`/`slot` still is. `animate-sold-
+ * headline` is the auction's own "Sold to" entrance, reused as-is for the
+ * same "a result just landed" beat.
+ */
+function TurnResultCard({ result }: { result: TurnResultData }) {
+  const { playerName, mine, pick, spin, slot, outcome, actorName } = result;
+  const headline = outcome === "kept"
+    ? mine ? "You kept the pick" : `${playerName} kept the pick`
+    : outcome === "respun"
+    ? `${actorName ?? "Someone"} forced a respin on ${mine ? "you" : playerName}`
+    : `${actorName ?? "Someone"} sabotaged ${mine ? "you" : playerName}`;
+  return (
+    <Card className="animate-sold-headline" edge={!mine}>
+      <div className="flex items-center gap-2.5 p-3">
+        {mine && pick ? (
+          <PlayerPortrait name={pick.display_name} headshotUrl={pick.headshot_url} className="h-10 w-10 shrink-0" />
+        ) : spin ? (
+          <TeamLogo code={spin.franchise_code} className="h-10 w-10 shrink-0" />
+        ) : null}
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] tracking-[0.14em] text-panel-muted uppercase">{headline}</p>
+          <p className="truncate font-slab text-xl leading-none uppercase">
+            {mine && pick ? `${pick.display_name} · ${pick.season}` : `${slot.replace("_", " ")}${spin ? ` · ${franchiseName(spin.franchise_code)}` : ""}`}
+          </p>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -480,7 +604,7 @@ function FutureTurnCell({ round, slot, player, spin }: { round: number; slot: st
  * seat's filled slot can only ever show what `statuses`/`spins`/`hits`
  * carry — a franchise and a hit badge, never a name.
  */
-function RosterBoard({ board, players, spins, picks, statuses, hits, viewerId }: { board: Board; players: Player[]; spins: Spin[]; picks: Pick[]; statuses: PickStatus[]; hits: Hit[]; viewerId: string }) {
+function RosterBoard({ board, players, spins, picks, statuses, hits, viewerId, justResolved }: { board: Board; players: Player[]; spins: Spin[]; picks: Pick[]; statuses: PickStatus[]; hits: Hit[]; viewerId: string; justResolved: TurnResultData | null }) {
   const seated = [...players].sort((a, b) => a.seat - b.seat);
   const seatIndexOf = new Map(seated.map((p, index) => [p.user_id, index]));
   const activeIndex = seatIndexOf.get(board.active_user_id) ?? -1;
@@ -495,6 +619,7 @@ function RosterBoard({ board, players, spins, picks, statuses, hits, viewerId }:
         const filledCount = statuses.filter(s => s.user_id === player.user_id).length;
         const hitCount = hits.filter(h => h.target_user_id === player.user_id).length;
         const seatIndex = seatIndexOf.get(player.user_id) ?? 0;
+        const resolvedHere = justResolved?.userId === player.user_id ? justResolved : null;
 
         return (
           <details key={player.user_id} open={mine}>
@@ -504,14 +629,24 @@ function RosterBoard({ board, players, spins, picks, statuses, hits, viewerId }:
                 GuessForm), just applied to the whole row here so it reads at
                 a glance without opening it. Plain hover:bg-panel/5 still
                 applies on top for every other row; layering the two only
-                deepens the tint further while active rather than fighting it. */}
-            <summary className={`grid cursor-pointer grid-cols-[1.85rem_1fr_auto_1rem] items-center gap-2.5 px-3 py-2.5 hover:bg-panel/5 ${active ? "bg-hidden-ink/10" : ""}`}>
+                deepens the tint further while active rather than fighting it.
+                `resolvedHere` takes priority over `active` -- the two are
+                mutually exclusive in practice anyway, since the turn that
+                just resolved is never also the one currently on the clock --
+                and flashes red for a hit or a neutral cream wash for a kept
+                pick, reusing the auction's own `animate-sold-once` (a seat's
+                roster row lighting up the instant a lot lands in it) for the
+                same "something just landed here" beat. Applied at the
+                summary level rather than inside the per-round row it
+                actually happened on, because every row but the viewer's own
+                starts collapsed (`open={mine}` below) -- a flash buried
+                inside a closed <details> would go unseen for everyone but
+                the player whose own turn it was. */}
+            <summary className={`grid cursor-pointer grid-cols-[1.85rem_1fr_auto_1rem] items-center gap-2.5 px-3 py-2.5 hover:bg-panel/5 ${resolvedHere ? (resolvedHere.outcome === "kept" ? "bg-panel-fg/10 motion-safe:animate-sold-once" : "bg-hidden/15 motion-safe:animate-sold-once") : active ? "bg-hidden-ink/10" : ""}`}>
               {/* Rounded to match PlayerPortrait's own circular chips -- a
                   square initial avatar next to circular player portraits read
                   as two different avatar languages once portraits shipped. */}
-              <span aria-hidden="true" className={`flex h-7 w-7 items-center justify-center rounded-full font-slab text-base ${mine ? "bg-hidden text-panel" : "bg-surface text-fg"}`}>
-                {player.display_name.slice(0, 1).toUpperCase()}
-              </span>
+              <RosterAvatar name={player.display_name} avatarUrl={player.avatar_url} mine={mine} />
               <span className="flex min-w-0 flex-col gap-0.5">
                 <span className="flex items-center gap-1.5 font-slab text-base leading-none uppercase">
                   {mine ? "You" : player.display_name}
@@ -534,7 +669,7 @@ function RosterBoard({ board, players, spins, picks, statuses, hits, viewerId }:
               ) : (
                 <span className="whitespace-nowrap font-mono text-[9px] tracking-[0.06em] text-fg-muted uppercase">No hits</span>
               )}
-              <span aria-hidden="true" className="roster-chev text-[11px] text-fg-muted transition-transform">▸</span>
+              <Chevron className="roster-chev h-4 w-4 shrink-0 text-fg-muted transition-transform" />
             </summary>
             <div className="px-2.5 pb-2.5">
               <div className="flex flex-col gap-1.5 bg-panel p-1.5 text-panel-fg">
@@ -624,33 +759,142 @@ function groupByPlayer(options: Option[]): Tenured[] {
   return [...map.values()].map(g => ({ ...g, seasons: [...g.seasons].sort((a, b) => b - a) }));
 }
 
+/** The row of season buttons a card or search result expands into. */
+function SeasonChips({ seasons, pending, onChoose }: { seasons: number[]; pending: boolean; onChoose: (season: number) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {seasons.map(season => (
+        <button key={season} type="button" disabled={pending} onClick={() => onChoose(season)} className="cursor-pointer bg-panel px-2.5 py-1 font-mono text-xs text-panel-fg tabular-nums hover:bg-hidden-text hover:text-hidden-ink">{season}</button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One of the three most-tenured cards. Collapsed, it's a portrait-forward
+ * card a player recognizes at a glance. Tapping it (when a season still
+ * needs picking) expands it into its own season chips, in place of a
+ * separate "choose a year" screen. The caller always renders the expanded
+ * card first, so it lands in the same top-left slot no matter which of the
+ * three was tapped. Tapping the expanded card again collapses it back to a
+ * plain choice, unpicking it.
+ *
+ * The outer `motion.div`'s `layout` prop is what makes all of that (the
+ * reorder to the front, the resize into `col-span-3`, the other two cards
+ * sliding to make room) read as one smooth move instead of a jump cut —
+ * Motion diffs this element's box before/after each render and animates the
+ * difference, with no per-property animation of our own to hand-tune.
+ */
+function TenuredCard({ rank, player, expanded, dimmed, pending, onSelect, onChooseSeason }: { rank: number; player: Tenured; expanded: boolean; dimmed: boolean; pending: boolean; onSelect: () => void; onChooseSeason: (season: number) => void }) {
+  return (
+    <motion.div layout transition={springSnappy} className={expanded ? "col-span-3" : undefined}>
+      {expanded ? (
+        <div className="flex flex-col gap-2 border border-hidden-text bg-surface-raised p-3">
+          <button type="button" disabled={pending} onClick={onSelect} className="flex cursor-pointer items-center gap-2.5 text-left">
+            <PlayerPortrait name={player.display_name} headshotUrl={player.headshot_url} className="h-10 w-10" />
+            <span className="min-w-0 truncate font-slab text-lg leading-none uppercase text-fg">{player.display_name}</span>
+          </button>
+          <motion.div variants={dropdownUp} initial="initial" animate="animate">
+            <SeasonChips seasons={player.seasons} pending={pending} onChoose={onChooseSeason} />
+          </motion.div>
+        </div>
+      ) : (
+        <button type="button" disabled={pending} onClick={onSelect} className={`flex w-full flex-col items-center gap-1.5 border border-line bg-surface-raised px-2 py-3 text-center hover:border-hidden-text ${dimmed ? "opacity-40" : ""}`}>
+          <span className="relative">
+            <PlayerPortrait name={player.display_name} headshotUrl={player.headshot_url} className="h-14 w-14" />
+            <span aria-hidden="true" className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center bg-panel font-mono text-[9px] text-panel-fg">{rank}</span>
+          </span>
+          <span className="flex min-w-0 flex-col items-center gap-0.5">
+            <span className="w-full truncate font-slab text-sm leading-none uppercase text-fg">{player.display_name}</span>
+            <span className="font-mono text-[9px] tracking-[0.06em] text-hidden-text">{player.seasons[player.seasons.length - 1]}–{player.seasons[0]}</span>
+          </span>
+        </button>
+      )}
+    </motion.div>
+  );
+}
+
+/** One flat row the search dropdown can render — either a specific
+ *  player+season (when the year is part of the decision) or a bare player
+ *  (when it isn't), carrying the exact `Option` a click on it should submit. */
+type SearchRow = { key: string; display_name: string; headshot_url: string | null; season: number | null; option: Option };
+
 /**
  * A flat dropdown of every player this franchise/slot has ever fielded is a
  * wall for a team with decades of history at a slot. The three most tenured
  * players at the top are a one-tap shortcut for the read most people
  * actually have ("who played this position here the longest"); the search
- * field underneath is the escape hatch for anyone else.
+ * dropdown underneath is the escape hatch for anyone else — every other
+ * eligible player (and, when the year matters, every one of their seasons as
+ * its own row), picked in one tap rather than a name-then-year expansion.
  *
  * `needsSeason` is false for a name-only guess, where the game itself never
- * checks the year — picking a player is the whole decision. It's true for a
- * pick and for an exact guess, where a specific season is part of what's
- * being claimed; choosing a player then reveals a row of that player's own
- * seasons to finish the selection.
+ * checks the year — picking a player is the whole decision, so the dropdown
+ * collapses to one row per player. It's true for a pick and for an exact
+ * guess, where a specific season is part of what's being claimed, so each
+ * season gets its own row. Choosing a top-3 card still expands in place into
+ * that player's own seasons (see TenuredCard) — the dropdown's rows are
+ * already specific enough to skip that second step.
  */
 function PlayerPicker({ options, needsSeason, value, onChange, pending }: { options: Option[]; needsSeason: boolean; value: Option | null; onChange: (option: Option | null) => void; pending: boolean }) {
   const grouped = useMemo(() => groupByPlayer(options), [options]);
   const tenured = useMemo(() => [...grouped].sort((a, b) => b.seasons.length - a.seasons.length || b.seasons[0] - a.seasons[0]).slice(0, 3), [grouped]);
   const [query, setQuery] = useState("");
-  const [pendingPlayer, setPendingPlayer] = useState<Tenured | null>(null);
-  const results = query.trim() ? grouped.filter(g => g.display_name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8) : [];
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Tenured | null>(null);
+  // The dropdown is portaled to <body> (see below) so it isn't clipped by
+  // whichever `Card` it's sitting inside — Card is `overflow-hidden` by
+  // design (it clips the top edge strip to the card's rounded corners), and
+  // this list needs to float above that, not be cropped by it. A portal
+  // needs its own coordinates, since it's no longer a normal document-flow
+  // child of the input it belongs to.
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const positionDropdown = useCallback(() => {
+    const rect = searchInputRef.current?.getBoundingClientRect();
+    if (rect) setDropdownRect({ top: rect.bottom, left: rect.left, width: rect.width });
+  }, []);
+  // Recomputed for as long as the dropdown is open, not just once on open —
+  // a scroll or resize while it's up would otherwise leave it floating over
+  // the wrong spot.
+  useLayoutEffect(() => {
+    if (!searchOpen) return;
+    positionDropdown();
+    window.addEventListener("resize", positionDropdown);
+    window.addEventListener("scroll", positionDropdown, true);
+    return () => { window.removeEventListener("resize", positionDropdown); window.removeEventListener("scroll", positionDropdown, true); };
+  }, [searchOpen, positionDropdown]);
+  // Rank badges track tenure, not screen position, so they're captured
+  // before the expanded card gets pulled to the front of the row below.
+  const rankByPlayer = useMemo(() => new Map(tenured.map((g, i) => [g.player_id, i + 1])), [tenured]);
+  // "The rest" of the pool, not the top 3 — those already have their own
+  // one-tap cards above, so repeating them here would just be a second way
+  // to do the same thing.
+  const searchRows: SearchRow[] = useMemo(() => {
+    const rest = options.filter(o => !rankByPlayer.has(o.player_id));
+    if (!needsSeason) {
+      return groupByPlayer(rest)
+        .sort((a, b) => a.display_name.localeCompare(b.display_name))
+        .map(g => ({ key: g.player_id, display_name: g.display_name, headshot_url: g.headshot_url, season: null, option: { player_id: g.player_id, display_name: g.display_name, season: g.seasons[0], slot_category: rest.find(o => o.player_id === g.player_id)?.slot_category ?? "", headshot_url: g.headshot_url } }));
+    }
+    return [...rest]
+      .sort((a, b) => a.display_name.localeCompare(b.display_name) || b.season - a.season)
+      .map(o => ({ key: `${o.player_id}-${o.season}`, display_name: o.display_name, headshot_url: o.headshot_url, season: o.season, option: o }));
+  }, [options, rankByPlayer, needsSeason]);
+  const filteredRows = query.trim() ? searchRows.filter(r => r.display_name.toLowerCase().includes(query.trim().toLowerCase())) : searchRows;
+  const orderedTenured = useMemo(() => {
+    if (!expanded) return tenured;
+    const match = tenured.find(g => g.player_id === expanded.player_id);
+    return match ? [match, ...tenured.filter(g => g.player_id !== expanded.player_id)] : tenured;
+  }, [tenured, expanded]);
 
   const choosePlayer = (g: Tenured) => {
     if (!needsSeason) { onChange({ player_id: g.player_id, display_name: g.display_name, season: g.seasons[0], slot_category: options.find(o => o.player_id === g.player_id)?.slot_category ?? "", headshot_url: g.headshot_url }); return; }
-    setPendingPlayer(g);
+    setExpanded(current => (current?.player_id === g.player_id ? null : g));
   };
   const chooseSeason = (g: Tenured, season: number) => {
     onChange({ player_id: g.player_id, display_name: g.display_name, season, slot_category: options.find(o => o.player_id === g.player_id && o.season === season)?.slot_category ?? "", headshot_url: g.headshot_url });
-    setPendingPlayer(null);
+    setExpanded(null);
   };
 
   if (value) {
@@ -660,21 +904,7 @@ function PlayerPicker({ options, needsSeason, value, onChange, pending }: { opti
           <PlayerPortrait name={value.display_name} headshotUrl={value.headshot_url} className="h-7 w-7" />
           <span className="truncate"><span className="font-semibold">{value.display_name}</span> <span className="font-mono text-xs text-fg-muted">· {value.season}</span></span>
         </span>
-        <button type="button" disabled={pending} onClick={() => { onChange(null); setPendingPlayer(null); }} className="cursor-pointer shrink-0 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase underline underline-offset-2">Change</button>
-      </div>
-    );
-  }
-
-  if (pendingPlayer) {
-    return (
-      <div className="flex flex-col gap-2">
-        <p className="font-mono text-xs tracking-[0.08em] text-panel-muted uppercase">{pendingPlayer.display_name} — choose a year</p>
-        <div className="flex flex-wrap gap-1.5">
-          {pendingPlayer.seasons.map(season => (
-            <button key={season} type="button" disabled={pending} onClick={() => chooseSeason(pendingPlayer, season)} className="cursor-pointer bg-surface-raised px-2.5 py-1 font-mono text-xs text-fg tabular-nums hover:bg-white/5">{season}</button>
-          ))}
-        </div>
-        <button type="button" onClick={() => setPendingPlayer(null)} className="cursor-pointer self-start font-mono text-[10px] tracking-[0.08em] text-panel-muted uppercase underline underline-offset-2">Back</button>
+        <button type="button" disabled={pending} onClick={() => { onChange(null); setExpanded(null); }} className="cursor-pointer shrink-0 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase underline underline-offset-2">Change</button>
       </div>
     );
   }
@@ -683,40 +913,75 @@ function PlayerPicker({ options, needsSeason, value, onChange, pending }: { opti
     <div className="flex flex-col gap-2">
       {tenured.length ? (
         <div className="grid grid-cols-3 gap-1.5">
-          {tenured.map(g => (
-            <button key={g.player_id} type="button" disabled={pending} onClick={() => choosePlayer(g)} className="flex cursor-pointer items-center gap-1.5 border border-line bg-surface-raised px-2 py-1.5 text-left hover:border-hidden-text">
-              <PlayerPortrait name={g.display_name} headshotUrl={g.headshot_url} className="h-6 w-6" />
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="font-mono text-[9px] tracking-[0.06em] text-hidden-text uppercase">{g.seasons.length} season{g.seasons.length === 1 ? "" : "s"}</span>
-                <span className="truncate text-xs font-semibold text-fg">{g.display_name}</span>
-              </span>
-            </button>
+          {orderedTenured.map(g => (
+            <TenuredCard
+              key={g.player_id}
+              rank={rankByPlayer.get(g.player_id)!}
+              player={g}
+              expanded={expanded?.player_id === g.player_id}
+              dimmed={expanded !== null && expanded.player_id !== g.player_id}
+              pending={pending}
+              onSelect={() => choosePlayer(g)}
+              onChooseSeason={season => chooseSeason(g, season)}
+            />
           ))}
         </div>
       ) : null}
-      <input
-        type="text"
-        aria-label="Search a player"
-        placeholder="Search a name…"
-        value={query}
-        onChange={e => setQuery(e.target.value)}
-        className="bg-surface-raised px-3 py-2 text-sm text-fg placeholder:text-fg-muted"
-      />
-      {results.length ? (
-        <ul className="max-h-36 overflow-y-auto border border-line bg-surface-raised">
-          {results.map(g => (
-            <li key={g.player_id}>
-              <button type="button" disabled={pending} onClick={() => choosePlayer(g)} className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-sm text-fg hover:bg-white/5">
-                <span className="flex min-w-0 items-center gap-2">
-                  <PlayerPortrait name={g.display_name} headshotUrl={g.headshot_url} className="h-6 w-6" />
-                  <span className="truncate">{g.display_name}</span>
-                </span>
-                <span className="shrink-0 font-mono text-[10px] text-fg-muted">{g.seasons[g.seasons.length - 1]}–{g.seasons[0]}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {/* `onBlur`'s `relatedTarget` check is what closes the dropdown on an
+          outside click, while a row's own `onMouseDown` preventDefault below
+          keeps a tap on a row from blurring the input before its `onClick`
+          fires — the list is portaled out of this div (see dropdownRect's
+          own comment), so that check only has the input itself to compare
+          against, but that's already enough since preventDefault stops focus
+          from ever leaving the input on a row tap. */}
+      <div onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSearchOpen(false); }}>
+        <div className="relative">
+          <input
+            ref={searchInputRef}
+            type="text"
+            aria-label="Search a player"
+            placeholder="Search a name…"
+            value={query}
+            onFocus={() => setSearchOpen(true)}
+            onChange={e => { setQuery(e.target.value); setSearchOpen(true); }}
+            className="w-full bg-surface-raised px-3 py-2 pr-8 text-sm text-fg placeholder:text-fg-muted"
+          />
+          {/* Same rotate-on-open chevron as RosterBoard's own disclosure
+              triangle (see globals.css's .roster-chev) — the one existing
+              "this expands" affordance in this app, reused here so a search
+              field that's secretly a dropdown reads as one at a glance. */}
+          <Chevron className={`pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-fg-muted transition-transform ${searchOpen ? "-rotate-90" : "rotate-90"}`} />
+        </div>
+        {searchOpen && dropdownRect
+          ? createPortal(
+              <ul
+                style={{ position: "fixed", top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width }}
+                className="z-50 mt-1 max-h-56 overflow-y-auto border border-line bg-surface-raised shadow-card"
+              >
+                {filteredRows.length ? filteredRows.map(row => (
+                  <li key={row.key}>
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { onChange(row.option); setQuery(""); setSearchOpen(false); }}
+                      className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-sm text-fg hover:bg-white/5"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <PlayerPortrait name={row.display_name} headshotUrl={row.headshot_url} className="h-6 w-6" />
+                        <span className="truncate">{row.display_name}</span>
+                      </span>
+                      {row.season !== null ? <span className="shrink-0 font-mono text-[10px] text-fg-muted tabular-nums">{row.season}</span> : null}
+                    </button>
+                  </li>
+                )) : (
+                  <li className="px-3 py-2 font-mono text-xs text-fg-muted uppercase">No matches</li>
+                )}
+              </ul>,
+              document.body,
+            )
+          : null}
+      </div>
     </div>
   );
 }
@@ -751,30 +1016,73 @@ function PickForm({ options, mine, pending, onSubmit }: { options: Option[]; min
 // Guessing and passing are the same one action a seat gets per turn: once
 // either is spent, both controls disappear in favor of a locked-in state.
 function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass }: { targetName: string; status: "open" | "guessed" | "passed"; pending: boolean; loadOptions: () => Promise<Option[]>; onSubmit: (choice: Option, exact: boolean, replacement?: Option) => void; onPass: () => void }) {
-  const [options, setOptions] = useState<Option[]>([]); const [guess, setGuess] = useState<Option | null>(null); const [exact, setExact] = useState(false); const [replacement, setReplacement] = useState<Option | null>(null);
+  const [options, setOptions] = useState<Option[]>([]);
+  // Which of the two guess types this turn spends (see docs/games/
+  // sabotage_draft.md's "Two guesses, two different weapons"): a name-only
+  // guess is cheap, uncontrolled chaos -- right, and the pick is voided for a
+  // *random* respin, no choice for anyone. Naming the exact year is the
+  // harder guess, and pays off with a deliberate, aimed replacement the
+  // guesser chooses themselves. That's not an optional extra step tacked
+  // onto one guess, it's a choice between two different actions with very
+  // different stakes -- so it's asked up front, as its own screen, not
+  // folded into a checkbox sitting next to the picker.
+  const [mode, setMode] = useState<"name" | "exact" | null>(null);
+  const [guess, setGuess] = useState<Option | null>(null);
+  const [replacement, setReplacement] = useState<Option | null>(null);
   useEffect(() => { let cancelled = false; void loadOptions().then(o => { if (!cancelled) setOptions(o); }); return () => { cancelled = true; }; }, [loadOptions]);
-  // Adjusted during render rather than in an effect (React's own pattern for
-  // resetting state when a prop/toggle changes — see "You Might Not Need an
-  // Effect"): a player chosen while name-only carries an unused, arbitrary
-  // season, and letting that stale season ride into an exact guess would
-  // silently guess the wrong year instead of the one the toggle now demands.
-  const [exactAtLastGuess, setExactAtLastGuess] = useState(exact);
-  if (exact !== exactAtLastGuess) { setExactAtLastGuess(exact); setGuess(null); }
   if (status !== "open") return <Card><CardTitle>{status === "passed" ? "You passed on this turn" : "Guess spent on this turn"}</CardTitle><CardMeta>Waiting on the rest of the table</CardMeta></Card>;
+  const chooseMode = (m: "name" | "exact" | null) => { setMode(m); setGuess(null); setReplacement(null); };
+  // A guess changed after the fact restarts the replacement step -- it was
+  // an answer to a question that's now being redone.
+  const chooseGuess = (choice: Option | null) => { setGuess(choice); setReplacement(null); };
+
+  // Mode isn't chosen yet: the only thing on screen is the choice itself,
+  // spelled out as two labeled options rather than a checkbox plus caption,
+  // so the stakes it sets are legible before anyone commits to it.
+  if (!mode) return (
+    <Card>
+      <CardTitle>Sabotage {targetName}&apos;s pick</CardTitle>
+      <div className="flex flex-col gap-2 p-3 pt-0">
+        <button type="button" disabled={pending} onClick={() => chooseMode("name")} className="flex w-full flex-col items-start gap-0.5 border border-line bg-surface-raised px-3 py-2.5 text-left hover:border-hidden-text">
+          <span className="text-sm font-semibold text-fg">Guess the player</span>
+          <span className="font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">Right? A random respin — you don&apos;t choose what replaces it</span>
+        </button>
+        <button type="button" disabled={pending} onClick={() => chooseMode("exact")} className="flex w-full flex-col items-start gap-0.5 border border-line bg-surface-raised px-3 py-2.5 text-left hover:border-hidden-text">
+          <span className="text-sm font-semibold text-fg">Guess the player and year</span>
+          <span className="font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">Right? You choose exactly what replaces it</span>
+        </button>
+        <Button variant="ink" disabled={pending} onClick={onPass}>Pass</Button>
+      </div>
+    </Card>
+  );
+
+  // Mode is chosen: from here the guess step is one PlayerPicker and one
+  // button, the same shape as PickForm's "Make your hidden pick" -- exact
+  // mode just has a second one of those (the replacement) queued up behind
+  // it, in place of a free choice at the top. See PlayerPicker's own
+  // collapsed-value row for the "Change" pattern reused below.
+  const exact = mode === "exact";
+  const showReplacementStep = exact && guess;
   return (
     <Card>
       <CardTitle>Sabotage {targetName}&apos;s pick</CardTitle>
       <div className="flex flex-col gap-3 p-3 pt-0">
-        <PlayerPicker options={options} needsSeason={exact} value={guess} onChange={setGuess} pending={pending} />
-        <label className="flex items-center gap-2 text-sm"><input className="h-4 w-4" type="checkbox" checked={exact} onChange={e => setExact(e.target.checked)} />Exact player and year — choose a replacement if right</label>
-        {exact ? (
+        <div className="flex items-center justify-between gap-2 bg-surface-raised px-3 py-2 text-sm text-fg">
+          <span>{exact ? "Guessing the player and year" : "Guessing the player"}</span>
+          <button type="button" disabled={pending} onClick={() => chooseMode(null)} className="cursor-pointer shrink-0 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase underline underline-offset-2">Change</button>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          {exact ? <p className="font-mono text-[10px] tracking-[0.08em] text-panel-muted uppercase">Step 1 of 2 — guess the player</p> : null}
+          <PlayerPicker options={options} needsSeason={exact} value={guess} onChange={chooseGuess} pending={pending} />
+        </div>
+        {showReplacementStep ? (
           <div className="flex flex-col gap-1.5">
-            <p className="font-mono text-[10px] tracking-[0.08em] text-panel-muted uppercase">Replacement if you&apos;re right</p>
+            <p className="font-mono text-[10px] tracking-[0.08em] text-panel-muted uppercase">Step 2 of 2 — choose their replacement</p>
             <PlayerPicker options={options} needsSeason value={replacement} onChange={setReplacement} pending={pending} />
           </div>
         ) : null}
         <div className="flex gap-2">
-          <Button className="flex-1" disabled={!guess || (exact && !replacement) || pending} onClick={() => guess && onSubmit(guess, exact, replacement ?? undefined)}>Submit one guess</Button>
+          <Button className="flex-1" disabled={!guess || (exact && !replacement) || pending} onClick={() => guess && onSubmit(guess, exact, replacement ?? undefined)}>Lock in guess</Button>
           <Button variant="ink" disabled={pending} onClick={onPass}>Pass</Button>
         </div>
       </div>

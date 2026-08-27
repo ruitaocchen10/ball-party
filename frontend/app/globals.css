@@ -200,6 +200,12 @@ body {
   .sabotage-roster-board summary::-webkit-details-marker {
     display: none;
   }
+  /* .roster-chev (see Chevron in SabotageDraftMatch.tsx) rests pointing
+     right; open rotates it 90deg to point down. Deliberately the *only*
+     rotation on this element -- a Tailwind rotate utility on the resting
+     state would sit in a cascade layer above this one and always win
+     regardless of this selector's specificity, permanently pinning the
+     icon no matter what `details[open]` says. */
   .sabotage-roster-board details[open] > summary .roster-chev {
     transform: rotate(90deg);
   }
