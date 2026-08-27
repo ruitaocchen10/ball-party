@@ -1051,7 +1051,7 @@ function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass 
           <span className="text-sm font-semibold text-fg">Guess the player and year</span>
           <span className="font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">Right? You choose exactly what replaces it</span>
         </button>
-        <Button variant="ink" disabled={pending} onClick={onPass}>Pass</Button>
+        <Button variant="ghost" disabled={pending} onClick={onPass}>Pass</Button>
       </div>
     </Card>
   );
@@ -1083,7 +1083,7 @@ function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass 
         ) : null}
         <div className="flex gap-2">
           <Button className="flex-1" disabled={!guess || (exact && !replacement) || pending} onClick={() => guess && onSubmit(guess, exact, replacement ?? undefined)}>Lock in guess</Button>
-          <Button variant="ink" disabled={pending} onClick={onPass}>Pass</Button>
+          <Button variant="ghost" disabled={pending} onClick={onPass}>Pass</Button>
         </div>
       </div>
     </Card>
