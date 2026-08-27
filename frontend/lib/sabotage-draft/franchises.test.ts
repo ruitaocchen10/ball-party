@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FRANCHISE_NAMES, franchiseName } from "./franchises";
+import { FRANCHISE_NAMES, franchiseLogoUrl, franchiseName } from "./franchises";
 
 describe("sabotage draft franchise names", () => {
   it("covers exactly the pool's thirty-two franchises", () => {
@@ -18,5 +18,12 @@ describe("sabotage draft franchise names", () => {
 
   it("falls back to the raw code for anything unmapped, rather than dropping it", () => {
     expect(franchiseName("xyz")).toBe("xyz");
+  });
+});
+
+describe("franchise logo urls", () => {
+  it("points at the code's file in the public team-logos bucket", () => {
+    const url = franchiseLogoUrl("oti");
+    expect(url).toContain("/storage/v1/object/public/team-logos/oti.png");
   });
 });
