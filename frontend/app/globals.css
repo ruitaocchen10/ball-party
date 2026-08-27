@@ -163,7 +163,10 @@ body {
        list of names translating up to land on the last one. --reel-count is
        set inline per render since the decoy list length can vary; the math
        stays in the keyframe so the component never has to compute a pixel
-       offset itself. */
+       offset itself. The 1.3s default below is overridden inline with
+       `animation-duration` to match useTurnReveal's TURN_REVEAL_MS, so the
+       two can't drift apart -- this value only matters if that override is
+       ever dropped. */
     .animate-reel-spin {
       animation: reel-spin 1.3s cubic-bezier(.16, .86, .23, 1) both;
     }

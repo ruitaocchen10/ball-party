@@ -1236,6 +1236,7 @@ export type Database = {
           by_timeout: boolean
           created_at: string
           display_name: string
+          headshot_url: string | null
           match_id: string
           player_id: string
           round_number: number
@@ -1246,6 +1247,7 @@ export type Database = {
           by_timeout?: boolean
           created_at?: string
           display_name: string
+          headshot_url?: string | null
           match_id: string
           player_id: string
           round_number: number
@@ -1256,6 +1258,7 @@ export type Database = {
           by_timeout?: boolean
           created_at?: string
           display_name?: string
+          headshot_url?: string | null
           match_id?: string
           player_id?: string
           round_number?: number
@@ -1701,6 +1704,7 @@ export type Database = {
         Args: { p_match_id: string; p_target_user_id?: string }
         Returns: {
           display_name: string
+          headshot_url: string
           player_id: string
           season: number
           slot_category: string
