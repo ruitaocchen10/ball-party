@@ -127,7 +127,7 @@ export function AccountMenu({
           aria-hidden
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel font-slab text-sm leading-none text-panel-fg shadow-card"
         >
-          {initials(displayName)}
+          <span className="font-slab-optical-center">{initials(displayName)}</span>
         </span>
         {!compact ? (
           <span className="min-w-0 flex-1 text-left">

@@ -104,6 +104,31 @@ export type Database = {
       }
     }
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   higher_or_lower: {
     Tables: {
       [_ in never]: never
@@ -714,6 +739,7 @@ export type Database = {
           created_at: string
           host_id: string
           id: string
+          selected_game: string | null
         }
         Insert: {
           closed_at?: string | null
@@ -721,6 +747,7 @@ export type Database = {
           created_at?: string
           host_id: string
           id?: string
+          selected_game?: string | null
         }
         Update: {
           closed_at?: string | null
@@ -728,6 +755,7 @@ export type Database = {
           created_at?: string
           host_id?: string
           id?: string
+          selected_game?: string | null
         }
         Relationships: [
           {
@@ -1442,7 +1470,9 @@ export type Database = {
           game_number: number
           match_id: string
           player_a: string
+          player_a_score: number | null
           player_b: string | null
+          player_b_score: number | null
           record_wins: number
           winner_user_id: string
         }
@@ -1451,7 +1481,9 @@ export type Database = {
           game_number: number
           match_id: string
           player_a: string
+          player_a_score?: number | null
           player_b?: string | null
+          player_b_score?: number | null
           record_wins: number
           winner_user_id: string
         }
@@ -1460,7 +1492,9 @@ export type Database = {
           game_number?: number
           match_id?: string
           player_a?: string
+          player_a_score?: number | null
           player_b?: string | null
+          player_b_score?: number | null
           record_wins?: number
           winner_user_id?: string
         }
@@ -1569,6 +1603,7 @@ export type Database = {
           created_at: string
           host_id: string
           id: string
+          selected_game: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1586,6 +1621,7 @@ export type Database = {
           created_at: string
           host_id: string
           id: string
+          selected_game: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1637,6 +1673,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      select_lobby_game: {
+        Args: { p_game: string; p_lobby_id: string }
+        Returns: undefined
       }
       start_run: {
         Args: {
@@ -1708,6 +1748,14 @@ export type Database = {
           player_id: string
           season: number
           slot_category: string
+        }[]
+      }
+      pick_avs: {
+        Args: { p_match_id: string }
+        Returns: {
+          av: number
+          round_number: number
+          user_id: string
         }[]
       }
       start: {
@@ -1924,6 +1972,9 @@ export type CompositeTypes<
 
 export const Constants = {
   auction: {
+    Enums: {},
+  },
+  graphql_public: {
     Enums: {},
   },
   higher_or_lower: {

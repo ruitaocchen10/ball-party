@@ -48,7 +48,7 @@ function renderMatch(over: {
   guesses?: { match_id: string; round_number: number; user_id: string; target_user_id: string; result: "miss" | "respun" | "sabotaged" | null }[];
   decisions?: { match_id: string; user_id: string; replace_slot: string | null }[];
   standings?: { user_id: string; roster_strength: number; wins: number; losses: number; tiebreak_rank: number }[];
-  tiebreaks?: { record_wins: number; bracket_round: number; game_number: number; player_a: string; player_b: string | null; winner_user_id: string }[];
+  tiebreaks?: { record_wins: number; bracket_round: number; game_number: number; player_a: string; player_b: string | null; winner_user_id: string; player_a_score: number | null; player_b_score: number | null }[];
   pickAvs?: { user_id: string; round_number: number; av: number }[];
 } = {}) {
   return render(
@@ -433,51 +433,103 @@ describe("the turn strip", () => {
 
 /**
  * The season's ending (components/game-runtime/FinalStandings): rank,
- * avatar, record, and AV for every table, each expandable into the roster
- * behind that AV total, plus the same host-drives-the-room navigation the
- * auction and higher-or-lower final screens already offer.
+ * avatar, record, and a letter grade for every table, each expandable into
+ * the roster behind that grade — a photo and a position-relative grade per
+ * pick, no raw AV anywhere (lib/sabotage-draft/grades.ts) — plus the same
+ * host-drives-the-room navigation the auction and higher-or-lower final
+ * screens already offer.
  */
 describe("the final screen", () => {
   beforeEach(() => {
     globalThis.__supabaseMock = supabaseMock();
   });
 
+  // 126 and 50 sit nowhere near each other on gradeForTeam's cutoffs on
+  // purpose — A- and F, not two grades close enough to blur together in
+  // the assertions below.
   const standings = [
-    { user_id: "u0", roster_strength: 500, wins: 14, losses: 3, tiebreak_rank: 1 },
-    { user_id: "u1", roster_strength: 400, wins: 10, losses: 7, tiebreak_rank: 1 },
+    { user_id: "u0", roster_strength: 126, wins: 14, losses: 3, tiebreak_rank: 1 },
+    { user_id: "u1", roster_strength: 50, wins: 10, losses: 7, tiebreak_rank: 1 },
   ];
 
-  it("names the winner and ranks the table under them, with each row's record and AV", () => {
+  it("names the winner and ranks the table under them, with each row's record and letter grade", () => {
     renderMatch({ standings });
 
     expect(screen.getByRole("heading", { name: "Ava wins" })).toBeInTheDocument();
     const rows = screen.getAllByRole("listitem");
     expect(rows[0]).toHaveTextContent("Ava");
     expect(rows[0]).toHaveTextContent("14-3");
-    expect(rows[0]).toHaveTextContent("500 AV");
+    expect(within(rows[0]).getByLabelText("Grade A-")).toBeInTheDocument();
     expect(rows[1]).toHaveTextContent("Ben");
     expect(rows[1]).toHaveTextContent("10-7");
+    expect(within(rows[1]).getByLabelText("Grade F")).toBeInTheDocument();
+    // Nobody at the table knows what "126 AV" means -- the raw number is gone.
+    expect(screen.queryByText(/AV/)).not.toBeInTheDocument();
   });
 
-  it("keeps a table's roster collapsed until expanded, then shows each pick's AV", async () => {
+  it("keeps a table's roster collapsed until expanded, then shows each pick's photo and grade, offense and defense alike", async () => {
     const user = userEvent.setup();
     renderMatch({
       standings,
-      picks: [{ match_id: MATCH, round_number: 1, user_id: "u0", player_id: "p1", display_name: "Patrick Mahomes", season: 2022, by_timeout: false, headshot_url: null }],
-      pickAvs: [{ user_id: "u0", round_number: 1, av: 19 }],
+      picks: [
+        { match_id: MATCH, round_number: 1, user_id: "u0", player_id: "p1", display_name: "Patrick Mahomes", season: 2022, by_timeout: false, headshot_url: "https://example.com/mahomes.jpg" },
+        // Round 8 is the first defensive slot ROUND_SLOTS deals (OL, right
+        // after the seven offensive skill rounds) — this is what regresses
+        // if the roster ever goes back to looping the offense-only slice.
+        { match_id: MATCH, round_number: 8, user_id: "u0", player_id: "p2", display_name: "Trent Williams", season: 2021, by_timeout: false, headshot_url: null },
+      ],
+      // QB's own top cutoff is 20 -- 20 AV clears it, a QB A+. OL's own top
+      // cutoff is 15 -- 15 AV clears it too, an OL A+. Different position,
+      // different scale, same letter -- exactly the point of grading each
+      // pick against its own position.
+      pickAvs: [
+        { user_id: "u0", round_number: 1, av: 20 },
+        { user_id: "u0", round_number: 8, av: 15 },
+      ],
     });
 
     expect(screen.getByText(/Patrick Mahomes/)).not.toBeVisible();
 
     await user.click(screen.getByText("Ava").closest("summary")!);
 
+    const roster = screen.getByText(/Patrick Mahomes/).closest("dl")!;
     expect(screen.getByText(/Patrick Mahomes/)).toBeVisible();
-    expect(screen.getByText(/19 AV/)).toBeVisible();
+    expect(screen.getByText(/Trent Williams/)).toBeVisible();
+    expect(within(roster).getAllByLabelText("Grade A+")).toHaveLength(2);
+    // Mahomes has a real headshot; Trent Williams here doesn't -- both
+    // still render a portrait (a photo or the onError-style initials chip),
+    // but only the one with a real headshot_url renders an actual <img>
+    // (decorative, alt="" -- not queryable by role without a live browser's
+    // accessibility tree, so this reaches into the DOM directly).
+    expect(roster.querySelector("img")).toHaveAttribute("src", "https://example.com/mahomes.jpg");
   });
 
   it("offers the host a way back to the lobby", () => {
     renderMatch({ standings, isHost: true });
 
     expect(screen.getByRole("button", { name: /back to lobby/i })).toBeInTheDocument();
+  });
+
+  it("turns a tied record's simulated game into a scored playoff matchup", () => {
+    renderMatch({
+      standings,
+      tiebreaks: [{
+        record_wins: 10,
+        bracket_round: 1,
+        game_number: 1,
+        player_a: "u0",
+        player_b: "u1",
+        winner_user_id: "u0",
+        player_a_score: 27,
+        player_b_score: 20,
+      }],
+    });
+
+    const bracket = screen.getByRole("heading", { name: "10-7 tiebreak" }).closest("section")!;
+    expect(within(bracket).getByText("Final")).toBeInTheDocument();
+    expect(within(bracket).getByText("Ava")).toBeInTheDocument();
+    expect(within(bracket).getByText("Ben")).toBeInTheDocument();
+    expect(within(bracket).getByText("27")).toBeInTheDocument();
+    expect(within(bracket).getByText("20")).toBeInTheDocument();
   });
 });

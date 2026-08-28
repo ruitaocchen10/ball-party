@@ -31,6 +31,14 @@
   --hidden-text: #e86759; /* same red lifted to stay legible on the background */
   --hidden-ink: #a8291f; /* same red darkened to stay legible ON a cream panel */
 
+  /* Sabotage Draft's revealed roster grades. These deliberately steer clear
+     of --hidden / red: that accent means information is still concealed,
+     while a grade is public feedback. */
+  --grade-elite: #476735;
+  --grade-strong: #80672b;
+  --grade-even: #6b665a;
+  --grade-rough: #855238;
+
   /* text on the background */
   --fg: #e8e3d6;
   --fg-muted: #8f8b7f;
@@ -63,6 +71,10 @@ html[data-sidebar-collapsed] {
   --color-hidden: var(--hidden);
   --color-hidden-text: var(--hidden-text);
   --color-hidden-ink: var(--hidden-ink);
+  --color-grade-elite: var(--grade-elite);
+  --color-grade-strong: var(--grade-strong);
+  --color-grade-even: var(--grade-even);
+  --color-grade-rough: var(--grade-rough);
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
   --color-line: var(--line);
@@ -232,5 +244,41 @@ body {
       rgb(0 0 0 / 0.10) 0 6px,
       transparent 6px 12px
     );
+  }
+
+  /* Bebas Neue's uppercase glyphs sit optically high inside its line box.
+     Keep this correction scoped to text that is centered in a fixed-size
+     control (avatars, player chips), rather than changing display headings. */
+  .font-slab-optical-center {
+    display: inline-block;
+    transform: translateY(0.06em);
+  }
+
+  /* A revealed grade is a scoremark, not a control or a status pill. The
+     display face and tonal ladder make it readable at a glance while the
+     absence of a background keeps the player and their portrait dominant. */
+  .grade-scoremark {
+    display: inline-block;
+    min-width: 1.55em;
+    font-family: var(--font-bebas-neue), sans-serif;
+    font-size: 1rem;
+    line-height: 0.9;
+    letter-spacing: 0.035em;
+    text-align: right;
+  }
+
+  .grade-scoremark--standings {
+    font-size: 1.35rem;
+  }
+
+  .grade-scoremark--elite { color: var(--grade-elite); }
+  .grade-scoremark--strong { color: var(--grade-strong); }
+  .grade-scoremark--even { color: var(--grade-even); }
+  .grade-scoremark--rough { color: var(--grade-rough); }
+  .grade-scoremark--pending {
+    color: var(--panel-muted);
+    font-family: var(--font-jetbrains-mono), monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
   }
 }
