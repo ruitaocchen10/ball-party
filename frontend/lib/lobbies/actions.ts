@@ -84,6 +84,32 @@ function submittedGame(value: FormDataEntryValue | null): MatchGame | null {
 }
 
 /**
+ * Choose what the room plays next, without starting it.
+ *
+ * A separate step from `startRun` on purpose: the host picking a game and the
+ * host beginning it used to be the same tap, which left everyone else with no
+ * way to see what was coming until it had already started. `selected_game`
+ * gives the room a "next up" the host can change their mind about — the RPC
+ * enforces the host-only rule the same way `start_run` does, this is just the
+ * honest rendering of it.
+ */
+export async function selectGame(formData: FormData) {
+  const lobbyId = String(formData.get("lobby_id") ?? "");
+  const code = normalizeCode(formData.get("code"));
+  const game = submittedGame(formData.get("game"));
+  if (!game) {
+    redirect(`/lobby/${code}?error=${encodeURIComponent("Pick a game that's ready to play.")}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("select_lobby_game", { p_lobby_id: lobbyId, p_game: game });
+  if (error) redirect(withError(`/lobby/${code}`, error));
+
+  revalidatePath(`/lobby/${code}`);
+  redirect(`/lobby/${code}`);
+}
+
+/**
  * Turn the room into a game.
  *
  * Two calls, because the platform does not dispatch into a game's setup — it
