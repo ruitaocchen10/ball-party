@@ -26,6 +26,10 @@ export type FinalStandingsRow = {
   avatarUrl: string | null;
   isViewer: boolean;
   statLine: ReactNode;
+  /** An optional outcome metric that belongs at the far end of a row, before
+   * its disclosure control. Games use it for a single primary result without
+   * crowding the identity and stat line together. */
+  endMetric?: ReactNode;
   roster?: ReactNode;
 };
 
@@ -84,6 +88,7 @@ function StandingsRow({ row, index, total }: { row: FinalStandingsRow; index: nu
         </span>
         <span className="font-mono text-[11px] tracking-[0.06em] text-panel-muted uppercase">{row.statLine}</span>
       </span>
+      {row.endMetric ? <span className="shrink-0">{row.endMetric}</span> : null}
       {row.roster ? (
         <Chevron className="final-standings-chev h-4 w-4 shrink-0 text-fg-muted transition-transform" />
       ) : null}
@@ -139,7 +144,7 @@ function Avatar({ name, avatarUrl }: { name: string; avatarUrl: string | null })
       aria-hidden="true"
       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface font-slab text-base uppercase text-fg"
     >
-      {name.slice(0, 1).toUpperCase()}
+      <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
     </span>
   );
 }

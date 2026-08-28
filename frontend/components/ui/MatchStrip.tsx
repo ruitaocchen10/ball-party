@@ -178,7 +178,7 @@ export function StripCellAvatar({
       aria-hidden="true"
       className={`mx-auto mt-1 flex shrink-0 items-center justify-center rounded-full font-slab uppercase ${size} ${tone} ${muted ? "opacity-55" : ""}`}
     >
-      {name.slice(0, 1).toUpperCase()}
+      <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
     </span>
   );
 }

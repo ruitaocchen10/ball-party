@@ -37,7 +37,7 @@ export function ProfileAvatar({ name, avatarUrl }: { name: string; avatarUrl: st
           exit="exit"
           className="grid h-20 w-20 shrink-0 place-items-center rounded-full border-4 border-panel bg-hidden font-slab text-2xl text-panel shadow-card"
         >
-          {initials(name)}
+          <span className="font-slab-optical-center">{initials(name)}</span>
         </motion.div>
       )}
     </AnimatePresence>

@@ -18,8 +18,9 @@ import { Chevron } from "@/components/ui/Chevron";
 import { Concealed } from "@/components/ui/Concealed";
 import { abbreviate, MatchStrip, StripCell, StripCellAvatar, StripCellCaption, StripCellMediaBadge, StripCellName, StripCellTextColumn, StripCellTitle } from "@/components/ui/MatchStrip";
 import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
-import { dropdownUp, springSnappy } from "@/lib/motion";
+import { dropdownUp, springSnappy, tiebreakBoardReveal, tiebreakMatchReveal, tiebreakRoundReveal } from "@/lib/motion";
 import { FRANCHISE_NAMES, franchiseName } from "@/lib/sabotage-draft/franchises";
+import { gradeForPick, gradeForTeam } from "@/lib/sabotage-draft/grades";
 import { ROUND_SLOTS, X_FACTOR_ROUND, slotForRound } from "@/lib/sabotage-draft/rounds";
 import { TURN_REVEAL_MS, useTurnReveal } from "@/lib/sabotage-draft/useTurnReveal";
 import { createClient, createRealtimeClient } from "@/lib/supabase/client";
@@ -52,7 +53,7 @@ type PickAv = { user_id: string; round_number: number; av: number };
 // franchise-and-slot, name-withheld shape RosterBoard's own concealed rows
 // already show for a still-open pick.
 type TurnResultData = { round: number; userId: string; playerName: string; mine: boolean; pick: Pick | null; spin: Spin | null; slot: string; outcome: "kept" | "respun" | "sabotaged"; actorName: string | null };
-type Tiebreak = { record_wins: number; bracket_round: number; game_number: number; player_a: string; player_b: string | null; winner_user_id: string };
+type Tiebreak = { record_wins: number; bracket_round: number; game_number: number; player_a: string; player_b: string | null; winner_user_id: string; player_a_score: number | null; player_b_score: number | null };
 
 const MESSAGE: Record<string, string> = { already_picked: "Your pick is already locked.", already_acted: "You have already guessed or passed on this turn.", turn_closed: "This turn has closed.", invalid_pick: "Choose a player from this round's pool.", invalid_guess: "Choose a player from this round's pool.", x_factor_position_mismatch: "Your X-Factor can only replace a slot at the same position.", match_not_playing: "This match isn't accepting moves right now.", not_your_turn: "It isn't your turn right now." };
 // The one duration every sabotage draft turn shares -- unlike the auction's
@@ -246,7 +247,7 @@ function PlayerPortrait({ name, headshotUrl, className = "h-6 w-6" }: { name: st
       {showImage ? (
         <img src={headshotUrl!} alt="" className="h-full w-full object-cover object-top" onError={() => setFailed(true)} />
       ) : (
-        <span className="flex h-full w-full items-center justify-center bg-hidden font-slab text-[9px] text-panel">{initials(name)}</span>
+        <span className="flex h-full w-full items-center justify-center bg-hidden font-slab text-[9px] text-panel"><span className="font-slab-optical-center">{initials(name)}</span></span>
       )}
     </span>
   );
@@ -271,7 +272,7 @@ function RosterAvatar({ name, avatarUrl, mine }: { name: string; avatarUrl: stri
   }
   return (
     <span aria-hidden="true" className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-slab text-base ${mine ? "bg-hidden text-panel" : "bg-surface text-fg"}`}>
-      {name.slice(0, 1).toUpperCase()}
+      <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
     </span>
   );
 }
@@ -1092,11 +1093,14 @@ export function xFactorReplacementSlots(pick: Pick | undefined, options: Option[
 function Decision({ mine, pending, replacementSlots, onSubmit }: { mine?: Decision; pending: boolean; replacementSlots: string[]; onSubmit: (slot: string | null) => void }) { if (mine) return <Card><CardTitle>X-Factor decision locked</CardTitle><CardMeta>{mine.replace_slot ? `Replaces ${mine.replace_slot}` : "Discarded"}</CardMeta></Card>; return <Card><CardTitle>Assign or discard your X-Factor</CardTitle><div className="grid grid-cols-2 gap-2 p-3 pt-0">{replacementSlots.map(slot => <Button key={slot} variant="ink" disabled={pending} onClick={() => onSubmit(slot)}>Replace {slot}</Button>)}<Button className="col-span-2" disabled={pending} onClick={() => onSubmit(null)}>Discard X-Factor</Button></div></Card>; }
 /**
  * The season's ending: seventeen simulated games boiled down to a record and
- * an AV per table, ranked and shown the same way every other game's own
- * final screen now does (components/game-runtime/FinalStandings) — rank,
- * avatar, name, record, and (unique to this game) a roster that expands
- * into the thirteen skill-slot picks and any accepted X-Factor swap behind
- * that AV total, each with its own AV pulled from `pickAvs` (0074).
+ * a letter grade per table, ranked and shown the same way every other
+ * game's own final screen now does (components/game-runtime/FinalStandings)
+ * — rank, avatar, name, record, and (unique to this game) a roster that
+ * expands into the thirteen skill-slot picks and any accepted X-Factor
+ * swap behind that grade, each with its own photo and its own
+ * position-relative grade pulled from `pickAvs` (0074). Nobody at the
+ * table knows what "93 AV" means; everybody knows what a B+ means — see
+ * lib/sabotage-draft/grades.ts for where both scales actually come from.
  *
  * `standings.tiebreak_rank` is only ever unique *within* a shared win count
  * — 0056's own tiebreak bracket resolves ties inside a wins group, not
@@ -1119,25 +1123,20 @@ function Final({ matchId, roomCode, isHost, viewerId, standings, players, tiebre
     name: name(s.user_id),
     avatarUrl: avatarOf(s.user_id),
     isViewer: s.user_id === viewerId,
-    statLine: `${s.wins}-${s.losses} · ${s.roster_strength} AV`,
+    statLine: `${s.wins}-${s.losses}`,
+    endMetric: (
+      <span className="flex min-w-[4.75rem] flex-col items-end gap-2">
+        <span className="font-mono text-[8px] leading-none tracking-[0.12em] text-panel-muted uppercase">Draft grade</span>
+        <GradeBadge grade={gradeForTeam(s.roster_strength)} emphasis="standings" />
+      </span>
+    ),
     roster: <SabotageRosterFinal userId={s.user_id} picks={picks} decisions={decisions} pickAvs={pickAvs} />,
   }));
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-8">
       <FinalStandings headline={headline} rows={rows} />
-      {tiebreaks.length ? (
-        <Card>
-          <CardTitle>Tiebreak bracket</CardTitle>
-          <div className="p-3 pt-0 text-sm">
-            {tiebreaks.map(g => (
-              <p key={`${g.record_wins}-${g.bracket_round}-${g.game_number}`} className="border-t border-panel-shade py-2">
-                {g.player_b ? `${name(g.player_a)} vs ${name(g.player_b)}` : `${name(g.player_a)} bye`} → {name(g.winner_user_id)}
-              </p>
-            ))}
-          </div>
-        </Card>
-      ) : null}
+      {tiebreaks.length ? <TiebreakBracket tiebreaks={tiebreaks} players={players} viewerId={viewerId} /> : null}
       {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} /> : null}
       {roomCode ? <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} /> : null}
     </main>
@@ -1145,45 +1144,179 @@ function Final({ matchId, roomCode, isHost, viewerId, standings, players, tiebre
 }
 
 /**
- * One table's final roster: the thirteen skill-slot picks in round order,
- * plus — when accepted — the X-Factor swap replacing whichever slot it
- * targeted, shown as a strikeout of the discarded card rather than just
- * disappearing it. Each AV comes from `pickAvs`, keyed by (round, user) —
- * see 0074's own visibility note for why that lookup can come back empty
- * for a pick nobody besides its owner has actually seen yet (a still-live
- * table reaching this screen mid-round would be the only way, and even
- * then a viewer's own picks always resolve).
+ * A saved tiebreak is a sequence of actual one-game matchups, not just an
+ * explanation for the final order. Keep each tied record in its own board:
+ * separate record groups never meet, while the columns preserve the rounds
+ * inside one group's single-elimination run.
+ */
+function TiebreakBracket({ tiebreaks, players, viewerId }: { tiebreaks: Tiebreak[]; players: Player[]; viewerId: string }) {
+  const brackets = new Map<number, Tiebreak[]>();
+  for (const game of tiebreaks) brackets.set(game.record_wins, [...(brackets.get(game.record_wins) ?? []), game]);
+  const player = (id: string) => players.find(p => p.user_id === id);
+
+  return (
+    <Card>
+      <CardTitle>Tiebreak bracket</CardTitle>
+      <div className="flex flex-col gap-5 p-3 pt-2">
+        {[...brackets.entries()].sort(([a], [b]) => b - a).map(([wins, games]) => {
+          const rounds = new Map<number, Tiebreak[]>();
+          for (const game of games) rounds.set(game.bracket_round, [...(rounds.get(game.bracket_round) ?? []), game]);
+          const orderedRounds = [...rounds.entries()].sort(([a], [b]) => a - b);
+          const record = `${wins}-${17 - wins}`;
+
+          return (
+            <section key={wins} aria-labelledby={`tiebreak-${wins}`}>
+              <header className="mb-2 flex items-baseline justify-between border-b border-panel-shade pb-2">
+                <h3 id={`tiebreak-${wins}`} className="font-slab text-xl leading-none uppercase">{record} tiebreak</h3>
+                <span className="font-mono text-[9px] tracking-[0.13em] text-panel-muted uppercase">One-game playoff</span>
+              </header>
+              <motion.div variants={tiebreakBoardReveal} initial="initial" animate="animate" className="overflow-x-auto pb-1">
+                <div className="flex min-w-max gap-5 rounded-sm bg-surface p-3 shadow-well">
+                  {orderedRounds.map(([round, roundGames], roundIndex) => (
+                    <motion.div key={round} variants={tiebreakRoundReveal(roundIndex)} initial="initial" animate="animate" className="flex w-48 flex-col gap-2">
+                      <p className="font-mono text-[9px] tracking-[0.13em] text-fg-muted uppercase">
+                        {orderedRounds.length === 1 ? "Final" : roundIndex === orderedRounds.length - 1 ? "Final" : `Round ${round}`}
+                      </p>
+                      <div className={`flex min-h-24 flex-1 flex-col gap-3 ${roundIndex === 0 ? "justify-start" : "justify-around"}`}>
+                        {roundGames.sort((a, b) => a.game_number - b.game_number).map((game, gameIndex) => (
+                          <BracketMatch
+                            key={`${game.bracket_round}-${game.game_number}`}
+                            game={game}
+                            playerA={player(game.player_a)}
+                            playerB={game.player_b ? player(game.player_b) : undefined}
+                            viewerId={viewerId}
+                            reveal={tiebreakMatchReveal(roundIndex, gameIndex)}
+                            revealDelay={1.22 + roundIndex * 0.32 + gameIndex * 0.1}
+                          />
+                        ))}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            </section>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function BracketMatch({ game, playerA, playerB, viewerId, reveal, revealDelay }: { game: Tiebreak; playerA?: Player; playerB?: Player; viewerId: string; reveal: ReturnType<typeof tiebreakMatchReveal>; revealDelay: number }) {
+  const wonA = game.winner_user_id === game.player_a;
+  const playerName = (player: Player | undefined) => player?.display_name ?? "Unknown";
+
+  if (!game.player_b) {
+    return (
+      <motion.article variants={reveal} initial="initial" animate="animate" className="border border-line bg-surface-raised px-2.5 py-2">
+        <div className="flex items-center gap-2 text-sm text-fg">
+          <RosterAvatar name={playerName(playerA)} avatarUrl={playerA?.avatar_url ?? null} mine={playerA?.user_id === viewerId} />
+          <span className="min-w-0 flex-1 truncate font-slab text-base uppercase">{playerName(playerA)}</span>
+          <span className="font-mono text-[9px] tracking-[0.1em] text-fg-muted uppercase">Bye</span>
+        </div>
+        <p className="mt-1 pl-9 font-mono text-[9px] tracking-[0.08em] text-fg-muted uppercase">Advances</p>
+      </motion.article>
+    );
+  }
+
+  return (
+    <motion.article variants={reveal} initial="initial" animate="animate" className="border border-line bg-surface-raised">
+      <BracketCompetitor player={playerA} score={game.player_a_score} winner={wonA} viewerId={viewerId} revealDelay={revealDelay} />
+      <BracketCompetitor player={playerB} score={game.player_b_score} winner={!wonA} viewerId={viewerId} revealDelay={revealDelay} />
+    </motion.article>
+  );
+}
+
+function BracketCompetitor({ player, score, winner, viewerId, revealDelay }: { player?: Player; score: number | null; winner: boolean; viewerId: string; revealDelay: number }) {
+  const name = player?.display_name ?? "Unknown";
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: winner ? -6 : 4 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1], delay: revealDelay + (winner ? 0.1 : 0) }}
+      className={`flex items-center gap-2 px-2 py-1.5 ${winner ? "bg-panel text-panel-fg" : "text-fg-muted"}`}
+    >
+      <RosterAvatar name={name} avatarUrl={player?.avatar_url ?? null} mine={player?.user_id === viewerId} />
+      <span className={`min-w-0 flex-1 truncate font-slab text-base leading-none uppercase ${winner ? "text-panel-fg" : "text-fg"}`}>{name}</span>
+      <motion.span
+        initial={{ opacity: 0, y: -5, scale: 0.75 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1], delay: revealDelay + (winner ? 0.2 : 0.08) }}
+        className={`font-mono text-sm font-bold tabular-nums ${winner ? "text-grade-elite" : "text-fg-muted"}`}
+      >
+        {score ?? "—"}
+      </motion.span>
+    </motion.div>
+  );
+}
+
+/**
+ * One table's final roster: all thirteen picks in round order — the seven
+ * offensive skill slots and the six defense/OL/ST slots ROUND_SLOTS deals
+ * right after them, not just the first seven — plus, when accepted, the
+ * X-Factor swap replacing whichever (offense-only, per 0055's own check)
+ * slot it targeted, shown as a strikeout of the discarded card's name
+ * rather than just disappearing it. Each player gets their own photo
+ * (PlayerPortrait, same component the live turn strip and roster board
+ * already use) and their own position-relative letter grade — see
+ * lib/sabotage-draft/grades.ts — built from `pickAvs`, keyed by (round,
+ * user). See 0074's own visibility note for why that lookup can come back
+ * empty for a pick nobody besides its owner has actually seen yet (a
+ * still-live table reaching this screen mid-round would be the only way,
+ * and even then a viewer's own picks always resolve).
  */
 function SabotageRosterFinal({ userId, picks, decisions, pickAvs }: { userId: string; picks: Pick[]; decisions: Decision[]; pickAvs: PickAv[] }) {
   const avFor = (round: number) => pickAvs.find(a => a.round_number === round && a.user_id === userId)?.av ?? null;
   const decision = decisions.find(d => d.user_id === userId);
-  const xFactorPick = decision?.replace_slot ? (picks.find(p => p.round_number === 14 && p.user_id === userId) ?? null) : null;
-  const xFactorAv = xFactorPick ? avFor(14) : null;
+  const xFactorPick = decision?.replace_slot ? (picks.find(p => p.round_number === X_FACTOR_ROUND && p.user_id === userId) ?? null) : null;
+  const xFactorAv = xFactorPick ? avFor(X_FACTOR_ROUND) : null;
 
   return (
-    <dl className="flex flex-col gap-1.5 font-mono text-[11px] text-panel-muted">
-      {skillSlots.map((slot, i) => {
+    <dl className="flex flex-col gap-2">
+      {ROUND_SLOTS.map((slot, i) => {
         const round = i + 1;
         const pick = picks.find(p => p.round_number === round && p.user_id === userId);
         const replaced = decision?.replace_slot === slot;
+        const shown = replaced && xFactorPick ? xFactorPick : pick;
+        const av = replaced && xFactorPick ? xFactorAv : avFor(round);
         return (
-          <div key={slot} className="flex items-baseline justify-between gap-2">
-            <dt className="shrink-0 uppercase">{slot.replace("_", " ")}</dt>
-            <dd className="min-w-0 truncate text-right text-panel-fg normal-case">
-              {replaced && xFactorPick ? (
+          <div key={slot} className="flex items-center gap-2.5">
+            <dt className="w-9 shrink-0 font-mono text-[10px] tracking-[0.05em] text-panel-muted uppercase">{slot.replace("_", " ")}</dt>
+            <PlayerPortrait name={shown?.display_name ?? "?"} headshotUrl={shown?.headshot_url} className="h-7 w-7" />
+            <dd className="min-w-0 flex-1 truncate text-[11px] text-panel-fg normal-case">
+              {shown ? (
                 <>
-                  <s className="text-panel-muted/70">{pick ? pick.display_name : "—"}</s>{" "}
-                  → {xFactorPick.display_name} · {xFactorPick.season} · {xFactorAv ?? "—"} AV
+                  {shown.display_name} · {shown.season}
+                  {replaced && pick ? <s className="ml-1.5 text-[10px] text-panel-muted/70">{pick.display_name}</s> : null}
                 </>
-              ) : pick ? (
-                `${pick.display_name} · ${pick.season} · ${avFor(round) ?? "—"} AV`
               ) : (
-                "—"
+                <span className="text-panel-muted">—</span>
               )}
             </dd>
+            <GradeBadge grade={shown && av !== null ? gradeForPick(slot, av) : null} />
           </div>
         );
       })}
     </dl>
+  );
+}
+
+/**
+ * A compact, editorial scoremark rather than a generic pill. Grades are
+ * intentionally color-coded without using the app's concealed red: red is
+ * reserved for information one player knows and another does not, while a
+ * poor grade is fully public feedback. `null` (no AV to grade yet, or
+ * nothing drafted into this slot) stays deliberately quiet.
+ */
+function GradeBadge({ grade, emphasis = "roster" }: { grade: string | null; emphasis?: "roster" | "standings" }) {
+  const tone = grade ? grade.startsWith("A") ? "elite" : grade.startsWith("B") ? "strong" : grade.startsWith("C") ? "even" : "rough" : "pending";
+
+  return (
+    <span
+      aria-label={grade ? `Grade ${grade}` : "No grade yet"}
+      className={`grade-scoremark grade-scoremark--${tone} grade-scoremark--${emphasis}`}
+    >
+      {grade ?? "—"}
+    </span>
   );
 }

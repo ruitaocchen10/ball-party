@@ -149,3 +149,28 @@ export const winnerPulse: Variants = {
     transition: { duration: 0.9, ease: EASE_OUT, delay: delay + DURATION.base, times: [0, 0.45, 1] },
   }),
 };
+
+/**
+ * Sabotage Draft's tiebreak is a saved playoff sequence. The board settles in
+ * after the final standings start their own countdown, then each round and
+ * matchup lands in order. These are one-shot outcome reveals, not ambient
+ * motion; MotionProvider collapses them for a reduced-motion viewer.
+ */
+export const tiebreakBoardReveal: Variants = {
+  initial: { opacity: 0, y: 14, scale: 0.985 },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: DURATION.slow, ease: EASE_OUT, delay: 0.65 } },
+};
+
+export function tiebreakRoundReveal(index: number): Variants {
+  return {
+    initial: { opacity: 0, x: 10 },
+    animate: { opacity: 1, x: 0, transition: { duration: DURATION.base, ease: EASE_OUT, delay: 0.92 + index * 0.32 } },
+  };
+}
+
+export function tiebreakMatchReveal(roundIndex: number, gameIndex: number): Variants {
+  return {
+    initial: { opacity: 0, y: 8, scale: 0.96 },
+    animate: { opacity: 1, y: 0, scale: 1, transition: { duration: DURATION.base, ease: EASE_OUT, delay: 1.04 + roundIndex * 0.32 + gameIndex * 0.1 } },
+  };
+}

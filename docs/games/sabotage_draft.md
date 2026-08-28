@@ -254,8 +254,19 @@ record are common, not rare, which is why the tiebreak below has to treat
 
 The concrete model is logistic: against a roster of strength `B`, strength
 `A` wins with probability `1 / (1 + exp(-((A - B) / 25)))`. Each player gets
-17 independent season games against the table's mean strength; a tiebreak
-uses the same formula with the paired player's actual strength. The match's
+17 independent season games — not against the table's own mean strength, but
+against a fixed baseline of 93 (`sabotage_draft_private.baseline_roster_
+strength`, migration 0076): for every real NFL team-season 2006-2025, that
+team's own actual best player at each of this game's thirteen slots, summed,
+then averaged across all 608 team-seasons in the pool. Grading a table
+against its own average is self-cancelling — roughly half the field finishes
+above .500 and half below no matter how strong or weak the whole table's
+drafts actually were, so a room of five great drafts reads exactly like a
+room of five mediocre ones. A fixed, real-world baseline lets a genuinely
+strong table go 15-2 across the board and a weak one go 3-14 across the
+board, because that's what actually happened at the table. A tiebreak uses
+the same formula with the paired player's actual strength, unaffected by
+this — it was never compared to a baseline in the first place. The match's
 stored board seed is reset before this simulation, so the season and bracket
 can be reproduced exactly.
 
