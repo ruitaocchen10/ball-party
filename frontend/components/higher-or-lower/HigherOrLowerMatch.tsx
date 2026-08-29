@@ -610,8 +610,6 @@ function LadderCardPanel({
   const logoCode = teamLogoCode(card.team);
   return (
     <section role="group" aria-label={label} className="flex min-h-0 flex-col gap-2">
-      <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
-
       {/* Keep the player identity and the score as one card. This matches the
           auction lot's portrait-forward hierarchy while the score remains the
           distinct reveal beat Higher or Lower depends on. */}

@@ -161,6 +161,15 @@ describe("HigherOrLowerMatch", () => {
     expect(screen.getByRole("group", { name: "Anchor" })).not.toContainElement(screen.getByRole("button", { name: "Higher" }));
   });
 
+  it("keeps the card roles semantic without showing anchor and challenger headers", () => {
+    renderMatch();
+
+    expect(screen.getByRole("group", { name: "Anchor" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Challenger" })).toBeInTheDocument();
+    expect(screen.queryByText("Anchor", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText("Challenger", { exact: true })).not.toBeInTheDocument();
+  });
+
   it("accepts one higher-or-lower call and disables both controls", async () => {
     const user = userEvent.setup();
     globalThis.__supabaseMock.rpc.mockImplementation(async (name: unknown) => name === "call"
