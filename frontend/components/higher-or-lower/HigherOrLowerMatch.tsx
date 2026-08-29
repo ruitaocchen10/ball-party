@@ -269,33 +269,42 @@ export function HigherOrLowerMatch({
 
       {isPaused ? <PauseBanner /> : null}
 
-      <MatchClock phase={board.phase} remainingMs={remainingMs} />
+      {/* The party games share a desktop table shape: time and action at left,
+          the active play in the roomy centre, and everyone else at right.
+          This game's rails deliberately stay slimmer than Auction's: a call
+          and a streak need less room than bidding controls or full rosters.
+          Source order still makes the phone read the cards before the choice. */}
+      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_minmax(4rem,1fr)] gap-3 lg:grid-cols-[12rem_minmax(0,1fr)_14rem] lg:grid-rows-1">
+        <section className="flex min-h-0 flex-col gap-3 lg:col-start-2 lg:row-start-1" aria-label="The comparison">
+          {anchor && challenger ? (
+            <div className="grid min-h-0 flex-1 gap-3 sm:grid-cols-2">
+              <LadderCardPanel
+                label="Anchor"
+                card={anchor}
+                caption="What the challenger is priced against."
+              />
+              <LadderCardPanel
+                label="Challenger"
+                card={challenger}
+                caption="Higher or lower than the anchor?"
+              />
+            </div>
+          ) : (
+            <p className="text-sm text-fg-muted">Waiting for the next card…</p>
+          )}
+        </section>
 
-      <CallControls
-        canCall={canCallNow(board, viewerPlayer)}
-        call={myCall ?? null}
-        pending={pendingCall}
-        paused={isPaused}
-        error={callError}
-        onCall={makeCall}
-      />
-
-      {anchor && challenger ? (
-        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
-          <LadderCardPanel
-            label="Anchor"
-            card={anchor}
-            caption="What the challenger is priced against."
+        <section className="flex shrink-0 flex-col gap-3 lg:col-start-1 lg:row-start-1" aria-label="Your call">
+          <CallControls
+            canCall={canCallNow(board, viewerPlayer)}
+            call={myCall ?? null}
+            pending={pendingCall}
+            paused={isPaused}
+            error={callError}
+            onCall={makeCall}
           />
-          <LadderCardPanel
-            label="Challenger"
-            card={challenger}
-            caption="Higher or lower than the anchor?"
-          />
-        </div>
-      ) : (
-        <p className="text-sm text-fg-muted">Waiting for the next card…</p>
-      )}
+          <MatchClock className="lg:order-first" phase={board.phase} remainingMs={remainingMs} />
+        </section>
 
       {/* Both points panels are hidden from assistive technology, so this
           region is the complete announcement of what is on screen. */}
@@ -305,11 +314,11 @@ export function HigherOrLowerMatch({
           : ""}
       </p>
 
-      <aside aria-label="The table" className="shrink-0">
-        <ul className="flex flex-wrap gap-2">
-          {players.map((player) => {
-            const call = calls.find((candidate) => candidate.question === board.currentQuestion && candidate.user_id === player.user_id);
-            return (
+        <aside aria-label="The table" className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1">
+          <ul className="flex flex-wrap gap-2 lg:flex-col lg:flex-nowrap">
+            {players.map((player) => {
+              const call = calls.find((candidate) => candidate.question === board.currentQuestion && candidate.user_id === player.user_id);
+              return (
             <li
               key={player.user_id}
               className="rounded border border-line px-3 py-1.5 font-slab text-[15px] leading-none uppercase"
@@ -355,10 +364,11 @@ export function HigherOrLowerMatch({
                 </span>
               ) : null}
             </li>
-            );
-          })}
-        </ul>
-      </aside>
+              );
+            })}
+          </ul>
+        </aside>
+      </div>
     </main>
   );
 }
@@ -537,7 +547,15 @@ function questionLabel(board: Board, audience: "visual" | "spoken"): string {
     : `Question ${board.currentQuestion} of ${board.questionCount}`;
 }
 
-function MatchClock({ phase, remainingMs }: { phase: Board["phase"]; remainingMs: number | null }) {
+function MatchClock({
+  phase,
+  remainingMs,
+  className = "",
+}: {
+  phase: Board["phase"];
+  remainingMs: number | null;
+  className?: string;
+}) {
   const seconds = remainingMs === null ? null : Math.ceil(remainingMs / 1_000);
   const duration = phase === "board_intro" ? 5_000 : phase === "call" ? 12_000 : phase === "sudden_death_call" ? 8_000 : 4_000;
   const fraction = remainingMs === null ? 0 : Math.min(1, remainingMs / (duration - VISIBLE_SLACK_MS));
@@ -549,7 +567,7 @@ function MatchClock({ phase, remainingMs }: { phase: Board["phase"]; remainingMs
         ? "The answer is revealed"
         : "Match complete";
   return (
-    <section aria-label="Clock" className="rounded bg-surface-raised p-3 shadow-well">
+    <section aria-label="Clock" className={`rounded bg-surface-raised p-3 shadow-well ${className}`}>
       <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
       <p className="mt-1 font-slab text-3xl leading-none tabular-nums" aria-hidden>{seconds === null ? "—" : `${seconds}s`}</p>
       <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
