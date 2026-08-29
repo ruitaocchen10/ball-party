@@ -180,6 +180,26 @@ export function matchupLine(lot: Lot): string {
   return `${lot.position} · ${lotIdentityLine(lot)}`;
 }
 
+export type WeeklyRevealTier = "rough" | "solid" | "great";
+
+/**
+ * A weekly result is only impressive relative to its position. These are PPR
+ * breakpoints: a 12-point quarterback day disappoints, while a 12-point tight
+ * end day is useful. Season lots deliberately return null; their equivalent
+ * needs a server-calculated, position-relative percentile rather than a
+ * client-side guess from a single total.
+ */
+export function weeklyRevealTier(lot: Pick<Lot, "position" | "week" | "opponent" | "points">): WeeklyRevealTier | null {
+  if (lot.week === null || lot.opponent === null || lot.points === null) return null;
+  const points = Number(lot.points);
+  const [rough, great] = lot.position === "QB"
+    ? [15, 25]
+    : lot.position === "TE"
+      ? [8, 16]
+      : [10, 20];
+  return points < rough ? "rough" : points >= great ? "great" : "solid";
+}
+
 export function byPlacement(standings: Standing[]): Standing[] {
   return [...standings].sort(
     (a, b) => (a.placement ?? 99) - (b.placement ?? 99) || Number(b.raw_score) - Number(a.raw_score),

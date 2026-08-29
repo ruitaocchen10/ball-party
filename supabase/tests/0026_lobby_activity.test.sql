@@ -1,6 +1,6 @@
 -- Durable lobby membership is distinct from the short-lived activity lease.
 begin;
-select plan(14);
+select plan(8);
 
 \ir support/harness.psql
 
@@ -36,53 +36,6 @@ select throws_ok(
   'a stranger cannot create activity in a room'
 );
 
-select tests.act_as((select v from tests.fx where k = 'member'));
-select ok(
-  public.lobby_host_is_active((select v from tests.fx where k = 'lobby')),
-  'the host starts with a live activity lease'
-);
-select throws_ok(
-  format($$ select public.claim_lobby_host(%L) $$, (select v from tests.fx where k = 'lobby')),
-  'P0001', 'host_still_active',
-  'a connected member cannot take over during the host grace period'
-);
-
-select tests.act_as_admin();
-update public.lobby_members
-   set last_seen_at = now() - interval '31 seconds'
- where lobby_id = (select v from tests.fx where k = 'lobby')
-   and user_id = (select v from tests.fx where k = 'host');
-
-select tests.act_as((select v from tests.fx where k = 'member'));
-select ok(
-  not public.lobby_host_is_active((select v from tests.fx where k = 'lobby')),
-  'the activity read expires when the host has been away for thirty seconds'
-);
-select lives_ok(
-  format($$ select public.claim_lobby_host(%L) $$, (select v from tests.fx where k = 'lobby')),
-  'a member can take host controls after the grace period'
-);
-
-select tests.act_as_admin();
-select is(
-  (select host_id from public.lobbies where id = (select v from tests.fx where k = 'lobby')),
-  (select v from tests.fx where k = 'member'),
-  'takeover permanently transfers the host role'
-);
-
-select tests.act_as((select v from tests.fx where k = 'host'));
-select lives_ok(
-  format($$ select public.heartbeat_lobby(%L) $$, (select v from tests.fx where k = 'lobby')),
-  'the former host can return as a regular member'
-);
-
-select tests.act_as_admin();
-select is(
-  (select host_id from public.lobbies where id = (select v from tests.fx where k = 'lobby')),
-  (select v from tests.fx where k = 'member'),
-  'the returning former host does not reclaim controls'
-);
-
 -- A fresh room with no active members is closed by the independent lobby sweep.
 insert into tests.fx (k, v)
 values ('idle_lobby', tests.mklobby(array[(select v from tests.fx where k = 'stranger')]));
@@ -103,16 +56,9 @@ select ok(
   'activity from any current member keeps the room open'
 );
 
-select tests.act_as((select v from tests.fx where k = 'member'));
-select throws_ok(
-  format($$ select public.claim_lobby_host(%L) $$, (select v from tests.fx where k = 'idle_lobby')),
-  'P0001', 'lobby_not_found',
-  'a closed lobby cannot be taken over'
-);
-
 -- A game has its own abandonment janitor, so lobby cleanup must leave it alone
 -- even when every lobby heartbeat is stale.
-select tests.act_as((select v from tests.fx where k = 'member'));
+select tests.act_as((select v from tests.fx where k = 'host'));
 select public.start_run((select v from tests.fx where k = 'lobby'), 'arcade', 'auction_team_builder');
 select tests.act_as_admin();
 update public.lobby_members
@@ -122,6 +68,19 @@ select private.sweep_inactive_lobbies();
 select ok(
   (select closed_at is null from public.lobbies where id = (select v from tests.fx where k = 'lobby')),
   'the lobby sweep leaves an active run to the match janitor'
+);
+
+select tests.act_as((select v from tests.fx where k = 'host'));
+select public.leave_lobby((select v from tests.fx where k = 'lobby'));
+select tests.act_as_admin();
+select ok(
+  (select closed_at is not null from public.lobbies where id = (select v from tests.fx where k = 'lobby')),
+  'the room closes when its fixed host leaves'
+);
+select is(
+  (select status::text from public.runs where lobby_id = (select v from tests.fx where k = 'lobby')),
+  'abandoned',
+  'closing the host-owned room abandons its active run'
 );
 
 select * from finish();

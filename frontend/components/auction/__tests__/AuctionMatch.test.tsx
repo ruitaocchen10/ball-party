@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -7,6 +7,7 @@ vi.mock("@/components/game-runtime/PostGameNavigation", () => ({
 }));
 
 import { AuctionMatch } from "@/components/auction/AuctionMatch";
+import { LOT_REVEAL_MS } from "@/lib/auction/useLotReveal";
 import { MATCH, bid, board, lot, players, standing, turn } from "@/test/factories";
 import { renderMatch } from "@/test/render";
 
@@ -97,28 +98,6 @@ describe("the four phases", () => {
     expect(screen.getByLabelText("Lot 1, Saquon Barkley, RB, $4, won by Ben")).toHaveTextContent("S. Barkley");
   });
 
-  it("shows every participant the immutable dealt format", () => {
-    renderMatch({
-      turn: turn("lot_preview"),
-      format: {
-        scoringMode: "weekly",
-        rosterPreset: "standard",
-        qbSlots: 1,
-        rbSlots: 1,
-        wrSlots: 1,
-        teSlots: 1,
-        flexSlots: 1,
-        purse: 25,
-        seasonFrom: 2020,
-        seasonTo: 2025,
-      },
-    });
-
-    expect(screen.getByLabelText("Auction format")).toHaveTextContent(
-      "weekly · standard · 5 slots · $25 purse · 2020-2025",
-    );
-  });
-
   it("renders every repeated roster slot from the dealt format", () => {
     renderMatch({
       turn: turn("sold"),
@@ -140,12 +119,11 @@ describe("the four phases", () => {
       ]),
     });
 
-    expect(screen.getByLabelText("Auction format")).toHaveTextContent("deep · 10 slots · $50 purse");
     expect(screen.getAllByLabelText(/^QB [12] slot,/)).toHaveLength(8);
     expect(screen.getByLabelText("QB 2 slot, Lamar Jackson, 31.4 points")).toBeInTheDocument();
   });
 
-  it("labels a season-total format and omits weekly-only card copy", () => {
+  it("omits weekly-only copy for a season-total lot", () => {
     renderMatch({
       turn: turn("lot_preview"),
       format: {
@@ -163,8 +141,7 @@ describe("the four phases", () => {
       lots: board([{ season: 2018, team: "NYG", week: null, opponent: null }]),
     });
 
-    expect(screen.getByLabelText("Auction format")).toHaveTextContent("season total");
-    expect(screen.getByText("RB · 2018 · NYG")).toBeInTheDocument();
+    expect(screen.getByLabelText("2018 season, NYG")).toBeInTheDocument();
     expect(screen.queryByText(/Week|vs /i)).not.toBeInTheDocument();
   });
 
@@ -249,26 +226,27 @@ describe("the clock", () => {
     renderMatch({ turn: turn("bidding", { turnSeat: 0, deadlineMs: 7_400 }) });
 
     // The visible clock stops half a second short of the real deadline.
-    await waitFor(() => expect(screen.getByText("7s")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("7")).toBeInTheDocument());
     expect(screen.getByRole("timer")).toHaveAccessibleName("7 seconds left");
   });
 
   it("keeps the urgent treatment for the last three seconds", async () => {
     renderMatch({ turn: turn("bidding", { turnSeat: 0, deadlineMs: 8_000 }) });
     await waitFor(() => expect(screen.getByRole("timer")).toHaveAccessibleName(/7 seconds/));
-    expect(screen.getByText("7s").className).not.toMatch(/hidden-text/);
+    expect(screen.getByText("7").className).not.toMatch(/hidden-text/);
   });
 
   it("marks the final seconds as urgent", async () => {
     renderMatch({ turn: turn("bidding", { turnSeat: 0, deadlineMs: 2_900 }) });
-    await waitFor(() => expect(screen.getByText("3s")).toBeInTheDocument());
-    expect(screen.getByText("3s").className).toMatch(/hidden-text/);
+    await waitFor(() => expect(screen.getByText(/^2\.\d$/)).toBeInTheDocument());
+    expect(screen.getByText(/^2\.\d$/).className).toMatch(/hidden-text/);
   });
 
   it("does not call a timer-off phase urgent, however little time is left", async () => {
     renderMatch({ turn: turn("sold", { deadlineMs: 300 }) });
-    await waitFor(() => expect(screen.getByText("1s")).toBeInTheDocument());
-    expect(screen.getByText("1s").className).not.toMatch(/hidden-text/);
+    const clock = screen.getByRole("region", { name: "Clock" });
+    await waitFor(() => expect(within(clock).getByText(/^0\.\d$/)).toBeInTheDocument());
+    expect(within(clock).getByText(/^0\.\d$/).className).not.toMatch(/hidden-text/);
   });
 
   it("announces only the countdown milestones from a polite live region", async () => {
@@ -468,24 +446,23 @@ describe("the custom bid", () => {
 });
 
 describe("the table", () => {
-  it("keeps the viewer's seat open, lets other seats disclose independently, and keeps lists out of the disclosure", async () => {
+  it("keeps the viewer's seat open and lets other seats disclose independently", async () => {
     const user = userEvent.setup();
     renderMatch({ turn: turn("bidding", { turnSeat: 0 }) });
     const table = screen.getByRole("complementary", { name: "The table" });
 
-    const avaSeat = within(table).getByText("Ava").closest("li")!;
-    const benSeat = within(table).getByText("Ben").closest("li")!;
-    const avaDisclosure = within(avaSeat).getByRole("button");
-    const benDisclosure = within(benSeat).getByRole("button");
+    const avaSeat = within(table).getByText("You").closest("details")!;
+    const benSeat = within(table).getByText("Ben").closest("details")!;
+    const avaDisclosure = avaSeat.querySelector("summary")!;
+    const benDisclosure = benSeat.querySelector("summary")!;
 
-    expect(avaDisclosure).toHaveAttribute("aria-expanded", "true");
-    expect(benDisclosure).toHaveAttribute("aria-expanded", "false");
-    expect(benDisclosure.querySelector("ul, ol")).toBeNull();
+    expect(avaSeat).toHaveAttribute("open");
+    expect(benSeat).not.toHaveAttribute("open");
 
     await user.click(benDisclosure);
 
-    expect(benDisclosure).toHaveAttribute("aria-expanded", "true");
-    expect(avaDisclosure).toHaveAttribute("aria-expanded", "true");
+    expect(benSeat).toHaveAttribute("open");
+    expect(avaSeat).toHaveAttribute("open");
   });
 
   it("states a seat's turn once however the seat is disclosed", async () => {
@@ -494,11 +471,11 @@ describe("the table", () => {
     const table = screen.getByRole("complementary", { name: "The table" });
 
     // The viewer is on the clock and their own seat opens by default.
-    expect(within(table).getAllByText("on the clock")).toHaveLength(1);
+    expect(within(table).getAllByText("On the clock")).toHaveLength(1);
 
-    await user.click(within(table).getByText("Ava").closest("li")!.querySelector("button")!);
+    await user.click(within(table).getByText("You").closest("details")!.querySelector("summary")!);
 
-    expect(within(table).getAllByText("on the clock")).toHaveLength(1);
+    expect(within(table).getAllByText("On the clock")).toHaveLength(1);
   });
 
   it("shows every seat's budget and revealed total", () => {
@@ -520,9 +497,9 @@ describe("the table", () => {
     });
 
     const table = screen.getByRole("complementary", { name: "The table" });
-    expect(within(table).getByText("on the clock")).toBeInTheDocument();
-    expect(within(table).getByLabelText("High bid $6")).toHaveTextContent("High bid · $6");
-    expect(within(table).getByText("Ben").closest("li")).toHaveClass("border-panel", "bg-panel/5");
+    expect(within(table).getByText("On the clock")).toBeInTheDocument();
+    expect(within(table).getByText("High bid · $6")).toBeInTheDocument();
+    expect(within(table).getByText("Ben").closest("details")).toHaveClass("bg-panel/5");
   });
 
   it("marks a seat that has passed", () => {
@@ -532,7 +509,7 @@ describe("the table", () => {
     });
 
     expect(
-      within(screen.getByRole("complementary", { name: "The table" })).getByText("passed"),
+      within(screen.getByRole("complementary", { name: "The table" })).getByText("Passed"),
     ).toBeInTheDocument();
   });
 
@@ -562,15 +539,14 @@ describe("the table", () => {
     });
 
     const table = screen.getByRole("complementary", { name: "The table" });
-    const seat = within(table).getByText("Ben").closest("li")!;
+    const seat = within(table).getByText("Ben").closest("details")!;
     expect(seat.className).toMatch(/animate-sold-once/);
     // The animation is behind motion-safe, so the ring survives reduced motion.
     expect(seat.className).toMatch(/motion-safe:/);
-    expect(seat.className).toMatch(/border-panel/);
     expect(screen.getByText("Sold to")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "The lot" })).getByText("Ben")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "The lot" })).getByText("$9")).toBeInTheDocument();
-    expect(screen.getByLabelText("RB slot, Saquon Barkley, 18.5 points").className).toMatch(/animate-player-to-roster/);
+    expect(screen.getByLabelText("RB slot, Saquon Barkley, 18.5 points").closest("div")!.className).toMatch(/animate-player-to-roster/);
   });
 });
 
@@ -808,5 +784,82 @@ describe("keeping the screen honest", () => {
     await waitFor(() =>
       expect(supabase.from.mock.calls.map(([table]) => table)).toContain("auction_bids"),
     );
+  });
+});
+
+/**
+ * The ~2s "revealing" buffer between one lot's player and the next
+ * (useLotReveal), mirroring sabotage draft's own turn-spin reveal. `lots` is
+ * internal state seeded once from `initial` and already holds every lot's
+ * real identity (see board()); the turn only ever moves via a real RPC round
+ * trip, so a lot change here comes from re-mocking `rpc` and driving it
+ * through an existing, already-tested action (passing), the same way the
+ * game itself would learn the lot moved on.
+ */
+describe("the lot's suspense reveal", () => {
+  const withFakeTimers = async (body: () => Promise<void>) => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      await body();
+    } finally {
+      vi.useRealTimers();
+    }
+  };
+
+  const advance = async (ms: number, step = 500) => {
+    for (let elapsed = 0; elapsed < ms; elapsed += step) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(step);
+      });
+    }
+  };
+
+  it("shows a lot already underway at mount immediately, with no artificial wait", () => {
+    renderMatch({ turn: turn("lot_preview", { currentLot: 2 }) });
+    expect(screen.getByText("Patrick Mahomes")).toBeInTheDocument();
+  });
+
+  it("conceals the next lot's player until the reveal delay elapses, then shows it", async () => {
+    await withFakeTimers(async () => {
+      const { supabase } = renderMatch({ turn: turn("bidding", { turnSeat: 0 }) });
+      supabase.rpc.mockImplementation(async (...args: unknown[]) => {
+        if (args[0] !== "pass_lot") return { data: null, error: null };
+        return {
+          data: {
+            lot_count: 4,
+            current_lot: 2,
+            turn_seat: null,
+            opener_seat: 0,
+            turn_deadline: null,
+            phase: "lot_preview",
+            phase_deadline: new Date(Date.now() + 5_000).toISOString(),
+            server_now: new Date().toISOString(),
+          },
+          error: null,
+        };
+      });
+
+      expect(screen.getByText("Saquon Barkley")).toBeInTheDocument();
+
+      // A plain fireEvent click plus a zero-length timer advance, not
+      // userEvent, whose own internal delay machinery doesn't mix cleanly
+      // with fake timers here — drains the click handler's promise chain.
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Pass" }));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(screen.getByText("Revealing…")).toBeInTheDocument();
+      // The reel has the answer as its final, off-screen row so it can settle
+      // onto it. It remains inside aria-hidden animated artwork until the
+      // suspense delay completes; the visible player card is still concealed.
+      expect(screen.getByText("Patrick Mahomes").closest("[aria-hidden='true']")).not.toBeNull();
+
+      await advance(LOT_REVEAL_MS - 500);
+      expect(screen.getByText("Patrick Mahomes").closest("[aria-hidden='true']")).not.toBeNull();
+
+      await advance(600);
+      expect(screen.getByText("Patrick Mahomes")).toBeInTheDocument();
+    });
   });
 });

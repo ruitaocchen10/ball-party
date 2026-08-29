@@ -1,11 +1,13 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import { Flame, Trophy } from "lucide-react";
 
 import { Card } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { DURATION, EASE_OUT } from "@/lib/motion";
+import type { ProfileSummary } from "@/lib/profile/summary";
 
 type Member = {
   user_id: string;
@@ -28,19 +30,19 @@ export function MemberRoster({
   members,
   hostId,
   viewerId,
-  hostIsActive,
+  stats,
   capacity,
 }: {
   members: Member[];
   hostId: string;
   viewerId: string;
-  hostIsActive: boolean;
+  stats: Record<string, ProfileSummary>;
   capacity: number;
 }) {
   const emptySeats = Math.max(0, capacity - members.length);
 
   return (
-    <ul aria-label="Players at the table" className="grid grid-cols-2 gap-2.5 md:grid-cols-4 lg:gap-4 xl:gap-5">
+    <ul aria-label="Players at the table" className="grid grid-cols-2 gap-2.5 lg:gap-4 xl:gap-5">
       <AnimatePresence>
         {members.map((member, seat) => (
           <motion.li
@@ -51,7 +53,7 @@ export function MemberRoster({
             exit={{ opacity: 0, scale: 0.94 }}
             transition={{ duration: DURATION.base, ease: EASE_OUT }}
           >
-            <Card edge={false} className="h-full min-h-52 border-t-[5px] border-hidden">
+            <Card edge={false} className="h-full min-h-64 border-t-[5px] border-hidden">
               <div className="flex h-full flex-col items-center px-3 py-4 text-center sm:py-5">
                 <span className="self-start font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
                   Seat {seat + 1}
@@ -65,10 +67,10 @@ export function MemberRoster({
                 <span className="block font-slab text-2xl leading-none uppercase">
                   {member.profiles?.display_name ?? "Unknown player"}
                 </span>
+                <PlayerForm summary={stats[member.user_id] ?? EMPTY_SUMMARY} />
                 <span className="mt-2 block min-h-3 font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
                   {[
                     member.user_id === hostId ? "host" : null,
-                    member.user_id === hostId && !hostIsActive ? "away" : null,
                     member.profiles?.is_guest ? "guest" : null,
                     member.user_id === viewerId ? "you" : null,
                   ]
@@ -82,7 +84,7 @@ export function MemberRoster({
       </AnimatePresence>
       {Array.from({ length: emptySeats }, (_, index) => (
         <li key={`empty-${index}`}>
-          <Concealed label="Open spot, waiting for a player" className="flex min-h-52 items-center justify-center">
+          <Concealed label="Open spot, waiting for a player" className="flex h-full min-h-64 items-center justify-center">
             <span className="relative px-3 text-center">
               <span className="block font-slab text-2xl leading-none uppercase">Open seat</span>
               <span className="mt-2 block font-mono text-[10px] tracking-[0.15em] text-panel uppercase">Invite a friend</span>
@@ -91,5 +93,36 @@ export function MemberRoster({
         </li>
       ))}
     </ul>
+  );
+}
+
+const EMPTY_SUMMARY: ProfileSummary = { gamesPlayed: 0, wins: 0, winRate: 0, bestStreak: 0, recent: [] };
+
+/** Incoming form belongs beside the player it describes, not in a second rail. */
+function PlayerForm({ summary }: { summary: ProfileSummary }) {
+  if (summary.gamesPlayed === 0) {
+    return <span className="mt-2 block font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">New</span>;
+  }
+
+  const recent = summary.recent.map((match) => (match.placement === 1 ? "win" : "loss")).join(", ");
+  return (
+    <div className="mt-2 flex flex-col items-center gap-1.5">
+      <div className="flex items-center justify-center gap-3 font-mono text-[11px] font-semibold tabular-nums">
+        <span className="flex items-center gap-1" aria-label={`${summary.winRate}% win rate`}>
+          <Trophy aria-hidden className="h-3.5 w-3.5 text-hidden-text" strokeWidth={1.8} />
+          {summary.winRate}%
+        </span>
+        <span className="flex items-center gap-1" aria-label={`Best streak ${summary.bestStreak}`}>
+          <Flame aria-hidden className="h-3.5 w-3.5 text-hidden-text" strokeWidth={1.8} />
+          {summary.bestStreak}
+        </span>
+      </div>
+      <div className="flex gap-1" aria-label={`Recent form: ${recent}`}>
+        {summary.recent.map((match) => {
+          const won = match.placement === 1;
+          return <span key={match.id} aria-hidden className={`h-1.5 w-1.5 rounded-full ${won ? "bg-hidden-text" : "bg-panel-muted/45"}`} />;
+        })}
+      </div>
+    </div>
   );
 }

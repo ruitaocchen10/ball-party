@@ -1,4 +1,5 @@
 import { MemberRoster } from "@/components/lobby/MemberRoster";
+import type { ProfileSummary } from "@/lib/profile/summary";
 
 const CAPACITY = 4;
 
@@ -17,12 +18,12 @@ export function LobbyLineup({
   members,
   hostId,
   viewerId,
-  hostIsActive = true,
+  stats = {},
 }: {
   members: Member[];
   hostId: string;
   viewerId: string;
-  hostIsActive?: boolean;
+  stats?: Record<string, ProfileSummary>;
 }) {
   return (
     <section aria-labelledby="lineup-heading" className="flex flex-col gap-5 lg:gap-6">
@@ -42,7 +43,7 @@ export function LobbyLineup({
         members={members}
         hostId={hostId}
         viewerId={viewerId}
-        hostIsActive={hostIsActive}
+        stats={stats}
         capacity={CAPACITY}
       />
     </section>

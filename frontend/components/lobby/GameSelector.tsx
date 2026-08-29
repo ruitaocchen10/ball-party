@@ -26,7 +26,6 @@ export function GameSelector({
   code,
   isHost,
   inFlight,
-  hostIsActive,
   selectedGame,
   players,
   era = null,
@@ -36,7 +35,6 @@ export function GameSelector({
   code: string;
   isHost: boolean;
   inFlight: boolean;
-  hostIsActive: boolean;
   selectedGame: MatchGame | null;
   players: number;
   era?: Era | null;
@@ -67,7 +65,6 @@ export function GameSelector({
           game={selected}
           isHost={isHost}
           inFlight={inFlight}
-          hostIsActive={hostIsActive}
           onChange={() => setPicking(true)}
         >
           {isHost && !inFlight ? (
@@ -81,11 +78,7 @@ export function GameSelector({
           ) : null}
         </SelectedGame>
       ) : (
-        <p className="text-sm leading-5 text-fg-muted">
-          {hostIsActive
-            ? "The host hasn't picked a game yet."
-            : "The host is away. You can take host controls to keep the party moving."}
-        </p>
+        <p className="text-sm leading-5 text-fg-muted">The host hasn&apos;t picked a game yet.</p>
       )}
     </section>
   );
@@ -95,14 +88,12 @@ function SelectedGame({
   game,
   isHost,
   inFlight,
-  hostIsActive,
   onChange,
   children,
 }: {
   game: (typeof LAUNCHABLE)[number];
   isHost: boolean;
   inFlight: boolean;
-  hostIsActive: boolean;
   onChange: () => void;
   children: ReactNode;
 }) {
@@ -132,7 +123,7 @@ function SelectedGame({
 
       {!isHost && !inFlight ? (
         <p className="border-t border-[#c7bfac] px-3.5 py-2.5 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
-          {hostIsActive ? "Waiting for the host to start" : "The host is away"}
+          Waiting for the host to start
         </p>
       ) : null}
     </Card>

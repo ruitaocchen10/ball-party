@@ -2,6 +2,7 @@ import { House } from "lucide-react";
 import Link from "next/link";
 
 import { AccountMenu } from "@/components/layout/AccountMenu";
+import { InviteSuite } from "@/components/lobby/InviteSuite";
 import { Button } from "@/components/ui/Button";
 import { closeLobby, leaveLobby } from "@/lib/lobbies/actions";
 
@@ -21,6 +22,14 @@ const FOCUS =
  * earlier. Leave/close move up here too, off the stack of ghost buttons the
  * bottom of the page used to end on, so they read as room controls rather
  * than settings.
+ *
+ * The invite suite (see InviteSuite) takes the middle once a real room
+ * exists — the code used to sit in its own header below this strip, but an
+ * invite is the thing you reach for most while the room is still filling up,
+ * so it earned the always-on-screen spot instead of scrolling past with the
+ * roster. `flex-wrap` plus the `order-*` swap below is what lets it drop to
+ * a full-width row under the icon/actions on a narrow phone rather than
+ * squeezing three groups into one line.
  */
 export function LobbyTopStrip({
   lobbyId = null,
@@ -28,6 +37,7 @@ export function LobbyTopStrip({
   isHost = false,
   displayName,
   email = null,
+  avatarUrl = null,
 }: {
   /** Absent before the room is known — the "no room yet" and "signed out"
    * states this same header renders for AutoJoinRoom/GuestJoin. */
@@ -36,18 +46,25 @@ export function LobbyTopStrip({
   isHost?: boolean;
   displayName?: string | null;
   email?: string | null;
+  avatarUrl?: string | null;
 }) {
   return (
-    <header className="flex items-center justify-between gap-3 py-3">
+    <header className="flex flex-wrap items-center justify-between gap-3 py-3">
       <Link
         href="/"
         aria-label="Home"
-        className={`flex h-9 w-9 items-center justify-center bg-surface-raised text-fg ring-1 ring-line ring-inset transition-colors hover:text-fg-muted ${FOCUS}`}
+        className={`order-1 flex h-9 w-9 items-center justify-center bg-surface-raised text-fg ring-1 ring-line ring-inset transition-colors hover:text-fg-muted ${FOCUS}`}
       >
         <House className="h-[18px] w-[18px]" strokeWidth={1.5} />
       </Link>
 
-      <div className="flex items-center gap-2">
+      {lobbyId ? (
+        <div className="order-3 basis-full sm:order-2 sm:basis-auto sm:mx-auto">
+          <InviteSuite code={code} />
+        </div>
+      ) : null}
+
+      <div className="order-2 flex items-center gap-2 sm:order-3">
         {lobbyId ? (
           <form action={leaveLobby}>
             <input type="hidden" name="lobby_id" value={lobbyId} />
@@ -75,7 +92,7 @@ export function LobbyTopStrip({
         ) : null}
 
         {displayName ? (
-          <AccountMenu displayName={displayName} email={email} compact />
+          <AccountMenu displayName={displayName} email={email} avatarUrl={avatarUrl} compact />
         ) : (
           <Link
             href="/login"

@@ -10,7 +10,6 @@ import { PostGameControls } from "@/components/game-runtime/PostGameControls";
 import { PostGameNavigation } from "@/components/game-runtime/PostGameNavigation";
 import { AnimatedMessage } from "@/components/motion/AnimatedMessage";
 import { Reveal } from "@/components/motion/Reveal";
-import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Concealed } from "@/components/ui/Concealed";
 import {
@@ -578,51 +577,70 @@ function LadderCardPanel({
     <section role="group" aria-label={label} className="flex min-h-0 flex-col gap-2">
       <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
 
-      <Card className="flex min-h-0 flex-1 flex-col">
-        {/* The portrait band keeps its height whether or not a shot exists: a
-            player nflverse has no picture for must not change the geometry. */}
-        <div className="min-h-24 flex-1 border-b border-dashed border-[#c7bfac] bg-panel-shade">
-          {card.headshot_url ? (
-            <img
-              src={card.headshot_url}
-              alt=""
-              className="h-full w-full object-contain object-bottom [mask-image:linear-gradient(to_bottom,#000_58%,transparent_96%)]"
-            />
-          ) : null}
+      {/* Keep the player identity and the score as one card. This matches the
+          auction lot's portrait-forward hierarchy while the score remains the
+          distinct reveal beat Higher or Lower depends on. */}
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden border border-line bg-surface-raised text-center shadow-well">
+        <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{card.position}</span>
+        <span className="absolute top-3 right-3 font-mono text-[11px] font-bold tracking-[0.12em] text-fg-muted uppercase">{card.team}</span>
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-5">
+          <LadderPortrait name={card.display_name} headshotUrl={card.headshot_url} />
+          <h2 className="mt-3 max-w-full truncate font-slab text-3xl leading-none text-fg uppercase">{card.display_name}</h2>
+          <p className="mt-4 w-full border-t border-line pt-3 font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">
+            {cardMetaLine(card)}
+          </p>
         </div>
-        <CardTitle>{card.display_name}</CardTitle>
-        <CardMeta>{cardMetaLine(card)}</CardMeta>
-      </Card>
 
-      {/* Both faces are out of the accessibility tree: a weave with three
-          question marks and a big number are visual idioms, and the screen's
-          status region says the whole thing in one ordered sentence instead —
-          the same split the auction's reveal uses. Reveal (see
-          components/motion/Reveal.tsx) is that same split's shared "pop". */}
-      <Reveal
-        revealed={card.points !== null}
-        concealed={
-          <Concealed label="Fantasy points, hidden until this question reveals" className="px-3.5 py-3">
-            <div aria-hidden className="relative flex items-baseline justify-between gap-3">
-              <span className="font-mono text-[11px] tracking-[0.15em] text-panel uppercase">
+        {/* Both faces are out of the accessibility tree: a weave with three
+            question marks and a big number are visual idioms, and the screen's
+            status region says the whole thing in one ordered sentence instead. */}
+        <div className="border-t border-line">
+          <Reveal
+            revealed={card.points !== null}
+            concealed={
+              <Concealed label="Fantasy points, hidden until this question reveals" className="rounded-none px-3.5 py-3">
+                <div aria-hidden className="relative flex items-baseline justify-between gap-3">
+                  <span className="font-mono text-[11px] tracking-[0.15em] text-panel uppercase">
+                    Fantasy points
+                  </span>
+                  <span className="font-slab text-lg leading-none text-panel">? ? ?</span>
+                </div>
+              </Concealed>
+            }
+          >
+            <div aria-hidden className="flex items-baseline justify-between gap-3 bg-panel px-3.5 py-3 text-panel-fg">
+              <span className="font-mono text-[11px] tracking-[0.15em] text-panel-muted uppercase">
                 Fantasy points
               </span>
-              <span className="font-slab text-lg leading-none text-panel">? ? ?</span>
+              <span className="min-w-0 font-slab text-lg leading-none tabular-nums">
+                {formatPoints(card.points)}
+              </span>
             </div>
-          </Concealed>
-        }
-      >
-        <div aria-hidden className="flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
-          <span className="font-mono text-[11px] tracking-[0.15em] text-panel-muted uppercase">
-            Fantasy points
-          </span>
-          <span className="min-w-0 font-slab text-lg leading-none tabular-nums">
-            {formatPoints(card.points)}
-          </span>
+          </Reveal>
         </div>
-      </Reveal>
+      </div>
 
       <p className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">{caption}</p>
     </section>
+  );
+}
+
+/** The same resilient, circular identity treatment used by auction lots. */
+function LadderPortrait({ name, headshotUrl }: { name: string; headshotUrl: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (headshotUrl && !failed) {
+    return (
+      <img
+        src={headshotUrl}
+        alt=""
+        onError={() => setFailed(true)}
+        className="h-28 w-28 shrink-0 rounded-full bg-panel-shade object-cover object-top"
+      />
+    );
+  }
+  return (
+    <span aria-hidden className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-hidden font-slab text-4xl text-panel">
+      <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
+    </span>
   );
 }

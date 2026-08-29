@@ -28,7 +28,6 @@ describe("GameSelector", () => {
         code="BLTZ"
         isHost
         inFlight={false}
-        hostIsActive
         selectedGame={null}
         players={2}
       />,
@@ -48,7 +47,6 @@ describe("GameSelector", () => {
         code="BLTZ"
         isHost
         inFlight={false}
-        hostIsActive
         selectedGame={null}
         players={2}
       />,
@@ -69,7 +67,6 @@ describe("GameSelector", () => {
         code="BLTZ"
         isHost
         inFlight={false}
-        hostIsActive
         selectedGame="sabotage_draft"
         players={2}
       />,
@@ -87,7 +84,6 @@ describe("GameSelector", () => {
         code="BLTZ"
         isHost
         inFlight
-        hostIsActive
         selectedGame="sabotage_draft"
         players={2}
       />,
@@ -104,7 +100,6 @@ describe("GameSelector", () => {
         code="BLTZ"
         isHost={false}
         inFlight={false}
-        hostIsActive
         selectedGame="higher_or_lower"
         players={2}
       />,
@@ -116,20 +111,19 @@ describe("GameSelector", () => {
     expect(screen.getByText("Waiting for the host to start")).toBeInTheDocument();
   });
 
-  it("tells a non-host viewer nothing has been picked when the host is away", () => {
+  it("tells a non-host viewer when the host has not picked a game", () => {
     render(
       <GameSelector
         lobbyId="lobby"
         code="BLTZ"
         isHost={false}
         inFlight={false}
-        hostIsActive={false}
         selectedGame={null}
         players={2}
       />,
     );
 
-    expect(screen.getByText(/host is away/i)).toBeInTheDocument();
+    expect(screen.getByText("The host hasn't picked a game yet.")).toBeInTheDocument();
   });
 
   it("lets the host reopen the picker to change the selection", async () => {
@@ -140,7 +134,6 @@ describe("GameSelector", () => {
         code="BLTZ"
         isHost
         inFlight={false}
-        hostIsActive
         selectedGame="sabotage_draft"
         players={2}
       />,

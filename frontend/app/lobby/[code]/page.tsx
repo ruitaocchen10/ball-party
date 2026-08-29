@@ -1,19 +1,21 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/Button";
 import { LobbyRealtime } from "@/components/lobby/LobbyRealtime";
 import { LobbyLineup } from "@/components/lobby/LobbyLineup";
 import { LobbyTopStrip } from "@/components/lobby/LobbyTopStrip";
 import { GameSelector } from "@/components/lobby/GameSelector";
 import { LobbyScoreboard } from "@/components/lobby/LobbyScoreboard";
+import { LobbyActivity } from "@/components/lobby/LobbyActivity";
 import { AutoJoinRoom } from "@/components/lobby/AutoJoinRoom";
-import { claimLobbyHost } from "@/lib/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
 import { GuestJoin } from "@/components/auth/GuestJoin";
-import { canCreateLobby, isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
+import { isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
 import { guestSessionFinishedHref } from "@/lib/auth/guest-lifecycle";
 import { fetchLobbyWins } from "@/lib/lobbies/scoreboard";
+import { fetchLobbyActivity } from "@/lib/lobbies/activity";
+import { fetchLobbyMemberStats } from "@/lib/lobbies/player-stats";
 import type { MatchGame } from "@/lib/games/catalog";
 
 export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
@@ -42,10 +44,11 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   // needed here whether or not they turn out to be in this room.
   const { data: viewer } = await supabase
     .from("profiles")
-    .select("display_name")
+    .select("display_name, avatar_url")
     .eq("id", claims.sub)
     .single();
   const displayName = viewer?.display_name ?? (claims.email as string | undefined) ?? null;
+  const avatarUrl = viewer?.avatar_url ?? null;
   const email = (claims.email as string | undefined) ?? null;
 
   // RLS returns nothing for a room you are not a member of, so maybeSingle()
@@ -62,7 +65,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
 
   if (!lobby) {
     return (
-      <Shell code={code} error={errorText} displayName={displayName} email={email}>
+      <Shell code={code} error={errorText} displayName={displayName} email={email} avatarUrl={avatarUrl}>
         <AutoJoinRoom code={code} />
       </Shell>
     );
@@ -71,7 +74,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   if (lobby.closed_at) {
     if (isGuestViewer(claims)) redirect(guestSessionFinishedHref("/"));
     return (
-      <Shell code={code} error={errorText} displayName={displayName} email={email}>
+      <Shell code={code} error={errorText} displayName={displayName} email={email} avatarUrl={avatarUrl}>
         <p className="text-sm leading-6 text-fg-muted">This room has closed.</p>
         <HomeLink />
       </Shell>
@@ -116,13 +119,14 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
       supabase.schema("higher_or_lower").rpc("season_bounds" as never) as unknown as Promise<{ data: { season_min: number; season_max: number } | null }>,
     ])
     : [{ data: null }, { data: null }];
-  const { data: activeHost } = await supabase.rpc("lobby_host_is_active", { p_lobby_id: lobby.id });
-  const hostIsActive = activeHost ?? true;
-  const canTakeHostControls = !isHost && !hostIsActive && canCreateLobby(claims);
-  const wins = await fetchLobbyWins(supabase, lobby.id);
+  const [wins, activity, memberStats] = await Promise.all([
+    fetchLobbyWins(supabase, lobby.id),
+    fetchLobbyActivity(supabase, lobby.id),
+    fetchLobbyMemberStats(supabase, lobby.id),
+  ]);
 
   return (
-    <Shell code={code} error={errorText} displayName={displayName} email={email} lobbyId={lobby.id} isHost={isHost}>
+    <Shell code={code} error={errorText} displayName={displayName} email={email} avatarUrl={avatarUrl} lobbyId={lobby.id} isHost={isHost}>
       <LobbyRealtime lobbyId={lobby.id} />
 
       {inFlight ? (
@@ -131,16 +135,27 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
         </p>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-10">
-        <LobbyLineup members={members} hostId={lobby.host_id} viewerId={claims.sub} hostIsActive={hostIsActive} />
+      {/* Three regions, CoD-lobby-style: room activity on the left, the roster
+          in the middle, room actions on the right — not two columns with a
+          second block stacked under the roster, which read as "content at
+          the bottom" rather than "content on the left." Source order stays
+          roster-first for mobile; `lg:order-*` only reshuffles it once
+          there's room for three columns side by side. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(6rem,0.4fr)_minmax(0,2.4fr)_minmax(20rem,1fr)] lg:items-start lg:gap-10">
+        <div className="lg:order-2">
+          <LobbyLineup members={members} hostId={lobby.host_id} viewerId={claims.sub} stats={Object.fromEntries(memberStats)} />
+        </div>
 
-        <aside className="flex flex-col gap-8 lg:sticky lg:top-14">
+        <div className="lg:order-1 lg:sticky lg:top-14">
+          <LobbyActivity activity={activity} />
+        </div>
+
+        <aside className="flex flex-col gap-8 lg:order-3 lg:sticky lg:top-14">
           <GameSelector
             lobbyId={lobby.id}
             code={code}
             isHost={isHost}
             inFlight={Boolean(inFlight)}
-            hostIsActive={hostIsActive}
             selectedGame={lobby.selected_game as MatchGame | null}
             players={members.length}
             era={
@@ -156,16 +171,6 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
           />
 
           <LobbyScoreboard members={members} wins={Object.fromEntries(wins)} />
-
-          {canTakeHostControls ? (
-            <form action={claimLobbyHost}>
-              <input type="hidden" name="lobby_id" value={lobby.id} />
-              <input type="hidden" name="code" value={code} />
-              <Button type="submit" variant="ghost">
-                Take host controls
-              </Button>
-            </form>
-          ) : null}
         </aside>
       </div>
     </Shell>
@@ -183,6 +188,7 @@ function Shell({
   error,
   displayName = null,
   email = null,
+  avatarUrl = null,
   lobbyId = null,
   isHost = false,
   children,
@@ -191,21 +197,33 @@ function Shell({
   error?: string;
   displayName?: string | null;
   email?: string | null;
+  avatarUrl?: string | null;
   lobbyId?: string | null;
   isHost?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
-      <LobbyTopStrip lobbyId={lobbyId} code={code} isHost={isHost} displayName={displayName} email={email} />
+    <main className="flex w-full flex-1 flex-col px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
+      <LobbyTopStrip lobbyId={lobbyId} code={code} isHost={isHost} displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
       <div className="flex flex-1 flex-col gap-6 pt-4 pb-12 sm:pt-6 lg:gap-8 lg:pt-8">
-        <header className="flex flex-col gap-2">
-          <Label>Join code</Label>
-          <h1 className="font-mono text-[34px] leading-none font-semibold tracking-[0.16em] text-fg sm:text-[40px]">
-            {code}
-          </h1>
-        </header>
+        {/* Once a real room exists, LobbyTopStrip's InviteSuite carries the
+            code instead — always in reach there, rather than a heading that
+            scrolls away with the roster. This plain heading stays visible
+            only for the states before that: signed out, no room found yet,
+            or closed — screens where there's no invite to make. It still
+            renders (just off-screen) once a room exists, so the page keeps
+            exactly one <h1> either way. */}
+        {!lobbyId ? (
+          <header className="flex flex-col gap-2">
+            <Label>Join code</Label>
+            <h1 className="font-mono text-[34px] leading-none font-semibold tracking-[0.16em] text-fg sm:text-[40px]">
+              {code}
+            </h1>
+          </header>
+        ) : (
+          <h1 className="sr-only">Room {code}</h1>
+        )}
 
         {error ? (
           <p

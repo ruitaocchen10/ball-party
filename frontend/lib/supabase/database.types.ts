@@ -1593,7 +1593,6 @@ export type Database = {
         }
       }
       claim_guest_identity: { Args: never; Returns: string }
-      claim_lobby_host: { Args: { p_lobby_id: string }; Returns: undefined }
       close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       create_lobby: {
         Args: never
@@ -1631,7 +1630,16 @@ export type Database = {
         }
       }
       leave_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
-      lobby_host_is_active: { Args: { p_lobby_id: string }; Returns: boolean }
+      lobby_member_match_history: {
+        Args: { p_lobby_id: string }
+        Returns: Database["public"]["CompositeTypes"]["match_history_row"][]
+        SetofOptions: {
+          from: "*"
+          to: "match_history_row"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       pause_match: {
         Args: { p_match_id: string }
         Returns: {
@@ -1728,7 +1736,14 @@ export type Database = {
       run_status: "active" | "finished" | "abandoned"
     }
     CompositeTypes: {
-      [_ in never]: never
+      match_history_row: {
+        user_id: string | null
+        match_id: string | null
+        game: string | null
+        ended_at: string | null
+        placement: number | null
+        raw_score: number | null
+      }
     }
   }
   sabotage_draft: {
@@ -1994,4 +2009,3 @@ export const Constants = {
     },
   },
 } as const
-

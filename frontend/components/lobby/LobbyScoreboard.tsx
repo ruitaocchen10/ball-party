@@ -33,34 +33,34 @@ export function LobbyScoreboard({
         </h2>
       </div>
 
-      {anyWins ? (
-        <ol className="flex flex-col gap-1.5">
-          {ranked.map((member) => {
-            const count = wins[member.user_id] ?? 0;
-            const leading = anyWins && count > 0 && count === (wins[ranked[0]!.user_id] ?? 0);
-            return (
-              <li
-                key={member.user_id}
-                className="flex items-center justify-between gap-2 rounded-card bg-surface-raised px-3 py-2 ring-1 ring-line ring-inset"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  {leading ? (
-                    <Trophy aria-hidden className="h-3.5 w-3.5 shrink-0 text-panel" strokeWidth={1.5} />
-                  ) : null}
-                  <span className="truncate font-mono text-xs font-semibold tracking-[0.03em] text-fg uppercase">
-                    {member.profiles?.display_name ?? "Player"}
-                  </span>
+      <ol className="flex flex-col gap-1.5">
+        {ranked.map((member) => {
+          const count = wins[member.user_id] ?? 0;
+          const leading = anyWins && count > 0 && count === (wins[ranked[0]!.user_id] ?? 0);
+          return (
+            <li
+              key={member.user_id}
+              className="flex items-center justify-between gap-2 rounded-card bg-surface-raised px-3 py-2 ring-1 ring-line ring-inset"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                {leading ? (
+                  <Trophy aria-hidden className="h-3.5 w-3.5 shrink-0 text-panel" strokeWidth={1.5} />
+                ) : null}
+                <span className="truncate font-mono text-xs font-semibold tracking-[0.03em] text-fg uppercase">
+                  {member.profiles?.display_name ?? "Player"}
                 </span>
-                <span className="shrink-0 font-mono text-xs font-bold text-fg tabular-nums">
-                  {count} {count === 1 ? "win" : "wins"}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      ) : (
-        <p className="text-sm leading-5 text-fg-muted">No wins yet this session — first one takes the board.</p>
-      )}
+              </span>
+              <span className="shrink-0 font-mono text-xs font-bold text-fg tabular-nums">
+                {count} {count === 1 ? "win" : "wins"}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      {!anyWins ? (
+        <p className="text-sm leading-5 text-fg-muted">First win starts the board.</p>
+      ) : null}
     </section>
   );
 }

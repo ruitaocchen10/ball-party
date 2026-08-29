@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type Ref } from "react";
 import Link from "next/link";
 
 import { FinalStandings, type FinalStandingsRow } from "@/components/game-runtime/FinalStandings";
@@ -10,8 +10,8 @@ import { PauseButton } from "@/components/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/game-runtime/PostGameControls";
 import { PostGameNavigation } from "@/components/game-runtime/PostGameNavigation";
 import { Reveal } from "@/components/motion/Reveal";
+import { TeamLogo } from "@/components/sabotage-draft/TeamLogo";
 import { Button } from "@/components/ui/Button";
-import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Concealed } from "@/components/ui/Concealed";
 import { abbreviate, MatchStrip, StripCell, StripCellAvatar, StripCellCaption, StripCellMedia, StripCellName, StripCellTextColumn, StripCellTitle, StripCellTop } from "@/components/ui/MatchStrip";
 import { dropdown } from "@/lib/motion";
@@ -25,13 +25,12 @@ import {
   hasPassed,
   highBidder,
   lotAt,
-  matchupLine,
   revealedTotal,
-  eraLabel,
   rosterSlots,
   standingPrice,
   slotFor,
   viewerPhase,
+  weeklyRevealTier,
   type Bid,
   type AuctionFormat,
   type Lot,
@@ -41,6 +40,8 @@ import {
   type Slot,
   type Turn,
 } from "@/lib/auction/board";
+import { auctionLogoCode } from "@/lib/auction/teams";
+import { LOT_REVEAL_MS, useLotReveal } from "@/lib/auction/useLotReveal";
 import { createClient, createRealtimeClient } from "@/lib/supabase/client";
 import { TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
 
@@ -79,6 +80,9 @@ const DURATION_MS: Record<Turn["phase"], number> = {
   bidding: 20_000,
   sold: 5_000,
 };
+
+/** Match Sabotage Draft's shot-clock convention once a bid window is tight. */
+const TENTHS_THRESHOLD_MS = 5_000;
 
 /**
  * The auction RPCs raise short machine-readable strings — see
@@ -205,6 +209,11 @@ export function AuctionMatch({
   const me = players.find((p) => p.user_id === viewerId) ?? null;
   const finished = turn.currentLot > turn.lotCount;
   const lot = lotAt(lots, turn.currentLot);
+  // A brief suspense beat before each lot's player appears, mirroring
+  // sabotage draft's turn reveal -- the identity is already in `lots`, this
+  // just paces when it's shown. Called unconditionally, above the early
+  // returns below, per the Rules of Hooks.
+  const { revealed: lotRevealed } = useLotReveal(String(turn.currentLot));
 
   // Bidding is the one phase a move can be sent in, so it is the one phase
   // the visible countdown ends early for; a finished match has no deadline
@@ -348,7 +357,7 @@ export function AuctionMatch({
 
   if (finished) {
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-5 pt-4 pb-4">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-8">
         <FinalScreen
           lots={lots}
           players={players}
@@ -374,6 +383,8 @@ export function AuctionMatch({
 
   const price = standingPrice(bids, lot.seq);
   const holder = highBidder(bids, lot.seq);
+  const lotTeamLogo = auctionLogoCode(lot.team);
+  const revealTier = weeklyRevealTier(lot);
   const filled = me ? filledSlots(lots, me.user_id) : { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0 };
   const passed = me ? hasPassed(bids, lot.seq, me.user_id) : false;
   const onClock = players.find((p) => p.seat === turn.turnSeat) ?? null;
@@ -396,44 +407,52 @@ export function AuctionMatch({
           controls their own column without changing that reading order. */}
       <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(6rem,1fr)] gap-3 lg:grid-cols-[minmax(15rem,.62fr)_minmax(0,1fr)_minmax(21rem,.95fr)] lg:grid-rows-1">
       <section className="flex min-h-0 flex-col gap-2 lg:col-start-2 lg:row-start-1" aria-label="The lot">
-      {/* The lot. Red top edge, because there is concealed information behind
-          it — which is the rule Card already documents. */}
-      <Card className="flex min-h-0 flex-1 flex-col">
-        {/* The portrait band is the Lot's only flexible-height element, and it
-            keeps its height whether or not a shot exists — a player nflverse
-            has no picture for must not change the geometry under a live clock. */}
-        <div className="min-h-24 flex-1 border-b border-dashed border-[#c7bfac] bg-panel-shade">
-          {lot.headshot_url ? (
-            <img
-              src={lot.headshot_url}
-              alt=""
-              className="h-full w-full object-contain object-bottom [mask-image:linear-gradient(to_bottom,#000_58%,transparent_96%)]"
-            />
-          ) : null}
-        </div>
-        <CardTitle>{lot.display_name}</CardTitle>
-        <CardMeta>{matchupLine(lot)}</CardMeta>
-      </Card>
-
-      {/* The payoff occupies the concealed surface rather than arriving as a
-          second card. Its face is hidden from assistive technology; the status
-          region below is the complete announcement. */}
-      {phase === "sold" ? <SoldHeadline lot={lot} players={players} /> : null}
-      <Reveal
-        revealed={phase === "sold"}
-        concealed={
-          <Concealed label="Fantasy points, hidden until this lot is won" className="px-3.5 py-3">
-            <div className="relative flex items-baseline justify-between gap-3">
-              <span className="font-mono text-[11px] tracking-[0.15em] text-panel uppercase">
-                Fantasy points
-              </span>
-              <span className="font-slab text-lg leading-none text-panel">? ? ?</span>
+      {/* A portrait-forward featured card, borrowing Sabotage Draft's
+          tenured-player treatment without confusing the lot's slot with a
+          player rank. The concealed score remains its own auction-only beat. */}
+      <div className="relative flex flex-none flex-col items-center border border-line bg-surface-raised px-4 py-5 text-center shadow-well">
+        <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{slotFor(lot)}</span>
+        {lotTeamLogo ? <TeamLogo code={lotTeamLogo} className="absolute top-3 right-3 h-8 w-8" /> : null}
+        {/* A brief suspense beat before the lot's player appears, mirroring
+            sabotage draft's turn reveal -- the name/portrait/matchup hold
+            behind a "Revealing…" placeholder for useLotReveal's delay, then
+            crossfade in. The slot badge and team logo above stay put; only
+            the player's own identity is gated. */}
+        <Reveal
+          revealed={lotRevealed}
+          concealed={
+            <div aria-label="Revealing this lot's player" className="flex min-h-64 w-full flex-col items-center justify-center gap-2">
+              <LotSpinner lot={lot} lots={lots} currentLot={turn.currentLot} />
+              <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel uppercase">Revealing…</span>
             </div>
-          </Concealed>
-        }
-      >
-        <PointsReveal lot={lot} />
-      </Reveal>
+          }
+        >
+          <div className="flex w-full flex-col items-center">
+            <LotPortrait name={lot.display_name} headshotUrl={lot.headshot_url} className="h-28 w-28 text-4xl" />
+            <h2 className="mt-3 max-w-full truncate font-slab text-3xl leading-none uppercase text-fg">{lot.display_name}</h2>
+            <AuctionMatchup lot={lot} />
+          </div>
+        </Reveal>
+        {phase === "sold" ? <div className="mt-4 w-full"><SoldHeadline lot={lot} players={players} /></div> : null}
+        {/* The score is the card's final band: it stays concealed during the
+            contest, then turns into a bold result without becoming a second,
+            disconnected card. */}
+        <div className="mt-4 -mx-4 -mb-5 w-[calc(100%+2rem)] border-t border-line">
+          <Reveal
+            revealed={phase === "sold"}
+            concealed={
+              <Concealed label="Fantasy points, hidden until this lot is won" className="rounded-none px-3.5 py-4">
+                <div className="relative flex flex-col items-center gap-1 text-center">
+                  <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel uppercase">Fantasy points</span>
+                  <span className="font-slab text-4xl leading-none text-panel">? ? ?</span>
+                </div>
+              </Concealed>
+            }
+          >
+            <PointsReveal lot={lot} tier={revealTier} />
+          </Reveal>
+        </div>
+      </div>
 
       {/* Mounted for the whole lot rather than created with the reveal. A
           status region that enters the DOM already holding its text is
@@ -449,33 +468,29 @@ export function AuctionMatch({
 
       </section>
 
-      <section className="flex min-h-0 flex-col lg:col-start-1 lg:row-start-1" aria-label="The controls">
+      <section className="flex min-h-0 flex-col gap-3 lg:col-start-1 lg:row-start-1" aria-label="The controls">
         {me ? (
-          <BidBar
-            phase={phase}
-            price={price}
-            budget={me.budget}
-            remainingMs={remainingMs}
-            onClock={onClock}
-            isMine={phase === "bidding_self"}
-            blocked={blocked}
-            pending={pending}
-            paused={isPaused}
-            error={error}
-            slot={slotFor(lot)}
-            onRaise={(amount) => act(getClient().schema("auction").rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
-            onPass={() => act(getClient().schema("auction").rpc("pass_lot", { p_match_id: matchId }))}
-          />
+          <>
+            <BidBar
+              phase={phase}
+              price={price}
+              budget={me.budget}
+              onClock={onClock}
+              isMine={phase === "bidding_self"}
+              blocked={blocked}
+              pending={pending}
+              paused={isPaused}
+              error={error}
+              slot={slotFor(lot)}
+              onRaise={(amount) => act(getClient().schema("auction").rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
+              onPass={() => act(getClient().schema("auction").rpc("pass_lot", { p_match_id: matchId }))}
+            />
+            <AuctionClock phase={phase} remainingMs={remainingMs} onClock={onClock} isMine={phase === "bidding_self"} />
+          </>
         ) : <p className="min-h-17 text-sm text-fg-muted">You&apos;re watching this one.</p>}
       </section>
 
       <aside className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1" aria-label="The table">
-      {format ? (
-        <p role="note" aria-label="Auction format" className="mb-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
-          {format.scoringMode === "season_total" ? "season total" : format.scoringMode} · {format.rosterPreset} · {format.qbSlots + format.rbSlots + format.wrSlots + format.teSlots + format.flexSlots} slots · ${format.purse} purse · {eraLabel(format)}
-        </p>
-      ) : null}
-      <header className="flex items-baseline justify-between gap-3"><p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">The table</p><p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">Lot {turn.currentLot}</p></header>
       <PlayerRail
         players={players}
         lots={lots}
@@ -605,6 +620,113 @@ function UndealtBoardCell({ seq }: { seq: number }) {
   );
 }
 
+function shuffle<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [copy[i], copy[j]] = [copy[j], copy[i]]; }
+  return copy;
+}
+
+/**
+ * The concealed side of the lot reveal: a slot-machine reel cycling through
+ * decoy names and landing on the real player as <Reveal> swaps to the final
+ * card. This deliberately follows Sabotage Draft's TurnSpinner: the answer
+ * is the last physical reel row, not a separate card that appears after the
+ * reel has stopped.
+ *
+ * Decoys come only from already-settled lots (`seq < currentLot`) -- the
+ * same lots SettledBoardCell already names in the board strip above. Later,
+ * undealt lots stay unnamed everywhere else in this UI (UndealtBoardCell
+ * shows no identity), so the reel doesn't spoil those either, even though
+ * their rows are technically already sitting in `lots`.
+ */
+function LotSpinner({ lot, lots, currentLot }: { lot: Lot; lots: Lot[]; currentLot: number }) {
+  // Snapshot at mount, not live: `lots` gets a fresh array reference on every
+  // realtime refetch (see refetch()'s unconditional setLots), most of them
+  // unrelated to this lot. Re-deriving decoys off a moving `lots` would
+  // reshuffle the reel mid-spin; a snapshot from the moment this reveal
+  // started can't.
+  const decoys = useMemo(() => {
+    const settled = shuffle(lots.filter((candidate) => candidate.seq < currentLot)).slice(0, 7);
+
+    // The first lot has no earlier player to borrow, and the second has only
+    // one. Repeat a neutral reel row instead of borrowing future lots: that
+    // would spoil players before their own reveal. Seven rows keeps the
+    // travel distance stable; `lot` is always appended below as the answer.
+    return Array.from({ length: 7 }, (_, index) => settled[index] ?? null);
+  // This is intentionally a snapshot for one spin; realtime refreshes must
+  // not reshuffle its rows mid-animation.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lot.seq]);
+  const reelItems = [...decoys, lot];
+
+  return (
+    <div className="h-52 w-full overflow-hidden" aria-hidden="true">
+      {/* Motion-safe: the slot-machine scroll, timed to run for
+          useLotReveal's whole delay -- animation-duration is set from
+          LOT_REVEAL_MS inline so the two can't drift apart (see globals.css's
+          .animate-reel-spin comment, shared with sabotage draft's own reel). */}
+      <div
+        className="animate-reel-spin motion-reduce:hidden flex flex-col"
+        style={{ "--reel-count": reelItems.length, animationDuration: `${LOT_REVEAL_MS}ms` } as CSSProperties}
+      >
+        {reelItems.map((item, index) => (
+          <span key={item ? `${item.seq}-${index}` : `placeholder-${index}`} className="flex h-52 shrink-0 flex-col items-center justify-center gap-2">
+            {item ? (
+              <>
+                <LotPortrait name={item.display_name} headshotUrl={item.headshot_url} className="h-20 w-20 text-2xl" />
+                <span className="max-w-[85%] truncate font-slab text-lg tracking-[0.02em] text-panel uppercase">{item.display_name}</span>
+              </>
+            ) : (
+              <>
+                <span aria-hidden className="flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-panel-muted font-slab text-4xl text-panel-muted">?</span>
+                <span className="font-mono text-xs tracking-[0.15em] text-panel-muted uppercase">Scanning…</span>
+              </>
+            )}
+          </span>
+        ))}
+      </div>
+      {/* Motion-reduce: no animation to spin, so this never depends on one
+          -- a plain "still choosing" state instead of a reel frozen on a
+          decoy. */}
+      <p className="hidden h-52 items-center justify-center font-mono text-xs text-panel-muted uppercase motion-reduce:flex">Spinning…</p>
+    </div>
+  );
+}
+
+function LotPortrait({ name, headshotUrl, className = "h-16 w-16 text-2xl" }: { name: string; headshotUrl: string | null; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (headshotUrl && !failed) {
+    return <img src={headshotUrl} alt="" onError={() => setFailed(true)} className={`shrink-0 rounded-full bg-panel-shade object-cover object-top ${className}`} />;
+  }
+  return <span aria-hidden className={`flex shrink-0 items-center justify-center rounded-full bg-hidden font-slab text-panel ${className}`}><span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span></span>;
+}
+
+function AuctionTeam({ code }: { code: string }) {
+  const logoCode = auctionLogoCode(code);
+  return (
+    <span className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+      {logoCode ? <TeamLogo code={logoCode} className="h-9 w-9" /> : <span aria-hidden className="h-9 w-9 rounded-full border border-line" />}
+      <span className="font-slab text-lg leading-none text-fg uppercase">{code}</span>
+    </span>
+  );
+}
+
+function AuctionMatchup({ lot }: { lot: Lot }) {
+  const weekly = lot.week !== null && lot.opponent !== null;
+  return (
+    <div className="mt-4 w-full border-t border-line pt-3" aria-label={weekly ? `${lot.season}, week ${lot.week}, ${lot.team} versus ${lot.opponent}` : `${lot.season} season, ${lot.team}`}>
+      <p className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">{weekly ? `${lot.season} · week ${lot.week}` : `${lot.season} season`}</p>
+      {weekly ? (
+        <div className="mt-2 flex items-center gap-3">
+          <AuctionTeam code={lot.team} />
+          <span className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">vs</span>
+          <AuctionTeam code={lot.opponent!} />
+        </div>
+      ) : <div className="mt-2 flex justify-center"><AuctionTeam code={lot.team} /></div>}
+    </div>
+  );
+}
+
 /**
  * The payoff is the concealed surface turning over, not a second card. The
  * visible face stays out of the accessibility tree entirely: the lot's status
@@ -632,20 +754,17 @@ function SoldHeadline({ lot, players }: { lot: Lot; players: Player[] }) {
   );
 }
 
-function soldRosterName(name: string): string {
-  const [first, ...rest] = name.trim().split(/\s+/);
-  return rest.length === 0 ? name : `${first[0]}. ${rest.join(" ")}`;
-}
-
-function PointsReveal({ lot }: { lot: Lot }) {
+function PointsReveal({ lot, tier }: { lot: Lot; tier: ReturnType<typeof weeklyRevealTier> }) {
+  const copy = tier === "rough" ? "Rough outing" : tier === "solid" ? "Solid game" : tier === "great" ? "Big game" : null;
   return (
-    <div aria-hidden className="flex items-baseline justify-between gap-3 rounded-card bg-panel px-3.5 py-3 text-panel-fg shadow-card">
-      <span className="font-mono text-[11px] tracking-[0.15em] text-panel-muted uppercase">
+    <div aria-hidden className={`auction-points-reveal auction-points-reveal--${tier ?? "season"} flex flex-col items-center gap-1 bg-panel px-3.5 py-4 text-center text-panel-fg`}>
+      <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel-muted uppercase">
         Fantasy points
       </span>
-      <span className="min-w-0 font-slab text-lg leading-none tabular-nums">
+      <span className={`min-w-0 font-slab text-4xl leading-none tabular-nums ${tier === "rough" ? "text-grade-rough" : tier === "solid" ? "text-grade-strong" : tier === "great" ? "text-grade-elite" : ""}`}>
         {fmt(lot.points)}
       </span>
+      {copy ? <span className="font-mono text-[10px] font-bold tracking-[0.12em] text-panel-muted uppercase">{copy}</span> : null}
     </div>
   );
 }
@@ -676,105 +795,102 @@ function PlayerRail({
   format: AuctionFormat | null;
   price: number;
 }) {
-  const [open, setOpen] = useState<Record<string, boolean>>(() => ({ [viewerId]: true }));
-
   return (
-    <ul className="mt-2 flex flex-col gap-2">
+    <div className="auction-roster-board mt-2 flex flex-col divide-y divide-line border border-line bg-surface-raised">
       {players.map((player) => {
         const acting = player.seat === turnSeat;
         const total = revealedTotal(lots, player.user_id);
         const holding = holder === player.user_id;
-        const isOpen = open[player.user_id] ?? false;
+        const mine = player.user_id === viewerId;
         const highlightLot = soldLot?.winner_id === player.user_id ? soldLot : null;
+        const filled = lots.filter((lot) => lot.winner_id === player.user_id && lot.slot !== null).length;
+        const slotCount = rosterSlots(format).length;
+        const status = holding
+          ? `High bid · $${price}`
+          : acting
+            ? "On the clock"
+            : passedSeats.includes(player.seat)
+              ? "Passed"
+              : `${filled}/${slotCount} filled`;
 
         return (
-          <li
+          <details
             key={player.user_id}
-            className={`rounded border px-3 py-2.5 transition-colors ${
+            open={mine}
+            className={`transition-colors ${
               soldLot?.winner_id === player.user_id
-                ? "border-panel bg-panel/10 motion-safe:animate-sold-once"
+                ? "bg-panel/10 motion-safe:animate-sold-once"
                 : holding
-                  ? "border-panel bg-panel/5"
+                  ? "bg-panel/5"
                   : acting
-                    ? "border-panel/45 bg-surface-raised"
-                    : "border-line bg-transparent"
+                    ? "bg-panel/5"
+                    : "bg-transparent"
             }`}
           >
-            <button
-              type="button"
-              aria-expanded={isOpen}
-              onClick={() => setOpen((previous) => ({ ...previous, [player.user_id]: !isOpen }))}
-              className="flex w-full flex-col gap-2 text-left"
-            >
-              <span className="flex items-center gap-2">
-                <span aria-hidden className={`shrink-0 font-mono text-[11px] leading-none text-fg-muted transition-transform ${isOpen ? "rotate-90" : ""}`}>▶</span>
-                <span className="truncate font-slab text-[15px] leading-none uppercase">
-                  {player.display_name}
+            <summary className="grid cursor-pointer grid-cols-[1.85rem_minmax(0,1fr)_auto_1rem] items-center gap-2.5 px-3 py-2.5 hover:bg-panel/5">
+              <AuctionRosterAvatar name={player.display_name} avatarUrl={player.avatar_url} mine={mine} />
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="flex min-w-0 items-center gap-1.5 font-slab text-base leading-none uppercase">
+                  <span className="truncate">{mine ? "You" : player.display_name}</span>
+                  {mine ? <span className="font-mono text-[8px] tracking-[0.07em] text-hidden-text">YOU</span> : null}
                 </span>
-                <span className="shrink-0 rounded border border-line px-1.5 py-0.5 font-mono text-[11px] text-fg-muted tabular-nums">
-                  ${player.budget}{player.user_id === viewerId ? <span className="ml-1.5 tracking-[0.13em]">YOU</span> : null}
+                <span className={`font-mono text-[9px] tracking-[0.07em] uppercase ${acting || holding ? "text-hidden-text" : "text-fg-muted"}`}>
+                  {status}
                 </span>
-                {holding ? (
-                  <span
-                    role="img"
-                    aria-label={`High bid $${price}`}
-                    className="shrink-0 bg-panel px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.08em] text-panel-fg tabular-nums uppercase"
-                  >
-                    High bid · ${price}
-                  </span>
-                ) : null}
-                {acting || passedSeats.includes(player.seat) ? <span className="shrink-0 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">{acting ? "on the clock" : "passed"}</span> : null}
-                <span role="img" className="ml-auto shrink-0 text-lg font-bold tabular-nums" aria-label={`${fmt(total)} points`}>{fmt(total)}</span>
               </span>
-              {!isOpen ? <Roster lots={lots} userId={player.user_id} format={format} highlightLot={highlightLot} compact /> : null}
-            </button>
-
-            {/* The seat's state word lives in the header above, in every
-                disclosure state. Repeating it here read it out twice. */}
-            {isOpen ? (
-              <div className="mt-2">
+              <span className="flex items-center gap-2 whitespace-nowrap font-mono text-[11px] tabular-nums">
+                <span className="text-fg-muted">${player.budget}</span>
+                <span role="img" aria-label={`${fmt(total)} points`} className="text-lg font-bold leading-none text-fg">{fmt(total)}</span>
+              </span>
+              <Chevron className="roster-chev h-4 w-4 shrink-0 text-fg-muted transition-transform" />
+            </summary>
+            <div className="px-2.5 pb-2.5">
+              <div className="flex flex-col gap-1.5 bg-panel p-1.5 text-panel-fg">
                 <Roster lots={lots} userId={player.user_id} format={format} highlightLot={highlightLot} />
               </div>
-            ) : null}
-          </li>
+            </div>
+          </details>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
-/** Filled slots show what they hold. Unfilled ones are a dashed gap — an empty
- *  slot is absent, not withheld, and the concealed weave is reserved for the
- *  fantasy points, which exist and are being kept from you. */
-function Roster({ lots, userId, format, highlightLot = null, compact = false }: { lots: Lot[]; userId: string; format: AuctionFormat | null; highlightLot?: Lot | null; compact?: boolean }) {
+function AuctionRosterAvatar({ name, avatarUrl, mine }: { name: string; avatarUrl: string | null; mine: boolean }) {
+  const [failed, setFailed] = useState(false);
+  if (avatarUrl && !failed) return <img src={avatarUrl} alt="" onError={() => setFailed(true)} className="h-7 w-7 shrink-0 rounded-full object-cover" />;
+  return <span aria-hidden className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-slab text-base ${mine ? "bg-hidden text-panel" : "bg-surface text-fg"}`}><span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span></span>;
+}
+
+function Chevron({ className }: { className?: string }) {
+  return <svg aria-hidden viewBox="0 0 16 16" fill="none" className={className}><path d="m6 3 5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+/** Filled slots are a legible roster row; empty slots remain a dashed gap. */
+function Roster({ lots, userId, format, highlightLot = null }: { lots: Lot[]; userId: string; format: AuctionFormat | null; highlightLot?: Lot | null }) {
   const slots = rosterSlots(format);
   const wonBySlot = (slot: Slot) => lots.filter((lot) => lot.winner_id === userId && lot.slot === slot);
   return (
-    <span className="flex flex-wrap gap-1">
+    <div className="flex flex-col gap-1.5">
       {slots.map(({ slot, index, label }) => {
         const won = wonBySlot(slot)[index - 1] ?? null;
         const justAdded = won?.seq === highlightLot?.seq;
-        const lit = justAdded ? "ring-2 ring-panel motion-safe:animate-player-to-roster" : "";
+        const tone = won ? "border-panel-fg/10 bg-panel-fg/[0.02]" : "border-dashed border-panel-fg/10";
 
         return (
-          <span key={`${slot}-${index}`}>
+          <div key={`${slot}-${index}`} className={`flex min-h-10 items-center justify-between gap-3 rounded border px-2.5 py-2 ${tone} ${justAdded ? "ring-2 ring-panel motion-safe:animate-player-to-roster" : ""}`}>
+            <span className="shrink-0 font-mono text-[10px] tracking-[0.07em] text-panel-muted uppercase">{label}</span>
             {won ? (
-              <span
-                role="img"
-                aria-label={`${label} slot, ${won.display_name}, ${fmt(won.points)} points`}
-                className={`flex h-7 min-w-11 items-center justify-center bg-panel px-1.5 font-mono text-[11px] text-panel-fg tabular-nums ${lit}`}
-              >
-                {label}
-                {justAdded ? <span className="ml-1 truncate">· {soldRosterName(won.display_name)}</span> : null}
-                {compact || justAdded ? null : <><span className="hidden lg:inline"> · {won.display_name}</span> {fmt(won.points)}</>}
+              <span role="img" aria-label={`${label} slot, ${won.display_name}, ${fmt(won.points)} points`} className="flex min-w-0 items-center gap-2 text-sm">
+                {won.headshot_url ? <img src={won.headshot_url} alt="" className="h-6 w-6 shrink-0 rounded-full bg-panel-shade object-cover object-top" /> : <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-hidden font-slab text-[9px] text-panel">{won.display_name.slice(0, 1)}</span>}
+                <span className="truncate font-semibold">{won.display_name}</span>
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-panel-muted">{fmt(won.points)}</span>
               </span>
-            ) : (
-              <span role="img" aria-label={`${label} slot, empty`} className={`h-7 min-w-11 items-center justify-center border border-dashed border-fg-muted/70 px-1.5 font-mono text-[11px] tracking-[0.1em] text-fg-muted ${compact ? "hidden lg:flex" : "flex"}`}>{label}</span>
-            )}
-          </span>
+            ) : <span role="img" aria-label={`${label} slot, empty`} className="font-mono text-[10px] text-panel-muted">— empty —</span>}
+          </div>
         );
       })}
-    </span>
+    </div>
   );
 }
 
@@ -789,11 +905,34 @@ function Roster({ lots, userId, format, highlightLot = null, compact = false }: 
  * indistinguishable from a broken app is the difference between a rule and a
  * bug.
  */
+function AuctionClock({ phase, remainingMs, onClock, isMine }: { phase: "lot_preview" | "bidding_self" | "bidding_other" | "sold"; remainingMs: number | null; onClock: Player | null; isMine: boolean }) {
+  const seconds = remainingMs === null ? null : Math.ceil(remainingMs / 1000);
+  const live = phase === "bidding_self" || phase === "bidding_other";
+  const fraction = remainingMs === null
+    ? 0
+    : Math.min(1, remainingMs / (live ? DURATION_MS.bidding - VISIBLE_SLACK_MS : DURATION_MS[phase === "sold" ? "sold" : "lot_preview"]));
+  const urgent = remainingMs !== null && remainingMs <= 3_000 && live;
+  const display = remainingMs === null ? "—" : remainingMs < TENTHS_THRESHOLD_MS ? (remainingMs / 1000).toFixed(1) : `${seconds}`;
+  const announcement = live && seconds !== null && [10, 5, 3].includes(seconds) ? `${seconds} seconds left` : "";
+  const tone = urgent ? "border-hidden bg-hidden/10 text-hidden-text" : "border-line bg-surface-raised text-fg";
+  const label = phase === "lot_preview" ? "Bidding has not started" : phase === "sold" ? "Sold" : isMine ? "Your turn" : `${onClock?.display_name ?? "Someone"} is deciding`;
+
+  return (
+    <section aria-label="Clock" className={`rounded border p-3 transition-colors ${tone}`}>
+      <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
+      <p className={`mt-1 font-mono text-5xl leading-none tabular-nums ${urgent ? "text-hidden-text" : ""}`} aria-hidden>{display}</p>
+      <p aria-live="polite" className="sr-only">{announcement}</p>
+      <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-current/20">
+        <div className="h-full bg-current" style={{ width: `${fraction * 100}%`, transition: `width ${TICK_MS}ms linear` }} />
+      </div>
+    </section>
+  );
+}
+
 function BidBar({
   phase,
   price,
   budget,
-  remainingMs,
   onClock,
   isMine,
   blocked,
@@ -806,7 +945,6 @@ function BidBar({
 }: {
   price: number;
   budget: number;
-  remainingMs: number | null;
   onClock: Player | null;
   isMine: boolean;
   blocked: ReturnType<typeof blockedReason>;
@@ -845,29 +983,7 @@ function BidBar({
     if (dismissed.current) { dismissed.current = false; customButton.current?.focus(); }
     else surface.current?.focus();
   }, [custom]);
-  const seconds = remainingMs === null ? null : Math.ceil(remainingMs / 1000);
-  const live = phase === "bidding_self" || phase === "bidding_other";
-  const fraction =
-    remainingMs === null
-      ? 0
-      : Math.min(
-          1,
-          remainingMs /
-            (live
-              ? DURATION_MS.bidding - VISIBLE_SLACK_MS
-              : DURATION_MS[phase === "sold" ? "sold" : "lot_preview"]),
-        );
-  const urgent = seconds !== null && seconds <= 3 && live;
   const invalid = !Number.isInteger(Number(amount)) || Number(amount) < minimum || Number(amount) > budget;
-  const tone = urgent
-    ? "border-hidden bg-hidden/10 text-hidden-text"
-    : isMine
-      ? "border-panel bg-panel text-panel-fg"
-      : "border-line bg-surface-raised text-fg";
-
-  // The visible timer changes ten times a second. The live region stays empty
-  // except at the agreed moments, so it never narrates the intervening ticks.
-  const announcement = live && seconds !== null && [10, 5, 3].includes(seconds) ? `${seconds} seconds left` : "";
   const status = paused
     ? "The host paused the game."
     : phase === "lot_preview"
@@ -883,33 +999,18 @@ function BidBar({
           : `A win fills your open ${slot}.`;
 
   return (
-    <div
+    <section
       ref={surface}
       tabIndex={-1}
-      className="relative grid gap-2 rounded bg-surface-raised p-3 shadow-well outline-none"
+      aria-label="Bid controls"
+      className="relative rounded border border-line bg-surface px-3 py-3 outline-none"
     >
-      <section aria-label="Clock" className={`rounded border p-3 transition-colors ${tone}`}>
-        <p className={`font-mono text-[11px] tracking-[0.15em] uppercase ${isMine ? "text-panel-muted" : "text-fg-muted"}`}>
-          {phase === "lot_preview" ? "Bidding has not started" : phase === "sold" ? "Sold" : isMine ? "Your turn" : `${onClock?.display_name ?? "Someone"} is deciding`}
-        </p>
-        {/* The countdown runs to 9.5s against a real 10s deadline, preserving
-            half a second of real deadline after the visible clock empties. */}
-        <p className={`mt-1 font-slab text-5xl leading-none tabular-nums ${urgent ? "text-hidden-text" : ""}`} aria-hidden>
-          {seconds === null ? "—" : `${seconds}s`}
-        </p>
-        <p aria-live="polite" className="sr-only">{announcement}</p>
-        <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-current/20">
-          <div className="h-full bg-current" style={{ width: `${fraction * 100}%`, transition: `width ${TICK_MS}ms linear` }} />
-        </div>
-      </section>
-
-      <section aria-label="Bid controls" className="rounded border border-line bg-surface px-3 py-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">Standing bid</span>
-          <span className="font-slab text-2xl leading-none tabular-nums">{phase === "lot_preview" ? "—" : `$${price}`}</span>
-        </div>
-        <p className="mt-1 font-mono text-[11px] text-fg-muted tabular-nums">Your budget · ${budget} left</p>
-        <div className="mt-3 flex gap-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">Standing bid</span>
+        <span className="font-slab text-2xl leading-none tabular-nums">{phase === "lot_preview" ? "—" : `$${price}`}</span>
+      </div>
+      <p className="mt-1 font-mono text-[11px] text-fg-muted tabular-nums">Your budget · ${budget} left</p>
+      <div className="mt-3 flex gap-2">
         {INCREMENTS.map((increment) => (
           <Button
             key={increment}
@@ -923,19 +1024,18 @@ function BidBar({
         <Button ref={customButton} type="button" disabled={!actionable} onClick={() => { setAmount(String(minimum)); setCustomFor(interactionKey); }}>
           Custom
         </Button>
-        </div>
-        <p role={error && !custom ? "alert" : undefined} className={`mt-3 min-h-5 text-xs leading-5 ${error && !custom ? "text-hidden-text" : "text-fg-muted"}`}>{custom ? status : error ?? status}</p>
-        {/* Passing is permanent for this lot, so it needs a deliberate,
-            thumb-sized target of its own. Ghost keeps Raise as the primary
-            action while the divider prevents a hurried bid from becoming a
-            pass. The button remains in place while disabled so the controls
-            never shift during a turn change. */}
-        <div className="mt-3 border-t border-line pt-3">
-          <Button type="button" variant="ghost" disabled={!actionable} onClick={onPass}>
-            Pass
-          </Button>
-        </div>
-      </section>
+      </div>
+      <p role={error && !custom ? "alert" : undefined} className={`mt-3 min-h-5 text-xs leading-5 ${error && !custom ? "text-hidden-text" : "text-fg-muted"}`}>{custom ? status : error ?? status}</p>
+      {/* Passing is permanent for this lot, so it needs a deliberate,
+          thumb-sized target of its own. Ghost keeps Raise as the primary
+          action while the divider prevents a hurried bid from becoming a
+          pass. The button remains in place while disabled so the controls
+          never shift during a turn change. */}
+      <div className="mt-3 border-t border-line pt-3">
+        <Button type="button" variant="ghost" disabled={!actionable} onClick={onPass}>
+          Pass
+        </Button>
+      </div>
       <AnimatePresence>
         {custom && (
           <motion.form
@@ -959,7 +1059,7 @@ function BidBar({
           </motion.form>
         )}
       </AnimatePresence>
-    </div>
+    </section>
   );
 }
 
@@ -1028,23 +1128,36 @@ function FinalScreen({
   );
 }
 
-/** The full roster, so there is something to argue about afterwards. */
+/** The auction's post-game roster, using the same portrait-forward rhythm as
+ * Sabotage Draft's final roster while retaining price and fantasy points. */
 function RosterFinal({ lots, userId, format }: { lots: Lot[]; userId: string; format: AuctionFormat | null }) {
   const won = lots.filter((l) => l.winner_id === userId);
 
   return (
-    <dl className="flex flex-col gap-1 font-mono text-[11px] text-panel-muted">
+    <dl className="flex flex-col gap-2">
       {rosterSlots(format).map(({ slot, index, label }) => {
         const lot = won.filter((l) => l.slot === slot)[index - 1] ?? null;
+        const tier = lot ? weeklyRevealTier(lot) : null;
         return (
-          <div key={`${slot}-${index}`} className="flex items-baseline justify-between gap-2">
-            <dt className="w-10 shrink-0 uppercase">{label}</dt>
-            <dd className="flex-1 truncate text-panel-fg">
-              {lot ? `${lot.display_name} · ${lot.season}${lot.week === null ? ` · ${lot.team}` : ` wk ${lot.week}`}` : "—"}
-            </dd>
-            <dd className="shrink-0 font-bold text-panel-fg tabular-nums">
-              {lot ? `$${lot.price} · ${fmt(lot.points)}` : ""}
-            </dd>
+          <div key={`${slot}-${index}`} className="flex min-w-0 items-center gap-2.5">
+            <dt className="w-9 shrink-0 font-mono text-[10px] tracking-[0.05em] text-panel-muted uppercase">{label}</dt>
+            {lot ? (
+              <>
+                <LotPortrait name={lot.display_name} headshotUrl={lot.headshot_url} className="h-7 w-7 text-xs" />
+                <dd className="min-w-0 flex-1 truncate text-[11px] text-panel-fg">
+                  <span className="font-semibold">{lot.display_name}</span>
+                  <span className="ml-1 text-panel-muted">· {lot.season}</span>
+                  <span className="ml-1 inline-flex items-center gap-1 text-panel-muted">
+                    {auctionLogoCode(lot.team) ? <TeamLogo code={auctionLogoCode(lot.team)!} className="h-3 w-3" /> : null}
+                    {lot.team}{lot.opponent ? ` vs ${lot.opponent}` : ""}
+                  </span>
+                </dd>
+                <dd className="flex shrink-0 items-baseline gap-1.5 tabular-nums">
+                  <span className="font-mono text-[10px] text-panel-muted">${lot.price}</span>
+                  <span className={`font-slab text-lg leading-none ${tier === "rough" ? "text-grade-rough" : tier === "solid" ? "text-grade-strong" : tier === "great" ? "text-grade-elite" : "text-panel-fg"}`}>{fmt(lot.points)}</span>
+                </dd>
+              </>
+            ) : <dd className="text-[11px] text-panel-muted">—</dd>}
           </div>
         );
       })}

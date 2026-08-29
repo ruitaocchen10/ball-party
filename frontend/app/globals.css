@@ -201,15 +201,42 @@ body {
     100% { opacity: 1; transform: translateY(0); }
   }
 
-  /* Sabotage draft's roster board (SabotageDraftMatch's RosterBoard): a
-     native <details> per player instead of useState, the same instinct as
-     the auction's own PlayerRail, just backed by the platform. Scoped under
-     .sabotage-roster-board so removing <summary>'s native disclosure
-     triangle never reaches any other <summary> in the app. */
-  .sabotage-roster-board summary {
+  /* Auction score reveals get one short, outcome-shaped motion beat. Red is
+     never used here: the score is public by this point, so the existing public
+     grade ladder carries the judgement instead. */
+  @media (prefers-reduced-motion: no-preference) {
+    .auction-points-reveal--rough { animation: auction-points-rough 520ms cubic-bezier(.34, 1.4, .64, 1) both; }
+    .auction-points-reveal--solid { animation: auction-points-solid 440ms cubic-bezier(.16, 1, .3, 1) both; }
+    .auction-points-reveal--great { animation: auction-points-great 580ms cubic-bezier(.16, 1, .3, 1) both; }
+  }
+
+  @keyframes auction-points-rough {
+    0% { opacity: 0; transform: translateY(-0.45rem) scale(1.12); }
+    60% { opacity: 1; transform: translateY(0.15rem) scale(.94); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes auction-points-solid {
+    0% { opacity: 0; transform: translateY(0.45rem) scale(.84); }
+    70% { opacity: 1; transform: translateY(-0.08rem) scale(1.04); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes auction-points-great {
+    0% { opacity: 0; transform: translateY(0.55rem) scale(.7); }
+    58% { opacity: 1; transform: translateY(-0.15rem) scale(1.14); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* The live games' roster boards share one native disclosure treatment.
+     Scoping keeps the browser marker out of these intentional chevrons
+     without changing unrelated <summary> elements elsewhere in the app. */
+  .sabotage-roster-board summary,
+  .auction-roster-board summary {
     list-style: none;
   }
-  .sabotage-roster-board summary::-webkit-details-marker {
+  .sabotage-roster-board summary::-webkit-details-marker,
+  .auction-roster-board summary::-webkit-details-marker {
     display: none;
   }
   /* .roster-chev (see Chevron in SabotageDraftMatch.tsx) rests pointing
@@ -218,7 +245,8 @@ body {
      state would sit in a cascade layer above this one and always win
      regardless of this selector's specificity, permanently pinning the
      icon no matter what `details[open]` says. */
-  .sabotage-roster-board details[open] > summary .roster-chev {
+  .sabotage-roster-board details[open] > summary .roster-chev,
+  .auction-roster-board details[open] > summary .roster-chev {
     transform: rotate(90deg);
   }
 

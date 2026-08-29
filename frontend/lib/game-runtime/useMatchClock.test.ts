@@ -373,6 +373,32 @@ describe("pausing", () => {
     });
   });
 
+  it("freezes at the value remainingMs actually held, not at serverNow's original snapshot", async () => {
+    await withFakeTimers(async () => {
+      const { result, rerender } = renderHook(
+        ({ paused }: { paused: boolean }) =>
+          useMatchClock({
+            serverNow: iso(0),
+            deadline: iso(10_000),
+            paused,
+            expire: vi.fn(),
+            reconcile: vi.fn(),
+          }),
+        { initialProps: { paused: false } },
+      );
+      await advance(4_000);
+      const beforePause = result.current.remainingMs;
+
+      rerender({ paused: true });
+      await advance(0);
+      // Bug this guards against: recomputing the offset from `serverNow`
+      // (unchanged since mount) on the pause transition snapped `now` back
+      // to serverNow's own timestamp, jumping remainingMs back up toward its
+      // original 10_000 instead of holding the ~6_000 it actually reached.
+      expect(result.current.remainingMs).toBe(beforePause);
+    });
+  });
+
   it("picks the countdown back up once unpaused", async () => {
     await withFakeTimers(async () => {
       const { result, rerender } = renderHook(
@@ -394,6 +420,30 @@ describe("pausing", () => {
       rerender({ paused: false });
       await advance(2_000);
       expect(result.current.remainingMs).toBeLessThan(frozen!);
+    });
+  });
+
+  it("resumes without a spurious jump when the caller's deadline has already been shifted by the pause duration", async () => {
+    await withFakeTimers(async () => {
+      // The server (resume_match) shifts the real deadline forward by exactly
+      // how long the pause lasted, and the caller passes that update in
+      // alongside `paused: false` — this is the hook's half of that contract:
+      // given a deadline that already accounts for the pause, the countdown
+      // must continue exactly where it froze, not jump because of anything
+      // the hook itself does on the resume transition.
+      const { result, rerender } = renderHook(
+        ({ paused, deadline }: { paused: boolean; deadline: string }) =>
+          useMatchClock({ serverNow: iso(0), deadline, paused, expire: vi.fn(), reconcile: vi.fn() }),
+        { initialProps: { paused: false, deadline: iso(10_000) } },
+      );
+      await advance(4_000);
+      const beforePause = result.current.remainingMs; // ~6_000
+
+      rerender({ paused: true, deadline: iso(10_000) });
+      await advance(3_000); // 3s of real time passes while paused
+
+      rerender({ paused: false, deadline: iso(13_000) }); // shifted by the 3s pause
+      expect(result.current.remainingMs).toBe(beforePause);
     });
   });
 });

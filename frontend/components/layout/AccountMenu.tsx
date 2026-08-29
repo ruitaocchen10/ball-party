@@ -32,15 +32,23 @@ import { dropdown, dropdownUp } from "@/lib/motion";
 export function AccountMenu({
   displayName,
   email = null,
+  avatarUrl = null,
   placement = "down",
   compact = false,
 }: {
   displayName: string;
   email?: string | null;
+  avatarUrl?: string | null;
   placement?: "down" | "up";
   compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [seenAvatarUrl, setSeenAvatarUrl] = useState(avatarUrl);
+  if (avatarUrl !== seenAvatarUrl) {
+    setSeenAvatarUrl(avatarUrl);
+    setImageFailed(false);
+  }
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -125,9 +133,18 @@ export function AccountMenu({
       >
         <span
           aria-hidden
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel font-slab text-sm leading-none text-panel-fg shadow-card"
+          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-panel font-slab text-sm leading-none text-panel-fg shadow-card"
         >
-          <span className="font-slab-optical-center">{initials(displayName)}</span>
+          {avatarUrl && !imageFailed ? (
+            <motion.img
+              src={avatarUrl}
+              alt=""
+              onError={() => setImageFailed(true)}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="font-slab-optical-center">{initials(displayName)}</span>
+          )}
         </span>
         {!compact ? (
           <span className="min-w-0 flex-1 text-left">

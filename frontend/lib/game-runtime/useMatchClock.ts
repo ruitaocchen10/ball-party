@@ -133,21 +133,29 @@ export function useMatchClock({
   expire,
   reconcile,
 }: MatchClockOptions): { remainingMs: number | null; reconcile: () => void } {
-  // How far this browser's clock is from the server's. Re-measured every time
-  // a fresh `serverNow` arrives, which is also the only thing the ticking
-  // effect below depends on — restarting the interval on a state update is
-  // cheap and self-correcting, not a bug.
-  //
-  // Paused skips starting the interval, but still measures the offset and
-  // ticks once, so `now` — and therefore `remainingMs` below — freezes at
-  // whatever it reads right when the pause takes hold instead of holding
-  // whatever stale value it last had. Resuming (paused flips back to false)
-  // re-runs this and picks the countdown back up.
+  // How far this browser's clock is from the server's. Re-measured only when
+  // a fresh `serverNow` arrives — recomputing it every time `paused` toggles
+  // instead would treat serverNow as still "now", discarding however much
+  // real time had actually passed since it was set. That was a real bug: a
+  // pause (or a resume) with no fresh serverNow in between would snap `now`
+  // straight back to serverNow's timestamp, making the countdown look like it
+  // had just gained or lost however long the match had been running.
   const offset = useRef(0);
   const [now, setNow] = useState(0);
 
   useEffect(() => {
     offset.current = Date.parse(serverNow) - Date.now();
+  }, [serverNow]);
+
+  // Paused skips starting the interval, but still ticks once against
+  // whatever offset is currently current, so `now` — and therefore
+  // `remainingMs` below — freezes at whatever it reads right when the pause
+  // takes hold instead of holding whatever stale value it last had. Resuming
+  // (paused flips back to false) re-runs this and picks the countdown back
+  // up from that same frozen point. `serverNow` stays a dependency so a fresh
+  // value still forces an immediate tick with the newly-updated offset,
+  // rather than waiting up to TICK_MS for the interval to catch up.
+  useEffect(() => {
     const tick = () => setNow(Date.now() + offset.current);
     tick();
     if (paused) return;
