@@ -55,17 +55,4 @@ export function franchiseName(code: string): string {
   return FRANCHISE_NAMES[code] ?? code;
 }
 
-/**
- * Public URL for a franchise's logo, uploaded once by `scripts/team_logos/`
- * into the `team-logos` Supabase Storage bucket (see
- * supabase/migrations/*_sabotage_draft_team_logos_bucket.sql) under
- * `{franchise_code}.png`. The bucket is public, so this is a plain string
- * build, not a fetch -- no client instance or auth needed, matching this
- * file's own "pure lookup" shape. Not every code is guaranteed to have a
- * file behind it (the script can fail a franchise and move on); callers
- * render this optimistically and fall back to text-only on a 404 rather than
- * treating a missing logo as an error.
- */
-export function franchiseLogoUrl(code: string): string {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/team-logos/${code}.png`;
-}
+export { franchiseLogoUrl } from "@/lib/nfl/team-logos";

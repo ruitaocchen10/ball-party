@@ -11,7 +11,7 @@ import { PauseButton } from "@/components/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/game-runtime/PostGameControls";
 import { PostGameNavigation } from "@/components/game-runtime/PostGameNavigation";
 import { AnimatedMessage } from "@/components/motion/AnimatedMessage";
-import { TeamLogo } from "@/components/sabotage-draft/TeamLogo";
+import { TeamLogo } from "@/components/ui/TeamLogo";
 import { Button } from "@/components/ui/Button";
 import { Card, CardMeta, CardTitle } from "@/components/ui/Card";
 import { Chevron } from "@/components/ui/Chevron";

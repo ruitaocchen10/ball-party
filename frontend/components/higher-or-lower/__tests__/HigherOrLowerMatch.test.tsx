@@ -152,6 +152,15 @@ describe("HigherOrLowerMatch", () => {
     expect(screen.getByRole("timer", { name: /seconds left/i })).toBeInTheDocument();
   });
 
+  it("puts the higher-or-lower decision on the challenger card", () => {
+    renderMatch();
+
+    const challenger = screen.getByRole("group", { name: "Challenger" });
+    expect(within(challenger).getByRole("button", { name: "Higher" })).toBeInTheDocument();
+    expect(within(challenger).getByRole("button", { name: "Lower" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Anchor" })).not.toContainElement(screen.getByRole("button", { name: "Higher" }));
+  });
+
   it("accepts one higher-or-lower call and disables both controls", async () => {
     const user = userEvent.setup();
     globalThis.__supabaseMock.rpc.mockImplementation(async (name: unknown) => name === "call"
@@ -309,8 +318,8 @@ describe("HigherOrLowerMatch", () => {
   it("gives each card the cues a call is made from", () => {
     renderMatch();
 
-    expect(screen.getByRole("group", { name: /anchor/i })).toHaveTextContent("RB · 2018 · NYG");
-    expect(screen.getByRole("group", { name: /challenger/i })).toHaveTextContent("QB · 2019 · KC");
+    expect(screen.getByRole("group", { name: /anchor/i })).toHaveTextContent("2018 seasonNYG");
+    expect(screen.getByRole("group", { name: /challenger/i })).toHaveTextContent("2019 seasonKC");
   });
 
   // The row's week and opponent are nullable — null for a whole season, set for
@@ -325,12 +334,8 @@ describe("HigherOrLowerMatch", () => {
       board: { scoringMode: "weekly" },
     });
 
-    expect(screen.getByRole("group", { name: /anchor/i })).toHaveTextContent(
-      "RB · 2018 · Week 12 · NYG vs. CHI",
-    );
-    expect(screen.getByRole("group", { name: /challenger/i })).toHaveTextContent(
-      "QB · 2019 · Week 4 · KC vs. DET",
-    );
+    expect(screen.getByLabelText("2018, week 12, NYG versus CHI")).toBeInTheDocument();
+    expect(screen.getByLabelText("2019, week 4, KC versus DET")).toBeInTheDocument();
   });
 
   // The ladder climbs: every card is a challenger once and the anchor after
@@ -389,6 +394,10 @@ describe("sudden death", () => {
     renderMatch({
       board: { phase: "sudden_death_call", currentQuestion: 13 },
       players: TIED,
+      cards: [
+        card({ ordinal: 12, points: 368.2, revealed_at: "2026-08-15T12:12:00Z" }),
+        card({ ordinal: 13, display_name: "Travis Kelce" }),
+      ],
     });
 
     expect(screen.getByText("Sudden death · Round 1")).toBeInTheDocument();
@@ -429,6 +438,10 @@ describe("sudden death", () => {
     renderMatch({
       board: { phase: "sudden_death_call", currentQuestion: 13 },
       players: TIED,
+      cards: [
+        card({ ordinal: 12, points: 368.2, revealed_at: "2026-08-15T12:12:00Z" }),
+        card({ ordinal: 13, display_name: "Travis Kelce" }),
+      ],
     });
 
     await user.click(screen.getByRole("button", { name: "Higher" }));
@@ -444,6 +457,10 @@ describe("sudden death", () => {
       board: { phase: "sudden_death_call", currentQuestion: 13 },
       players: [TIED[0], { ...PLAYERS[1], sudden_death: false, eliminated_at: null }],
       viewerId: "u1",
+      cards: [
+        card({ ordinal: 12, points: 368.2, revealed_at: "2026-08-15T12:12:00Z" }),
+        card({ ordinal: 13, display_name: "Travis Kelce" }),
+      ],
     });
 
     expect(screen.getByRole("button", { name: "Higher" })).toBeDisabled();
@@ -455,6 +472,10 @@ describe("sudden death", () => {
       board: { phase: "sudden_death_call", currentQuestion: 14 },
       players: [TIED[0], { ...PLAYERS[1], sudden_death: true, eliminated_at: 13 }],
       viewerId: "u1",
+      cards: [
+        card({ ordinal: 13, points: 417.1, revealed_at: "2026-08-15T12:13:00Z" }),
+        card({ ordinal: 14, display_name: "CeeDee Lamb" }),
+      ],
     });
 
     expect(screen.getByRole("button", { name: "Higher" })).toBeDisabled();

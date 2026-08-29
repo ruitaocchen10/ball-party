@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 
 import { FinalStandings, type FinalStandingsRow } from "@/components/game-runtime/FinalStandings";
@@ -12,10 +12,10 @@ import { AnimatedMessage } from "@/components/motion/AnimatedMessage";
 import { Reveal } from "@/components/motion/Reveal";
 import { Button } from "@/components/ui/Button";
 import { Concealed } from "@/components/ui/Concealed";
+import { TeamLogo } from "@/components/ui/TeamLogo";
 import {
   byPlacement,
   canCallNow,
-  cardMetaLine,
   eraLabel,
   formatPoints,
   isSuddenDeath,
@@ -32,6 +32,7 @@ import {
 } from "@/lib/higher-or-lower/board";
 import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/game-runtime/useMatchClock";
 import { postGameChoice } from "@/lib/lobbies/actions";
+import { teamLogoCode } from "@/lib/nfl/team-logos";
 import { createClient, createRealtimeClient } from "@/lib/supabase/client";
 
 /**
@@ -288,6 +289,15 @@ export function HigherOrLowerMatch({
                 label="Challenger"
                 card={challenger}
                 caption="Higher or lower than the anchor?"
+                action={
+                  <CallActions
+                    canCall={canCallNow(board, viewerPlayer)}
+                    call={myCall ?? null}
+                    pending={pendingCall}
+                    paused={isPaused}
+                    onCall={makeCall}
+                  />
+                }
               />
             </div>
           ) : (
@@ -296,15 +306,8 @@ export function HigherOrLowerMatch({
         </section>
 
         <section className="flex shrink-0 flex-col gap-3 lg:col-start-1 lg:row-start-1" aria-label="Your call">
-          <CallControls
-            canCall={canCallNow(board, viewerPlayer)}
-            call={myCall ?? null}
-            pending={pendingCall}
-            paused={isPaused}
-            error={callError}
-            onCall={makeCall}
-          />
           <MatchClock className="lg:order-first" phase={board.phase} remainingMs={remainingMs} />
+          <CallFeedback call={myCall ?? null} error={callError} />
         </section>
 
       {/* Both points panels are hidden from assistive technology, so this
@@ -447,21 +450,27 @@ const CALL_MESSAGES: Record<string, string> = {
  * it — so this line is the only place the difference is visible, and it says
  * "ran out of time" rather than reporting a call nobody made.
  */
-function CallControls({
-  canCall, call, pending, paused, error, onCall,
+function CallActions({
+  canCall, call, pending, paused, onCall,
 }: {
   canCall: boolean;
   call: Call | null;
   pending: boolean;
   paused: boolean;
-  error: string | null;
   onCall: (direction: "higher" | "lower") => void;
 }) {
   const disabled = !canCall || call !== null || pending || paused;
   return (
-    <section aria-label="Make your call" className="grid shrink-0 gap-2 sm:grid-cols-2">
+    <section aria-label="Make your call" className="grid gap-2 sm:grid-cols-2">
       <Button disabled={disabled} onClick={() => onCall("higher")}>Higher</Button>
       <Button disabled={disabled} variant="ghost" onClick={() => onCall("lower")}>Lower</Button>
+    </section>
+  );
+}
+
+function CallFeedback({ call, error }: { call: Call | null; error: string | null }) {
+  return (
+    <section aria-label="Your call status" className="grid shrink-0 gap-2">
       <AnimatedMessage className="sm:col-span-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
         {call ? (call.timed_out ? "You ran out of time." : `You called ${call.direction}.`) : null}
       </AnimatedMessage>
@@ -591,11 +600,14 @@ function LadderCardPanel({
   label,
   card,
   caption,
+  action,
 }: {
   label: string;
   card: LadderCard;
   caption: string;
+  action?: ReactNode;
 }) {
+  const logoCode = teamLogoCode(card.team);
   return (
     <section role="group" aria-label={label} className="flex min-h-0 flex-col gap-2">
       <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
@@ -605,14 +617,14 @@ function LadderCardPanel({
           distinct reveal beat Higher or Lower depends on. */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden border border-line bg-surface-raised text-center shadow-well">
         <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{card.position}</span>
-        <span className="absolute top-3 right-3 font-mono text-[11px] font-bold tracking-[0.12em] text-fg-muted uppercase">{card.team}</span>
+        {logoCode ? <TeamLogo code={logoCode} className="absolute top-3 right-3 h-8 w-8" /> : <span className="absolute top-3 right-3 font-mono text-[11px] font-bold tracking-[0.12em] text-fg-muted uppercase">{card.team}</span>}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-5">
           <LadderPortrait name={card.display_name} headshotUrl={card.headshot_url} />
           <h2 className="mt-3 max-w-full truncate font-slab text-3xl leading-none text-fg uppercase">{card.display_name}</h2>
-          <p className="mt-4 w-full border-t border-line pt-3 font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">
-            {cardMetaLine(card)}
-          </p>
+          <LadderMatchup card={card} />
         </div>
+
+        {action ? <div className="border-t border-line px-3.5 py-3 text-left">{action}</div> : null}
 
         {/* Both faces are out of the accessibility tree: a weave with three
             question marks and a big number are visual idioms, and the screen's
@@ -621,21 +633,21 @@ function LadderCardPanel({
           <Reveal
             revealed={card.points !== null}
             concealed={
-              <Concealed label="Fantasy points, hidden until this question reveals" className="rounded-none px-3.5 py-3">
-                <div aria-hidden className="relative flex items-baseline justify-between gap-3">
-                  <span className="font-mono text-[11px] tracking-[0.15em] text-panel uppercase">
+              <Concealed label="Fantasy points, hidden until this question reveals" className="rounded-none px-3.5 py-4">
+                <div aria-hidden className="relative flex flex-col items-center gap-1 text-center">
+                  <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel uppercase">
                     Fantasy points
                   </span>
-                  <span className="font-slab text-lg leading-none text-panel">? ? ?</span>
+                  <span className="font-slab text-4xl leading-none text-panel">? ? ?</span>
                 </div>
               </Concealed>
             }
           >
-            <div aria-hidden className="flex items-baseline justify-between gap-3 bg-panel px-3.5 py-3 text-panel-fg">
-              <span className="font-mono text-[11px] tracking-[0.15em] text-panel-muted uppercase">
+            <div aria-hidden className="flex flex-col items-center gap-1 bg-panel px-3.5 py-4 text-center text-panel-fg">
+              <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel-muted uppercase">
                 Fantasy points
               </span>
-              <span className="min-w-0 font-slab text-lg leading-none tabular-nums">
+              <span className="min-w-0 font-slab text-4xl leading-none tabular-nums">
                 {formatPoints(card.points)}
               </span>
             </div>
@@ -645,6 +657,32 @@ function LadderCardPanel({
 
       <p className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">{caption}</p>
     </section>
+  );
+}
+
+function LadderTeam({ code }: { code: string }) {
+  const logoCode = teamLogoCode(code);
+  return (
+    <span className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+      {logoCode ? <TeamLogo code={logoCode} className="h-9 w-9" /> : <span aria-hidden className="h-9 w-9 rounded-full border border-line" />}
+      <span className="font-slab text-lg leading-none text-fg uppercase">{code}</span>
+    </span>
+  );
+}
+
+function LadderMatchup({ card }: { card: LadderCard }) {
+  const weekly = card.week !== null && card.opponent !== null;
+  return (
+    <div className="mt-4 w-full border-t border-line pt-3" aria-label={weekly ? `${card.season}, week ${card.week}, ${card.team} versus ${card.opponent}` : `${card.season} season, ${card.team}`}>
+      <p className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">{weekly ? `${card.season} · week ${card.week}` : `${card.season} season`}</p>
+      {weekly ? (
+        <div className="mt-2 flex items-center gap-3">
+          <LadderTeam code={card.team} />
+          <span className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">vs</span>
+          <LadderTeam code={card.opponent!} />
+        </div>
+      ) : <div className="mt-2 flex justify-center"><LadderTeam code={card.team} /></div>}
+    </div>
   );
 }
 

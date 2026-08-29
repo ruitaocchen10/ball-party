@@ -10,7 +10,7 @@ import { PauseButton } from "@/components/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/game-runtime/PostGameControls";
 import { PostGameNavigation } from "@/components/game-runtime/PostGameNavigation";
 import { Reveal } from "@/components/motion/Reveal";
-import { TeamLogo } from "@/components/sabotage-draft/TeamLogo";
+import { TeamLogo } from "@/components/ui/TeamLogo";
 import { Button } from "@/components/ui/Button";
 import { Concealed } from "@/components/ui/Concealed";
 import { abbreviate, MatchStrip, StripCell, StripCellAvatar, StripCellCaption, StripCellMedia, StripCellName, StripCellTextColumn, StripCellTitle, StripCellTop } from "@/components/ui/MatchStrip";
