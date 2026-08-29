@@ -137,6 +137,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      advance: {
+        Args: { p_match_id: string }
+        Returns: Database["higher_or_lower"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       call: {
         Args: { p_direction: string; p_match_id: string }
         Returns: Database["public"]["Tables"]["higher_or_lower_calls"]["Row"]

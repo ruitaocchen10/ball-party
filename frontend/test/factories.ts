@@ -141,6 +141,11 @@ export function supabaseMock() {
     return { data: null, error: null };
   });
   const from = vi.fn((table: string) => query(table));
+  // Every `.on("postgres_changes", { table, ... }, callback)` a suite's
+  // component wires up lands here, keyed by table, so a test can play a
+  // payload through the same handler the component subscribed with — the
+  // way `channel.emit` below is called.
+  const handlers = new Map<string, (payload: { new: unknown }) => void>();
   const client = {
     rpc,
     from,
@@ -150,7 +155,17 @@ export function supabaseMock() {
     // leaves the schema name assertable through the mock's calls.
     schema: vi.fn(() => client),
     channel: () => client,
-    on: () => client,
+    on: (
+      _event: string,
+      filter: { table: string },
+      callback: (payload: { new: unknown }) => void,
+    ) => {
+      handlers.set(filter.table, callback);
+      return client;
+    },
+    // Plays a row through whichever handler subscribed to that table, the
+    // way Realtime would deliver an INSERT/UPDATE/DELETE payload.
+    emit: (table: string, row: unknown) => handlers.get(table)?.({ new: row }),
     // The component passes a status callback; SUBSCRIBED triggers its refetch.
     subscribe: (onStatus?: (status: string) => void) => {
       onStatus?.("SUBSCRIBED");
