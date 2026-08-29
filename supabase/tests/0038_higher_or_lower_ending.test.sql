@@ -1,5 +1,5 @@
--- The ending: a tied top best streak enters sudden death, an untied one does
--- not, and every way sudden death can end lands in the standings the
+-- The ending: an exact tie on total correct and best streak enters sudden
+-- death, and every way sudden death can end lands in the standings the
 -- platform already reads.
 --
 -- Reaching the twelfth question's reveal for real is #25/#26/#27's job and
@@ -10,7 +10,7 @@
 -- under test here is what happens at and after that reveal, not how a match
 -- arrives at it.
 begin;
-select plan(36);
+select plan(40);
 \ir support/harness.psql
 
 -- ---------------------------------------------------- a single top streak --
@@ -42,7 +42,7 @@ update public.higher_or_lower_matches
 select higher_or_lower_private.expire((select v from tests.fx where k = 'm1'));
 
 select is((select phase from public.higher_or_lower_matches where match_id = (select v from tests.fx where k = 'm1')),
-  'complete', 'a single top best streak completes without a detour through sudden death');
+  'complete', 'a single top total-correct score completes without a detour through sudden death');
 select is((select status::text from public.matches where id = (select v from tests.fx where k = 'm1')),
   'complete', 'and the match itself is marked complete');
 select ok(not exists (
@@ -53,11 +53,11 @@ select is(
   (select array_agg(user_id order by placement, user_id) from public.match_players
     where match_id = (select v from tests.fx where k = 'm1') and placement = 1),
   array[(select v from tests.fx where k = 'm1_a')],
-  'the sole top streak is placed first, on its own');
+  'the sole top total-correct score is placed first, on its own');
 select is(
   (select array[raw_score] from public.match_players
     where match_id = (select v from tests.fx where k = 'm1') and user_id = (select v from tests.fx where k = 'm1_a')),
-  array['6.008'::numeric], 'and standings preserve the best streak while encoding total correct as its tiebreak');
+  array['8.006'::numeric], 'and standings preserve total correct while encoding the best streak as its tiebreak');
 
 -- ------------------------------------- a tie of two, resolved in one round --
 
@@ -87,7 +87,7 @@ update public.higher_or_lower_matches
 select higher_or_lower_private.expire((select v from tests.fx where k = 'm2'));
 
 select is((select phase from public.higher_or_lower_matches where match_id = (select v from tests.fx where k = 'm2')),
-  'sudden_death_call', 'a tied top best streak opens sudden death instead');
+  'sudden_death_call', 'an exact tie on total correct and best streak opens sudden death instead');
 select is((select current_question from public.higher_or_lower_matches where match_id = (select v from tests.fx where k = 'm2')),
   13::smallint, 'drawing the first spare card as the next question in the same chain');
 select ok((select phase_deadline from public.higher_or_lower_matches where match_id = (select v from tests.fx where k = 'm2'))
@@ -373,7 +373,7 @@ select is(
     where match_id = (select v from tests.fx where k = 'm4') and user_id = (select v from tests.fx where k = 'm4_d')),
   4, 'the player who was never tied still places behind the whole admitted field');
 
--- ----------------------- a tied streak, resolved by total correct answers --
+-- ---------------------- tied total correct, resolved by the best streak --
 
 insert into tests.fx (k, v) values ('m5', tests.deal_higher_or_lower(3, 0.95));
 select tests.act_as_admin();
@@ -391,9 +391,9 @@ update public.matches set status = 'playing', started_at = now()
  where id = (select v from tests.fx where k = 'm5');
 update public.higher_or_lower_players set best_streak = 5, correct_count = 8
  where match_id = (select v from tests.fx where k = 'm5') and user_id = (select v from tests.fx where k = 'm5_a');
-update public.higher_or_lower_players set best_streak = 5, correct_count = 7
+update public.higher_or_lower_players set best_streak = 4, correct_count = 8
  where match_id = (select v from tests.fx where k = 'm5') and user_id = (select v from tests.fx where k = 'm5_b');
-update public.higher_or_lower_players set best_streak = 1, correct_count = 10
+update public.higher_or_lower_players set best_streak = 1, correct_count = 7
  where match_id = (select v from tests.fx where k = 'm5') and user_id = (select v from tests.fx where k = 'm5_c');
 update public.higher_or_lower_matches
    set phase = 'reveal', current_question = 12, phase_deadline = now() - interval '1 second'
@@ -402,19 +402,62 @@ update public.higher_or_lower_matches
 select higher_or_lower_private.expire((select v from tests.fx where k = 'm5'));
 
 select is((select phase from public.higher_or_lower_matches where match_id = (select v from tests.fx where k = 'm5')),
-  'complete', 'a tied top streak resolves without sudden death when total correct differs');
+  'complete', 'a tied top total-correct score resolves without sudden death when best streak differs');
 select ok(not exists (
   select 1 from public.higher_or_lower_players
    where match_id = (select v from tests.fx where k = 'm5') and sudden_death
-), 'the total-correct tiebreak admits nobody to sudden death');
+), 'the best-streak tiebreak admits nobody to sudden death');
 select is(
   (select placement::int from public.match_players
     where match_id = (select v from tests.fx where k = 'm5') and user_id = (select v from tests.fx where k = 'm5_a')),
-  1, 'more correct answers win the tied best streak');
+  1, 'the longer best streak wins the tied total-correct score');
 select is(
   (select placement::int from public.match_players
     where match_id = (select v from tests.fx where k = 'm5') and user_id = (select v from tests.fx where k = 'm5_b')),
-  2, 'the other tied-streak player ranks next, ahead of a lower best streak');
+  2, 'the shorter-streak player ranks next, ahead of a lower total-correct score');
+
+-- ------------------ more correct answers beat a longer streak outright --
+
+insert into tests.fx (k, v) values ('m6', tests.deal_higher_or_lower(3, 0.85));
+select tests.act_as_admin();
+insert into tests.fx (k, v)
+select 'm6_a', user_id from public.higher_or_lower_players
+ where match_id = (select v from tests.fx where k = 'm6') order by seat limit 1;
+insert into tests.fx (k, v)
+select 'm6_b', user_id from public.higher_or_lower_players
+ where match_id = (select v from tests.fx where k = 'm6') order by seat offset 1 limit 1;
+insert into tests.fx (k, v)
+select 'm6_c', user_id from public.higher_or_lower_players
+ where match_id = (select v from tests.fx where k = 'm6') order by seat offset 2 limit 1;
+
+update public.matches set status = 'playing', started_at = now()
+ where id = (select v from tests.fx where k = 'm6');
+update public.higher_or_lower_players set best_streak = 6, correct_count = 7
+ where match_id = (select v from tests.fx where k = 'm6') and user_id = (select v from tests.fx where k = 'm6_a');
+update public.higher_or_lower_players set best_streak = 3, correct_count = 8
+ where match_id = (select v from tests.fx where k = 'm6') and user_id = (select v from tests.fx where k = 'm6_b');
+update public.higher_or_lower_players set best_streak = 5, correct_count = 2
+ where match_id = (select v from tests.fx where k = 'm6') and user_id = (select v from tests.fx where k = 'm6_c');
+update public.higher_or_lower_matches
+   set phase = 'reveal', current_question = 12, phase_deadline = now() - interval '1 second'
+ where match_id = (select v from tests.fx where k = 'm6');
+
+select higher_or_lower_private.expire((select v from tests.fx where k = 'm6'));
+
+select is((select phase from public.higher_or_lower_matches where match_id = (select v from tests.fx where k = 'm6')),
+  'complete', 'more total correct answers end the match without sudden death');
+select ok(not exists (
+  select 1 from public.higher_or_lower_players
+   where match_id = (select v from tests.fx where k = 'm6') and sudden_death
+), 'a lower best streak cannot send a unique correct-answer leader to sudden death');
+select is(
+  (select placement::int from public.match_players
+    where match_id = (select v from tests.fx where k = 'm6') and user_id = (select v from tests.fx where k = 'm6_b')),
+  1, 'more correct answers beat a longer best streak');
+select is(
+  (select placement::int from public.match_players
+    where match_id = (select v from tests.fx where k = 'm6') and user_id = (select v from tests.fx where k = 'm6_a')),
+  2, 'the longer streak ranks second when it has fewer correct answers');
 
 select * from finish();
 rollback;

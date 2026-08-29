@@ -319,7 +319,7 @@ export function HigherOrLowerMatch({
           <div className="flex flex-col border border-line bg-surface-raised">
             <header className="flex items-baseline justify-between gap-2 px-3 py-2">
               <h2 className="font-mono text-[10px] font-bold tracking-[0.15em] text-fg-muted uppercase">Standings</h2>
-              <span className="font-mono text-[9px] tracking-[0.08em] text-fg-muted uppercase">Best · correct</span>
+              <span className="font-mono text-[9px] tracking-[0.08em] text-fg-muted uppercase">Correct · best</span>
             </header>
             <ul className="border-t border-line divide-y divide-line">
               {liveStandings(players, board.phase).map(({ player, rank, tied }) => {
@@ -341,8 +341,8 @@ export function HigherOrLowerMatch({
                   </span>
                 </span>
                     <span className="flex flex-col items-end whitespace-nowrap font-mono text-[9px] leading-tight tabular-nums uppercase">
-                      <strong className="text-xs text-fg">{player.best_streak} best</strong>
-                      <span className="text-fg-muted">{player.correct_count} correct</span>
+                      <strong className="text-xs text-fg">{player.correct_count} correct</strong>
+                      <span className="text-fg-muted">{player.best_streak} best</span>
                     </span>
                     <span className="sr-only">{player.current_streak} now · {player.best_streak} best · {player.correct_count} correct</span>
                   </li>
@@ -358,7 +358,8 @@ export function HigherOrLowerMatch({
 
 /**
  * Names a winner, so the ladder ends rather than merely stopping. Standings
- * are #28's ending — best streak, with a tied top resolved in sudden death —
+ * are #28's ending — total correct, then best streak, with an exact tie
+ * resolved in sudden death —
  * already ranked the way the auction's are, so this reads exactly the same
  * platform record the auction's own final screen does.
  */
@@ -399,7 +400,7 @@ function FinalScreen({
       name: nameOf(standing.user_id),
       avatarUrl: avatarOf(standing.user_id),
       isViewer: standing.user_id === viewerId,
-      statLine: player ? `${player.best_streak} best · ${player.correct_count} correct` : "",
+      statLine: player ? `${player.correct_count} correct · ${player.best_streak} best` : "",
     };
   });
 

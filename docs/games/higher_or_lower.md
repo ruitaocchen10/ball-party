@@ -13,11 +13,11 @@ an entire season.
 
 ## Winning
 
-After the twelve-question main ladder, the highest best streak wins. A tie on
-best streak is broken by total correct answers. Only players still tied on both
-measures enter sudden death: they answer the reserved cards until one outlasts
-the others. If that field remains tied after every spare card, the win is
-shared.
+After the twelve-question main ladder, the highest total correct answers wins.
+A tie on total correct is broken by the highest best streak. Only players still
+tied on both measures enter sudden death: they answer the reserved cards until
+one outlasts the others. If that field remains tied after every spare card, the
+win is shared.
 
 ## Dealing
 

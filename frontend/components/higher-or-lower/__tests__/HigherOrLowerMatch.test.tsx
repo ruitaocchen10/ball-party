@@ -185,12 +185,12 @@ describe("HigherOrLowerMatch", () => {
     expect(screen.queryByText(/Ben called/i)).not.toBeInTheDocument();
   });
 
-  it("orders the live standings by best streak, then total correct answers", () => {
+  it("orders the live standings by total correct answers, then best streak", () => {
     renderMatch({
       players: [
-        { ...PLAYERS[0], best_streak: 4, correct_count: 6 },
+        { ...PLAYERS[0], best_streak: 6, correct_count: 6 },
         { ...PLAYERS[1], best_streak: 4, correct_count: 7 },
-        { ...PLAYERS[1], user_id: "u2", seat: 2, display_name: "Cam", best_streak: 3, correct_count: 12 },
+        { ...PLAYERS[1], user_id: "u2", seat: 2, display_name: "Cam", best_streak: 3, correct_count: 5 },
       ],
     });
 

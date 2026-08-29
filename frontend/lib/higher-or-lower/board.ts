@@ -76,7 +76,7 @@ export function canCallNow(board: Board, viewer: Player | undefined): boolean {
 
 /**
  * The live rail follows the same result rule the server will apply at the
- * end: best streak first, then total correct. During sudden death the admitted
+ * end: total correct first, then best streak. During sudden death the admitted
  * field owns the top positions; surviving contenders share the lead until a
  * round actually eliminates someone.
  */
@@ -108,14 +108,14 @@ function compareLivePlayers(a: Player, b: Player, phase: Board["phase"]): number
       }
     }
   }
-  return b.best_streak - a.best_streak || b.correct_count - a.correct_count || a.seat - b.seat;
+  return b.correct_count - a.correct_count || b.best_streak - a.best_streak || a.seat - b.seat;
 }
 
 function liveRankKey(player: Player, phase: Board["phase"]): string {
   if (isSuddenDeath(phase) && player.sudden_death) {
     return player.eliminated_at === null ? "sudden-death:alive" : `sudden-death:eliminated:${player.eliminated_at}`;
   }
-  return `main:${player.best_streak}:${player.correct_count}`;
+  return `main:${player.correct_count}:${player.best_streak}`;
 }
 
 /**
