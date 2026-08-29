@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AccountMenu } from "@/components/layout/AccountMenu";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { drawerBackdrop, drawerPanel } from "@/lib/motion";
 
 /**
@@ -157,18 +158,20 @@ function Brand({
 }) {
   return (
     <div
-      className={`flex shrink-0 items-center border-b border-line py-4 ${
-        collapsed ? "justify-center px-2" : "justify-between px-5"
+      className={`flex shrink-0 border-b border-line py-4 ${
+        collapsed ? "flex-col items-center gap-3 px-2" : "items-center justify-between px-5"
       }`}
     >
-      {collapsed ? null : (
-        <Link
-          href="/"
-          className={`font-slab text-[22px] leading-none text-fg uppercase ${FOCUS}`}
-        >
-          Ball Party
-        </Link>
-      )}
+      <Link
+        href="/"
+        aria-label="Ball Party"
+        className={`flex items-center gap-2 text-fg ${FOCUS}`}
+      >
+        <BrandMark className="h-7 w-7 shrink-0" />
+        {collapsed ? null : (
+          <span className="font-slab text-[22px] leading-none uppercase">Ball Party</span>
+        )}
+      </Link>
       <button
         type="button"
         onClick={onToggleCollapsed}
@@ -278,9 +281,11 @@ function MobileTopStrip({
 
       <Link
         href="/"
-        className={`font-slab text-[16px] leading-none text-fg uppercase ${FOCUS}`}
+        aria-label="Ball Party"
+        className={`flex items-center gap-1.5 text-fg ${FOCUS}`}
       >
-        Ball Party
+        <BrandMark className="h-5 w-5 shrink-0" />
+        <span className="font-slab text-[16px] leading-none uppercase">Ball Party</span>
       </Link>
 
       {displayName ? (
@@ -348,9 +353,11 @@ function MobileDrawer({
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <Link
             href="/"
-            className={`font-slab text-[17px] leading-none text-fg uppercase ${FOCUS}`}
+            aria-label="Ball Party"
+            className={`flex items-center gap-1.5 text-fg ${FOCUS}`}
           >
-            Ball Party
+            <BrandMark className="h-5 w-5 shrink-0" />
+            <span className="font-slab text-[17px] leading-none uppercase">Ball Party</span>
           </Link>
           <button
             type="button"

@@ -80,6 +80,14 @@ export function HigherOrLowerMatch({
   const [pendingCall, setPendingCall] = useState(false);
   const [callError, setCallError] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(paused);
+  const [pendingAdvance, setPendingAdvance] = useState(false);
+  const [advanceError, setAdvanceError] = useState<string | null>(null);
+
+  // A solo run has no lobby to have come from — the same signal FinalScreen
+  // already reads below to tell a solo ending from a room's. Solo trades the
+  // shared clock for the player's own pace: no call countdown, and a tap on
+  // `advance` instead of a timed pause to leave a reveal.
+  const isSolo = roomCode === null;
 
   const applyBoard = useCallback((row: Partial<Board>) => {
     if (
@@ -161,7 +169,13 @@ export function HigherOrLowerMatch({
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "higher_or_lower_cards", filter: `match_id=eq.${matchId}` }, (payload) => {
           const card = payload.new as LadderCard;
-          setCards((previous) => previous.map((candidate) => candidate.ordinal === card.ordinal ? card : candidate));
+          // Endless solo (0046) appends a brand-new ordinal past the pre-dealt
+          // ladder rather than updating one already on the client — that
+          // arrives as an INSERT with no existing row to replace, so it must
+          // be appended or the extended card never reaches this screen.
+          setCards((previous) => previous.some((candidate) => candidate.ordinal === card.ordinal)
+            ? previous.map((candidate) => candidate.ordinal === card.ordinal ? card : candidate)
+            : [...previous, card].sort((a, b) => a.ordinal - b.ordinal));
           // A reveal changes which existing call rows RLS permits. Calls do not
           // emit a new event at that moment, so re-read their policy projection.
           if (card.revealed_at) void refetch();
@@ -236,6 +250,18 @@ export function HigherOrLowerMatch({
     }
   };
 
+  // Solo's replacement for the timer that pushes a group board out of its
+  // reveal. The board row this writes arrives back over the Realtime
+  // subscription already wired up above, so there is nothing to apply here
+  // beyond surfacing an error.
+  const advance = async () => {
+    setPendingAdvance(true);
+    setAdvanceError(null);
+    const { error } = await getClient().schema("higher_or_lower").rpc("advance", { p_match_id: matchId });
+    setPendingAdvance(false);
+    if (error) setAdvanceError(error.message);
+  };
+
   if (board.phase === "complete") {
     return (
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-6 py-10">
@@ -255,7 +281,7 @@ export function HigherOrLowerMatch({
     <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
       <header className="flex shrink-0 items-baseline justify-between gap-3">
         <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
-          {questionLabel(board, "visual")}
+          {questionLabel(board, "visual", isSolo)}
         </p>
         <div className="flex items-center gap-3">
           <p
@@ -306,7 +332,13 @@ export function HigherOrLowerMatch({
         </section>
 
         <section className="flex shrink-0 flex-col gap-3 lg:col-start-1 lg:row-start-1" aria-label="Your call">
-          <MatchClock className="lg:order-first" phase={board.phase} remainingMs={remainingMs} />
+          {isSolo ? (
+            board.phase === "reveal" ? (
+              <SoloContinue pending={pendingAdvance} error={advanceError} onContinue={advance} />
+            ) : null
+          ) : (
+            <MatchClock className="lg:order-first" phase={board.phase} remainingMs={remainingMs} />
+          )}
           <CallFeedback call={myCall ?? null} error={callError} />
         </section>
 
@@ -314,7 +346,7 @@ export function HigherOrLowerMatch({
           region is the complete announcement of what is on screen. */}
       <p role="status" className="sr-only">
         {anchor && challenger
-          ? `${questionLabel(board, "spoken")}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
+          ? `${questionLabel(board, "spoken", isSolo)}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
           : ""}
       </p>
 
@@ -528,16 +560,41 @@ function boardFromRow(row: HigherOrLowerMatchRow): Omit<Board, "serverNow"> {
 }
 
 /** The visible heading and screen-reader announcement must name a live board
- * identically; only sudden death's punctuation differs for natural speech. */
-function questionLabel(board: Board, audience: "visual" | "spoken"): string {
+ * identically; only sudden death's punctuation differs for natural speech.
+ *
+ * Solo never reaches sudden death — there is nobody to tie with — and never
+ * carries a fixed "of N" ceiling: the ladder (0046) keeps extending past its
+ * pre-dealt twelve for as long as the player keeps calling correctly. */
+function questionLabel(board: Board, audience: "visual" | "spoken", isSolo: boolean): string {
   if (isSuddenDeath(board.phase)) {
     return audience === "visual"
       ? `Sudden death · Round ${suddenDeathRound(board)}`
       : `Sudden death, round ${suddenDeathRound(board)}`;
   }
-  return board.currentQuestion > board.questionCount
+  return isSolo || board.currentQuestion > board.questionCount
     ? `Question ${board.currentQuestion}`
     : `Question ${board.currentQuestion} of ${board.questionCount}`;
+}
+
+/** Solo's untimed stand-in for the clock: the reveal waits here for a tap
+ * rather than a deadline, the same way `MatchClock` occupies this rail for a
+ * group board. */
+function SoloContinue({
+  pending,
+  error,
+  onContinue,
+}: {
+  pending: boolean;
+  error: string | null;
+  onContinue: () => void;
+}) {
+  return (
+    <section aria-label="Continue" className="flex flex-col gap-2 rounded bg-surface-raised p-3 shadow-well">
+      <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">The answer is revealed</p>
+      <Button disabled={pending} onClick={onContinue}>Continue</Button>
+      <AnimatedMessage role="alert" className="text-sm text-red-700">{error}</AnimatedMessage>
+    </section>
+  );
 }
 
 function MatchClock({

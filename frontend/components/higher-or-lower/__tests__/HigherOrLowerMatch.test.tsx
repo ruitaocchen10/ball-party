@@ -384,6 +384,53 @@ describe("HigherOrLowerMatch", () => {
 
     expect(screen.getByText(/waiting for the next card/i)).toBeInTheDocument();
   });
+
+  // Endless solo (0046) appends a brand-new ordinal past the pre-dealt
+  // twelve, which arrives over Realtime as an INSERT — not an update to a
+  // card already on screen. The bug this guards: the card handler used to
+  // `.map()` looking for a matching ordinal, found none, and silently
+  // dropped the row, so the ladder looked stuck at question twelve forever.
+  it("picks up a card the ladder extends past its pre-dealt ordinal", async () => {
+    renderMatch({
+      board: { currentQuestion: 12 },
+      cards: [
+        ...ladder(),
+        card({ ordinal: 4, revealed_at: "2026-08-15T12:04:00Z" }),
+        card({ ordinal: 5, revealed_at: "2026-08-15T12:05:00Z" }),
+        card({ ordinal: 6, revealed_at: "2026-08-15T12:06:00Z" }),
+        card({ ordinal: 7, revealed_at: "2026-08-15T12:07:00Z" }),
+        card({ ordinal: 8, revealed_at: "2026-08-15T12:08:00Z" }),
+        card({ ordinal: 9, revealed_at: "2026-08-15T12:09:00Z" }),
+        card({ ordinal: 10, revealed_at: "2026-08-15T12:10:00Z" }),
+        card({ ordinal: 11, points: 289.4, revealed_at: "2026-08-15T12:11:00Z" }),
+        card({ ordinal: 12, display_name: "Ja'Marr Chase" }),
+      ],
+    });
+
+    // The channel subscribes inside an async effect (it awaits
+    // createRealtimeClient()), so a tick has to pass before `.on()` has run
+    // and `emit` has a handler to reach.
+    await act(async () => {});
+
+    act(() => {
+      globalThis.__supabaseMock.emit(
+        "higher_or_lower_cards",
+        card({ ordinal: 13, display_name: "CeeDee Lamb" }),
+      );
+      globalThis.__supabaseMock.emit("higher_or_lower_matches", {
+        match_id: MATCH,
+        question_count: 12,
+        current_question: 13,
+        scoring_mode: "season_total",
+        season_from: 2010,
+        season_to: 2025,
+        phase: "call",
+        phase_deadline: null,
+      });
+    });
+
+    expect(screen.getByRole("group", { name: /challenger/i })).toHaveTextContent("CeeDee Lamb");
+  });
 });
 
 /**
@@ -582,6 +629,52 @@ describe("the final screen", () => {
 
     expect(screen.getByRole("button", { name: /play again/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back home/i })).toBeInTheDocument();
+  });
+});
+
+// A solo run has no lobby, so roomCode is null the way FinalScreen's own
+// branch above already reads it. Solo has no other player to keep pace with,
+// so it drops the clock this suite's default group board keeps: see
+// migration 0084.
+describe("solo pacing", () => {
+  beforeEach(() => {
+    globalThis.__supabaseMock = supabaseMock();
+  });
+
+  it("names the question without a fixed count and shows no clock", () => {
+    renderMatch({ roomCode: null, board: { phaseDeadline: null } });
+
+    expect(screen.getByText("Question 1")).toBeInTheDocument();
+    expect(screen.queryByText("Question 1 of 12")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /clock/i })).not.toBeInTheDocument();
+  });
+
+  it("offers a continue button on a reveal instead of an auto-advancing clock", async () => {
+    const user = userEvent.setup();
+    globalThis.__supabaseMock.rpc.mockImplementation(async (name: unknown) => name === "advance"
+      ? { data: { ...BOARD, phase: "call", current_question: 2 }, error: null }
+      : { data: null, error: null });
+    renderMatch({
+      roomCode: null,
+      board: { phase: "reveal", phaseDeadline: null },
+      cards: [
+        card({ ordinal: 0, points: 289.4, revealed_at: SEEN }),
+        card({ ordinal: 1, display_name: "Patrick Mahomes", points: 417.1, revealed_at: SEEN }),
+      ],
+    });
+
+    expect(screen.queryByRole("region", { name: /clock/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(globalThis.__supabaseMock.schema).toHaveBeenCalledWith("higher_or_lower");
+    expect(globalThis.__supabaseMock.rpc).toHaveBeenCalledWith("advance", { p_match_id: MATCH });
+  });
+
+  it("keeps the group board's clock and offers no continue button", () => {
+    renderMatch({ board: { phase: "reveal", phaseDeadline: new Date(Date.now() + 4_000).toISOString() } });
+
+    expect(screen.getByRole("region", { name: /clock/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
   });
 });
 
