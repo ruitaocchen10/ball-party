@@ -19,6 +19,7 @@ import {
   eraLabel,
   formatPoints,
   isSuddenDeath,
+  liveStandings,
   questionPair,
   scoringModeLabel,
   suddenDeathRound,
@@ -315,58 +316,40 @@ export function HigherOrLowerMatch({
       </p>
 
         <aside aria-label="The table" className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1">
-          <ul className="flex flex-wrap gap-2 lg:flex-col lg:flex-nowrap">
-            {players.map((player) => {
-              const call = calls.find((candidate) => candidate.question === board.currentQuestion && candidate.user_id === player.user_id);
-              return (
-            <li
-              key={player.user_id}
-              className="rounded border border-line px-3 py-1.5 font-slab text-[15px] leading-none uppercase"
-            >
-              {player.display_name}
-              {player.user_id === viewerId ? (
-                <span className="ml-1.5 font-mono text-[11px] tracking-[0.13em] text-fg-muted">
-                  YOU
+          <div className="flex flex-col border border-line bg-surface-raised">
+            <header className="flex items-baseline justify-between gap-2 px-3 py-2">
+              <h2 className="font-mono text-[10px] font-bold tracking-[0.15em] text-fg-muted uppercase">Standings</h2>
+              <span className="font-mono text-[9px] tracking-[0.08em] text-fg-muted uppercase">Best · correct</span>
+            </header>
+            <ul className="border-t border-line divide-y divide-line">
+              {liveStandings(players, board.phase).map(({ player, rank, tied }) => {
+                const call = calls.find((candidate) => candidate.question === board.currentQuestion && candidate.user_id === player.user_id);
+                return (
+                  <li
+                    key={player.user_id}
+                    className={`grid grid-cols-[1.55rem_1.85rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5 transition-col ${rank === 1 ? "bg-panel/5" : "hover:bg-panel/5"}`}
+                  >
+                    <span className={`font-mono text-xs font-bold tabular-nums ${rank === 1 ? "text-hidden-text" : "text-fg-muted"}`}>{tied ? "T-" : "#"}{rank}</span>
+                    <StandingsAvatar name={player.display_name} avatarUrl={player.avatar_url} mine={player.user_id === viewerId} />
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="flex min-w-0 items-center gap-1 font-slab text-base leading-none uppercase">
+                    <span className="truncate">{player.display_name}</span>
+                    {player.user_id === viewerId ? <span className="font-mono text-[8px] tracking-[0.08em] text-hidden-text">YOU</span> : null}
+                  </span>
+                  <span className="truncate font-mono text-[9px] tracking-[0.07em] text-fg-muted uppercase">
+                    {standingStatus(player, call ?? null, lockedIn.has(player.user_id), board.phase)}
+                  </span>
                 </span>
-              ) : null}
-              <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
-                {player.current_streak} now · {player.best_streak} best · {player.correct_count} correct
-              </span>
-              {/* Absence is the server's judgement, latched over a whole
-                  question. Saying so is what makes the table's stopping to
-                  wait for someone legible rather than arbitrary. */}
-              {player.absent ? (
-                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
-                  AWAY
-                </span>
-              ) : null}
-              {/* Sudden death narrows visibly: eliminated beats watching
-                  beats nothing, so at most one of these shows. */}
-              {player.eliminated_at !== null ? (
-                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
-                  ELIMINATED
-                </span>
-              ) : isSuddenDeath(board.phase) && !player.sudden_death ? (
-                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
-                  WATCHING
-                </span>
-              ) : null}
-              {/* Three things, one slot: they let the clock run out, they have
-                  locked in something this screen may not read yet, or they have
-                  locked in something it may. */}
-              {call?.timed_out ? (
-                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
-                  TIMED OUT
-                </span>
-              ) : lockedIn.has(player.user_id) ? (
-                <span className="ml-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted">
-                  {call ? call.direction : "LOCKED"}
-                </span>
-              ) : null}
-            </li>
-              );
-            })}
-          </ul>
+                    <span className="flex flex-col items-end whitespace-nowrap font-mono text-[9px] leading-tight tabular-nums uppercase">
+                      <strong className="text-xs text-fg">{player.best_streak} best</strong>
+                      <span className="text-fg-muted">{player.correct_count} correct</span>
+                    </span>
+                    <span className="sr-only">{player.current_streak} now · {player.best_streak} best · {player.correct_count} correct</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </aside>
       </div>
     </main>
@@ -575,6 +558,27 @@ function MatchClock({
       </div>
     </section>
   );
+}
+
+function StandingsAvatar({ name, avatarUrl, mine }: { name: string; avatarUrl: string | null; mine: boolean }) {
+  const [failed, setFailed] = useState(false);
+  if (avatarUrl && !failed) {
+    return <img src={avatarUrl} alt="" onError={() => setFailed(true)} className="h-7 w-7 shrink-0 rounded-full object-cover" />;
+  }
+  return (
+    <span aria-hidden className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-slab text-base ${mine ? "bg-hidden text-panel" : "bg-surface text-fg"}`}>
+      <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
+    </span>
+  );
+}
+
+function standingStatus(player: Player, call: Call | null, locked: boolean, phase: Board["phase"]): string {
+  if (player.eliminated_at !== null) return "ELIMINATED";
+  if (isSuddenDeath(phase) && !player.sudden_death) return "WATCHING";
+  if (player.absent) return "AWAY";
+  if (call?.timed_out) return "TIMED OUT";
+  if (locked) return call?.direction ?? "LOCKED";
+  return "THINKING";
 }
 
 /**

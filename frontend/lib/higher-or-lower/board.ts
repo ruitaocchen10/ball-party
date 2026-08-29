@@ -17,6 +17,12 @@ export type CallStatus = Database["public"]["Tables"]["higher_or_lower_call_stat
 
 export type Player = Seat & { display_name: string; avatar_url: string | null };
 
+export type LiveStanding = {
+  player: Player;
+  rank: number;
+  tied: boolean;
+};
+
 /** The platform's per-match standings row — the shape #28 writes into. */
 export type Standing = Database["public"]["Tables"]["match_players"]["Row"];
 
@@ -66,6 +72,50 @@ export function canCallNow(board: Board, viewer: Player | undefined): boolean {
   if (board.phase === "call") return true;
   if (board.phase === "sudden_death_call") return viewer.sudden_death && viewer.eliminated_at === null;
   return false;
+}
+
+/**
+ * The live rail follows the same result rule the server will apply at the
+ * end: best streak first, then total correct. During sudden death the admitted
+ * field owns the top positions; surviving contenders share the lead until a
+ * round actually eliminates someone.
+ */
+export function liveStandings(players: Player[], phase: Board["phase"]): LiveStanding[] {
+  const ordered = [...players].sort((a, b) => compareLivePlayers(a, b, phase));
+  const keys = ordered.map((player) => liveRankKey(player, phase));
+  const countByKey = new Map<string, number>();
+  for (const key of keys) countByKey.set(key, (countByKey.get(key) ?? 0) + 1);
+  let previousKey: string | null = null;
+  let rank = 0;
+
+  return ordered.map((player, index) => {
+    const key = keys[index];
+    if (key !== previousKey) rank = index + 1;
+    previousKey = key;
+    return { player, rank, tied: (countByKey.get(key) ?? 0) > 1 };
+  });
+}
+
+function compareLivePlayers(a: Player, b: Player, phase: Board["phase"]): number {
+  if (isSuddenDeath(phase)) {
+    if (a.sudden_death !== b.sudden_death) return a.sudden_death ? -1 : 1;
+    if (a.sudden_death && b.sudden_death) {
+      const aAlive = a.eliminated_at === null;
+      const bAlive = b.eliminated_at === null;
+      if (aAlive !== bAlive) return aAlive ? -1 : 1;
+      if (!aAlive && !bAlive && a.eliminated_at !== b.eliminated_at) {
+        return (b.eliminated_at ?? 0) - (a.eliminated_at ?? 0);
+      }
+    }
+  }
+  return b.best_streak - a.best_streak || b.correct_count - a.correct_count || a.seat - b.seat;
+}
+
+function liveRankKey(player: Player, phase: Board["phase"]): string {
+  if (isSuddenDeath(phase) && player.sudden_death) {
+    return player.eliminated_at === null ? "sudden-death:alive" : `sudden-death:eliminated:${player.eliminated_at}`;
+  }
+  return `main:${player.best_streak}:${player.correct_count}`;
 }
 
 /**

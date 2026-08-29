@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -183,6 +183,23 @@ describe("HigherOrLowerMatch", () => {
     expect(screen.getAllByText("LOCKED")).toHaveLength(1);
     expect(screen.getByText("You called lower.")).toBeInTheDocument();
     expect(screen.queryByText(/Ben called/i)).not.toBeInTheDocument();
+  });
+
+  it("orders the live standings by best streak, then total correct answers", () => {
+    renderMatch({
+      players: [
+        { ...PLAYERS[0], best_streak: 4, correct_count: 6 },
+        { ...PLAYERS[1], best_streak: 4, correct_count: 7 },
+        { ...PLAYERS[1], user_id: "u2", seat: 2, display_name: "Cam", best_streak: 3, correct_count: 12 },
+      ],
+    });
+
+    const rows = within(screen.getByRole("complementary", { name: /the table/i })).getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringMatching(/#1.*Ben/),
+      expect.stringMatching(/#2.*Ava/),
+      expect.stringMatching(/#3.*Cam/),
+    ]);
   });
 
   // The server scores a timeout exactly as it scores a wrong call, on purpose.
@@ -455,6 +472,24 @@ describe("sudden death", () => {
     const table = screen.getByRole("complementary", { name: /the table/i });
     expect(table).toHaveTextContent("ELIMINATED");
     expect(table).toHaveTextContent("WATCHING");
+  });
+
+  it("keeps surviving sudden-death contenders above eliminated and watching players", () => {
+    renderMatch({
+      board: { phase: "sudden_death_call", currentQuestion: 14 },
+      players: [
+        { ...TIED[0], eliminated_at: 13 },
+        TIED[1],
+        { ...PLAYERS[1], user_id: "u2", seat: 2, display_name: "Cam", sudden_death: false },
+      ],
+    });
+
+    const rows = within(screen.getByRole("complementary", { name: /the table/i })).getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringMatching(/#1.*Ben/),
+      expect.stringMatching(/#2.*Ava/),
+      expect.stringMatching(/#3.*Cam/),
+    ]);
   });
 });
 
