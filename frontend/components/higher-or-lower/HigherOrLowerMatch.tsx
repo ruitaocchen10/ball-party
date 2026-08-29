@@ -624,7 +624,12 @@ function LadderCardPanel({
           <LadderMatchup card={card} />
         </div>
 
-        {action ? <div className="border-t border-line px-3.5 py-3 text-left">{action}</div> : null}
+        {/* Both cards reserve this row. The challenger fills it with the call,
+            while the anchor keeps it quiet so their player details and score
+            reveals stay horizontally aligned. */}
+        <div className={`min-h-[4.5rem] px-3.5 py-3 text-left${action ? " border-t border-line" : ""}`}>
+          {action}
+        </div>
 
         {/* Both faces are out of the accessibility tree: a weave with three
             question marks and a big number are visual idioms, and the screen's
