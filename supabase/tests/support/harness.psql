@@ -543,6 +543,27 @@ language sql stable security definer as $$
    limit 1;
 $$;
 
+-- A second, distinct real player in the same franchise/category pool as
+-- p_exclude_player_id, plus one of their seasons -- so a test can name a
+-- sabotage guess's replacement card without risking it collide with the
+-- pick it's meant to replace. Definer for the same reason sd_pick_candidate
+-- is.
+create function tests.sd_other_player(
+  p_franchise_code text, p_category text, p_exclude_player_id text,
+  out player_id text, out season smallint
+)
+returns record
+language sql stable security definer as $$
+  select p.player_id, min(p.season)
+    from private.av_roster_players p
+   where p.franchise_code = p_franchise_code
+     and p.slot_category = p_category
+     and p.player_id <> p_exclude_player_id
+   group by p.player_id
+   order by p.player_id
+   limit 1;
+$$;
+
 grant usage on schema tests to authenticated;
 grant execute on all functions in schema tests to authenticated;
 grant all on all tables in schema tests to authenticated;
