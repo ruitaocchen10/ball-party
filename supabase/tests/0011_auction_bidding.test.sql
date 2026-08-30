@@ -7,7 +7,7 @@
 -- rather than asserting on individual moves.
 
 begin;
-select plan(47);
+select plan(52);
 
 \ir support/harness.psql
 
@@ -224,6 +224,44 @@ select ok(
     between now() + interval '19 seconds' and now() + interval '21 seconds',
   'the clock is immediately given to an actionable challenger'
 );
+
+-- A bankrupt rotating opener is a free fallback, not a player who waits out a
+-- clock. A funded challenger can take the lot free or decline it to the opener.
+select tests.act_as_admin();
+insert into tests.fx (k, v) values ('mfree', tests.deal(2, 0.73));
+update public.auction_players set budget = 0 where match_id = (select v from tests.fx where k = 'mfree') and seat = 0;
+update public.auction_matches set opener_seat = 0 where match_id = (select v from tests.fx where k = 'mfree');
+update public.matches set status = 'playing', started_at = now() where id = (select v from tests.fx where k = 'mfree');
+select auction_private.advance((select v from tests.fx where k = 'mfree'));
+update public.auction_matches set phase_deadline = now() - interval '1 second' where match_id = (select v from tests.fx where k = 'mfree');
+select auction_private.expire((select v from tests.fx where k = 'mfree'));
+select is((select free_fallback_seat::int from public.auction_matches where match_id = (select v from tests.fx where k = 'mfree')), 0, 'the bankrupt opener is retained as the free fallback');
+select isnt((select turn_seat::int from public.auction_matches where match_id = (select v from tests.fx where k = 'mfree')), 0, 'the funded challenger receives the decision');
+select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mfree')));
+select auction.place_bid((select v from tests.fx where k = 'mfree'), 0);
+select tests.act_as_admin();
+select is((select price from public.auction_lots where match_id = (select v from tests.fx where k = 'mfree') and seq = 1), 0, 'the funded challenger can take the lot for $0');
+
+insert into tests.fx (k, v) values ('mfallback', tests.deal(2, 0.74));
+update public.auction_players set budget = 0 where match_id = (select v from tests.fx where k = 'mfallback') and seat = 0;
+update public.auction_matches set opener_seat = 0 where match_id = (select v from tests.fx where k = 'mfallback');
+update public.matches set status = 'playing', started_at = now() where id = (select v from tests.fx where k = 'mfallback');
+select auction_private.advance((select v from tests.fx where k = 'mfallback'));
+update public.auction_matches set phase_deadline = now() - interval '1 second' where match_id = (select v from tests.fx where k = 'mfallback');
+select auction_private.expire((select v from tests.fx where k = 'mfallback'));
+select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mfallback')));
+select auction.pass_lot((select v from tests.fx where k = 'mfallback'));
+select tests.act_as_admin();
+select is((select winner_id from public.auction_lots where match_id = (select v from tests.fx where k = 'mfallback') and seq = 1), (select user_id from public.auction_players where match_id = (select v from tests.fx where k = 'mfallback') and seat = 0), 'declining the free lot awards it to the original opener');
+
+insert into tests.fx (k, v) values ('mallzero', tests.deal(2, 0.75));
+update public.auction_players set budget = 0 where match_id = (select v from tests.fx where k = 'mallzero');
+update public.auction_matches set opener_seat = 0 where match_id = (select v from tests.fx where k = 'mallzero');
+update public.matches set status = 'playing', started_at = now() where id = (select v from tests.fx where k = 'mallzero');
+select auction_private.advance((select v from tests.fx where k = 'mallzero'));
+update public.auction_matches set phase_deadline = now() - interval '1 second' where match_id = (select v from tests.fx where k = 'mallzero');
+select auction_private.expire((select v from tests.fx where k = 'mallzero'));
+select is((select winner_id from public.auction_lots where match_id = (select v from tests.fx where k = 'mallzero') and seq = 1), (select user_id from public.auction_players where match_id = (select v from tests.fx where k = 'mallzero') and seat = 0), 'when everybody has $0 the rotating opener receives the lot immediately');
 
 -- --------------------------------------------------- resolution and reveal --
 

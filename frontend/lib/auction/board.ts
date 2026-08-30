@@ -23,6 +23,7 @@ export type Turn = {
   currentLot: number;
   turnSeat: number | null;
   openerSeat: number;
+  freeFallbackSeat: number | null;
   turnDeadline: string | null;
   phase: "lot_preview" | "bidding" | "sold";
   phaseDeadline: string | null;

@@ -8,6 +8,35 @@ export type CompletedMatch = {
   rawScore: number | null;
 };
 
+/** A completed match paired with the mode of the run that created it. */
+export type CompletedMatchWithMode = CompletedMatch & {
+  mode: "arcade" | "party" | "solo";
+};
+
+export type ProfileHistoryRow = {
+  match_id: string | null;
+  game: string | null;
+  ended_at: string | null;
+  placement: number | null;
+  raw_score: number | null;
+  mode: "arcade" | "party" | "solo" | null;
+};
+
+/** Turns the self-only history RPC's database-shaped rows into app records. */
+export function completedMatchesFromHistory(rows: ProfileHistoryRow[]): CompletedMatchWithMode[] {
+  return rows.flatMap((row) => {
+    if (!row.match_id || !row.game || !row.ended_at || !row.mode) return [];
+    return [{
+      id: row.match_id,
+      game: row.game as MatchGame,
+      endedAt: row.ended_at,
+      placement: row.placement,
+      rawScore: row.raw_score,
+      mode: row.mode,
+    }];
+  });
+}
+
 export type ProfileSummary = {
   gamesPlayed: number;
   wins: number;
@@ -15,6 +44,11 @@ export type ProfileSummary = {
   bestStreak: number;
   recent: CompletedMatch[];
 };
+
+/** The newest first, capped for a compact profile section. */
+export function recentMatches<T extends CompletedMatch>(matches: T[], limit = 3): T[] {
+  return [...matches].sort((a, b) => b.endedAt.localeCompare(a.endedAt)).slice(0, limit);
+}
 
 /**
  * Converts the platform's per-match records into the handful of facts a
@@ -41,6 +75,14 @@ export function summarizeProfile(matches: CompletedMatch[]): ProfileSummary {
     wins,
     winRate: oldestFirst.length === 0 ? 0 : Math.round((wins / oldestFirst.length) * 100),
     bestStreak,
-    recent: [...oldestFirst].reverse().slice(0, 3),
+    recent: recentMatches(oldestFirst),
   };
+}
+
+/**
+ * Multiplayer wins are a separate measure from a solo score. Solo matches
+ * still belong in the player's history, but there is no opponent to beat.
+ */
+export function summarizeMultiplayerProfile(matches: CompletedMatchWithMode[]): ProfileSummary {
+  return summarizeProfile(matches.filter((match) => match.mode !== "solo"));
 }

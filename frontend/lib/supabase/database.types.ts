@@ -101,6 +101,7 @@ export type Database = {
         server_now: string | null
         phase: string | null
         phase_deadline: string | null
+        free_fallback_seat: number | null
       }
     }
   }
@@ -354,6 +355,7 @@ export type Database = {
         Row: {
           current_lot: number
           flex_slots: number | null
+          free_fallback_seat: number | null
           lot_count: number
           match_id: string
           opener_seat: number
@@ -374,6 +376,7 @@ export type Database = {
         Insert: {
           current_lot?: number
           flex_slots?: number | null
+          free_fallback_seat?: number | null
           lot_count: number
           match_id: string
           opener_seat?: number
@@ -394,6 +397,7 @@ export type Database = {
         Update: {
           current_lot?: number
           flex_slots?: number | null
+          free_fallback_seat?: number | null
           lot_count?: number
           match_id?: string
           opener_seat?: number
@@ -1646,6 +1650,23 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "match_history_row"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      my_match_history: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          ended_at: string | null
+          game: string | null
+          match_id: string | null
+          mode: Database["public"]["Enums"]["run_mode"] | null
+          placement: number | null
+          raw_score: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: ""
           isOneToOne: false
           isSetofReturn: true
         }

@@ -247,6 +247,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     currentLot: state.current_lot ?? 1,
     turnSeat: state.turn_seat,
     openerSeat: state.opener_seat ?? 0,
+    freeFallbackSeat: state.free_fallback_seat ?? null,
     turnDeadline: state.turn_deadline,
     phase: (state.phase ?? "lot_preview") as Turn["phase"],
     phaseDeadline: state.phase_deadline,

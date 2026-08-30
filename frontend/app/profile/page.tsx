@@ -5,15 +5,9 @@ import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { canViewProfile, isSignedInViewer } from "@/lib/auth/viewer";
 import { GuestUpgrade } from "@/components/auth/GuestUpgrade";
-import { matchGameName, type MatchGame } from "@/lib/games/catalog";
-import { summarizeProfile, type CompletedMatch } from "@/lib/profile/summary";
+import { matchGameName } from "@/lib/games/catalog";
+import { completedMatchesFromHistory, recentMatches, summarizeMultiplayerProfile, type CompletedMatch, type CompletedMatchWithMode } from "@/lib/profile/summary";
 import { createClient } from "@/lib/supabase/server";
-
-type MatchRow = {
-  id: string;
-  game: string;
-  ended_at: string | null;
-};
 
 /** A player's durable record, kept deliberately separate from a live room. */
 export default async function ProfilePage() {
@@ -24,43 +18,19 @@ export default async function ProfilePage() {
   if (!isSignedInViewer(claims)) return <SignedOutProfile />;
   if (!canViewProfile(claims)) return <GuestProfile />;
 
-  const [{ data: profile }, { data: playerRows }] = await Promise.all([
+  const [{ data: profile }, { data: historyRows }] = await Promise.all([
     supabase
       .from("profiles")
       .select("display_name, avatar_url, created_at")
       .eq("id", claims.sub)
       .single(),
-    supabase
-      .from("match_players")
-      .select("match_id, placement, raw_score")
-      .eq("user_id", claims.sub),
+    supabase.rpc("my_match_history"),
   ]);
 
-  const matchIds = (playerRows ?? []).map((row) => row.match_id);
-  const { data: matchRows } = matchIds.length
-    ? await supabase
-        .from("matches")
-        .select("id, game, ended_at")
-        .in("id", matchIds)
-        .eq("status", "complete")
-        .not("ended_at", "is", null)
-    : { data: [] as MatchRow[] };
-
-  const playerByMatch = new Map((playerRows ?? []).map((row) => [row.match_id, row]));
-  const matches: CompletedMatch[] = (matchRows ?? []).flatMap((match) => {
-    const player = playerByMatch.get(match.id);
-    if (!player || !match.ended_at) return [];
-    return [{
-      id: match.id,
-      // The database constraint restricts this string to the four values in
-      // MatchGame. Supabase's generated type cannot express CHECK constraints.
-      game: match.game as MatchGame,
-      endedAt: match.ended_at,
-      placement: player.placement,
-      rawScore: player.raw_score,
-    }];
-  });
-  const summary = summarizeProfile(matches);
+  const matches = completedMatchesFromHistory(historyRows ?? []);
+  const multiplayerSummary = summarizeMultiplayerProfile(matches);
+  const recentMultiplayer = recentMatches(matches.filter((match) => match.mode !== "solo"));
+  const recentSolo = recentMatches(matches.filter((match) => match.mode === "solo"));
   const displayName = profile?.display_name ?? (claims.email as string | undefined) ?? "Player";
   const email = (claims.email as string | undefined) ?? null;
 
@@ -89,19 +59,20 @@ export default async function ProfilePage() {
         </header>
 
         <section aria-label="Career stats" className="grid grid-cols-2 gap-2.5 py-6 sm:grid-cols-4 sm:gap-3">
-          <Stat value={summary.gamesPlayed} label="Games played" />
-          <Stat value={summary.wins} label="Wins" />
-          <Stat value={`${summary.winRate}%`} label="Win rate" />
-          <Stat value={summary.bestStreak} label="Best streak" />
+          <Stat value="" label="Games played" />
+          <Stat value={multiplayerSummary.wins} label="Multiplayer wins" />
+          <Stat value={`${multiplayerSummary.winRate}%`} label="Multiplayer win rate" />
+          <Stat value="" label="Best streak" />
         </section>
 
         <div className="grid gap-7 border-t border-line pt-7 lg:grid-cols-[minmax(0,1.7fr)_minmax(250px,1fr)] lg:gap-9">
           <section aria-labelledby="recent-games-heading">
-            <SectionHeading id="recent-games-heading">Recent games</SectionHeading>
-            {summary.recent.length ? (
-              <ol className="mt-3 grid gap-2.5">
-                {summary.recent.map((match) => <RecentGame key={match.id} match={match} />)}
-              </ol>
+            <SectionHeading id="recent-games-heading">Recent results</SectionHeading>
+            {recentMultiplayer.length || recentSolo.length ? (
+              <div className="mt-3 grid gap-6">
+                {recentMultiplayer.length ? <RecentResults title="Multiplayer" matches={recentMultiplayer} multiplayer /> : null}
+                {recentSolo.length ? <RecentResults title="Solo" matches={recentSolo} multiplayer={false} /> : null}
+              </div>
             ) : (
               <EmptyRecord />
             )}
@@ -168,9 +139,20 @@ function SectionHeading({ id, children }: { id: string; children: React.ReactNod
   return <h2 id={id} className="font-mono text-[10px] font-bold tracking-[0.15em] text-fg-muted uppercase">{children}</h2>;
 }
 
-function RecentGame({ match }: { match: CompletedMatch }) {
+function RecentResults({ title, matches, multiplayer }: { title: string; matches: CompletedMatchWithMode[]; multiplayer: boolean }) {
+  return (
+    <section aria-label={`${title} results`}>
+      <h3 className="font-mono text-[9px] font-bold tracking-[0.13em] text-fg-muted uppercase">{title}</h3>
+      <ol className="mt-2.5 grid gap-2.5">
+        {matches.map((match) => <RecentGame key={match.id} match={match} multiplayer={multiplayer} />)}
+      </ol>
+    </section>
+  );
+}
+
+function RecentGame({ match, multiplayer }: { match: CompletedMatch; multiplayer: boolean }) {
   const score = match.rawScore === null ? null : Number.isInteger(match.rawScore) ? String(match.rawScore) : match.rawScore.toFixed(1);
-  return <li className="grid grid-cols-[5px_minmax(0,1fr)_auto] gap-x-4 bg-panel py-4 pr-4 text-panel-fg shadow-card"><span className="bg-hidden" /><div><h3 className="font-slab text-xl leading-none uppercase">{matchGameName(match.game)}</h3><p className="mt-1.5 text-sm text-panel-muted"><time dateTime={match.endedAt}>{shortDate(match.endedAt)}</time>{score === null ? "" : ` · Score ${score}`}</p></div><div className="self-center text-right"><strong className="block font-slab text-2xl leading-none">{formatPlacement(match.placement)}</strong><span className="font-mono text-[9px] tracking-[0.1em] text-hidden-ink uppercase">{match.placement === 1 ? "Win" : "Finish"}</span></div></li>;
+  return <li className="grid grid-cols-[5px_minmax(0,1fr)_auto] gap-x-4 bg-panel py-4 pr-4 text-panel-fg shadow-card"><span className="bg-hidden" /><div><h3 className="font-slab text-xl leading-none uppercase">{matchGameName(match.game)}</h3><p className="mt-1.5 text-sm text-panel-muted"><time dateTime={match.endedAt}>{shortDate(match.endedAt)}</time>{score === null ? "" : ` · Score ${score}`}</p></div><div className="self-center text-right">{multiplayer ? <><strong className="block font-slab text-2xl leading-none">{formatPlacement(match.placement)}</strong><span className="font-mono text-[9px] tracking-[0.1em] text-hidden-ink uppercase">{match.placement === 1 ? "Win" : "Finish"}</span></> : <span className="font-mono text-[9px] tracking-[0.1em] text-panel-muted uppercase">Solo</span>}</div></li>;
 }
 
 function EmptyRecord() {

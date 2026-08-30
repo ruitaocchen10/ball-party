@@ -105,6 +105,7 @@ export function turn(
     currentLot: 1,
     turnSeat: phase === "bidding" ? 0 : null,
     openerSeat: 0,
+    freeFallbackSeat: null,
     turnDeadline: phase === "bidding" ? at : null,
     phase,
     phaseDeadline: phase === "bidding" ? null : at,

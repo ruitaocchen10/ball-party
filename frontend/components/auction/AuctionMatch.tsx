@@ -162,6 +162,7 @@ export function AuctionMatch({
       currentLot: state.current_lot ?? 1,
       turnSeat: state.turn_seat,
       openerSeat: state.opener_seat ?? 0,
+      freeFallbackSeat: state.free_fallback_seat ?? null,
       turnDeadline: state.turn_deadline,
       phase: (state.phase ?? "lot_preview") as Turn["phase"],
       phaseDeadline: state.phase_deadline ?? null,
@@ -482,6 +483,7 @@ export function AuctionMatch({
               paused={isPaused}
               error={error}
               slot={slotFor(lot)}
+              freeFallback={turn.freeFallbackSeat != null && price === 0}
               onRaise={(amount) => act(getClient().schema("auction").rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
               onPass={() => act(getClient().schema("auction").rpc("pass_lot", { p_match_id: matchId }))}
             />
@@ -515,6 +517,7 @@ type AuctionTurnRow = {
   current_lot: number | null;
   turn_seat: number | null;
   opener_seat: number | null;
+  free_fallback_seat?: number | null;
   turn_deadline: string | null;
   phase?: string | null;
   phase_deadline?: string | null;
@@ -942,6 +945,7 @@ function BidBar({
   slot,
   onRaise,
   onPass,
+  freeFallback,
 }: {
   price: number;
   budget: number;
@@ -952,6 +956,7 @@ function BidBar({
   paused: boolean;
   onRaise: (amount: number) => void;
   onPass: () => void;
+  freeFallback: boolean;
   phase: "lot_preview" | "bidding_self" | "bidding_other" | "sold";
   error: string | null;
   slot: string;
@@ -961,7 +966,7 @@ function BidBar({
   const input = useRef<HTMLInputElement>(null);
   const customButton = useRef<HTMLButtonElement>(null);
   const surface = useRef<HTMLDivElement>(null);
-  const minimum = price + 1;
+  const minimum = freeFallback ? 0 : price + 1;
   // Keying the popover to the interaction rather than to a boolean is what
   // closes it on a turn change, a new price or a sale: the key it was opened
   // against simply stops being the current one.
@@ -994,6 +999,8 @@ function BidBar({
         ? blocked === "no_slot"
           ? `Your ${slot} slots are full.`
           : BLOCKED_TEXT[blocked]
+        : freeFallback
+          ? "Take this lot free, or pass it back to the original opener."
         : !canAfford(price, budget, INCREMENTS[1])
           ? `You can only raise by $${INCREMENTS[0]}.`
           : `A win fills your open ${slot}.`;
@@ -1010,7 +1017,8 @@ function BidBar({
         <span className="font-slab text-2xl leading-none tabular-nums">{phase === "lot_preview" ? "—" : `$${price}`}</span>
       </div>
       <p className="mt-1 font-mono text-[11px] text-fg-muted tabular-nums">Your budget · ${budget} left</p>
-      <div className="mt-3 flex gap-2">
+      {freeFallback && actionable ? <div className="mt-3 flex gap-2"><Button type="button" onClick={() => onRaise(0)}>Take for $0</Button></div> : null}
+      {!freeFallback ? <div className="mt-3 flex gap-2">
         {INCREMENTS.map((increment) => (
           <Button
             key={increment}
@@ -1024,7 +1032,7 @@ function BidBar({
         <Button ref={customButton} type="button" disabled={!actionable} onClick={() => { setAmount(String(minimum)); setCustomFor(interactionKey); }}>
           Custom
         </Button>
-      </div>
+      </div> : null}
       <p role={error && !custom ? "alert" : undefined} className={`mt-3 min-h-5 text-xs leading-5 ${error && !custom ? "text-hidden-text" : "text-fg-muted"}`}>{custom ? status : error ?? status}</p>
       {/* Passing is permanent for this lot, so it needs a deliberate,
           thumb-sized target of its own. Ghost keeps Raise as the primary
@@ -1033,7 +1041,7 @@ function BidBar({
           never shift during a turn change. */}
       <div className="mt-3 border-t border-line pt-3">
         <Button type="button" variant="ghost" disabled={!actionable} onClick={onPass}>
-          Pass
+          {freeFallback ? "Pass to opener" : "Pass"}
         </Button>
       </div>
       <AnimatePresence>
