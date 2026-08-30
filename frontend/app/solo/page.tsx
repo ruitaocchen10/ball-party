@@ -22,11 +22,12 @@ export default async function SoloPage(props: PageProps<"/solo">) {
   const viewer = isSignedInViewer(claims);
 
   const { data: profile } = viewer
-    ? await supabase.from("profiles").select("display_name").eq("id", claims!.sub).single()
+    ? await supabase.from("profiles").select("display_name, avatar_url").eq("id", claims!.sub).single()
     : { data: null };
 
   const displayName = profile?.display_name ?? (viewer ? (claims!.email as string) : null);
   const email = viewer ? ((claims!.email as string | undefined) ?? null) : null;
+  const avatarUrl = profile?.avatar_url ?? null;
 
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
@@ -35,7 +36,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}

@@ -40,9 +40,11 @@ import { drawerBackdrop, drawerPanel } from "@/lib/motion";
 export function Sidebar({
   displayName,
   email = null,
+  avatarUrl = null,
 }: {
   displayName?: string | null;
   email?: string | null;
+  avatarUrl?: string | null;
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -81,7 +83,12 @@ export function Sidebar({
 
   return (
     <>
-      <MobileTopStrip displayName={displayName} email={email} onOpenMenu={() => setDrawerOpen(true)} />
+      <MobileTopStrip
+        displayName={displayName}
+        email={email}
+        avatarUrl={avatarUrl}
+        onOpenMenu={() => setDrawerOpen(true)}
+      />
 
       <aside
         // Targeted by the body:has() rule in globals.css, which reserves
@@ -107,7 +114,13 @@ export function Sidebar({
           className={`border-t border-line py-4 ${collapsed ? "flex justify-center px-2" : "px-5"}`}
         >
           {displayName ? (
-            <AccountMenu displayName={displayName} email={email} placement="up" compact={collapsed} />
+            <AccountMenu
+              displayName={displayName}
+              email={email}
+              avatarUrl={avatarUrl}
+              placement="up"
+              compact={collapsed}
+            />
           ) : (
             <SignedOutAccount compact={collapsed} />
           )}
@@ -121,6 +134,7 @@ export function Sidebar({
             pathname={pathname}
             displayName={displayName}
             email={email}
+            avatarUrl={avatarUrl}
             onClose={() => setDrawerOpen(false)}
           />
         ) : null}
@@ -262,10 +276,12 @@ function SignedOutAccount({ compact }: { compact: boolean }) {
 function MobileTopStrip({
   displayName,
   email,
+  avatarUrl,
   onOpenMenu,
 }: {
   displayName?: string | null;
   email?: string | null;
+  avatarUrl?: string | null;
   onOpenMenu: () => void;
 }) {
   return (
@@ -289,7 +305,7 @@ function MobileTopStrip({
       </Link>
 
       {displayName ? (
-        <AccountMenu displayName={displayName} email={email} compact />
+        <AccountMenu displayName={displayName} email={email} avatarUrl={avatarUrl} compact />
       ) : (
         <Link
           href="/login"
@@ -306,11 +322,13 @@ function MobileDrawer({
   pathname,
   displayName,
   email,
+  avatarUrl,
   onClose,
 }: {
   pathname: string;
   displayName?: string | null;
   email?: string | null;
+  avatarUrl?: string | null;
   onClose: () => void;
 }) {
   // Escape closes it, and the drawer holds the page still behind it — a
@@ -375,7 +393,7 @@ function MobileDrawer({
 
         <div className="border-t border-line px-5 py-3">
           {displayName ? (
-            <AccountMenu displayName={displayName} email={email} placement="up" />
+            <AccountMenu displayName={displayName} email={email} avatarUrl={avatarUrl} placement="up" />
           ) : (
             <SignedOutAccount compact={false} />
           )}
