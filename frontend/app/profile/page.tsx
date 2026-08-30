@@ -33,10 +33,11 @@ export default async function ProfilePage() {
   const recentSolo = recentMatches(matches.filter((match) => match.mode === "solo"));
   const displayName = profile?.display_name ?? (claims.email as string | undefined) ?? "Player";
   const email = (claims.email as string | undefined) ?? null;
+  const avatarUrl = profile?.avatar_url ?? null;
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-10 pb-16 sm:px-6 sm:pt-12 lg:px-8 lg:pt-14 lg:pb-20">
         <header className="flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:items-end">
           <ProfileAvatar name={displayName} avatarUrl={profile?.avatar_url ?? null} />

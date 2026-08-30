@@ -41,11 +41,12 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
   const { data: viewer } = await supabase
     .from("profiles")
-    .select("display_name")
+    .select("display_name, avatar_url")
     .eq("id", claims.sub)
     .single();
   const displayName = viewer?.display_name ?? (claims.email as string | undefined) ?? null;
   const email = (claims.email as string | undefined) ?? null;
+  const avatarUrl = viewer?.avatar_url ?? null;
 
   // RLS returns nothing for a match you are not in, so "no row" is a normal
   // state here rather than a failure.
@@ -57,7 +58,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
   if (!match) {
     return (
-      <Shell displayName={displayName} email={email}>
+      <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}>
         <p className="text-sm leading-6 text-fg-muted">
           This game isn&apos;t yours, or it no longer exists.
         </p>
@@ -73,7 +74,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // refusal visible instead of immediately following the winner's action.
   if (error) {
     return (
-      <Shell displayName={displayName} email={email}>
+      <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}>
         <p role="alert" className="text-sm leading-6 text-fg-muted">{error}</p>
         {code ? <BackToRoom code={code} /> : <HomeLink />}
       </Shell>
@@ -100,7 +101,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // yet. Normally a blink. If it sticks, the janitor abandons the match.
   if (match.status === "setup") {
     return (
-      <Shell displayName={displayName} email={email}>
+      <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}>
         <MatchSetup matchId={match.id} />
       </Shell>
     );
@@ -108,7 +109,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
   if (match.status === "abandoned") {
     return (
-      <Shell displayName={displayName} email={email}>
+      <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}>
         <p className="text-sm leading-6 text-fg-muted">This game was abandoned.</p>
         {code ? <BackToRoom code={code} /> : <HomeLink />}
       </Shell>
@@ -137,7 +138,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     ]);
     const row = stateResult.data;
     if (!row || row.round_count == null || row.current_round == null || !row.slot || !row.server_now) {
-      return <Shell displayName={displayName} email={email}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
+      return <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
     }
     return <SabotageDraftMatch matchId={id} viewerId={claims.sub} roomCode={code} isHost={isHost} paused={match.status === "paused"} initial={{
       board: row,
@@ -175,7 +176,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       row.phase === null || row.server_now === null
     ) {
       return (
-        <Shell displayName={displayName} email={email}>
+        <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}>
           <p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p>
           <HomeLink />
         </Shell>
@@ -235,7 +236,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   const state = turnResult.data;
   if (!state) {
     return (
-      <Shell displayName={displayName} email={email}>
+      <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}>
         <p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p>
         <HomeLink />
       </Shell>
@@ -322,15 +323,17 @@ function auctionFormat(row: {
 function Shell({
   displayName,
   email = null,
+  avatarUrl = null,
   children,
 }: {
   displayName: string | null;
   email?: string | null;
+  avatarUrl?: string | null;
   children: React.ReactNode;
 }) {
   return (
     <>
-      <Sidebar displayName={displayName} email={email} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-6 py-14">
         {children}
       </main>
