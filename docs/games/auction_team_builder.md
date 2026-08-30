@@ -270,18 +270,37 @@ reason that had nothing to do with TE specifically and everything to do with
 which position the formula happened to shortchange.
 
 The fix is two parts: the remainder goes to a random subset of RB/WR/TE each
-deal instead of a fixed order, and every one of the three is floored at one
-spare regardless of what the fair split alone would give it. That floor can
-push the total past N*flex_slots on the smallest tables — 2-player
-Standard/Full deals one lot more than the 5N figure above, landing at 5N+1 —
-which means it is possible, though uncommon (single digits of percent per
-affected lot), for one of those extra lots to reach the board with nobody
-eligible to bid on it. That is not a new game state: `open_bidding` already
-resolves a lot to no winner whenever nobody is eligible (this is how an
-all-bankrupt table's dead lot has always been handled), and the client already
-renders it as "No sale." Every table with enough slack to cover all three
-positions on its own (3+ players in Standard/Full, any Deep table) is
-unaffected — same lot count, same behavior as before this fix.
+deal instead of a fixed order, and every one of the three is floored at a
+minimum spare count regardless of what the fair split alone would give it.
+That floor can push the total past N*flex_slots on the smallest tables — a
+2-player Standard/Full table deals well past the 5N figure above. It is
+possible, though uncommon, for one of those extra lots to reach the board
+with nobody eligible to bid on it. That is not a new game state:
+`open_bidding` already resolves a lot to no winner whenever nobody is
+eligible (this is how an all-bankrupt table's dead lot has always been
+handled), and the client already renders it as "No sale." Every table with
+enough slack to cover all three positions on its own (3+ players in
+Standard/Full, any Deep table) sees the floor do nothing — same lot count,
+same behavior as before this fix.
+
+**The draft does not have to exhaust the board to be over.** `advance()`
+finishes the match the moment every seated player's roster — every natural
+slot plus FLEX — is completely full, not only once `current_lot` runs past
+`lot_count`. That mirrors how an actual fantasy draft ends: nobody keeps
+picking once every team is done, regardless of how many cards happen to be
+left in the box.
+
+That in turn changes what the flex-buffer floor above actually costs. A spare
+lot beyond what a table uses no longer has to be dealt into view as a visible
+"No sale" — it simply never gets reached, because the match is already over
+by the time it would have come up. With that cost gone, the floor is two
+spares per flex-eligible position rather than one: the same simulation that
+validated the fair-random split showed this drops the scarcity guard's block
+rate on a four-player table from roughly 20% down to roughly 1%, at the cost
+of reserving a couple more real players per deal who may end up never shown
+at all. A four-player table now deals Standard as 20 + 2 = 22, Full as 28 + 2
+= 30, and Deep as 40 + 0 = 40 (Deep's own flex budget already clears the
+floor without help).
 
 Budget cannot strand anyone either: opening is at $0, so an eligible player can
 always take a lot for free. Eligibility is the only thing a roster slot can turn

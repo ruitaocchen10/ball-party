@@ -7,7 +7,7 @@
 -- rather than asserting on individual moves.
 
 begin;
-select plan(53);
+select plan(58);
 
 \ir support/harness.psql
 
@@ -649,10 +649,102 @@ select is(
   'everyone at the table appears in the standings, including anyone who won nothing'
 );
 
+-- Since 0090 the match can end before every dealt lot is used -- once every
+-- roster is full there is nothing left to bid on, so a spare lot beyond that
+-- point never gets a chance to be revealed at all. What actually has to hold
+-- is narrower: every lot that DID resolve carries its revealed points, and
+-- nobody's roster is short a slot the moment the match calls itself done.
 select ok(
-  (select bool_and(points is not null) from public.auction_lots
-    where match_id = (select v from tests.fx where k = 'mf')),
-  'and every lot on the board has been revealed'
+  not exists (
+    select 1 from public.auction_lots
+     where match_id = (select v from tests.fx where k = 'mf')
+       and winner_id is not null and points is null
+  ),
+  'every resolved lot carries its revealed points'
+);
+
+select is(
+  tests.stranded((select v from tests.fx where k = 'mf')),
+  '{}'::text[],
+  'and nobody''s roster is short a slot when the match calls itself done'
+);
+
+-- ---------------------------------------------------- early finish (0090) --
+--
+-- The draft does not have to exhaust every dealt lot to be over: the moment
+-- every seated player's roster (every natural slot plus FLEX) is completely
+-- full, there is nothing left worth bidding on. Built directly (fill every
+-- slot by hand, in seq order, rather than played out) so it is deterministic
+-- that lots remain undealt when the match calls itself done -- 0089's floor
+-- guarantees a two-player Standard table has at least four RB lots (two
+-- natural, two buffer), which is exactly enough to hand each seat both its
+-- natural RB and its FLEX from the same position.
+select tests.act_as_admin();
+insert into tests.fx (k, v) values ('me2', tests.deal(2, 0.44));
+update public.matches set status = 'playing', started_at = now()
+ where id = (select v from tests.fx where k = 'me2');
+select auction_private.advance((select v from tests.fx where k = 'me2'));
+
+with seats as (
+  select ap.user_id, row_number() over (order by ap.seat) as rn
+    from public.auction_players ap
+   where ap.match_id = (select v from tests.fx where k = 'me2')
+),
+naturals as (
+  select al.seq, al.position, row_number() over (partition by al.position order by al.seq) as rn
+    from public.auction_lots al
+   where al.match_id = (select v from tests.fx where k = 'me2')
+     and al.position in ('QB', 'RB', 'WR', 'TE')
+)
+update public.auction_lots al
+   set winner_id = s.user_id, slot = al.position, price = 0, resolved_at = now(),
+       points = (select aa.points from private.auction_answers aa where aa.match_id = al.match_id and aa.seq = al.seq)
+  from naturals n join seats s on s.rn = n.rn
+ where al.match_id = (select v from tests.fx where k = 'me2') and al.seq = n.seq;
+
+with seats as (
+  select ap.user_id, row_number() over (order by ap.seat) as rn
+    from public.auction_players ap
+   where ap.match_id = (select v from tests.fx where k = 'me2')
+),
+flex_lots as (
+  select al.seq, row_number() over (order by al.seq) as rn
+    from public.auction_lots al
+   where al.match_id = (select v from tests.fx where k = 'me2')
+     and al.position = 'RB' and al.winner_id is null
+)
+update public.auction_lots al
+   set winner_id = s.user_id, slot = 'FLEX', price = 0, resolved_at = now(),
+       points = (select aa.points from private.auction_answers aa where aa.match_id = al.match_id and aa.seq = al.seq)
+  from flex_lots f join seats s on s.rn = f.rn
+ where al.match_id = (select v from tests.fx where k = 'me2') and al.seq = f.seq;
+
+select is(
+  tests.stranded((select v from tests.fx where k = 'me2')),
+  '{}'::text[],
+  'both rosters are genuinely complete before the match is told so'
+);
+
+select ok(
+  exists (
+    select 1 from public.auction_lots
+     where match_id = (select v from tests.fx where k = 'me2') and winner_id is null
+  ),
+  'and lots remain undealt -- the board was not exhausted to get there'
+);
+
+select auction_private.advance((select v from tests.fx where k = 'me2'));
+
+select is(
+  (select status::text from public.matches where id = (select v from tests.fx where k = 'me2')),
+  'complete',
+  'advance() ends the match on a full roster alone, without waiting for current_lot to pass lot_count'
+);
+
+select ok(
+  (select current_lot <= lot_count from public.auction_matches
+    where match_id = (select v from tests.fx where k = 'me2')),
+  'confirmed by current_lot never having to catch up to lot_count'
 );
 
 select * from finish();

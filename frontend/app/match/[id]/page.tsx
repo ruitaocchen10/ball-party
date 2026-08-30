@@ -268,6 +268,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         roomCode={code}
         isHost={isHost}
         paused={match.status === "paused"}
+        complete={match.status === "complete"}
         initial={{
         turn,
         // The server's clock, so the client can offset its own rather than

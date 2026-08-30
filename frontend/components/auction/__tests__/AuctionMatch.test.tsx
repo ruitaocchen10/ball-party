@@ -639,6 +639,22 @@ describe("the shape of the screen", () => {
     // back, not app navigation reappearing around it).
     expect(screen.queryByRole("link", { name: "Ball Party" })).not.toBeInTheDocument();
   });
+
+  it("shows the final standings once the match is complete, even with lots still undealt", () => {
+    // Since 0090 the board can end before current_lot ever reaches lot_count
+    // -- a full roster ends the draft on its own. `complete` is the signal
+    // for that, independent of the lot-count comparison the board also uses.
+    renderMatch({
+      turn: turn("sold", { currentLot: 5, lotCount: 20 }),
+      complete: true,
+      standings: [
+        standing({ user_id: "u0", placement: 1, raw_score: 20 }),
+        standing({ user_id: "u1", placement: 2, raw_score: 10 }),
+      ],
+    });
+
+    expect(screen.getByText("Ava wins")).toBeInTheDocument();
+  });
 });
 
 

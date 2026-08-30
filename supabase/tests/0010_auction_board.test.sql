@@ -19,46 +19,50 @@ select tests.act_as_admin();
 
 select is(
   (select count(*)::int from public.auction_lots where match_id = (select v from tests.fx where k = 'm4')),
-  20,
-  'a four-player board is 5N = 20 lots'
+  22,
+  'a four-player board is 5N plus the flex-buffer floor (0090) = 22 lots'
 );
 
 select is(
   (select lot_count::int from public.auction_matches where match_id = (select v from tests.fx where k = 'm4')),
-  20,
+  22,
   'and the match row agrees'
 );
 
 -- Positions are no longer dealt as "N base lots of each, then N flex lots
 -- last" (0088). QB stays at exactly N, since it never flexes; RB, WR and TE
--- each carry a share of the N flex slots' worth of slack folded into one
--- shared pool, so which slot a lot ends up filling is decided live rather
--- than by a tag set at deal time. See 0011 for the eligibility rule this buys.
+-- each carry a share of a flex buffer folded into one shared pool, so which
+-- slot a lot ends up filling is decided live rather than by a tag set at
+-- deal time. See 0011 for the eligibility rule this buys.
 --
--- Since 0089 the split of that shared slack is random rather than a fixed
--- RB-then-WR-then-TE priority (see 0011/0019 for why that mattered), so which
--- of RB/WR/TE gets the extra unit at N=4 is no longer pinned to one position.
--- Sorted rather than position-ordered so the assertion holds either way: QB
--- alone at N, two of RB/WR/TE at their base share, one at base-plus-remainder.
+-- The buffer's remainder is split at random rather than a fixed
+-- RB-then-WR-then-TE priority (0089), and every one of RB/WR/TE is floored
+-- at two spares regardless of what that random split alone would give it
+-- (0090). At this table size that floor dominates the remainder entirely --
+-- flex_slots*N is only 4, so the fair split alone could give at most one
+-- position a second unit, and the floor brings the other two up to match --
+-- so all three land on exactly the same count, deterministically, whichever
+-- of them the random draw favored.
 select is(
-  (select array_agg(c order by c) from (
+  (select array_agg(c order by pos) from (
      select position as pos, count(*)::int as c
        from public.auction_lots
       where match_id = (select v from tests.fx where k = 'm4')
       group by position) x),
-  array[4, 5, 5, 6],
-  'QB stays at exactly N; RB, TE and WR share the N flex slots worth of slack, one of them getting the odd unit'
+  array[4, 6, 6, 6],
+  'QB stays at exactly N; RB, TE and WR each land on their natural share plus the floored buffer'
 );
 
 select is(
   (select count(distinct player_id)::int from public.auction_lots
     where match_id = (select v from tests.fx where k = 'm4')),
-  20,
+  22,
   'no player appears twice on a board'
 );
 
 -- Tier is checked by joining back to the pool, because the lot itself must not
--- carry it — see the leak tests below.
+-- carry it — see the leak tests below. Quota is computed from the corrected
+-- 22-lot total, not the pre-0090 20.
 select is(
   (select array_agg(c order by t) from (
      select pw.tier as t, count(*)::int as c
@@ -67,8 +71,8 @@ select is(
          on pw.player_id = al.player_id and pw.season = al.season and pw.week = al.week
       where al.match_id = (select v from tests.fx where k = 'm4')
       group by pw.tier) x),
-  array[5, 8, 7],
-  'the tier quota at N=4 is 7 star, 8 solid, 5 deep (deep, solid, star alphabetically)'
+  array[5, 9, 8],
+  'the tier quota at N=4 (22 lots) is 8 star, 9 solid, 5 deep (deep, solid, star alphabetically)'
 );
 
 -- ------------------------------------------------- the quota at other sizes --
@@ -84,25 +88,23 @@ select is(
          on pw.player_id = al.player_id and pw.season = al.season and pw.week = al.week
       where al.match_id = (select v from tests.fx where k = 'm3')
       group by pw.tier) x),
-  array[4, 6, 5],
-  'the quota at N=3 is 5/6/4 — the odd lot goes to the largest remainder, deep'
+  array[5, 7, 6],
+  'the quota at N=3 (18 lots, once the flex-buffer floor is applied) is 6/7/5 — the odd lot goes to the largest remainder, deep'
 );
 
 select is(
   (select count(*)::int from public.auction_lots where match_id = (select v from tests.fx where k = 'm3')),
-  15,
-  'and a three-player board is 15 lots'
+  18,
+  'and a three-player board is 5N plus the floor = 18 lots'
 );
 
 insert into tests.fx (k, v) values ('m2', tests.deal(2, 0.75));
 select tests.act_as_admin();
 
 -- A 2-player Standard table only has flex_slots*N = 2 units of slack to split
--- across three flex-eligible positions. Since 0089 every one of RB/WR/TE is
--- floored at one spare regardless, which pushes this table's total past the
--- old 5N figure (10 -> 11: two positions get their spare from the ordinary
--- remainder split, the third from the floor). The tier quota below is
--- computed from that corrected total, not the old one.
+-- across three flex-eligible positions -- nowhere near the floor of two
+-- spares each (0090), so the floor alone decides every position's buffer
+-- here, deterministically, regardless of the random split.
 select is(
   (select array_agg(c order by t) from (
      select pw.tier as t, count(*)::int as c
@@ -111,27 +113,28 @@ select is(
          on pw.player_id = al.player_id and pw.season = al.season and pw.week = al.week
       where al.match_id = (select v from tests.fx where k = 'm2')
       group by pw.tier) x),
-  array[3, 4, 4],
-  'the quota at N=2 (11 lots, once the flex-buffer floor is applied) is 4/4/3'
+  array[3, 6, 5],
+  'the quota at N=2 (14 lots, once the flex-buffer floor is applied) is 5/6/3'
 );
 
 select is(
   (select count(*)::int from public.auction_lots where match_id = (select v from tests.fx where k = 'm2')),
-  11,
-  'and a two-player board is 5N+1 = 11 lots -- the floor added the unit flex_slots*N alone could not give every position'
+  14,
+  'and a two-player board is 5N=10 plus the floor of two spares on each of RB/WR/TE = 14 lots'
 );
 
--- The actual point of 0089: at this table size the fair split alone still
--- leaves one of RB/WR/TE with zero spares (2 units, 3 positions -- somebody
--- always loses the tiebreak). The floor is what guarantees nobody does,
--- regardless of which position the random split shorted.
-select ok(
-  (select bool_and(c >= 2) from (
-     select count(*)::int as c
+-- The actual point of 0089/0090: at this table size the fair split alone
+-- would leave at least one of RB/WR/TE short. The floor guarantees every one
+-- of them gets real slack, regardless of which position the random split
+-- would otherwise have shorted.
+select is(
+  (select array_agg(c order by pos) from (
+     select position as pos, count(*)::int as c
        from public.auction_lots
       where match_id = (select v from tests.fx where k = 'm2') and position in ('RB', 'WR', 'TE')
       group by position) x),
-  'every one of RB/WR/TE gets at least one spare lot beyond its single natural slot, even though the table''s flex budget could not otherwise stretch to all three'
+  array[4, 4, 4],
+  'every one of RB/WR/TE gets its single natural slot plus the full two-spare floor, evenly, even though the table''s flex budget could not otherwise stretch to all three'
 );
 
 -- ------------------------------------------------------------------- seats --
@@ -212,7 +215,7 @@ select ok(
 
 select is(
   (select count(*)::int from private.auction_answers where match_id = (select v from tests.fx where k = 'm4')),
-  20,
+  22,
   'every lot has an answer stored'
 );
 
@@ -251,7 +254,7 @@ select tests.act_as((
 
 select is(
   (select count(*)::int from public.auction_lots where match_id = (select v from tests.fx where k = 'm4')),
-  20,
+  22,
   'a participant can read the board'
 );
 

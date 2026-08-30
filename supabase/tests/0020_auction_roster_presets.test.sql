@@ -22,11 +22,11 @@ end $$;
 
 select tests.mkmatch(4) as standard_match \gset
 select auction.start(:'standard_match', 'weekly', 'standard');
-select is((select row(qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse, lot_count)::text from public.auction_matches where match_id = :'standard_match'), '(1,1,1,1,1,25,20)', 'standard resolves to five slots, $25, and 20 lots');
+select is((select row(qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse, lot_count)::text from public.auction_matches where match_id = :'standard_match'), '(1,1,1,1,1,25,22)', 'standard resolves to five slots, $25, and 22 lots (5N plus the flex-buffer floor)');
 
 select tests.mkmatch(4) as full_match \gset
 select auction.start(:'full_match', 'weekly', 'full');
-select is((select row(qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse, lot_count)::text from public.auction_matches where match_id = :'full_match'), '(1,2,2,1,1,35,28)', 'full resolves to seven slots, $35, and 28 lots');
+select is((select row(qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse, lot_count)::text from public.auction_matches where match_id = :'full_match'), '(1,2,2,1,1,35,30)', 'full resolves to seven slots, $35, and 30 lots (28 plus the flex-buffer floor)');
 
 select tests.mkmatch(4) as deep_match \gset
 select auction.start(:'deep_match', 'weekly', 'deep');

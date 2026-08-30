@@ -120,6 +120,7 @@ export function AuctionMatch({
   roomCode,
   isHost = false,
   paused = false,
+  complete = false,
   initial,
 }: {
   matchId: string;
@@ -127,6 +128,7 @@ export function AuctionMatch({
   roomCode: string | null;
   isHost?: boolean;
   paused?: boolean;
+  complete?: boolean;
   initial: Initial;
 }) {
   // Built on first use rather than during render. createClient() reaches for
@@ -147,6 +149,12 @@ export function AuctionMatch({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(paused);
+  // Since 0090, the board can end before current_lot ever reaches lot_count
+  // -- a match is over the moment every roster is full, not only when the
+  // deck runs out. `finished` below has to know that independently of the
+  // lot-count comparison it used to rely on alone, so this rides the same
+  // live `matches` row this component already subscribes to for `isPaused`.
+  const [isComplete, setIsComplete] = useState(complete);
 
   // Server time as of the most recently applied state. The shared match clock
   // measures how far this browser's clock is from the server's against it, so
@@ -208,7 +216,11 @@ export function AuctionMatch({
   }, [getClient, matchId, applyTurn]);
 
   const me = players.find((p) => p.user_id === viewerId) ?? null;
-  const finished = turn.currentLot > turn.lotCount;
+  // Either signal alone is right at the moment its source updates; the two
+  // can otherwise disagree for one tick after an early finish, since this is
+  // a race between two different realtime subscriptions (auction_matches for
+  // turn.currentLot, matches for isComplete) rather than one atomic update.
+  const finished = turn.currentLot > turn.lotCount || isComplete;
   const lot = lotAt(lots, turn.currentLot);
   // A brief suspense beat before each lot's player appears, mirroring
   // sabotage draft's turn reveal -- the identity is already in `lots`, this
@@ -323,7 +335,11 @@ export function AuctionMatch({
         .on(
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` },
-          (payload) => setIsPaused((payload.new as { status?: string }).status === "paused"),
+          (payload) => {
+            const status = (payload.new as { status?: string }).status;
+            setIsPaused(status === "paused");
+            setIsComplete(status === "complete");
+          },
         )
         // A rejoin is precisely when this client may have missed something, so
         // the state is read again rather than assumed to have kept up -- the

@@ -18,6 +18,10 @@ type Options = {
   isHost?: boolean;
   /** False by default — the match is running. */
   paused?: boolean;
+  /** False by default. True renders the final screen even if turn.currentLot
+   *  has not yet passed turn.lotCount -- since 0090 a match can finish with
+   *  lots still undealt. */
+  complete?: boolean;
 };
 
 /** Mounts the match screen with the shared supabase mock wired in. */
@@ -32,6 +36,7 @@ export function renderMatch(options: Options) {
       roomCode="ABCD"
       isHost={options.isHost ?? false}
       paused={options.paused ?? false}
+      complete={options.complete ?? false}
       initial={{
         turn: options.turn,
         serverNow: new Date().toISOString(),

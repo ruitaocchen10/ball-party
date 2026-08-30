@@ -18,13 +18,13 @@ select ok(
 );
 
 -- A 2-player Standard table's flex budget (flex_slots*N = 2) can't stretch to
--- cover all three flex-eligible positions; since 0089 every one of RB/WR/TE
--- is floored at one spare regardless, so this table deals one lot more than
--- the old 5N figure. See 0010 for the fuller explanation.
+-- cover all three flex-eligible positions; every one of RB/WR/TE is floored
+-- at two spares regardless (0090), so this table deals well past the old 5N
+-- figure. See 0010 for the fuller explanation.
 select is(
   (select count(*)::int from public.auction_lots where match_id = :'match_id'),
-  11,
-  'the season dealer retains the 5N (or 5N+1, with the flex-buffer floor) board size'
+  14,
+  'the season dealer retains the 5N (plus the flex-buffer floor) board size'
 );
 
 select is(
@@ -43,8 +43,8 @@ select is(
      where al.match_id = :'match_id'
      group by ps.tier
   ) tiers),
-  array[3, 4, 4],
-  'the season dealer preserves the tier quota at two players (11 lots, once the flex-buffer floor is applied)'
+  array[3, 6, 5],
+  'the season dealer preserves the tier quota at two players (14 lots, once the flex-buffer floor is applied)'
 );
 
 select ok(
@@ -125,7 +125,10 @@ select tests.mkmatch(2) as exhausted_match \gset
 -- auction.start deliberately takes no seed (see 0030), so it draws its own
 -- from session randomness. Pinned here rather than left to chance: this
 -- exact deal needs a QB-star draw, which is the one now-exhausted pairing.
-select setseed(0.01);
+-- Re-pinned for 0090 (was 0.01): deal_board's larger flex buffer consumes a
+-- different amount of random() before reaching QB's own draw, which shifts
+-- which implicit seed still lands on a QB-star combination.
+select setseed(0.02);
 select throws_ok(
   format($$ select auction.start(%L, 'season_total', 'standard') $$, :'exhausted_match'),
   'P0001', 'pool_exhausted',
