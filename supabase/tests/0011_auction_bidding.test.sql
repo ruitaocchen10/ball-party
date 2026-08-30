@@ -7,7 +7,7 @@
 -- rather than asserting on individual moves.
 
 begin;
-select plan(52);
+select plan(58);
 
 \ir support/harness.psql
 
@@ -461,60 +461,141 @@ select isnt(
 );
 
 -- --------------------------------------------------------- eligibility --
+--
+-- FLEX no longer waits for a dedicated round (0088). A base lot may be bid on
+-- for its natural slot whenever that's open; once it's full, RB/WR/TE (never
+-- QB) may go to FLEX instead, but only when enough of that exact position
+-- remains undealt to cover every other player's remaining natural need -- in
+-- slot units, not a headcount of players. Constructed directly against
+-- auction_private.eligible() rather than played to, so each rule is asserted
+-- in isolation.
 
--- Once a slot is filled, its base lots are closed to that player. Constructed
--- rather than played to, so the rule is asserted directly.
+-- QB is the one absolute case: it never flexes, so once the single QB slot is
+-- full, no remaining QB lot is eligible no matter how much QB supply is left.
 select tests.act_as_admin();
-insert into tests.fx (k, v) values ('me', tests.deal_and_open(4, 0.88));
-select tests.act_as_admin();
-
-insert into tests.fx (k, v) select 'filled', tests.on_clock((select v from tests.fx where k = 'me'));
+insert into tests.fx (k, v) values ('melq', tests.deal(4, 0.88, 'standard'));
+insert into tests.fx (k, v)
+  select 'q0', user_id from public.auction_players where match_id = (select v from tests.fx where k = 'melq') and seat = 0;
 
 update public.auction_lots
-   set winner_id = (select v from tests.fx where k = 'filled'),
-       price = 0,
-       slot = position,
-       resolved_at = now()
- where match_id = (select v from tests.fx where k = 'me')
-   and seq = (select current_lot from public.auction_matches
-               where match_id = (select v from tests.fx where k = 'me'));
+   set winner_id = (select v from tests.fx where k = 'q0'), price = 0, slot = 'QB', resolved_at = now()
+ where match_id = (select v from tests.fx where k = 'melq')
+   and seq = (select min(seq) from public.auction_lots
+               where match_id = (select v from tests.fx where k = 'melq') and position = 'QB');
 
-select tests.act_as((select v from tests.fx where k = 'filled'));
-select throws_ok(
-  format($$ select auction.place_bid(%L, 1) $$, (select v from tests.fx where k = 'me')),
-  'P0001', 'not_eligible',
-  'a player whose natural slot is filled cannot bid on a base lot at that position'
-);
-
--- FLEX is live during the flex round and nowhere else, which is what makes the
--- count of remaining lots at a position equal the count of players still
--- missing it.
-select tests.act_as_admin();
 select ok(
-  (select bool_and(auction_private.eligible(
-       (select v from tests.fx where k = 'me'), ap.user_id, l.seq))
-     from public.auction_players ap
-     cross join public.auction_lots l
-    where ap.match_id = (select v from tests.fx where k = 'me')
-      and l.match_id = (select v from tests.fx where k = 'me')
-      and l.is_flex),
-  'everyone is eligible for a flex lot while their FLEX is open, whatever else they hold'
+  not exists (
+    select 1 from public.auction_lots l
+     where l.match_id = (select v from tests.fx where k = 'melq') and l.position = 'QB' and l.winner_id is null
+       and auction_private.eligible((select v from tests.fx where k = 'melq'), (select v from tests.fx where k = 'q0'), l.seq)
+  ),
+  'QB never flexes: once the one QB slot is full, no remaining QB lot is eligible'
 );
 
+-- Once both a player's natural slot and FLEX are full, nothing is left to try.
+select tests.act_as_admin();
+insert into tests.fx (k, v) values ('melb', tests.deal(4, 0.22, 'standard'));
+insert into tests.fx (k, v)
+  select 'b0', user_id from public.auction_players where match_id = (select v from tests.fx where k = 'melb') and seat = 0;
+
 update public.auction_lots
-   set winner_id = (select v from tests.fx where k = 'filled'),
-       price = 0, slot = 'FLEX', resolved_at = now()
- where match_id = (select v from tests.fx where k = 'me')
-   and seq = (select max(seq) from public.auction_lots
-               where match_id = (select v from tests.fx where k = 'me'));
+   set winner_id = (select v from tests.fx where k = 'b0'), price = 0, slot = 'RB', resolved_at = now()
+ where match_id = (select v from tests.fx where k = 'melb')
+   and seq = (select min(seq) from public.auction_lots
+               where match_id = (select v from tests.fx where k = 'melb') and position = 'RB');
+update public.auction_lots
+   set winner_id = (select v from tests.fx where k = 'b0'), price = 0, slot = 'FLEX', resolved_at = now()
+ where match_id = (select v from tests.fx where k = 'melb')
+   and seq = (select min(seq) from public.auction_lots
+               where match_id = (select v from tests.fx where k = 'melb') and position = 'WR');
+
+select ok(
+  not exists (
+    select 1 from public.auction_lots l
+     where l.match_id = (select v from tests.fx where k = 'melb') and l.position = 'RB' and l.winner_id is null
+       and auction_private.eligible((select v from tests.fx where k = 'melb'), (select v from tests.fx where k = 'b0'), l.seq)
+  ),
+  'once a natural slot and FLEX are both full, no remaining lot at that position is eligible either way'
+);
+
+-- THE FEATURE: with a natural slot already full, FLEX open, and plenty of
+-- that position left over for everyone else, a player may bid a base lot into
+-- FLEX well before the board is spent -- not just in a final flex round.
+select tests.act_as_admin();
+insert into tests.fx (k, v) values ('melc', tests.deal(4, 0.33, 'standard'));
+insert into tests.fx (k, v)
+  select 'c0', user_id from public.auction_players where match_id = (select v from tests.fx where k = 'melc') and seat = 0;
+
+update public.auction_lots
+   set winner_id = (select v from tests.fx where k = 'c0'), price = 0, slot = 'RB', resolved_at = now()
+ where match_id = (select v from tests.fx where k = 'melc')
+   and seq = (select min(seq) from public.auction_lots
+               where match_id = (select v from tests.fx where k = 'melc') and position = 'RB');
+
+select ok(
+  auction_private.eligible(
+    (select v from tests.fx where k = 'melc'),
+    (select v from tests.fx where k = 'c0'),
+    (select min(seq) from public.auction_lots
+      where match_id = (select v from tests.fx where k = 'melc') and position = 'RB' and winner_id is null)
+  ),
+  'a player whose natural RB is already full may bid another RB lot into FLEX, with the board barely touched'
+);
+
+-- THE BUG THE SIMULATOR CAUGHT, pinned as a regression: remaining need has to
+-- be counted in slot units, not a headcount of players who still need "any".
+-- Full preset gives two RB slots each. seat0's are both full; seat1 and seat2
+-- have made no RB progress at all (two units each still); seat3 has one of
+-- two (one unit still). Real remaining need is 2+2+1 = 5 units. A naive
+-- headcount would see only "three other players still need it" and think
+-- four undealt lots were plenty; they are not enough to cover five units.
+select tests.act_as_admin();
+insert into tests.fx (k, v) values ('meld', tests.deal(4, 0.44, 'full'));
+insert into tests.fx (k, v)
+  select 'd0', user_id from public.auction_players where match_id = (select v from tests.fx where k = 'meld') and seat = 0;
+insert into tests.fx (k, v)
+  select 'd1', user_id from public.auction_players where match_id = (select v from tests.fx where k = 'meld') and seat = 1;
+insert into tests.fx (k, v)
+  select 'd3', user_id from public.auction_players where match_id = (select v from tests.fx where k = 'meld') and seat = 3;
+
+with numbered as (
+  select seq, row_number() over (order by seq) as rn from public.auction_lots
+   where match_id = (select v from tests.fx where k = 'meld') and position = 'RB'
+)
+update public.auction_lots l
+   set winner_id = (select v from tests.fx where k = 'd0'), price = 0, slot = 'RB', resolved_at = now()
+  from numbered n
+ where l.match_id = (select v from tests.fx where k = 'meld') and l.seq = n.seq and n.rn in (1, 2);
+
+with numbered as (
+  select seq, row_number() over (order by seq) as rn from public.auction_lots
+   where match_id = (select v from tests.fx where k = 'meld') and position = 'RB'
+)
+update public.auction_lots l
+   set winner_id = (select v from tests.fx where k = 'd3'), price = 0, slot = 'RB', resolved_at = now()
+  from numbered n
+ where l.match_id = (select v from tests.fx where k = 'meld') and l.seq = n.seq and n.rn = 3;
+
+-- Two more RB-position lots already spent on somebody's FLEX: pool supply
+-- consumed without satisfying anybody's natural RB need, same as any other
+-- flex conversion would.
+with numbered as (
+  select seq, row_number() over (order by seq) as rn from public.auction_lots
+   where match_id = (select v from tests.fx where k = 'meld') and position = 'RB'
+)
+update public.auction_lots l
+   set winner_id = (select v from tests.fx where k = 'd1'), price = 0, slot = 'FLEX', resolved_at = now()
+  from numbered n
+ where l.match_id = (select v from tests.fx where k = 'meld') and l.seq = n.seq and n.rn in (4, 5);
 
 select ok(
   not auction_private.eligible(
-    (select v from tests.fx where k = 'me'),
-    (select v from tests.fx where k = 'filled'),
-    (select min(seq)::smallint from public.auction_lots
-      where match_id = (select v from tests.fx where k = 'me') and is_flex)),
-  'and not once their FLEX is taken'
+    (select v from tests.fx where k = 'meld'),
+    (select v from tests.fx where k = 'd0'),
+    (select min(seq) from public.auction_lots
+      where match_id = (select v from tests.fx where k = 'meld') and position = 'RB' and winner_id is null)
+  ),
+  'remaining need is counted in slot units, so a multi-slot position cannot be undercounted into stranding someone'
 );
 
 -- ------------------------------------------------------------- completion --
@@ -568,10 +649,102 @@ select is(
   'everyone at the table appears in the standings, including anyone who won nothing'
 );
 
+-- Since 0090 the match can end before every dealt lot is used -- once every
+-- roster is full there is nothing left to bid on, so a spare lot beyond that
+-- point never gets a chance to be revealed at all. What actually has to hold
+-- is narrower: every lot that DID resolve carries its revealed points, and
+-- nobody's roster is short a slot the moment the match calls itself done.
 select ok(
-  (select bool_and(points is not null) from public.auction_lots
-    where match_id = (select v from tests.fx where k = 'mf')),
-  'and every lot on the board has been revealed'
+  not exists (
+    select 1 from public.auction_lots
+     where match_id = (select v from tests.fx where k = 'mf')
+       and winner_id is not null and points is null
+  ),
+  'every resolved lot carries its revealed points'
+);
+
+select is(
+  tests.stranded((select v from tests.fx where k = 'mf')),
+  '{}'::text[],
+  'and nobody''s roster is short a slot when the match calls itself done'
+);
+
+-- ---------------------------------------------------- early finish (0090) --
+--
+-- The draft does not have to exhaust every dealt lot to be over: the moment
+-- every seated player's roster (every natural slot plus FLEX) is completely
+-- full, there is nothing left worth bidding on. Built directly (fill every
+-- slot by hand, in seq order, rather than played out) so it is deterministic
+-- that lots remain undealt when the match calls itself done -- 0089's floor
+-- guarantees a two-player Standard table has at least four RB lots (two
+-- natural, two buffer), which is exactly enough to hand each seat both its
+-- natural RB and its FLEX from the same position.
+select tests.act_as_admin();
+insert into tests.fx (k, v) values ('me2', tests.deal(2, 0.44));
+update public.matches set status = 'playing', started_at = now()
+ where id = (select v from tests.fx where k = 'me2');
+select auction_private.advance((select v from tests.fx where k = 'me2'));
+
+with seats as (
+  select ap.user_id, row_number() over (order by ap.seat) as rn
+    from public.auction_players ap
+   where ap.match_id = (select v from tests.fx where k = 'me2')
+),
+naturals as (
+  select al.seq, al.position, row_number() over (partition by al.position order by al.seq) as rn
+    from public.auction_lots al
+   where al.match_id = (select v from tests.fx where k = 'me2')
+     and al.position in ('QB', 'RB', 'WR', 'TE')
+)
+update public.auction_lots al
+   set winner_id = s.user_id, slot = al.position, price = 0, resolved_at = now(),
+       points = (select aa.points from private.auction_answers aa where aa.match_id = al.match_id and aa.seq = al.seq)
+  from naturals n join seats s on s.rn = n.rn
+ where al.match_id = (select v from tests.fx where k = 'me2') and al.seq = n.seq;
+
+with seats as (
+  select ap.user_id, row_number() over (order by ap.seat) as rn
+    from public.auction_players ap
+   where ap.match_id = (select v from tests.fx where k = 'me2')
+),
+flex_lots as (
+  select al.seq, row_number() over (order by al.seq) as rn
+    from public.auction_lots al
+   where al.match_id = (select v from tests.fx where k = 'me2')
+     and al.position = 'RB' and al.winner_id is null
+)
+update public.auction_lots al
+   set winner_id = s.user_id, slot = 'FLEX', price = 0, resolved_at = now(),
+       points = (select aa.points from private.auction_answers aa where aa.match_id = al.match_id and aa.seq = al.seq)
+  from flex_lots f join seats s on s.rn = f.rn
+ where al.match_id = (select v from tests.fx where k = 'me2') and al.seq = f.seq;
+
+select is(
+  tests.stranded((select v from tests.fx where k = 'me2')),
+  '{}'::text[],
+  'both rosters are genuinely complete before the match is told so'
+);
+
+select ok(
+  exists (
+    select 1 from public.auction_lots
+     where match_id = (select v from tests.fx where k = 'me2') and winner_id is null
+  ),
+  'and lots remain undealt -- the board was not exhausted to get there'
+);
+
+select auction_private.advance((select v from tests.fx where k = 'me2'));
+
+select is(
+  (select status::text from public.matches where id = (select v from tests.fx where k = 'me2')),
+  'complete',
+  'advance() ends the match on a full roster alone, without waiting for current_lot to pass lot_count'
+);
+
+select ok(
+  (select current_lot <= lot_count from public.auction_matches
+    where match_id = (select v from tests.fx where k = 'me2')),
+  'confirmed by current_lot never having to catch up to lot_count'
 );
 
 select * from finish();

@@ -28,7 +28,7 @@ import {
   revealedTotal,
   rosterSlots,
   standingPrice,
-  slotFor,
+  targetSlotFor,
   viewerPhase,
   weeklyRevealTier,
   type Bid,
@@ -120,6 +120,7 @@ export function AuctionMatch({
   roomCode,
   isHost = false,
   paused = false,
+  complete = false,
   initial,
 }: {
   matchId: string;
@@ -127,6 +128,7 @@ export function AuctionMatch({
   roomCode: string | null;
   isHost?: boolean;
   paused?: boolean;
+  complete?: boolean;
   initial: Initial;
 }) {
   // Built on first use rather than during render. createClient() reaches for
@@ -147,6 +149,12 @@ export function AuctionMatch({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(paused);
+  // Since 0090, the board can end before current_lot ever reaches lot_count
+  // -- a match is over the moment every roster is full, not only when the
+  // deck runs out. `finished` below has to know that independently of the
+  // lot-count comparison it used to rely on alone, so this rides the same
+  // live `matches` row this component already subscribes to for `isPaused`.
+  const [isComplete, setIsComplete] = useState(complete);
 
   // Server time as of the most recently applied state. The shared match clock
   // measures how far this browser's clock is from the server's against it, so
@@ -208,7 +216,11 @@ export function AuctionMatch({
   }, [getClient, matchId, applyTurn]);
 
   const me = players.find((p) => p.user_id === viewerId) ?? null;
-  const finished = turn.currentLot > turn.lotCount;
+  // Either signal alone is right at the moment its source updates; the two
+  // can otherwise disagree for one tick after an early finish, since this is
+  // a race between two different realtime subscriptions (auction_matches for
+  // turn.currentLot, matches for isComplete) rather than one atomic update.
+  const finished = turn.currentLot > turn.lotCount || isComplete;
   const lot = lotAt(lots, turn.currentLot);
   // A brief suspense beat before each lot's player appears, mirroring
   // sabotage draft's turn reveal -- the identity is already in `lots`, this
@@ -323,7 +335,11 @@ export function AuctionMatch({
         .on(
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` },
-          (payload) => setIsPaused((payload.new as { status?: string }).status === "paused"),
+          (payload) => {
+            const status = (payload.new as { status?: string }).status;
+            setIsPaused(status === "paused");
+            setIsComplete(status === "complete");
+          },
         )
         // A rejoin is precisely when this client may have missed something, so
         // the state is read again rather than assumed to have kept up -- the
@@ -391,7 +407,7 @@ export function AuctionMatch({
   const onClock = players.find((p) => p.seat === turn.turnSeat) ?? null;
   const phase = viewerPhase(turn, me?.seat ?? null);
   const blocked = me
-    ? blockedReason({ lot, me, turnSeat: turn.turnSeat, filled, format, passed, price })
+    ? blockedReason({ lot, me, lots, players, turnSeat: turn.turnSeat, format, passed, price })
     : "not_your_turn";
 
   return (
@@ -412,7 +428,7 @@ export function AuctionMatch({
           tenured-player treatment without confusing the lot's slot with a
           player rank. The concealed score remains its own auction-only beat. */}
       <div className="relative flex flex-none flex-col items-center border border-line bg-surface-raised px-4 py-5 text-center shadow-well">
-        <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{slotFor(lot)}</span>
+        <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{lot.position}</span>
         {lotTeamLogo ? <TeamLogo code={lotTeamLogo} className="absolute top-3 right-3 h-8 w-8" /> : null}
         {/* A brief suspense beat before the lot's player appears, mirroring
             sabotage draft's turn reveal -- the name/portrait/matchup hold
@@ -482,7 +498,8 @@ export function AuctionMatch({
               pending={pending}
               paused={isPaused}
               error={error}
-              slot={slotFor(lot)}
+              position={lot.position}
+              targetSlot={targetSlotFor(lot, filled, format)}
               freeFallback={turn.freeFallbackSeat != null && price === 0}
               onRaise={(amount) => act(getClient().schema("auction").rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
               onPass={() => act(getClient().schema("auction").rpc("pass_lot", { p_match_id: matchId }))}
@@ -942,7 +959,8 @@ function BidBar({
   pending,
   paused,
   error,
-  slot,
+  position,
+  targetSlot,
   onRaise,
   onPass,
   freeFallback,
@@ -959,7 +977,10 @@ function BidBar({
   freeFallback: boolean;
   phase: "lot_preview" | "bidding_self" | "bidding_other" | "sold";
   error: string | null;
-  slot: string;
+  /** The lot's own position — what "full" refers to when it's fully blocked. */
+  position: string;
+  /** Where a win actually lands: natural slot if open, otherwise FLEX. */
+  targetSlot: string;
 }) {
   const [customFor, setCustomFor] = useState<string | null>(null);
   const [amount, setAmount] = useState(String(price + 1));
@@ -997,13 +1018,13 @@ function BidBar({
       ? "The next player is coming up."
       : blocked
         ? blocked === "no_slot"
-          ? `Your ${slot} slots are full.`
+          ? `Your ${position} slots are full.`
           : BLOCKED_TEXT[blocked]
         : freeFallback
           ? "Take this lot free, or pass it back to the original opener."
         : !canAfford(price, budget, INCREMENTS[1])
           ? `You can only raise by $${INCREMENTS[0]}.`
-          : `A win fills your open ${slot}.`;
+          : `A win fills your open ${targetSlot}.`;
 
   return (
     <section

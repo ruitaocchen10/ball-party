@@ -21,7 +21,7 @@ select ok(
 -- Narrowing must not disturb the quota, because tier is a per-season finish.
 select is(
   (select count(*)::int from public.auction_lots where match_id = :'modern_match'),
-  20,
+  22,
   'a narrowed era deals the same number of lots'
 );
 

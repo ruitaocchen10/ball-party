@@ -38,7 +38,6 @@ export function lot(over: Partial<Lot> = {}): Lot {
     week: 12,
     team: "NYG",
     opponent: "CHI",
-    is_flex: false,
     headshot_url: "https://static.www.nfl.com/image/private/f_auto,q_auto/league/abc",
     winner_id: null,
     price: null,
