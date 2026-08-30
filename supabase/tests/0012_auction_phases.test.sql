@@ -40,8 +40,12 @@ update public.matches set status = 'playing', started_at = now()
  where id = (select v from tests.fx where k = 'ma');
 select auction_private.advance((select v from tests.fx where k = 'ma'));
 
--- Fill the first lot's slot for one of the two seats, leaving a single eligible
--- bidder. Written onto a different lot, so the lot under test is untouched.
+-- Fill the first lot's slot, and FLEX too, for one of the two seats, leaving a
+-- single eligible bidder. Written onto different lots, so the lot under test
+-- is untouched. Both have to close: since 0088, a full natural slot alone no
+-- longer guarantees ineligibility (RB/WR/TE may still flex), so closing FLEX
+-- as well is what keeps "only one eligible bidder" true regardless of which
+-- position lot 1 happens to be.
 update public.auction_lots set winner_id = (
          select ap.user_id from public.auction_players ap
           where ap.match_id = (select v from tests.fx where k = 'ma')
@@ -50,6 +54,15 @@ update public.auction_lots set winner_id = (
                 where match_id = (select v from tests.fx where k = 'ma') and seq = 1)
  where match_id = (select v from tests.fx where k = 'ma')
    and seq = (select lot_count from public.auction_matches
+               where match_id = (select v from tests.fx where k = 'ma'));
+
+update public.auction_lots set winner_id = (
+         select ap.user_id from public.auction_players ap
+          where ap.match_id = (select v from tests.fx where k = 'ma')
+            and ap.seat = 1),
+       slot = 'FLEX'
+ where match_id = (select v from tests.fx where k = 'ma')
+   and seq = (select lot_count - 1 from public.auction_matches
                where match_id = (select v from tests.fx where k = 'ma'));
 
 select is((select phase from public.auction_matches where match_id = (select v from tests.fx where k = 'ma')), 'lot_preview', 'a lot with one eligible bidder still opens in the shared preview');
@@ -145,6 +158,9 @@ select throws_ok(
 );
 
 -- Eligibility is re-checked at the write, not merely used to pick the seat.
+-- Both the natural slot and FLEX are closed for the same reason as in 'ma'
+-- above: since 0088 a full natural slot alone does not guarantee
+-- ineligibility for RB/WR/TE.
 select tests.act_as_admin();
 insert into tests.fx (k, v) select 'blocked', tests.on_clock((select v from tests.fx where k = 'mx'));
 update public.auction_lots set winner_id = (select v from tests.fx where k = 'blocked'),
@@ -152,6 +168,11 @@ update public.auction_lots set winner_id = (select v from tests.fx where k = 'bl
                 where match_id = (select v from tests.fx where k = 'mx') and seq = 1)
  where match_id = (select v from tests.fx where k = 'mx')
    and seq = (select lot_count from public.auction_matches
+               where match_id = (select v from tests.fx where k = 'mx'));
+update public.auction_lots set winner_id = (select v from tests.fx where k = 'blocked'),
+       slot = 'FLEX'
+ where match_id = (select v from tests.fx where k = 'mx')
+   and seq = (select lot_count - 1 from public.auction_matches
                where match_id = (select v from tests.fx where k = 'mx'));
 
 select tests.act_as((select v from tests.fx where k = 'blocked'));

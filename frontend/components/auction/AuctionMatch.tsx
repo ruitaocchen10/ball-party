@@ -28,7 +28,7 @@ import {
   revealedTotal,
   rosterSlots,
   standingPrice,
-  slotFor,
+  targetSlotFor,
   viewerPhase,
   weeklyRevealTier,
   type Bid,
@@ -391,7 +391,7 @@ export function AuctionMatch({
   const onClock = players.find((p) => p.seat === turn.turnSeat) ?? null;
   const phase = viewerPhase(turn, me?.seat ?? null);
   const blocked = me
-    ? blockedReason({ lot, me, turnSeat: turn.turnSeat, filled, format, passed, price })
+    ? blockedReason({ lot, me, lots, players, turnSeat: turn.turnSeat, format, passed, price })
     : "not_your_turn";
 
   return (
@@ -412,7 +412,7 @@ export function AuctionMatch({
           tenured-player treatment without confusing the lot's slot with a
           player rank. The concealed score remains its own auction-only beat. */}
       <div className="relative flex flex-none flex-col items-center border border-line bg-surface-raised px-4 py-5 text-center shadow-well">
-        <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{slotFor(lot)}</span>
+        <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{lot.position}</span>
         {lotTeamLogo ? <TeamLogo code={lotTeamLogo} className="absolute top-3 right-3 h-8 w-8" /> : null}
         {/* A brief suspense beat before the lot's player appears, mirroring
             sabotage draft's turn reveal -- the name/portrait/matchup hold
@@ -482,7 +482,8 @@ export function AuctionMatch({
               pending={pending}
               paused={isPaused}
               error={error}
-              slot={slotFor(lot)}
+              position={lot.position}
+              targetSlot={targetSlotFor(lot, filled, format)}
               freeFallback={turn.freeFallbackSeat != null && price === 0}
               onRaise={(amount) => act(getClient().schema("auction").rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
               onPass={() => act(getClient().schema("auction").rpc("pass_lot", { p_match_id: matchId }))}
@@ -942,7 +943,8 @@ function BidBar({
   pending,
   paused,
   error,
-  slot,
+  position,
+  targetSlot,
   onRaise,
   onPass,
   freeFallback,
@@ -959,7 +961,10 @@ function BidBar({
   freeFallback: boolean;
   phase: "lot_preview" | "bidding_self" | "bidding_other" | "sold";
   error: string | null;
-  slot: string;
+  /** The lot's own position — what "full" refers to when it's fully blocked. */
+  position: string;
+  /** Where a win actually lands: natural slot if open, otherwise FLEX. */
+  targetSlot: string;
 }) {
   const [customFor, setCustomFor] = useState<string | null>(null);
   const [amount, setAmount] = useState(String(price + 1));
@@ -997,13 +1002,13 @@ function BidBar({
       ? "The next player is coming up."
       : blocked
         ? blocked === "no_slot"
-          ? `Your ${slot} slots are full.`
+          ? `Your ${position} slots are full.`
           : BLOCKED_TEXT[blocked]
         : freeFallback
           ? "Take this lot free, or pass it back to the original opener."
         : !canAfford(price, budget, INCREMENTS[1])
           ? `You can only raise by $${INCREMENTS[0]}.`
-          : `A win fills your open ${slot}.`;
+          : `A win fills your open ${targetSlot}.`;
 
   return (
     <section

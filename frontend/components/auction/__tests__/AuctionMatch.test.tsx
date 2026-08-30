@@ -264,7 +264,10 @@ describe("the status line", () => {
     expect(screen.getByText(/A win fills your open RB/)).toBeInTheDocument();
   });
 
-  it("names the blocking rule when the viewer has no open slot", () => {
+  it("names the blocking rule when a flex conversion would strand another player", () => {
+    // Standard preset: everyone needs exactly one RB. u0's is already full,
+    // but only one other RB lot exists for the three other seats who still
+    // need one each — converting this one to u0's FLEX would leave them short.
     renderMatch({
       turn: turn("bidding", { turnSeat: 0 }),
       lots: [
@@ -272,8 +275,25 @@ describe("the status line", () => {
         lot({ seq: 2, position: "RB", winner_id: "u0", slot: "RB", points: 10 }),
       ],
     });
-    expect(screen.getByText("Your RB slots are full.")).toBeInTheDocument();
+    expect(screen.getByText("Someone else still needs this position")).toBeInTheDocument();
     for (const button of raiseButtons()) expect(button).toBeDisabled();
+  });
+
+  it("lets a player whose natural slot is full bid into flex once enough of that position is left for everyone else", () => {
+    // u0's one RB slot is already full, but four more RB lots remain for the
+    // three other seats who need one each — plenty of slack to spare one.
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0, currentLot: 2 }),
+      lots: [
+        lot({ seq: 1, position: "RB", winner_id: "u0", slot: "RB", points: 5 }),
+        lot({ seq: 2, position: "RB" }),
+        lot({ seq: 3, position: "RB" }),
+        lot({ seq: 4, position: "RB" }),
+        lot({ seq: 5, position: "RB" }),
+      ],
+    });
+    expect(screen.getByText(/A win fills your open FLEX/)).toBeInTheDocument();
+    for (const button of raiseButtons()) expect(button).not.toBeDisabled();
   });
 
   it("allows each configured slot before explaining that a deep position is full", () => {

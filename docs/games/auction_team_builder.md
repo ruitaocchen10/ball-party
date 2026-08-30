@@ -206,32 +206,82 @@ four-window setup for the whole build. Two and three players deal a real board
 and play an honest game — but they are a development affordance, not a designed
 mode, and nothing in the UI offers them.
 
-**Lot scheduling** — get a list of players up front, then randomize how they come
-out. The position counts need to be exact, but that's provably safe in ~15 lines:
+**Lot scheduling** — FLEX can be filled the moment a player's natural slots for
+it are done, not only in a final round. That is the more natural, fill-it-
+whenever shape a real draft has, and it took a different scheduling argument to
+get there safely.
+
+The original design dealt N of each base position plus a separate N*flex_slots
+of dedicated "flex lots," always sequenced last:
 
 ```
 N players × [QB, RB, WR, TE]  →  N of each                 (4N base)
 N players × [FLEX]            →  N more from {RB, WR, TE}  (N flex)
 ```
 
-Deal every base position count × N shuffled, then flex count × N flex lots last.
+with a base lot only ever fillable by its natural slot, so the count of RB lots
+remaining always exactly equalled the count of players still missing one.
+Correct, but it meant FLEX sat entirely unused until the very end even for a
+player who filled every natural slot early — the thing players kept asking for.
+
+**The current design merges the base and flex counts into one pool per
+position** and deals the same total, just not clustered at the tail:
+
+```
+N players × [QB]              →  N                (never flex-eligible)
+N players × [RB, WR, TE]      →  N of each, plus N*flex_slots of slack
+                                  split fairly across the three, floored
+                                  at one spare each (see below)
+```
+
+QB is untouched — still exactly N, still natural-only, still safe for the
+original reason (a quarterback fits only the QB slot). RB/WR/TE lots are
+shuffled across the whole board rather than held back, and eligibility is
+decided live instead of by a tag set at deal time:
+
+- A lot's natural slot open → always eligible.
+- Natural slot full, FLEX open → eligible for FLEX only if enough of that
+  exact position remains undealt (from here to the end of the deck) to cover
+  every OTHER player's remaining natural need for it. **Counted in slot units,
+  not a headcount of players** — a player missing both of their two RB slots
+  (Full, Deep) needs two units, not one. Undercounting that was the actual bug
+  a simulation caught before this shipped: it let a "still needs an RB"
+  headcount pass when the real remaining demand did not fit, and stranded
+  players in Full and Deep specifically.
+
+A simulation across three presets, three win-order strategies including an
+adversarial "always grab FLEX when possible" one, and thousands of trials per
+combination confirmed the threshold is exact, not probabilistic: any less
+slack than N*flex_slots total strands someone in 100% of trials; that much or
+more strands no one, ever. N*flex_slots is exactly what the old design already
+dealt as dedicated flex lots — this does not make the board longer.
+
 At a four-player table, Standard is 16 + 4 = 20, Full is 24 + 4 = 28, and Deep
-is 32 + 8 = 40.
+is 32 + 8 = 40, the same totals as before.
 
-**A base lot may only be bid on by players whose natural slot is still open.**
-FLEX is eligible during the flex round and nowhere else. That rule is what makes
-the schedule safe: the number of RB lots remaining then always exactly equals
-the number of players still missing an RB, so every lot has at least one
-eligible bidder and nobody can be stranded.
+**The N*flex_slots slack still has to land somewhere, and how matters.** The
+first version of this split gave any remainder to a fixed priority order — RB,
+then WR, then TE got whatever was left, often nothing. On a small table that
+is not cosmetic: a 2-player Standard table has only 2 units of slack for three
+positions, so TE got zero spares every time, and the very first attempt to
+flex a TE was blocked by the scarcity guard on the first try — correctly (the
+guard was protecting the other player's only remaining natural TE), but for a
+reason that had nothing to do with TE specifically and everything to do with
+which position the formula happened to shortchange.
 
-Without it the proof holds for QB alone. A quarterback fits only the QB slot, so
-QB is safe however FLEX behaves — but an RB lot could be taken into somebody's
-FLEX, and then the RB lots run out while a player still needs one. Restricting
-FLEX to the flex round costs nothing and is what the scheduling argument was
-always quietly assuming.
-
-The final N flex lots are ones everyone is eligible for by definition, so the
-flex round stays the natural climax where all the leftover budget collides.
+The fix is two parts: the remainder goes to a random subset of RB/WR/TE each
+deal instead of a fixed order, and every one of the three is floored at one
+spare regardless of what the fair split alone would give it. That floor can
+push the total past N*flex_slots on the smallest tables — 2-player
+Standard/Full deals one lot more than the 5N figure above, landing at 5N+1 —
+which means it is possible, though uncommon (single digits of percent per
+affected lot), for one of those extra lots to reach the board with nobody
+eligible to bid on it. That is not a new game state: `open_bidding` already
+resolves a lot to no winner whenever nobody is eligible (this is how an
+all-bankrupt table's dead lot has always been handled), and the client already
+renders it as "No sale." Every table with enough slack to cover all three
+positions on its own (3+ players in Standard/Full, any Deep table) is
+unaffected — same lot count, same behavior as before this fix.
 
 Budget cannot strand anyone either: opening is at $0, so an eligible player can
 always take a lot for free. Eligibility is the only thing a roster slot can turn

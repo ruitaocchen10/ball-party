@@ -8,7 +8,7 @@
 -- screen shows.
 
 begin;
-select plan(37);
+select plan(35);
 
 \ir support/harness.psql
 
@@ -29,36 +29,25 @@ select is(
   'and the match row agrees'
 );
 
+-- Positions are no longer dealt as "N base lots of each, then N flex lots
+-- last" (0088). QB stays at exactly N, since it never flexes; RB, WR and TE
+-- each carry a share of the N flex slots' worth of slack folded into one
+-- shared pool, so which slot a lot ends up filling is decided live rather
+-- than by a tag set at deal time. See 0011 for the eligibility rule this buys.
+--
+-- Since 0089 the split of that shared slack is random rather than a fixed
+-- RB-then-WR-then-TE priority (see 0011/0019 for why that mattered), so which
+-- of RB/WR/TE gets the extra unit at N=4 is no longer pinned to one position.
+-- Sorted rather than position-ordered so the assertion holds either way: QB
+-- alone at N, two of RB/WR/TE at their base share, one at base-plus-remainder.
 select is(
-  (select array_agg(c order by pos) from (
+  (select array_agg(c order by c) from (
      select position as pos, count(*)::int as c
        from public.auction_lots
-      where match_id = (select v from tests.fx where k = 'm4') and not is_flex
+      where match_id = (select v from tests.fx where k = 'm4')
       group by position) x),
-  array[4, 4, 4, 4],
-  'the base lots are N of each of QB, RB, WR, TE'
-);
-
-select is(
-  (select count(*)::int from public.auction_lots
-    where match_id = (select v from tests.fx where k = 'm4') and is_flex),
-  4,
-  'and there are N flex lots'
-);
-
-select ok(
-  (select bool_and(position in ('RB','WR','TE')) from public.auction_lots
-    where match_id = (select v from tests.fx where k = 'm4') and is_flex),
-  'every flex lot is drawn from {RB, WR, TE}'
-);
-
--- seq is play order, so the flex lots are the last N and nothing earlier is
--- flex. The no-stranding argument depends on this.
-select is(
-  (select array_agg(seq order by seq) from public.auction_lots
-    where match_id = (select v from tests.fx where k = 'm4') and is_flex),
-  array[17, 18, 19, 20]::smallint[],
-  'the flex lots are the last N by seq, and no earlier lot is flex'
+  array[4, 5, 5, 6],
+  'QB stays at exactly N; RB, TE and WR share the N flex slots worth of slack, one of them getting the odd unit'
 );
 
 select is(
@@ -108,6 +97,12 @@ select is(
 insert into tests.fx (k, v) values ('m2', tests.deal(2, 0.75));
 select tests.act_as_admin();
 
+-- A 2-player Standard table only has flex_slots*N = 2 units of slack to split
+-- across three flex-eligible positions. Since 0089 every one of RB/WR/TE is
+-- floored at one spare regardless, which pushes this table's total past the
+-- old 5N figure (10 -> 11: two positions get their spare from the ordinary
+-- remainder split, the third from the floor). The tier quota below is
+-- computed from that corrected total, not the old one.
 select is(
   (select array_agg(c order by t) from (
      select pw.tier as t, count(*)::int as c
@@ -116,14 +111,27 @@ select is(
          on pw.player_id = al.player_id and pw.season = al.season and pw.week = al.week
       where al.match_id = (select v from tests.fx where k = 'm2')
       group by pw.tier) x),
-  array[2, 4, 4],
-  'the quota at N=2 is 4/4/2 — star and deep tie on remainder and star takes it'
+  array[3, 4, 4],
+  'the quota at N=2 (11 lots, once the flex-buffer floor is applied) is 4/4/3'
 );
 
 select is(
   (select count(*)::int from public.auction_lots where match_id = (select v from tests.fx where k = 'm2')),
-  10,
-  'and a two-player board is 10 lots'
+  11,
+  'and a two-player board is 5N+1 = 11 lots -- the floor added the unit flex_slots*N alone could not give every position'
+);
+
+-- The actual point of 0089: at this table size the fair split alone still
+-- leaves one of RB/WR/TE with zero spares (2 units, 3 positions -- somebody
+-- always loses the tiebreak). The floor is what guarantees nobody does,
+-- regardless of which position the random split shorted.
+select ok(
+  (select bool_and(c >= 2) from (
+     select count(*)::int as c
+       from public.auction_lots
+      where match_id = (select v from tests.fx where k = 'm2') and position in ('RB', 'WR', 'TE')
+      group by position) x),
+  'every one of RB/WR/TE gets at least one spare lot beyond its single natural slot, even though the table''s flex budget could not otherwise stretch to all three'
 );
 
 -- ------------------------------------------------------------------- seats --

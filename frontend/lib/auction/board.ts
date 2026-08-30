@@ -114,18 +114,49 @@ export function filledSlots(lots: Lot[], userId: string): Record<Slot, number> {
 }
 
 /**
- * A base lot may only be bid on by a player whose natural slot is still open;
- * FLEX is live during the flex round and nowhere else. That restriction is what
- * makes the board solvable — see the migration and the game doc.
+ * What a win on this lot would fill for a given player: their natural slot if
+ * it is still open, otherwise FLEX. There is no "choose a slot" step — this is
+ * the one unambiguous answer resolve() gives once eligibility has cleared it.
  */
-export function eligibleFor(lot: Lot, filled: Record<Slot, number>, format: AuctionFormat | null): boolean {
-  const slot = slotFor(lot);
-  return filled[slot] < slotLimits(format)[slot];
+export function targetSlotFor(lot: Lot, filled: Record<Slot, number>, format: AuctionFormat | null): Slot {
+  const position = lot.position as Slot;
+  return filled[position] < slotLimits(format)[position] ? position : "FLEX";
 }
 
-/** What a lot fills if you win it. Never ambiguous, which follows from the rule above. */
-export function slotFor(lot: Lot): Slot {
-  return (lot.is_flex ? "FLEX" : lot.position) as Slot;
+type EligibilityVerdict = { ok: true } | { ok: false; reason: "no_slot" | "flex_would_strand" };
+
+/**
+ * A base lot may be bid on by a player whose natural slot for it is still
+ * open. Once that slot is full, a flex-eligible position (RB/WR/TE — never
+ * QB) may still be bid on for FLEX, but only if enough of this exact position
+ * remains undealt to cover every OTHER player who still needs it naturally —
+ * counted in remaining slot units, not a headcount of players. That guard
+ * replaces "FLEX only in the flex round" as what keeps the board solvable;
+ * see the migration and the game doc for the invariant it protects.
+ */
+function eligibilityFor(
+  lot: Lot,
+  lots: Lot[],
+  players: { user_id: string }[],
+  userId: string,
+  format: AuctionFormat | null,
+): EligibilityVerdict {
+  const position = lot.position as Slot;
+  const limits = slotLimits(format);
+  const mine = filledSlots(lots, userId);
+  if (mine[position] < limits[position]) return { ok: true };
+  if (position === "QB" || mine.FLEX >= limits.FLEX) return { ok: false, reason: "no_slot" };
+
+  const remaining = lots.filter((l) => l.position === position && l.seq >= lot.seq && l.winner_id === null).length - 1;
+  const othersStillNeeding = players
+    .filter((p) => p.user_id !== userId)
+    .reduce((sum, p) => sum + Math.max(0, limits[position] - filledSlots(lots, p.user_id)[position]), 0);
+
+  return remaining >= othersStillNeeding ? { ok: true } : { ok: false, reason: "flex_would_strand" };
+}
+
+export function eligibleFor(lot: Lot, lots: Lot[], players: { user_id: string }[], userId: string, format: AuctionFormat | null): boolean {
+  return eligibilityFor(lot, lots, players, userId, format).ok;
 }
 
 export function revealedTotal(lots: Lot[], userId: string): number {
@@ -135,11 +166,12 @@ export function revealedTotal(lots: Lot[], userId: string): number {
 }
 
 /** Why the controls are off. Null means they are on. */
-export type Blocked = "not_your_turn" | "no_slot" | "passed" | "cannot_afford";
+export type Blocked = "not_your_turn" | "no_slot" | "flex_would_strand" | "passed" | "cannot_afford";
 
 export const BLOCKED_TEXT: Record<Blocked, string> = {
   not_your_turn: "Waiting on another player",
   no_slot: "You have no open slot for this position",
+  flex_would_strand: "Someone else still needs this position",
   passed: "You passed on this lot",
   cannot_afford: "You can't afford the next raise",
 };
@@ -147,15 +179,17 @@ export const BLOCKED_TEXT: Record<Blocked, string> = {
 export function blockedReason(args: {
   lot: Lot;
   me: Player | null;
+  lots: Lot[];
+  players: { user_id: string }[];
   turnSeat: number | null;
-  filled: Record<Slot, number>;
   format: AuctionFormat | null;
   passed: boolean;
   price: number;
 }): Blocked | null {
-  const { lot, me, turnSeat, filled, format, passed, price } = args;
+  const { lot, me, lots, players, turnSeat, format, passed, price } = args;
   if (!me) return "not_your_turn";
-  if (!eligibleFor(lot, filled, format)) return "no_slot";
+  const verdict = eligibilityFor(lot, lots, players, me.user_id, format);
+  if (!verdict.ok) return verdict.reason;
   if (passed) return "passed";
   if (turnSeat !== me.seat) return "not_your_turn";
   // Not a block on its own: a player with nothing left can still take an
