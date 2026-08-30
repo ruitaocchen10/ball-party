@@ -273,15 +273,12 @@ The fix is two parts: the remainder goes to a random subset of RB/WR/TE each
 deal instead of a fixed order, and every one of the three is floored at a
 minimum spare count regardless of what the fair split alone would give it.
 That floor can push the total past N*flex_slots on the smallest tables — a
-2-player Standard/Full table deals well past the 5N figure above. It is
-possible, though uncommon, for one of those extra lots to reach the board
-with nobody eligible to bid on it. That is not a new game state:
-`open_bidding` already resolves a lot to no winner whenever nobody is
-eligible (this is how an all-bankrupt table's dead lot has always been
-handled), and the client already renders it as "No sale." Every table with
-enough slack to cover all three positions on its own (3+ players in
-Standard/Full, any Deep table) sees the floor do nothing — same lot count,
-same behavior as before this fix.
+2-player Standard/Full table deals well past the 5N figure above. An extra lot
+can become unusable before every roster is full; the engine now skips such a
+lot while it is still hidden and finds the next card that somebody can legally
+take. Every table with enough slack to cover all three positions on its own
+(3+ players in Standard/Full, any Deep table) sees the floor do nothing — same
+lot count, same behavior as before this fix.
 
 **The draft does not have to exhaust the board to be over.** `advance()`
 finishes the match the moment every seated player's roster — every natural
@@ -291,9 +288,9 @@ picking once every team is done, regardless of how many cards happen to be
 left in the box.
 
 That in turn changes what the flex-buffer floor above actually costs. A spare
-lot beyond what a table uses no longer has to be dealt into view as a visible
-"No sale" — it simply never gets reached, because the match is already over
-by the time it would have come up. With that cost gone, the floor is two
+lot beyond what a table uses simply never gets reached: the match ends once
+all rosters are full, and an earlier unusable card is skipped while hidden.
+With that cost gone, the floor is two
 spares per flex-eligible position rather than one: the same simulation that
 validated the fair-random split showed this drops the scarcity guard's block
 rate on a four-player table from roughly 20% down to roughly 1%, at the cost
