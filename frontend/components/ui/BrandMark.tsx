@@ -1,13 +1,18 @@
 /**
- * The BP monogram: the app's own display face (Bebas Neue) over a stitched
- * seam, the way a baseball's actual seam is laced — paired diagonal threads
- * following the curve, not a dashed line standing in for one.
+ * The BP monogram: the app's own display face (Bebas Neue) with a single
+ * stitch tucked into the counter of the P, the way a ball's seam is a single
+ * thread through the leather rather than a whole lace pattern.
  *
- * The stitch curve is geometrically centered on x=50, but "BP" isn't visually
- * centered at its own geometric midpoint — B reads heavier than P — so the
- * text sits at x=51.4, not x=50. That number came from rasterizing both
- * layers and comparing their ink-weighted centroids, not from eyeballing it;
- * don't "simplify" it back to 50.
+ * fontSize/x/y are one linked system, not independent knobs:
+ *  - fontSize=88 is the original 40 bumped 2.2x so the letters actually fill
+ *    the icon instead of sitting small in the middle of it.
+ *  - y=80.8 is the baseline that keeps that bigger cap height (61.6) centered
+ *    in the 100-tall box.
+ *  - x=53.1 is the same 2.2x bump applied to the old optical-center offset
+ *    (51.4, i.e. +1.4 off true-center 50): "BP" isn't visually centered at
+ *    its own geometric midpoint because B reads heavier than P, and that
+ *    offset scales with the letters, not with the viewBox. Don't reset it to
+ *    50, and don't change fontSize/y without rescaling this too.
  *
  * Text renders with the CSS font-slab variable rather than as a baked path,
  * consistent with how the rest of the app trusts next/font (self-hosted, no
@@ -17,30 +22,18 @@ export function BrandMark({ className = "h-6 w-6" }: { className?: string }) {
   return (
     <svg viewBox="0 0 100 100" className={className} aria-hidden="true">
       <text
-        x="51.4"
-        y="54"
+        x="53.1"
+        y="80.8"
         textAnchor="middle"
         fontFamily="var(--font-slab), sans-serif"
-        fontSize="40"
+        fontSize="88"
         fill="currentColor"
       >
         BP
       </text>
-      <g stroke="var(--hidden)" strokeWidth="1.7" strokeLinecap="round">
-        <line x1="29.2" y1="72.5" x2="31.4" y2="78.1" />
-        <line x1="27.3" y1="75.3" x2="33.3" y2="75.3" />
-        <line x1="34.6" y1="76.0" x2="37.6" y2="81.2" />
-        <line x1="33.1" y1="79.1" x2="39.0" y2="78.2" />
-        <line x1="39.9" y1="78.6" x2="43.8" y2="83.1" />
-        <line x1="39.0" y1="81.8" x2="44.7" y2="79.9" />
-        <line x1="47.5" y1="80.3" x2="52.5" y2="83.7" />
-        <line x1="47.5" y1="83.7" x2="52.5" y2="80.3" />
-        <line x1="55.3" y1="79.9" x2="61.0" y2="81.8" />
-        <line x1="56.2" y1="83.1" x2="60.1" y2="78.6" />
-        <line x1="61.0" y1="78.2" x2="66.9" y2="79.1" />
-        <line x1="62.4" y1="81.2" x2="65.4" y2="76.0" />
-        <line x1="66.7" y1="75.3" x2="72.7" y2="75.3" />
-        <line x1="68.6" y1="78.1" x2="70.8" y2="72.5" />
+      <g stroke="var(--hidden)" strokeWidth="1.5" strokeLinecap="round">
+        <line x1="70.04" y1="35.66" x2="73.64" y2="39.26" />
+        <line x1="73.64" y1="35.66" x2="70.04" y2="39.26" />
       </g>
     </svg>
   );
