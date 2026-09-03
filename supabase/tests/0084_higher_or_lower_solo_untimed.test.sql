@@ -9,8 +9,8 @@ insert into tests.fx (k, v) values ('ava', tests.mkuser('ava')), ('stranger', te
 
 -- ------------------------------------------------------------- solo start --
 
-insert into tests.fx (k, v) select 'match', (public.start_solo_run('higher_or_lower')).id;
 select tests.act_as((select v from tests.fx where k = 'ava'));
+insert into tests.fx (k, v) select 'match', (public.start_solo_run('higher_or_lower')).id;
 select higher_or_lower.start((select v from tests.fx where k = 'match'));
 
 select is((select phase from public.higher_or_lower_matches where match_id = (select v from tests.fx where k = 'match')),

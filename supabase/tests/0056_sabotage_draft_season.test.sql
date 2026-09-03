@@ -31,17 +31,11 @@ end $$;
 select tests.act_as_admin();
 select tests.sd_expire_turn((select v from tests.fx where k = 'm'));
 select tests.act_as((select v from tests.fx where k = 'p0'));
-select lives_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, (
-  select case pool.slot_category
-    when 'QB' then 'QB' when 'RB' then 'RB1' when 'WR' then 'WR1' when 'TE' then 'TE'
-  end
-    from public.sabotage_draft_picks pick
-    join public.sabotage_draft_round_spins spin on spin.match_id = pick.match_id and spin.round_number = pick.round_number and spin.user_id = pick.user_id
-    join private.av_roster_players pool on pool.franchise_code = spin.franchise_code and pool.player_id = pick.player_id and pool.season = pick.season
-   where pick.match_id = %L and pick.user_id = auth.uid() and pick.round_number = 14
-)) $$,
+select lives_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, %L) $$,
   (select v from tests.fx where k = 'm'),
-  (select v from tests.fx where k = 'm')), 'an X-Factor replacement remains a valid final roster');
+  (select replace_slot from tests.sd_x_factor_replace_slot(
+    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p0')
+  ))), 'an X-Factor replacement remains a valid final roster');
 select tests.act_as_admin();
 select tests.sd_expire_turn((select v from tests.fx where k = 'm'));
 select tests.act_as((select v from tests.fx where k = 'p1'));
@@ -50,17 +44,11 @@ select lives_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, nul
 select tests.act_as_admin();
 select tests.sd_expire_turn((select v from tests.fx where k = 'm'));
 select tests.act_as((select v from tests.fx where k = 'p2'));
-select lives_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, (
-  select case pool.slot_category
-    when 'QB' then 'QB' when 'RB' then 'RB1' when 'WR' then 'WR1' when 'TE' then 'TE'
-  end
-    from public.sabotage_draft_picks pick
-    join public.sabotage_draft_round_spins spin on spin.match_id = pick.match_id and spin.round_number = pick.round_number and spin.user_id = pick.user_id
-    join private.av_roster_players pool on pool.franchise_code = spin.franchise_code and pool.player_id = pick.player_id and pool.season = pick.season
-   where pick.match_id = %L and pick.user_id = auth.uid() and pick.round_number = 14
-)) $$,
+select lives_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, %L) $$,
   (select v from tests.fx where k = 'm'),
-  (select v from tests.fx where k = 'm')), 'the last decision triggers the season simulation');
+  (select replace_slot from tests.sd_x_factor_replace_slot(
+    (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p2')
+  ))), 'the last decision triggers the season simulation');
 
 select tests.act_as_admin();
 select is((select count(*)::int from public.sabotage_draft_standings where match_id = (select v from tests.fx where k = 'm')), 3,
