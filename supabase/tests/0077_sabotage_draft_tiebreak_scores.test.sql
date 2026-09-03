@@ -19,7 +19,7 @@ insert into public.sabotage_draft_standings (match_id, user_id, roster_strength,
 select setseed(0.41);
 select lives_ok(format($$
   select sabotage_draft_private.break_record_tie(
-    %L, 10, array[%L::uuid, %L::uuid], 1
+    %L, 10::smallint, array[%L::uuid, %L::uuid], 1::smallint
   )
 $$, (select v from tests.fx where k = 'm'), (select v from tests.fx where k = 'p0'), (select v from tests.fx where k = 'p1')),
   'the tied pair resolves through one scored playoff game');

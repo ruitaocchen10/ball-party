@@ -51,7 +51,7 @@ select 'expected_av', pool.av
 
 select tests.act_as((select v from tests.fx where k = 'p0'));
 select is(
-  (select av from sabotage_draft.pick_avs((select v from tests.fx where k = 'm'))
+  (select av::int from sabotage_draft.pick_avs((select v from tests.fx where k = 'm'))
     where round_number = 1 and user_id = (select v from tests.fx where k = 'p0')),
   (select v from tests.num where k = 'expected_av'),
   'a player reads the correct AV for their own resolved pick'
@@ -59,7 +59,7 @@ select is(
 
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select is(
-  (select av from sabotage_draft.pick_avs((select v from tests.fx where k = 'm'))
+  (select av::int from sabotage_draft.pick_avs((select v from tests.fx where k = 'm'))
     where round_number = 1 and user_id = (select v from tests.fx where k = 'p0')),
   (select v from tests.num where k = 'expected_av'),
   'a teammate reads the same AV for that pick, once its own turn has resolved (mirrors 0073)'
