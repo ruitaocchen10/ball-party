@@ -65,3 +65,31 @@ jobs:
           python-version: "3.12"
 
       - run: python3 -m unittest discover scripts/player_pool
+
+  deploy-migrations:
+    name: Push migrations to prod
+    # Only once they've actually been proven against a fresh local stack --
+    # never on a PR preview, and never if the pgTAP suite would have caught
+    # something. This is the step that was missing when 0092 merged: green
+    # CI and a real bug both shipped, because nothing pushed the fix's own
+    # migration to the hosted project afterward.
+    if: github.event_name == 'push'
+    needs: database
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to the hosted project
+        run: supabase link --project-ref xjsbmxgnmrvqfsqcohjv
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Push pending migrations
+        run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
