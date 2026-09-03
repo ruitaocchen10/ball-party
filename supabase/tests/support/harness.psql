@@ -564,6 +564,25 @@ language sql stable security definer as $$
    limit 1;
 $$;
 
+-- The X-Factor replacement slot a round-14 pick's own category maps to, so
+-- a test can submit a real accepted decision for whatever category the
+-- dealt round actually landed on instead of hoping for a specific one.
+-- Definer for the same reason sd_pick_candidate is: a test acting as a
+-- player has to source this without itself holding a select grant on
+-- private.av_roster_players — correctly, it has none.
+create function tests.sd_x_factor_replace_slot(p_match_id uuid, p_user_id uuid, out replace_slot text)
+language sql stable security definer as $$
+  select case pool.slot_category
+      when 'QB' then 'QB' when 'RB' then 'RB1' when 'WR' then 'WR1' when 'TE' then 'TE'
+    end
+    from public.sabotage_draft_picks pick
+    join public.sabotage_draft_round_spins spin
+      on spin.match_id = pick.match_id and spin.round_number = pick.round_number and spin.user_id = pick.user_id
+    join private.av_roster_players pool
+      on pool.franchise_code = spin.franchise_code and pool.player_id = pick.player_id and pool.season = pick.season
+   where pick.match_id = p_match_id and pick.user_id = p_user_id and pick.round_number = 14;
+$$;
+
 grant usage on schema tests to authenticated;
 grant execute on all functions in schema tests to authenticated;
 grant all on all tables in schema tests to authenticated;

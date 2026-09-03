@@ -32,8 +32,25 @@ select is(
   'a non-host participant can read the dealt format'
 );
 
-select ok(
-  not has_table_privilege('authenticated', 'public.auction_matches', 'UPDATE'),
+-- Which of two ways this gets blocked depends on the environment: the
+-- hosted project grants public tables to anon and authenticated by default
+-- (a local CLI stack no longer does — see 0010's own comment on this), so
+-- the write either fails outright on the missing table privilege or is
+-- accepted and then filtered to zero rows by RLS, which carries no UPDATE
+-- policy for auction_matches. Either way the row must not change, so that's
+-- the invariant this asserts rather than which grant a given stack happens
+-- to carry.
+select format($fmt$
+do $$
+begin
+  update public.auction_matches set roster_preset = 'wide' where match_id = %L;
+exception when insufficient_privilege then null;
+end $$;
+$fmt$, :'match_id') \gexec
+
+select is(
+  (select roster_preset from public.auction_matches where match_id = :'match_id'),
+  'standard',
   'participants cannot mutate a dealt format directly'
 );
 
