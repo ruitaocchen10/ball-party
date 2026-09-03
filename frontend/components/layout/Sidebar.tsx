@@ -176,15 +176,8 @@ function Brand({
         collapsed ? "flex-col items-center gap-3 px-2" : "items-center justify-between px-5"
       }`}
     >
-      <Link
-        href="/"
-        aria-label="Ball Party"
-        className={`flex items-center gap-2 text-fg ${FOCUS}`}
-      >
+      <Link href="/" aria-label="Ball Party" className={`flex items-center text-fg ${FOCUS}`}>
         <BrandMark className="h-7 w-7 shrink-0" />
-        {collapsed ? null : (
-          <span className="font-slab text-[22px] leading-none uppercase">Ball Party</span>
-        )}
       </Link>
       <button
         type="button"
@@ -295,13 +288,8 @@ function MobileTopStrip({
         <Menu className="h-[18px] w-[18px]" strokeWidth={1.5} />
       </button>
 
-      <Link
-        href="/"
-        aria-label="Ball Party"
-        className={`flex items-center gap-1.5 text-fg ${FOCUS}`}
-      >
+      <Link href="/" aria-label="Ball Party" className={`flex items-center text-fg ${FOCUS}`}>
         <BrandMark className="h-5 w-5 shrink-0" />
-        <span className="font-slab text-[16px] leading-none uppercase">Ball Party</span>
       </Link>
 
       {displayName ? (
@@ -369,13 +357,8 @@ function MobileDrawer({
         className="absolute top-0 left-0 flex h-full w-72 max-w-[85vw] flex-col bg-surface-raised shadow-card"
       >
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
-          <Link
-            href="/"
-            aria-label="Ball Party"
-            className={`flex items-center gap-1.5 text-fg ${FOCUS}`}
-          >
+          <Link href="/" aria-label="Ball Party" className={`flex items-center text-fg ${FOCUS}`}>
             <BrandMark className="h-5 w-5 shrink-0" />
-            <span className="font-slab text-[17px] leading-none uppercase">Ball Party</span>
           </Link>
           <button
             type="button"

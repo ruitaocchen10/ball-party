@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Mark only, ink-colored, for dropping onto a light/cream photo or
+       banner. Stitch uses the "hidden ink" red (#a8291f) rather than the
+       base "hidden" red, matching globals.css's own note that the darkened
+       variant is the one that stays legible on a cream surface. -->
+  <path
+    fill="#111311"
+    transform="matrix(0.0885714,0,0,0.0885714,14.04,81)"
+    d="M41 0L41-700L207-700Q292-700 331-660.500Q370-621 370-539L370-511Q370-457 352.500-423Q335-389 299-374L299-372Q381-344 381-226L381-166Q381-85 338.500-42.500Q296 0 214 0L41 0M151-415L194-415Q227-415 243.500-432Q260-449 260-489L260-528Q260-566 246.500-583Q233-600 204-600L151-600L151-415M151-100L214-100Q243-100 257-115.500Q271-131 271-169L271-230Q271-278 254.500-296.500Q238-315 200-315L151-315L151-100M445 0L445-700L607-700Q689-700 730-656Q771-612 771-527L771-458Q771-373 730-329Q689-285 607-285L555-285L555 0L445 0M555-385L607-385Q634-385 647.500-400Q661-415 661-451L661-534Q661-570 647.500-585Q634-600 607-600L555-600Z"
+  />
+  <g stroke="#a8291f" stroke-width="0.7" stroke-linecap="round">
+    <line x1="66.09" y1="35.59" x2="69.69" y2="39.19" />
+    <line x1="69.69" y1="35.59" x2="66.09" y2="39.19" />
+  </g>
+</svg>
