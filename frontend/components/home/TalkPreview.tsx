@@ -26,7 +26,7 @@ export function TalkPreview() {
       </p>
       <p className="max-w-[38ch] text-[13px] leading-[1.55] text-panel/85">
         A prompt to answer and argue about with your group, every day. This
-        column fills in once that's real — nothing to click here yet.
+        column fills in once that&apos;s real — nothing to click here yet.
       </p>
     </Concealed>
   );
