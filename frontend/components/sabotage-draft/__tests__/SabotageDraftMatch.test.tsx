@@ -332,7 +332,14 @@ describe("the turn clock", () => {
   });
 
   it("counts down in tenths once fewer than five seconds remain", () => {
-    renderMatch({ board: { ...BOARD, turn_deadline: new Date(Date.now() + 4_500).toISOString() } });
+    // Anchored to the same instant rather than BOARD's own module-load-time
+    // server_now -- see the identical note on "turns urgent" below. 4.5s
+    // against a 5s threshold is just as tight a boundary as that test's 2.5s
+    // against 3s, and drifted the same way once enough tests ran first.
+    const now = new Date();
+    renderMatch({
+      board: { ...BOARD, server_now: now.toISOString(), turn_deadline: new Date(now.getTime() + 4_500).toISOString() },
+    });
     const clock = screen.getByRole("region", { name: "Clock" });
     expect(clock).toHaveTextContent(/\d\.\d/);
   });
