@@ -95,7 +95,7 @@ select throws_ok(format($$ select sabotage_draft.submit_x_factor_decision(%L, 'R
   'a final decision cannot be repurposed into another replacement, even with the phase artificially reopened'
 );
 select tests.act_as_admin();
-update public.sabotage_draft_matches set active_seat = 1, x_factor_open = false, turn_deadline = now() + interval '45 seconds'
+update public.sabotage_draft_matches set active_seat = 1, x_factor_open = false, turn_deadline = now() + interval '30 seconds'
  where match_id = (select v from tests.fx where k = 'm');
 
 -- ---------------------------------------------------------------- p1's turn --

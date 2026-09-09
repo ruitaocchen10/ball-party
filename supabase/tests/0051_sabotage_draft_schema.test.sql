@@ -8,7 +8,7 @@
 -- nothing tracks an exclusion set.
 
 begin;
-select plan(40);
+select plan(41);
 
 \ir support/harness.psql
 
@@ -63,6 +63,12 @@ select is(
     where match_id = (select v from tests.fx where k = 'm4')),
   1,
   'a freshly dealt match starts on round one'
+);
+
+select ok(
+  (select turn_deadline = now() + interval '30 seconds'
+    from public.sabotage_draft_matches where match_id = (select v from tests.fx where k = 'm4')),
+  'a freshly dealt turn has the configured 30-second deadline'
 );
 
 select is(

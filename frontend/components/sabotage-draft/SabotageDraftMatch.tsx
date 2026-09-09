@@ -61,7 +61,7 @@ const MESSAGE: Record<string, string> = { already_picked: "Your pick is already 
 // advance_turn, and submit_x_factor_decision (see
 // supabase/migrations/20260826180000_0063_sabotage_draft_merged_turn.sql),
 // so TurnClock needs one constant rather than a phase-keyed map.
-const TURN_DURATION_MS = 45_000;
+const TURN_DURATION_MS = 30_000;
 
 export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost = false, paused = false, initial }: { matchId: string; viewerId: string; roomCode?: string | null; isHost?: boolean; paused?: boolean; initial: { board: Board; players: Player[]; spins: Spin[]; picks: Pick[]; statuses: PickStatus[]; hits: Hit[]; guesses: Guess[]; passes: Pass[]; decisions: Decision[]; standings: Standing[]; tiebreaks: Tiebreak[]; pickAvs: PickAv[] } }) {
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
@@ -105,7 +105,22 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
   // awaited work in a still-running invocation resumes -- so a torn-down
   // invocation always bails before touching the channel at all.
   useEffect(() => { let cancelled = false; let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | undefined; void (async () => { const s = await createRealtimeClient(); if (cancelled) return; const topic = `realtime:sabotage:${matchId}`; const stale = s.realtime.getChannels().find((c: { topic: string }) => c.topic === topic); if (stale) await s.removeChannel(stale); if (cancelled) return; channel = s.channel(`sabotage:${matchId}`).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_matches", filter: `match_id=eq.${matchId}` }, () => void refetch()).on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` }, (payload: { new: { status?: string } }) => setIsPaused(payload.new.status === "paused")).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_players", filter: `match_id=eq.${matchId}` }, () => void refetch()).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_round_spins", filter: `match_id=eq.${matchId}` }, () => void refetch()).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_picks", filter: `match_id=eq.${matchId}` }, () => void refetch()).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_pick_statuses", filter: `match_id=eq.${matchId}` }, () => void refetch()).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_guesses", filter: `match_id=eq.${matchId}` }, () => void refetch()).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_passes", filter: `match_id=eq.${matchId}` }, () => void refetch()).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_pick_hits", filter: `match_id=eq.${matchId}` }, () => void refetch()).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_x_factor_decisions", filter: `match_id=eq.${matchId}` }, () => void refetch()).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_standings", filter: `match_id=eq.${matchId}` }, () => void refetch()).on("postgres_changes", { event: "*", schema: "public", table: "sabotage_draft_tiebreak_games", filter: `match_id=eq.${matchId}` }, () => void refetch()).subscribe(status => { if (status === "SUBSCRIBED") void refetch(); }); })(); return () => { cancelled = true; if (channel) void getClient().removeChannel(channel); }; }, [matchId, refetch, getClient]);
-  const call = async (name: string, args: Record<string, unknown>) => { setPending(true); setError(null); const { error: rpcError } = await (getClient().schema("sabotage_draft" as never).rpc(name as never, args as never) as any); setPending(false); if (rpcError) setError(MESSAGE[rpcError.message] ?? rpcError.message); else await refetch(); };
+  const call = async (name: string, args: Record<string, unknown>) => {
+    setPending(true);
+    setError(null);
+    try {
+      const { error: rpcError } = await (getClient().schema("sabotage_draft" as never).rpc(name as never, args as never) as any);
+      if (rpcError) setError(MESSAGE[rpcError.message] ?? rpcError.message);
+      else await refetch();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't save your move. Try again.");
+    } finally {
+      // Keep the old controls inert until refetch has replaced the stale
+      // board snapshot that initiated this move. Otherwise a quick second
+      // click can submit the same action again before Realtime catches up.
+      setPending(false);
+    }
+  };
   const myPick = picks.find(p => p.round_number === board.current_round && p.user_id === viewerId); const myDecision = decisions.find(d => d.user_id === viewerId);
   // A guess or a pass is spent per (round, target) now, not once per round
   // flat — the same player gets a fresh shot on every seat's own turn — so
@@ -199,6 +214,7 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
           <TurnClock label={turnLabel} remainingMs={remainingMs} />
         </section>
         <section className="flex min-h-0 flex-col gap-3 lg:col-start-2" aria-label="Your move">
+          {pending ? <p role="status" aria-live="polite" className="font-mono text-xs tracking-[0.12em] text-fg-muted uppercase">Saving your move…</p> : null}
           <AnimatedMessage role="alert" className="text-sm text-hidden-text">{error}</AnimatedMessage>
           {board.turn_deadline && !turnRevealed ? (lastTurnResult ? <TurnResultCard result={lastTurnResult} /> : <Card edge={false}><CardTitle>Spinning…</CardTitle><CardMeta>The board is picking {isActive ? "your" : `${activePlayer?.display_name ?? "their"}`} team</CardMeta></Card>) : null}
           {board.turn_deadline && turnRevealed && isActive ? <PickForm options={options} mine={myPick} pending={disabled} onSubmit={(o) => call("submit_pick", { p_match_id: matchId, p_player_id: o.player_id, p_season: o.season })} /> : null}

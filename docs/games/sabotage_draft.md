@@ -131,7 +131,7 @@ from the moment the turn opens, not from the moment the pick lands. A turn
 is now one `turn_deadline`: the active seat may lock their pick any time
 within it, and every other seat may lock in exactly one guess or one
 explicit pass any time within that same window, including before the pick
-exists.
+exists. Each shared turn lasts 30 seconds unless every seat locks in early.
 
 **A guess made before the pick exists is held pending, not resolved blind.**
 There is nothing yet to check an early guess against, so it sits recorded

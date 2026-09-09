@@ -103,6 +103,35 @@ describe("pausing", () => {
   });
 });
 
+describe("action reconciliation", () => {
+  it("keeps the move controls locked while a successful action refreshes stale board state", async () => {
+    let resolveState: ((value: { data: typeof BOARD; error: null }) => void) | undefined;
+    const client = supabaseMock();
+    client.rpc = vi.fn((name: string) => {
+      if (name === "state") return new Promise(resolve => { resolveState = resolve; });
+      return Promise.resolve({ data: null, error: null });
+    });
+    globalThis.__supabaseMock = client;
+    renderMatch({ viewerId: "u1" });
+
+    const pass = screen.getByRole("button", { name: "Pass" });
+    fireEvent.click(pass);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+
+    expect(resolveState).toBeDefined();
+    expect(screen.getByRole("status")).toHaveTextContent("Saving your move…");
+    expect(pass).toBeDisabled();
+
+    await act(async () => {
+      resolveState?.({ data: BOARD, error: null });
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(pass).toBeEnabled();
+  });
+});
+
 /**
  * The ~3s "the system is choosing" buffer between turns (useTurnReveal), and
  * the bug it was written to close alongside: before this, the reel's
