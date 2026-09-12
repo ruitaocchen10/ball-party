@@ -4,10 +4,10 @@ import {
   House,
   LogIn,
   Menu,
-  MessageCircle,
+  MessageSquarePlus,
   PanelLeftClose,
   PanelLeftOpen,
-  User,
+  Play,
   Users,
   X,
 } from "lucide-react";
@@ -17,16 +17,22 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AccountMenu } from "@/components/layout/AccountMenu";
+import { FeedbackModal } from "@/components/layout/FeedbackModal";
 import { BrandMark } from "@/components/ui/BrandMark";
+import { GAMES, type Game } from "@/lib/games/catalog";
+import { playSolo } from "@/lib/lobbies/actions";
+import { SOLO_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
 import { drawerBackdrop, drawerPanel } from "@/lib/motion";
 
+/** The solo-playable games, in catalog order — everything the Solo games
+ *  section lists. Just Higher or Lower today; a second live+solo game shows
+ *  up here with no further change. */
+const SOLO_GAMES = GAMES.filter((game) => game.solo && game.status === "live");
+
 /**
- * The app's persistent chrome — a fixed left rail on desktop, a hamburger
- * drawer on mobile. Replaces the old horizontal TopBar: with more sections
- * on the way, a vertical list scales past three items the way a fixed row of
- * chips doesn't, and a rail is where this product's inevitable eventual
- * dedicated mobile app leaves the web experience free to just be ordinary —
- * the mobile treatment here is a standard drawer, not a bespoke design.
+ * The app's persistent navigation — a fixed left rail below the desktop top
+ * bar, and a hamburger drawer on mobile. A vertical list scales past three
+ * sections without crowding the global search and utility controls above it.
  *
  * The rail is `fixed`, so it takes no flow space; every page's <main> reserves
  * room for it with `md:ml-[var(--sidebar-w)]` (see globals.css). That var,
@@ -41,14 +47,20 @@ export function Sidebar({
   displayName,
   email = null,
   avatarUrl = null,
+  canPlaySolo = false,
 }: {
   displayName?: string | null;
   email?: string | null;
   avatarUrl?: string | null;
+  /** Whether the viewer can start a solo game from this rail right now —
+   *  guests included, the same floor `soloGames()`/`playSolo` use, just
+   *  evaluated per page since Sidebar has no session of its own to read. */
+  canPlaySolo?: boolean;
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // Adopts whatever the no-flash script already stamped onto <html> before
   // paint, so mounting here never causes a second, contradicting flash. Can
@@ -97,34 +109,29 @@ export function Sidebar({
         // HigherOrLowerMatch) renders no Sidebar at all, live or final, and
         // must not get a dead gutter carved out of it.
         data-sidebar-rail
-        className={`fixed top-0 left-0 z-20 hidden h-dvh flex-col bg-surface-raised ring-1 ring-line ring-inset transition-[width] duration-150 md:flex ${
-          collapsed ? "w-18" : "w-60"
+        className={`fixed top-[68px] left-0 z-20 hidden h-[calc(100dvh-68px)] flex-col bg-surface-raised ring-1 ring-line ring-inset transition-[width] duration-150 md:flex ${
+          collapsed ? "w-20" : "w-68"
         }`}
       >
-        <Brand collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+        <SidebarToggle collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
 
-        <div className="flex-1 overflow-y-auto py-4">
+        <div className="flex-1 overflow-y-auto pt-5">
           <NavList pathname={pathname} collapsed={collapsed} />
+
+          {SOLO_GAMES.length > 0 ? (
+            <>
+              <div className="ml-3 mr-8 my-3 border-t border-line" />
+              <SoloGamesNav collapsed={collapsed} canPlaySolo={canPlaySolo} />
+            </>
+          ) : null}
+
+          <div className="ml-3 mr-8 my-3 border-t border-line" />
+
+          <div className="px-3 pb-3">
+            <FeedbackButton compact={collapsed} onOpen={() => setFeedbackOpen(true)} />
+          </div>
         </div>
 
-        <div
-          // Same horizontal inset as Brand above (px-5 expanded, px-2
-          // collapsed) so the avatar lines up with the wordmark/toggle row
-          // rather than with the nav rows' own, deeper px-3 + px-3 inset.
-          className={`border-t border-line py-4 ${collapsed ? "flex justify-center px-2" : "px-5"}`}
-        >
-          {displayName ? (
-            <AccountMenu
-              displayName={displayName}
-              email={email}
-              avatarUrl={avatarUrl}
-              placement="up"
-              compact={collapsed}
-            />
-          ) : (
-            <SignedOutAccount compact={collapsed} />
-          )}
-        </div>
       </aside>
 
       <AnimatePresence>
@@ -135,10 +142,17 @@ export function Sidebar({
             displayName={displayName}
             email={email}
             avatarUrl={avatarUrl}
+            canPlaySolo={canPlaySolo}
             onClose={() => setDrawerOpen(false)}
+            onOpenFeedback={() => {
+              setDrawerOpen(false);
+              setFeedbackOpen(true);
+            }}
           />
         ) : null}
       </AnimatePresence>
+
+      {feedbackOpen ? <FeedbackModal route={pathname} onClose={() => setFeedbackOpen(false)} /> : null}
     </>
   );
 }
@@ -146,24 +160,32 @@ export function Sidebar({
 const FOCUS =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
 
+function FeedbackButton({ compact, onOpen }: { compact: boolean; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`flex w-full items-center gap-3.5 px-3 py-2.5 font-mono text-sm font-semibold tracking-[0.03em] text-fg transition-colors hover:text-fg-muted ${FOCUS} ${
+        compact ? "justify-center" : ""
+      }`}
+    >
+      <MessageSquarePlus className="h-5 w-5 shrink-0" strokeWidth={1.5} />
+      <span className={compact ? "sr-only" : ""}>Feedback</span>
+    </button>
+  );
+}
+
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: House },
   { href: "/party", label: "Party", Icon: Users },
-  { href: "/solo", label: "Solo", Icon: User },
-  // Dimmed by default, same as before: a real destination — the page it
-  // lands on tells the truth about it being unbuilt — but not one the nav
-  // should promise at full strength yet.
-  { href: "/social", label: "Social", Icon: MessageCircle, muted: true },
 ];
 
 /**
- * Wordmark plus the collapse toggle, sharing one row: expanded, the button
- * sits beside the logo; collapsed, there's no room for both, so the button
- * takes the logo's own spot rather than getting a row of its own further
- * down — collapsing the rail is squarely about this row, not a separate
- * setting.
+ * Reddit-style edge control: it straddles the rail's outer border instead of
+ * consuming a row inside the navigation. Brand identity belongs in the top
+ * bar, where it remains visible even when this rail is collapsed.
  */
-function Brand({
+function SidebarToggle({
   collapsed,
   onToggleCollapsed,
 }: {
@@ -171,56 +193,113 @@ function Brand({
   onToggleCollapsed: () => void;
 }) {
   return (
-    <div
-      className={`flex shrink-0 border-b border-line py-4 ${
-        collapsed ? "flex-col items-center gap-3 px-2" : "items-center justify-between px-5"
-      }`}
+    <button
+      type="button"
+      onClick={onToggleCollapsed}
+      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      className={`absolute top-[23px] -right-[17px] z-10 flex h-[34px] w-[34px] items-center justify-center rounded-full border border-fg-muted bg-surface text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel ${FOCUS}`}
     >
-      <Link href="/" aria-label="Ball Party" className={`flex items-center text-fg ${FOCUS}`}>
-        <BrandMark className="h-7 w-7 shrink-0" />
-      </Link>
-      <button
-        type="button"
-        onClick={onToggleCollapsed}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center text-fg-muted transition-colors hover:text-fg ${FOCUS}`}
-      >
-        {collapsed ? (
-          <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={1.5} />
-        ) : (
-          <PanelLeftClose className="h-[18px] w-[18px]" strokeWidth={1.5} />
-        )}
-      </button>
-    </div>
+      {collapsed ? (
+        <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={1.5} />
+      ) : (
+        <PanelLeftClose className="h-[18px] w-[18px]" strokeWidth={1.5} />
+      )}
+    </button>
   );
 }
 
 /** Shared between the desktop rail and the mobile drawer so the two never drift. */
 function NavList({ pathname, collapsed }: { pathname: string; collapsed: boolean }) {
   return (
-    <nav aria-label="Sections" className="flex flex-col gap-1 px-3">
-      {NAV_ITEMS.map(({ href, label, Icon, muted }) => {
+    <nav aria-label="Sections" className="flex flex-col gap-1 px-3 pr-8">
+      {NAV_ITEMS.map(({ href, label, Icon }) => {
         const active = pathname === href;
         return (
           <Link
             key={href}
             href={href}
-            className={`flex items-center gap-3 px-3 py-2.5 font-mono text-xs font-semibold tracking-[0.03em] transition-colors ${FOCUS} ${
+            className={`flex items-center gap-3.5 px-3 py-2.5 font-mono text-sm font-semibold tracking-[0.03em] transition-colors ${FOCUS} ${
               collapsed ? "justify-center" : ""
             } ${
               active
                 ? "bg-panel text-panel-fg"
-                : muted
-                  ? "text-fg-muted hover:text-fg"
-                  : "text-fg hover:text-fg-muted"
+                : "text-fg hover:text-fg-muted"
             }`}
           >
-            <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.5} />
+            <Icon className="h-5 w-5 shrink-0" strokeWidth={1.5} />
             <span className={collapsed ? "sr-only" : ""}>{label}</span>
           </Link>
         );
       })}
     </nav>
+  );
+}
+
+/**
+ * The rail's second nav section: every solo-playable game, one tap from a
+ * live match — no detour through a grid page to click a second "Play solo"
+ * there. Shared between the desktop rail and the mobile drawer, same as
+ * NavList, so the two can't drift.
+ */
+function SoloGamesNav({ collapsed, canPlaySolo }: { collapsed: boolean; canPlaySolo: boolean }) {
+  return (
+    <div className="px-3 pr-8">
+      <p
+        className={`px-3 pb-1.5 font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase ${
+          collapsed ? "sr-only" : ""
+        }`}
+      >
+        Solo games
+      </p>
+      <nav aria-label="Solo games" className="flex flex-col gap-1">
+        {SOLO_GAMES.map((game) => (
+          <SoloGameLink key={game.slug} game={game} collapsed={collapsed} canPlaySolo={canPlaySolo} />
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+const NAV_ITEM_CLASSES = (collapsed: boolean) =>
+  `flex items-center gap-3.5 px-3 py-2.5 font-mono text-sm font-semibold tracking-[0.03em] text-fg transition-colors hover:text-fg-muted ${FOCUS} ${
+    collapsed ? "justify-center" : ""
+  }`;
+
+/**
+ * One solo game's entry: a form that starts a fresh run via `playSolo` when
+ * the viewer can play (a signed-in button beats a link nobody can act on
+ * twice in a row the same way — each click deals a new match), or a sign-up
+ * link when they can't. Styled to match NavList's links exactly, since this
+ * reads as a continuation of the same nav rather than a distinct widget.
+ */
+function SoloGameLink({
+  game,
+  collapsed,
+  canPlaySolo,
+}: {
+  game: Game;
+  collapsed: boolean;
+  canPlaySolo: boolean;
+}) {
+  const label = game.name.join(" ");
+
+  if (!canPlaySolo) {
+    return (
+      <Link href={SOLO_SIGN_UP_HREF} className={NAV_ITEM_CLASSES(collapsed)}>
+        <Play className="h-5 w-5 shrink-0" strokeWidth={1.5} />
+        <span className={collapsed ? "sr-only" : ""}>{label}</span>
+      </Link>
+    );
+  }
+
+  return (
+    <form action={playSolo}>
+      <input type="hidden" name="game" value={game.match ?? ""} />
+      <button type="submit" className={`w-full cursor-pointer ${NAV_ITEM_CLASSES(collapsed)}`}>
+        <Play className="h-5 w-5 shrink-0" strokeWidth={1.5} />
+        <span className={collapsed ? "sr-only" : ""}>{label}</span>
+      </button>
+    </form>
   );
 }
 
@@ -237,7 +316,7 @@ function SignedOutAccount({ compact }: { compact: boolean }) {
         aria-label="Sign in"
         className={`flex h-9 w-9 items-center justify-center bg-panel text-panel-fg ${FOCUS}`}
       >
-        <LogIn className="h-[16px] w-[16px]" strokeWidth={1.5} />
+        <LogIn className="h-[18px] w-[18px]" strokeWidth={1.5} />
       </Link>
     );
   }
@@ -246,13 +325,13 @@ function SignedOutAccount({ compact }: { compact: boolean }) {
     <div className="flex flex-col gap-2">
       <Link
         href="/signup"
-        className={`flex h-9 items-center justify-center bg-panel px-3.5 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] ${FOCUS}`}
+        className={`flex h-9 items-center justify-center bg-panel px-3.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] ${FOCUS}`}
       >
         Sign up
       </Link>
       <Link
         href="/login"
-        className={`flex h-8 items-center justify-center font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase transition-colors hover:text-fg ${FOCUS}`}
+        className={`flex h-8 items-center justify-center font-mono text-xs tracking-[0.13em] text-fg-muted uppercase transition-colors hover:text-fg ${FOCUS}`}
       >
         Sign in
       </Link>
@@ -278,18 +357,18 @@ function MobileTopStrip({
   onOpenMenu: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-10 flex items-center justify-between bg-surface px-4 py-3 md:hidden">
+    <header className="sticky top-0 z-10 flex items-center justify-between bg-surface px-4 py-2.5 md:hidden">
       <button
         type="button"
         onClick={onOpenMenu}
         aria-label="Open menu"
         className={`flex h-9 w-9 items-center justify-center bg-surface-raised text-fg ring-1 ring-line ring-inset ${FOCUS}`}
       >
-        <Menu className="h-[18px] w-[18px]" strokeWidth={1.5} />
+        <Menu className="h-5 w-5" strokeWidth={1.5} />
       </button>
 
       <Link href="/" aria-label="Ball Party" className={`flex items-center text-fg ${FOCUS}`}>
-        <BrandMark className="h-5 w-5 shrink-0" />
+        <BrandMark className="h-6 w-6 shrink-0" />
       </Link>
 
       {displayName ? (
@@ -297,7 +376,7 @@ function MobileTopStrip({
       ) : (
         <Link
           href="/login"
-          className={`font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase transition-colors hover:text-fg ${FOCUS}`}
+          className={`font-mono text-xs tracking-[0.13em] text-fg-muted uppercase transition-colors hover:text-fg ${FOCUS}`}
         >
           Sign in
         </Link>
@@ -311,13 +390,17 @@ function MobileDrawer({
   displayName,
   email,
   avatarUrl,
+  canPlaySolo,
   onClose,
+  onOpenFeedback,
 }: {
   pathname: string;
   displayName?: string | null;
   email?: string | null;
   avatarUrl?: string | null;
+  canPlaySolo: boolean;
   onClose: () => void;
+  onOpenFeedback: () => void;
 }) {
   // Escape closes it, and the drawer holds the page still behind it — a
   // background scroll under an open drawer reads as the drawer not really
@@ -354,11 +437,11 @@ function MobileDrawer({
         initial="initial"
         animate="animate"
         exit="exit"
-        className="absolute top-0 left-0 flex h-full w-72 max-w-[85vw] flex-col bg-surface-raised shadow-card"
+        className="absolute top-0 left-0 flex h-full w-80 max-w-[85vw] flex-col bg-surface-raised shadow-card"
       >
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <Link href="/" aria-label="Ball Party" className={`flex items-center text-fg ${FOCUS}`}>
-            <BrandMark className="h-5 w-5 shrink-0" />
+            <BrandMark className="h-6 w-6 shrink-0" />
           </Link>
           <button
             type="button"
@@ -366,15 +449,26 @@ function MobileDrawer({
             aria-label="Close menu"
             className={`flex h-8 w-8 items-center justify-center text-fg-muted transition-colors hover:text-fg ${FOCUS}`}
           >
-            <X className="h-[16px] w-[16px]" strokeWidth={1.5} />
+            <X className="h-[18px] w-[18px]" strokeWidth={1.5} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4">
+        <div className="flex-1 overflow-y-auto py-3">
           <NavList pathname={pathname} collapsed={false} />
+
+          {SOLO_GAMES.length > 0 ? (
+            <>
+              <div className="ml-3 mr-8 my-3 border-t border-line" />
+              <SoloGamesNav collapsed={false} canPlaySolo={canPlaySolo} />
+            </>
+          ) : null}
         </div>
 
-        <div className="border-t border-line px-5 py-3">
+        <div className="border-t border-line px-3 py-3">
+          <FeedbackButton compact={false} onOpen={onOpenFeedback} />
+        </div>
+
+        <div className="border-t border-line px-5 py-2.5">
           {displayName ? (
             <AccountMenu displayName={displayName} email={email} avatarUrl={avatarUrl} placement="up" />
           ) : (

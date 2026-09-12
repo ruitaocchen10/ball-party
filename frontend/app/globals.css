@@ -48,8 +48,8 @@
      than as a per-page margin, so it can't fight each page's `mx-auto`
      centering — the padding shifts body's whole content box, and every
      page's existing `mx-auto max-w-*` still centers correctly inside it. */
-  --sidebar-w-expanded: 15rem;
-  --sidebar-w-collapsed: 4.5rem;
+  --sidebar-w-expanded: 17rem;
+  --sidebar-w-collapsed: 5rem;
   --sidebar-w: var(--sidebar-w-expanded);
 }
 

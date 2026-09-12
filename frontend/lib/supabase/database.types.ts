@@ -226,6 +226,70 @@ export type Database = {
       }
     }
   }
+  prompts: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      player_options: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          display_name: string
+          headshot_url: string | null
+          player_id: string
+          position: string
+          team: string
+        }[]
+      }
+      create_post: {
+        Args: {
+          p_caption: string
+          p_lock_at: string
+          p_prompt_text: string
+          p_resolution_criteria: string
+          p_resolution_source?: Json
+          p_slots: Json
+          p_template_kind: string
+          p_template_name: string
+        }
+        Returns: string
+      }
+      post_aggregates: {
+        Args: { p_post_id: string }
+        Returns: {
+          option_id: string
+          pct: number
+          slot_id: string
+          total_responses: number
+        }[]
+      }
+      post_comment: {
+        Args: { p_body: string; p_post_id: string }
+        Returns: string
+      }
+      resolve_post: {
+        Args: { p_answers: Json; p_post_id: string }
+        Returns: undefined
+      }
+      submit_response: {
+        Args: { p_choices: Json; p_comment?: string; p_post_id: string }
+        Returns: undefined
+      }
+      void_post: {
+        Args: { p_post_id: string; p_reason: string }
+        Returns: undefined
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       auction_bids: {
@@ -492,6 +556,44 @@ export type Database = {
             foreignKeyName: "guest_account_collisions_guest_id_fkey"
             columns: ["guest_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          message: string
+          reporter_id: string | null
+          route: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          message: string
+          reporter_id?: string | null
+          route: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          message?: string
+          reporter_id?: string | null
+          route?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -965,6 +1067,268 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      prompt_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          post_id: string
+          posted_with_pick: boolean
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          post_id: string
+          posted_with_pick?: boolean
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          posted_with_pick?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_posts: {
+        Row: {
+          author_id: string
+          caption: string
+          created_at: string
+          id: string
+          lock_at: string
+          prompt_text: string
+          resolution_criteria: string
+          resolution_source: Json | null
+          resolved_at: string | null
+          status: string
+          template_kind: string
+          template_name: string
+          void_reason: string | null
+        }
+        Insert: {
+          author_id: string
+          caption: string
+          created_at?: string
+          id?: string
+          lock_at: string
+          prompt_text: string
+          resolution_criteria: string
+          resolution_source?: Json | null
+          resolved_at?: string | null
+          status?: string
+          template_kind: string
+          template_name: string
+          void_reason?: string | null
+        }
+        Update: {
+          author_id?: string
+          caption?: string
+          created_at?: string
+          id?: string
+          lock_at?: string
+          prompt_text?: string
+          resolution_criteria?: string
+          resolution_source?: Json | null
+          resolved_at?: string | null
+          status?: string
+          template_kind?: string
+          template_name?: string
+          void_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_responses: {
+        Row: {
+          chosen_option_ids: string[]
+          created_at: string
+          id: string
+          points_earned: number | null
+          post_id: string
+          profile_id: string
+          slot_id: string
+        }
+        Insert: {
+          chosen_option_ids: string[]
+          created_at?: string
+          id?: string
+          points_earned?: number | null
+          post_id: string
+          profile_id: string
+          slot_id: string
+        }
+        Update: {
+          chosen_option_ids?: string[]
+          created_at?: string
+          id?: string
+          points_earned?: number | null
+          post_id?: string
+          profile_id?: string
+          slot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_responses_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_responses_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_responses_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_slot_exclusions: {
+        Row: {
+          excluded_slot_id: string
+          slot_id: string
+        }
+        Insert: {
+          excluded_slot_id: string
+          slot_id: string
+        }
+        Update: {
+          excluded_slot_id?: string
+          slot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_slot_exclusions_excluded_slot_id_fkey"
+            columns: ["excluded_slot_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_slot_exclusions_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_slot_options: {
+        Row: {
+          headshot_url: string | null
+          id: string
+          label: string
+          slot_id: string
+          sort_order: number
+          sublabel: string | null
+          team_code: string | null
+        }
+        Insert: {
+          headshot_url?: string | null
+          id?: string
+          label: string
+          slot_id: string
+          sort_order?: number
+          sublabel?: string | null
+          team_code?: string | null
+        }
+        Update: {
+          headshot_url?: string | null
+          id?: string
+          label?: string
+          slot_id?: string
+          sort_order?: number
+          sublabel?: string | null
+          team_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_slot_options_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_slots: {
+        Row: {
+          correct_option_ids: string[] | null
+          id: string
+          label: string
+          pick_count: number | null
+          points: number
+          post_id: string
+          shape: string
+          sort_order: number
+          source_game_id: string | null
+        }
+        Insert: {
+          correct_option_ids?: string[] | null
+          id?: string
+          label: string
+          pick_count?: number | null
+          points: number
+          post_id: string
+          shape: string
+          sort_order?: number
+          source_game_id?: string | null
+        }
+        Update: {
+          correct_option_ids?: string[] | null
+          id?: string
+          label?: string
+          pick_count?: number | null
+          points?: number
+          post_id?: string
+          shape?: string
+          sort_order?: number
+          source_game_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_slots_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       run_participants: {
         Row: {
@@ -1652,21 +2016,15 @@ export type Database = {
         }
       }
       my_match_history: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
-          ended_at: string | null
-          game: string | null
-          match_id: string | null
-          mode: Database["public"]["Enums"]["run_mode"] | null
-          placement: number | null
-          raw_score: number | null
+          ended_at: string
+          game: string
+          match_id: string
+          mode: Database["public"]["Enums"]["run_mode"]
+          placement: number
+          raw_score: number
         }[]
-        SetofOptions: {
-          from: "*"
-          to: ""
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       pause_match: {
         Args: { p_match_id: string }
@@ -2021,6 +2379,9 @@ export const Constants = {
     Enums: {},
   },
   higher_or_lower: {
+    Enums: {},
+  },
+  prompts: {
     Enums: {},
   },
   public: {

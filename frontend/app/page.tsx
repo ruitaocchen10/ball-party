@@ -1,21 +1,21 @@
-import { CurrentRoom, type RoomSummary } from "@/components/home/CurrentRoom";
-import { WayIn } from "@/components/home/WayIn";
-import { ButtonLink } from "@/components/ui/Button";
+import { type RoomSummary } from "@/components/home/CurrentRoom";
+import { DashboardHeader } from "@/components/home/DashboardHeader";
+import { QuickActions } from "@/components/home/QuickActions";
+import { SocialFeed } from "@/components/home/SocialFeed";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { createClient } from "@/lib/supabase/server";
-import { isSignedInViewer } from "@/lib/auth/viewer";
+import { canAnswerPrompt, isSignedInViewer } from "@/lib/auth/viewer";
+import { fetchPromptFeed } from "@/lib/prompts/feed";
+import { fetchNflSchedule } from "@/lib/nfl/schedule";
 
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.
 type Client = Awaited<ReturnType<typeof createClient>>;
 
 /**
- * The slim landing page. Party, Solo and Social used to all live here as
- * sections of one long page; each is now its own route (see
- * components/layout/Sidebar.tsx), so this keeps only what does not belong to
- * any one of them — the room you are already in, if any, and a way into the
- * three — rather than duplicating their content.
+ * The signed-in home is a compact dashboard: the Huddle is the central,
+ * interactive stream, while navigation and party/solo actions sit around it.
  */
 export default async function Home(props: PageProps<"/">) {
   const supabase = await createClient();
@@ -26,32 +26,51 @@ export default async function Home(props: PageProps<"/">) {
   const viewer = isSignedInViewer(claims);
 
   // Independent of each other, so they go together rather than in sequence.
-  const [profileResult, room] = viewer
+  const [profileResult, room, posts, schedule] = viewer
     ? await Promise.all([
         supabase.from("profiles").select("display_name, avatar_url").eq("id", claims!.sub).single(),
         currentRoom(supabase, claims!.sub),
+        fetchPromptFeed(supabase, claims!.sub),
+        // A schedule outage should never hide the feed; it only removes the
+        // optional primetime treatment until the next cached refresh.
+        fetchNflSchedule().catch(() => []),
       ])
-    : [{ data: null }, null];
+    : [{ data: null }, null, [], []];
 
   const displayName = profileResult.data?.display_name ?? (viewer ? (claims!.email as string) : null);
   const email = viewer ? ((claims!.email as string | undefined) ?? null) : null;
   const avatarUrl = profileResult.data?.avatar_url ?? null;
 
-  const { error } = await props.searchParams;
+  const { error, q } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
+  const query = typeof q === "string" ? q.trim().toLocaleLowerCase() : "";
+  // Home is intentionally the picks surface for now. Other prompt templates
+  // remain available to the admin tooling, but do not compete with the
+  // picks-prompt UI while that experience is being refined.
+  const pickPosts = posts.filter(isPickPrompt);
+  const visiblePosts = query
+    ? pickPosts.filter((post) => `${post.promptText} ${post.caption} ${post.author}`.toLocaleLowerCase().includes(query))
+    : pickPosts;
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
+      <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
+      <main className="mx-auto w-full max-w-[1480px] flex-1 px-4 pb-16 pt-7 sm:px-6 md:pt-[108px] lg:px-8 lg:pb-20">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
-
-        {room ? <CurrentRoom room={room} /> : null}
-        <Overview hasRoom={room !== null} />
+        <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
+          <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><SocialFeed posts={visiblePosts} signedIn={viewer} canAnswer={canAnswerPrompt(claims)} displayName={displayName ?? "You"} avatarUrl={avatarUrl} gameContexts={schedule.map(({ id, stadium, kickoff, primetime }) => ({ id, stadium, kickoff, primetime }))} /></div>
+          <div className="hidden xl:block"><QuickActions room={room} /></div>
+        </div>
       </main>
     </>
   );
+}
+
+/** Older single- and weekly-pick rows remain readable while their data is migrated to `picks`. */
+function isPickPrompt(post: { templateKind: string }) {
+  return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks";
 }
 
 /**
@@ -82,50 +101,4 @@ async function currentRoom(supabase: Client, userId: string): Promise<RoomSummar
     }));
 
   return { code: lobby.code, players, hostId: lobby.host_id, youId: userId };
-}
-
-/**
- * The heading, and the three ways in. Steps down the same way Party's action
- * strip used to when a room is already open above it — CurrentRoom's own
- * (screen-reader-only) heading is the page's `<h1>` then, so this demotes to
- * `<h2>` rather than doubling up.
- */
-function Overview({ hasRoom }: { hasRoom: boolean }) {
-  const Heading = hasRoom ? "h2" : "h1";
-
-  return (
-    <section className={hasRoom ? "pt-6" : "pt-10 lg:pt-14"}>
-      <Heading
-        className={`font-slab leading-[1.02] uppercase ${
-          hasRoom ? "text-2xl sm:text-3xl" : "text-[34px] sm:text-[43px]"
-        }`}
-      >
-        Where to?
-      </Heading>
-
-      <p className={`max-w-[48ch] text-[15px] leading-[1.6] text-[#bdb9b2] ${hasRoom ? "mt-2.5" : "mt-3.5"}`}>
-        Start or join a room, play something on your own, or see what&apos;s cooking on Social.
-      </p>
-
-      <div className="mt-6 grid gap-3 sm:grid-cols-3 lg:gap-4">
-        <WayIn kicker="Start or join" title="Party" body="Open a room, or join one with a code." lit>
-          <ButtonLink href="/party" variant="ink" fullWidth={false} className="px-7">
-            Go to Party
-          </ButtonLink>
-        </WayIn>
-
-        <WayIn kicker="Play alone" title="Solo" body="No room needed — jump into a game built for one.">
-          <ButtonLink href="/solo" variant="ghost" fullWidth={false} className="px-7">
-            Go to Solo
-          </ButtonLink>
-        </WayIn>
-
-        <WayIn kicker="In development" title="Social" body="A daily prompt to answer and argue about with your group.">
-          <ButtonLink href="/social" variant="ghost" fullWidth={false} className="px-7">
-            Go to Social
-          </ButtonLink>
-        </WayIn>
-      </div>
-    </section>
-  );
 }

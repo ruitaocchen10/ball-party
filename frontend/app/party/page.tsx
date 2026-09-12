@@ -1,5 +1,6 @@
 import { ColumnHead } from "@/components/home/ColumnHead";
 import { CurrentRoom, type RoomSummary } from "@/components/home/CurrentRoom";
+import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { GameGrid } from "@/components/home/GameGrid";
 import { JoinRoom } from "@/components/home/JoinRoom";
 import { StartRoom } from "@/components/home/StartRoom";
@@ -17,8 +18,9 @@ type Client = Awaited<ReturnType<typeof createClient>>;
 /**
  * The room flow, and the shop window it leads into: start or join a room,
  * then pick what to play once people are in it. Split out of the home page
- * once Party, Solo and Social each got their own route in the sidebar (see
- * components/layout/Sidebar.tsx) — this page is what "Party" points at.
+ * once Party, Solo and Social each got a section of their own — Party and
+ * Social in the sidebar's main nav (see components/layout/Sidebar.tsx), Solo
+ * in the rail's own Solo games section — this page is what "Party" points at.
  *
  * Play stayed with Party rather than moving to its own route: a game tile
  * here still just opens a room, so it is the same flow as the action strip
@@ -52,9 +54,10 @@ export default async function PartyPage(props: PageProps<"/party">) {
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
+      <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 pt-7 sm:px-6 md:pt-[108px] lg:px-8 lg:pb-20">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
 
         {room ? <CurrentRoom room={room} /> : null}

@@ -99,6 +99,16 @@ the hosted project's default table grants, which a local CLI stack no longer
 sets — without it the app hits "permission denied" locally for tables that work
 in production.
 
+### Email confirmation locally
+
+`enable_confirmations` under `[auth.email]` is on, matching the hosted
+project — signing up locally requires clicking a confirmation link, same as
+prod. Local mail never actually sends; it lands in the fake inbox at
+`[local_smtp]` (Studio → the inbox link on port 55324, or `supabase start`'s
+own printed URL) instead of a real mailbox. Google sign-in is not configured
+locally — `components/auth/GoogleButton.tsx` will error if clicked against
+the local stack; use email/password to test auth locally instead.
+
 ## Tests
 
 pgTAP, installed by `0009`.

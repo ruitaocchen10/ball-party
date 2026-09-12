@@ -11,6 +11,7 @@ import { isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
  * separate marketing page to keep in sync. RLS still returns nothing about a
  * room to someone who is not a member of it.
  */
+// `/social` remains public solely as a legacy redirect to Home.
 const PUBLIC_PATHS = ["/", "/login", "/signup", "/check-email", "/auth", "/lobby", "/party", "/solo", "/social"];
 
 /** Signed-in users bounced off these back to the app. */

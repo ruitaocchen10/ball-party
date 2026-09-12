@@ -37,7 +37,7 @@ export default async function ProfilePage() {
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-10 pb-16 sm:px-6 sm:pt-12 lg:px-8 lg:pt-14 lg:pb-20">
         <header className="flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:items-end">
           <ProfileAvatar name={displayName} avatarUrl={profile?.avatar_url ?? null} />
@@ -103,7 +103,9 @@ export default async function ProfilePage() {
 function GuestProfile() {
   return (
     <>
-      <Sidebar />
+      {/* A guest has a real session for playing, just not an account — the
+          same floor playSolo itself checks — so the Solo games links work here. */}
+      <Sidebar canPlaySolo />
       <main className="mx-auto flex w-full max-w-7xl flex-1 px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
         <section className="max-w-xl">
           <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Guest game</p>

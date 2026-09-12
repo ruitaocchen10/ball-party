@@ -133,7 +133,7 @@ export function AccountMenu({
       >
         <span
           aria-hidden
-          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-panel font-slab text-sm leading-none text-panel-fg shadow-card"
+          className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-panel font-slab text-base leading-none text-panel-fg shadow-card"
         >
           {avatarUrl && !imageFailed ? (
             <motion.img
@@ -148,11 +148,11 @@ export function AccountMenu({
         </span>
         {!compact ? (
           <span className="min-w-0 flex-1 text-left">
-            <span className="block truncate font-mono text-xs font-semibold tracking-[0.06em] text-fg uppercase">
+            <span className="block truncate font-mono text-sm font-semibold tracking-[0.06em] text-fg uppercase">
               {displayName}
             </span>
             {email ? (
-              <span className="mt-0.5 block truncate font-mono text-[10px] tracking-[0.02em] text-fg-muted normal-case">
+              <span className="mt-0.5 block truncate font-mono text-xs tracking-[0.02em] text-fg-muted normal-case">
                 {email}
               </span>
             ) : null}
@@ -161,7 +161,7 @@ export function AccountMenu({
         {!compact ? (
           <ChevronDown
             aria-hidden
-            className={`h-3.5 w-3.5 shrink-0 text-fg-muted transition-transform ${open ? "rotate-180" : ""}`}
+            className={`h-4 w-4 shrink-0 text-fg-muted transition-transform ${open ? "rotate-180" : ""}`}
             strokeWidth={1.5}
           />
         ) : null}

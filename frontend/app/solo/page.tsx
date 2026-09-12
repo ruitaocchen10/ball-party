@@ -1,4 +1,5 @@
 import { ColumnHead } from "@/components/home/ColumnHead";
+import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { SoloGrid } from "@/components/home/SoloGrid";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { GAMES } from "@/lib/games/catalog";
@@ -8,10 +9,15 @@ import { isSignedInViewer } from "@/lib/auth/viewer";
 
 /**
  * The games a lone player can start right now, on its own route — split out
- * of the home page once Party, Solo and Social each got a sidebar link of
- * their own (see components/layout/Sidebar.tsx). No lobby to start or join
- * here, so this page skips straight to the grid rather than carrying Party's
- * two-panel action strip.
+ * of the home page once Party, Solo and Social each had a section of their
+ * own. No lobby to start or join here, so this page skips straight to the
+ * grid rather than carrying Party's two-panel action strip.
+ *
+ * No longer linked from the sidebar's main nav: the rail's own Solo games
+ * section (see components/layout/Sidebar.tsx) starts a game in one click, so
+ * this grid stopped being the fastest way in. The route stays live as the
+ * sign-up destination for a signed-out visitor who clicks a solo game there,
+ * and for anyone who lands on it directly.
  */
 export default async function SoloPage(props: PageProps<"/solo">) {
   const supabase = await createClient();
@@ -36,9 +42,10 @@ export default async function SoloPage(props: PageProps<"/solo">) {
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
+      <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 pt-7 sm:px-6 md:pt-[108px] lg:px-8 lg:pb-20">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
 
         <section className="pt-10 lg:pt-14">

@@ -1,11 +1,27 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { canCreateLobby, canViewProfile, isSignedInViewer } from "./viewer";
+import { canCreateLobby, canViewProfile, isAdminViewer, isSignedInViewer } from "./viewer";
+
+const originalPromptAdmins = process.env.PROMPTS_ADMIN_EMAILS;
+const originalAdmin = process.env.ADMIN_EMAIL;
+
+afterEach(() => {
+  if (originalPromptAdmins === undefined) delete process.env.PROMPTS_ADMIN_EMAILS;
+  else process.env.PROMPTS_ADMIN_EMAILS = originalPromptAdmins;
+  if (originalAdmin === undefined) delete process.env.ADMIN_EMAIL;
+  else process.env.ADMIN_EMAIL = originalAdmin;
+});
 
 describe("isSignedInViewer", () => {
   it("accepts both anonymous and credentialed claims", () => {
     expect(isSignedInViewer({ sub: "guest", is_anonymous: true })).toBe(true);
     expect(isSignedInViewer({ sub: "member", is_anonymous: false })).toBe(true);
+  });
+
+  it("accepts any configured prompt composer email", () => {
+    process.env.PROMPTS_ADMIN_EMAILS = "first@example.com, Second@example.com";
+    expect(isAdminViewer({ email: "second@example.com" })).toBe(true);
+    expect(isAdminViewer({ email: "other@example.com" })).toBe(false);
   });
 
   it("rejects absent claims", () => {

@@ -334,7 +334,10 @@ function Shell({
 }) {
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
+      {/* Every Shell call in this file only runs once MatchPage's own
+          isSignedInViewer(claims) guard has passed, so canPlaySolo is always
+          true here — the same viewer floor playSolo itself checks. */}
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo />
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-6 py-14">
         {children}
       </main>

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "admin:sync-local": "node scripts/sync-local-prompt-admins.mjs"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.3.7",
