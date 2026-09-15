@@ -56,6 +56,14 @@ export type Comment = {
   isViewer: boolean;
   /** Whether the take was submitted at the same time as a pick. */
   postedWithPick: boolean;
+  /** The author's choices, revealed only after the prompt has locked. */
+  response?: Record<string, string[]>;
+  /**
+   * Replies to this comment, one level deep — a reply's own `replies` is
+   * always empty, since prompts.post_comment refuses a reply to a reply.
+   * Empty for a comment that hasn't been fetched as a top-level take.
+   */
+  replies: Comment[];
 };
 
 export type Post = {

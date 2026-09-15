@@ -10,6 +10,7 @@ type OptionRow = Database["public"]["Tables"]["prompt_slot_options"]["Row"];
 type ExclusionRow = Database["public"]["Tables"]["prompt_slot_exclusions"]["Row"];
 type ResponseRow = Database["public"]["Tables"]["prompt_responses"]["Row"];
 type CommentRow = Database["public"]["Tables"]["prompt_comments"]["Row"];
+type RevealedResponseRow = { profile_id: string; slot_id: string; chosen_option_ids: string[] };
 
 /**
  * The real feed behind components/social/ — reads the tables and
@@ -90,6 +91,17 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
   );
   const aggregateByPost = new Map(aggregateResults.map(({ postId, rows }) => [postId, rows]));
 
+  // Individual calls become social content only after the board closes. The
+  // RPC is security-definer rather than a wider RLS policy, so an open prompt
+  // never leaks a pick that a later participant could copy.
+  const revealedResults = await Promise.all(
+    postRows
+      .filter((row) => row.lock_at <= new Date().toISOString() || row.status === "resolved")
+      .map((row) => supabase.schema("prompts").rpc("revealed_responses", { p_post_id: row.id })
+        .then((result) => ({ postId: row.id, rows: (result.data ?? []) as RevealedResponseRow[] }))),
+  );
+  const revealedByPost = new Map(revealedResults.map(({ postId, rows }) => [postId, rows]));
+
   return postRows.map((row) => mapPost(row, {
     slotsByPost,
     optionsBySlot,
@@ -99,7 +111,23 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
     nameById,
     viewerId,
     aggregateByPost,
+    revealedByPost,
   }));
+}
+
+/**
+ * The detail route deliberately uses the same read model as the feed, so a
+ * prompt card and its shareable URL cannot disagree about picks, takes, or
+ * which viewer response is visible. The feed is currently small; keeping the
+ * shaping path single-sourced is more valuable than duplicating its RLS-aware
+ * joins for one row.
+ */
+export async function fetchPromptById(
+  supabase: SupabaseServerClient,
+  viewerId: string,
+  postId: string,
+): Promise<Post | null> {
+  return (await fetchPromptFeed(supabase, viewerId)).find((post) => post.id === postId) ?? null;
 }
 
 function mapPost(
@@ -113,6 +141,7 @@ function mapPost(
     nameById: Map<string, string>;
     viewerId: string | null;
     aggregateByPost: Map<string, { slot_id: string; option_id: string; pct: number | null; total_responses: number | null }[]>;
+    revealedByPost: Map<string, RevealedResponseRow[]>;
   },
 ): Post {
   const slots: Slot[] = (ctx.slotsByPost.get(row.id) ?? []).map((slotRow) => ({
@@ -147,14 +176,14 @@ function mapPost(
       ? myResponses.reduce((sum, r) => sum + (r.points_earned ?? 0), 0)
       : undefined;
 
-  const comments: Comment[] = (ctx.commentsByPost.get(row.id) ?? []).map((c) => ({
-    id: c.id,
-    author: ctx.nameById.get(c.author_id) ?? "Unknown",
-    body: c.body,
-    createdAt: c.created_at,
-    isViewer: c.author_id === ctx.viewerId,
-    postedWithPick: c.posted_with_pick,
-  }));
+  const revealedResponses = ctx.revealedByPost.get(row.id) ?? [];
+  const revealedByAuthor = new Map<string, Record<string, string[]>>();
+  for (const response of revealedResponses) {
+    const choices = revealedByAuthor.get(response.profile_id) ?? {};
+    choices[response.slot_id] = response.chosen_option_ids;
+    revealedByAuthor.set(response.profile_id, choices);
+  }
+  const comments = buildCommentTree(ctx.commentsByPost.get(row.id) ?? [], ctx.nameById, ctx.viewerId, revealedByAuthor);
 
   const aggregateRows = ctx.aggregateByPost.get(row.id);
   let aggregate: Post["aggregate"];
@@ -188,6 +217,39 @@ function mapPost(
     viewerPointsAwarded,
     aggregate,
   };
+}
+
+/**
+ * Comments come back flat (see the `prompt_comments` query above, ordered by
+ * created_at) — this nests each reply under its parent take, one level deep,
+ * matching what prompts.post_comment (0102) actually allows a caller to
+ * write. A reply whose parent got deleted out from under it (cascade delete
+ * leaves no orphan row, but a stale read mid-request is still possible)
+ * surfaces as a top-level take rather than being silently dropped.
+ */
+function buildCommentTree(
+  rows: CommentRow[], nameById: Map<string, string>, viewerId: string | null, revealedByAuthor: Map<string, Record<string, string[]>>,
+): Comment[] {
+  const toComment = (row: CommentRow): Comment => ({
+    id: row.id,
+    author: nameById.get(row.author_id) ?? "Unknown",
+    body: row.body,
+    createdAt: row.created_at,
+    isViewer: row.author_id === viewerId,
+    postedWithPick: row.posted_with_pick,
+    response: row.posted_with_pick ? revealedByAuthor.get(row.author_id) : undefined,
+    replies: [],
+  });
+
+  const byId = new Map(rows.map((row) => [row.id, toComment(row)]));
+  const topLevel: Comment[] = [];
+  for (const row of rows) {
+    const comment = byId.get(row.id)!;
+    const parent = row.parent_comment_id ? byId.get(row.parent_comment_id) : undefined;
+    if (parent) parent.replies.push(comment);
+    else topLevel.push(comment);
+  }
+  return topLevel;
 }
 
 function groupBy<T, K>(rows: T[], key: (row: T) => K): Map<K, T[]> {

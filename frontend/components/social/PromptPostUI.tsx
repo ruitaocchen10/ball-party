@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import type { NflScheduleGame } from "@/lib/nfl/schedule";
 import { OptionIcon } from "./SlotFaces";
+import { PromptTicket } from "./PromptTicket";
 import {
   CheckboxPoolField,
   GameSelectField,
@@ -21,31 +22,24 @@ import {
   defaultPromptText,
   optionPoolFor,
 } from "./ComposerFields";
-import { relativeTime } from "./logic";
+import { isPicksPost, relativeTime } from "./logic";
 import type { MatchupGameContext, Option, Player, Post, Slot, TemplateKind } from "./types";
-
-/** A shared fixture silhouette: square, with the restrained diagonal cuts of a ticket stub. */
-const MATCHUP_CUT_CORNERS = {
-  clipPath: "polygon(24px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 24px) 100%, 0 100%, 0 14px)",
-};
 
 /**
  * PROTOTYPE — throwaway. Big match-style tiles borrowing this app's own
  * hidden/revealed drama (the grade-scoremark reveal) instead of a generic
  * social-card look — the shape that won out over the other two feed layouts
- * this started as (see the directory's git history). The feed (VariantCFeed,
- * mounted on Home) and the composer (VariantCComposer, mounted at
+ * this started as (see the directory's git history). The feed (PromptPostFeed,
+ * mounted on Home) and the composer (PromptPostComposer, mounted at
  * /admin/prompts) are two separate pages — regular users get no compose
- * entry point at all. Still named "VariantC" rather than renamed — that's
- * cosmetic churn better done when this gets folded into real, non-throwaway
- * components.
+ * entry point at all.
  *
- * Answering a post is its own screen (PostAnswerScreen), not something this
+ * Answering a post is its own route workspace, not something this
  * card does inline — see SocialPrototypeShell for the feed ⟷ detail-screen
  * swap. PostCardC is deliberately only a prompt cover: enough matchup context
  * to invite a response, while picks and takes stay behind the post tap.
  */
-export function VariantCFeed({
+export function PromptPostFeed({
   posts,
   viewerCanAnswer,
   onSelectPost,
@@ -184,14 +178,11 @@ function MatchupPoster({
   testId?: string;
 }) {
   return (
-    <section
+    <PromptTicket
       data-testid={testId}
       aria-label={`${away.label} at ${home.label}`}
-      style={{
-        ...MATCHUP_CUT_CORNERS,
-        backgroundImage: "radial-gradient(circle at 50% -15%, rgb(255 253 247 / 0.09), transparent 46%), repeating-linear-gradient(90deg, transparent 0, transparent calc(20% - 1px), rgb(255 253 247 / 0.035) calc(20% - 1px), rgb(255 253 247 / 0.035) 20%)",
-      }}
-      className="relative overflow-hidden bg-surface px-3 py-3 text-fg shadow-[0_8px_18px_rgb(0_0_0/0.2)] sm:px-5 sm:py-4"
+      role="region"
+      className="px-3 py-3 sm:px-5 sm:py-4"
     >
       <div className="relative flex items-center justify-between font-mono text-[9px] font-semibold tracking-[0.16em] text-fg/70 uppercase">
         <span className="max-w-[28%] truncate">{context?.stadium || "Venue TBD"}</span>
@@ -220,7 +211,7 @@ function MatchupPoster({
         </div>
       </div>
       <div className="relative flex justify-center border-t border-fg/20 pt-2.5 font-mono text-[9px] tracking-[0.14em] text-fg/70 uppercase">{formatGameTime(context?.kickoff)}</div>
-    </section>
+    </PromptTicket>
   );
 }
 
@@ -262,10 +253,6 @@ function formatGameTime(kickoff: string | undefined) {
   }).format(new Date(kickoff));
 }
 
-function isPicksPost(post: Post): boolean {
-  return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks";
-}
-
 /** `datetime-local` needs `YYYY-MM-DDTHH:mm` in the browser's own timezone — Date#toISOString is UTC and won't round-trip into the input. */
 function toLocalInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -293,7 +280,7 @@ export type CreatePromptPostParams = {
   resolutionSource?: { provider: "nflverse"; rule: "winner" };
 };
 
-export function VariantCComposer({
+export function PromptPostComposer({
   displayName,
   games,
   players,

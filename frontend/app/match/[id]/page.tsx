@@ -6,6 +6,7 @@ import { AuctionMatch } from "@/components/auction/AuctionMatch";
 import { MatchSetup } from "@/components/auction/MatchSetup";
 import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
 import { SabotageDraftMatch } from "@/components/sabotage-draft/SabotageDraftMatch";
+import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
 import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
 import type { Board } from "@/lib/higher-or-lower/board";
@@ -183,7 +184,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       );
     }
 
-    return (
+    const matchScreen = (
       <HigherOrLowerMatch
         matchId={id}
         viewerId={claims.sub}
@@ -213,6 +214,15 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         }}
       />
     );
+
+    // Solo is a personal challenge, not a room that needs the full-bleed
+    // match-table treatment. Keep party games immersive, but put a solo run
+    // back inside the application surface the player navigated from.
+    return code === null ? (
+      <SoloMatchShell displayName={displayName} email={email} avatarUrl={avatarUrl}>
+        {matchScreen}
+      </SoloMatchShell>
+    ) : matchScreen;
   }
 
   const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult, formatResult, eraResult] = await Promise.all([
@@ -341,6 +351,29 @@ function Shell({
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-6 py-14">
         {children}
       </main>
+    </>
+  );
+}
+
+/** The normal product chrome for a solo run. Kept separate from `Shell`: the
+ * latter is intentionally a narrow recovery/setup surface, while this child
+ * owns a full dashboard workspace. */
+function SoloMatchShell({
+  displayName,
+  email,
+  avatarUrl,
+  children,
+}: {
+  displayName: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo />
+      <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
+      {children}
     </>
   );
 }

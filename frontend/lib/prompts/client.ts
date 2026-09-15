@@ -26,6 +26,23 @@ export async function submitPromptResponse(
 }
 
 /**
+ * Posts a take (no `parentCommentId`) or a reply to one (with it). The RPC
+ * itself is the only thing enforcing that a reply can't target another
+ * reply — see 0102's prompts.post_comment.
+ */
+export async function postComment(
+  supabase: SupabaseBrowserClient,
+  { postId, body, parentCommentId }: { postId: string; body: string; parentCommentId?: string },
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.schema("prompts").rpc("post_comment", {
+    p_post_id: postId,
+    p_body: body,
+    ...(parentCommentId ? { p_parent_comment_id: parentCommentId } : {}),
+  });
+  return { error: error ? promptErrorMessage(error.message) : null };
+}
+
+/**
  * p_slots shape create_post (0095) expects — see that migration's comment
  * on create_post for the full contract. excludes_slot_indexes is built by
  * resolving each Slot.excludesSlotIds entry to its position in this same

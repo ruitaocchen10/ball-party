@@ -5,7 +5,7 @@ import { useCallback, useRef } from "react";
 import { createPromptPost } from "@/lib/prompts/client";
 import type { NflScheduleGame } from "@/lib/nfl/schedule";
 import { createClient } from "@/lib/supabase/client";
-import { VariantCComposer, type CreatePromptPostParams } from "./VariantC";
+import { PromptPostComposer, type CreatePromptPostParams } from "./PromptPostUI";
 import type { Player } from "./types";
 
 /**
@@ -23,5 +23,5 @@ export function AdminComposerShell({ displayName, games, players }: { displayNam
     return createPromptPost(getClient(), params);
   }
 
-  return <VariantCComposer displayName={displayName} games={games} players={players} onPublish={publish} />;
+  return <PromptPostComposer displayName={displayName} games={games} players={players} onPublish={publish} />;
 }

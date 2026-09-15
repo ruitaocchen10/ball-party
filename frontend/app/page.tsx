@@ -57,11 +57,11 @@ export default async function Home(props: PageProps<"/">) {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <main className="mx-auto w-full max-w-[1480px] flex-1 px-4 pb-16 pt-7 sm:px-6 md:pt-[108px] lg:px-8 lg:pb-20">
+      <main data-home-main className="app-page flex-1">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
-        <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
-          <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><SocialFeed posts={visiblePosts} signedIn={viewer} canAnswer={canAnswerPrompt(claims)} displayName={displayName ?? "You"} avatarUrl={avatarUrl} gameContexts={schedule.map(({ id, stadium, kickoff, primetime }) => ({ id, stadium, kickoff, primetime }))} /></div>
-          <div className="hidden xl:block"><QuickActions room={room} /></div>
+        <div data-home-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
+          <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><SocialFeed posts={visiblePosts} signedIn={viewer} canAnswer={canAnswerPrompt(claims)} gameContexts={schedule.map(({ id, stadium, kickoff, primetime }) => ({ id, stadium, kickoff, primetime }))} /></div>
+          <div data-quick-actions className="hidden xl:block"><QuickActions room={room} /></div>
         </div>
       </main>
     </>

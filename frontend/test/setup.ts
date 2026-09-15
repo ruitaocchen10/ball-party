@@ -101,10 +101,7 @@ vi.mock("@/lib/supabase/client", () => ({
 // A server action, reached through Sidebar -> AccountMenu. Importing it for real
 // pulls next/headers into jsdom, which throws.
 vi.mock("@/lib/auth/actions", () => ({ signOut: vi.fn() }));
-vi.mock("@/lib/feedback/actions", () => ({
-  EMPTY_FEEDBACK_STATE: { error: null, saved: false },
-  submitFeedback: vi.fn(),
-}));
+vi.mock("@/lib/feedback/actions", () => ({ submitFeedback: vi.fn() }));
 
 // jsdom implements no layout or element scrolling. The board strip scrolls its
 // own horizontal rail, so this no-op lets the test assert the public behavior.

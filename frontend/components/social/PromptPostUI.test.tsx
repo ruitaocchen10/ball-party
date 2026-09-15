@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it } from "vitest";
 
-import { VariantCFeed } from "./VariantC";
+import { PromptPostFeed } from "./PromptPostUI";
 import type { Post } from "./types";
 
 function post(slots: Post["slots"]): Post {
@@ -39,14 +39,14 @@ const chiefsAtBills = {
 it("gives a single matchup its own poster treatment and lets a weekly set page through posters", async () => {
   const user = userEvent.setup();
   const gameContexts = [{ id: "2026_01_KC_BUF", stadium: "Highmark Stadium", kickoff: "2026-09-11T00:20:00.000Z", primetime: true }];
-  const { rerender } = render(<VariantCFeed posts={[post([chiefsAtBills])]} viewerCanAnswer onSelectPost={() => {}} gameContexts={gameContexts} />);
+  const { rerender } = render(<PromptPostFeed posts={[post([chiefsAtBills])]} viewerCanAnswer onSelectPost={() => {}} gameContexts={gameContexts} />);
 
   expect(screen.getByTestId("single-game-matchup-preview")).toHaveStyle({ clipPath: expect.stringContaining("polygon") });
   expect(screen.getByText("Primetime")).toBeInTheDocument();
   expect(screen.getByText("Highmark Stadium")).toBeInTheDocument();
   expect(screen.getByText(/8:20 PM/)).toBeInTheDocument();
 
-  rerender(<VariantCFeed posts={[post([chiefsAtBills, {
+  rerender(<PromptPostFeed posts={[post([chiefsAtBills, {
     ...chiefsAtBills,
     id: "ravens-bengals",
     label: "Ravens @ Bengals",

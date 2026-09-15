@@ -1,17 +1,18 @@
 "use client";
 
 import { Check, ChevronDown, ChevronUp, X } from "lucide-react";
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 
 import { PlayerPortrait, ProtoTeamLogo } from "./ProtoImages";
+import { PROMPT_TICKET_CUT_CORNERS, PromptTicket } from "./PromptTicket";
 import { isOptionTakenElsewhere } from "./logic";
 import { nflTeamFullName } from "@/lib/nfl/schedule";
 import type { Slot } from "./types";
 
 /**
- * PROTOTYPE — throwaway. The slot-input renderers, pulled out of VariantC.tsx
+ * PROTOTYPE — throwaway. The slot-input renderers, pulled out of PromptPostUI.tsx
  * so both the feed card's result mode and the dedicated answer screen
- * (PostAnswerScreen) can render identical slot UI without either importing
+ * (the prompt answer route) can render identical slot UI without either importing
  * from the other.
  */
 export function GamePickFace({
@@ -28,7 +29,8 @@ export function GamePickFace({
   const [away, home] = slot.options;
   return (
     <div className="mt-5 w-full px-4 sm:px-6">
-      <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2 sm:gap-4">
+      <PromptTicket className="p-3 sm:p-4">
+        <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2 sm:gap-4">
       {[away, home].map((option, i) => {
         const selected = response[0] === option.id;
         const isCorrect = slot.correct?.includes(option.id);
@@ -52,7 +54,8 @@ export function GamePickFace({
               disabled={disabled}
               aria-pressed={selected}
               onClick={() => onChange([option.id])}
-              className={`${i === 0 ? "col-start-1" : "col-start-3"} row-start-1 flex min-h-48 min-w-0 flex-col items-center justify-between rounded-2xl border-2 px-3 py-4 text-center transition-all sm:min-h-56 sm:px-5 sm:py-5 ${state}`}
+              style={PROMPT_TICKET_CUT_CORNERS}
+              className={`${i === 0 ? "col-start-1" : "col-start-3"} row-start-1 flex min-h-48 min-w-0 flex-col items-center justify-between border-2 px-3 py-4 text-center transition-all sm:min-h-56 sm:px-5 sm:py-5 ${state}`}
             >
               <span className="w-full font-mono text-[9px] tracking-[0.14em] uppercase opacity-75">{i === 0 ? "Away" : "Home"}</span>
               <span className="flex flex-col items-center gap-3">
@@ -69,7 +72,8 @@ export function GamePickFace({
           </Fragment>
         );
       })}
-      </div>
+        </div>
+      </PromptTicket>
     </div>
   );
 }
@@ -86,18 +90,21 @@ export function YourCalls({
   slots,
   responses,
   resolved,
+  collapsible = false,
 }: {
   slots: Slot[];
   responses: Record<string, string[]>;
   resolved: boolean;
+  /** Large weekly tickets start compact; a single-game take never needs this. */
+  collapsible?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(!collapsible || slots.length <= 4);
+  const visibleSlots = expanded ? slots : slots.slice(0, 4);
+  const hiddenCount = slots.length - visibleSlots.length;
   return (
     <section className="mt-4 px-4" aria-label="Your calls">
-      <div
-        className="overflow-hidden bg-surface divide-y divide-dashed divide-line"
-        style={{ clipPath: "polygon(24px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 24px) 100%, 0 100%, 0 14px)" }}
-      >
-        {slots.map((slot) => {
+      <PromptTicket className="divide-y divide-dashed divide-line md:grid md:grid-cols-2 md:divide-y-0">
+        {visibleSlots.map((slot) => {
           const [away, home] = slot.options;
           const calledId = responses[slot.id]?.[0];
           const winnerId = slot.correct?.[0];
@@ -107,12 +114,83 @@ export function YourCalls({
           const homeName = home.teamCode ? nflTeamFullName(home.teamCode) : home.label;
 
           return (
-            <div key={slot.id} className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4">
+            <div key={slot.id} className="flex items-center justify-between gap-3 px-3 py-2 md:border-b md:border-dashed md:border-line sm:px-4">
               <p className="min-w-0 flex-1 truncate font-mono text-[11px] leading-tight font-medium text-fg-muted sm:text-xs">{awayName} <span>@</span> {homeName}</p>
               <div className="flex shrink-0 items-center gap-2">
                 {picked ? <OptionIcon option={picked} className="h-7 w-7" /> : null}
                 <span className="font-slab text-lg leading-none uppercase">{picked?.teamCode ?? picked?.label ?? "—"}</span>
                 {resolved ? correct ? <Check aria-label="Correct" className="h-5 w-5 text-grade-elite" strokeWidth={3} /> : <X aria-label="Incorrect" className="h-5 w-5 text-grade-rough" strokeWidth={3} /> : null}
+              </div>
+            </div>
+          );
+        })}
+      </PromptTicket>
+      {hiddenCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-2 inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase hover:text-fg"
+        >
+          <ChevronDown className="h-3.5 w-3.5" /> View all {slots.length} picks
+        </button>
+      ) : collapsible && slots.length > 4 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="mt-2 inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase hover:text-fg"
+        >
+          <ChevronUp className="h-3.5 w-3.5" /> Show fewer picks
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * A weekly pick sheet: deliberately compact and scan-first. The large
+ * GamePickFace remains the focused, single-matchup experience above.
+ */
+export function GamePickList({
+  slots,
+  responses,
+  onChange,
+}: {
+  slots: Slot[];
+  responses: Record<string, string[]>;
+  onChange: (slotId: string, response: string[]) => void;
+}) {
+  return (
+    <section className="px-4 pt-5" aria-label="Weekly pick sheet">
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Make each call</p>
+        <p className="font-mono text-[10px] tracking-[0.08em] text-fg-muted tabular-nums uppercase">
+          {slots.filter((slot) => responses[slot.id]?.length).length}/{slots.length} picked
+        </p>
+      </div>
+      <div className="grid gap-2 md:grid-cols-2">
+        {slots.map((slot) => {
+          const [away, home] = slot.options;
+          const selected = responses[slot.id]?.[0];
+          return (
+            <div key={slot.id} className="border border-line bg-surface">
+              <p className="truncate border-b border-line px-2.5 py-1.5 font-mono text-[9px] tracking-[0.06em] text-fg-muted uppercase">{slot.label}</p>
+              <div className="grid grid-cols-2 divide-x divide-line">
+                {[away, home].map((option, index) => {
+                  const picked = selected === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => onChange(slot.id, [option.id])}
+                      className={`flex min-w-0 items-center gap-2 px-2.5 py-2 text-left transition-colors ${picked ? "bg-panel-fg text-panel" : "text-fg hover:bg-surface-raised"}`}
+                      aria-pressed={picked}
+                    >
+                      {option.teamCode ? <ProtoTeamLogo code={option.teamCode} className="h-6 w-6 shrink-0" /> : null}
+                      <span className="min-w-0 truncate font-slab text-xs uppercase">{option.teamCode ?? option.label}</span>
+                      <span className="ml-auto shrink-0 font-mono text-[8px] tracking-[0.08em] opacity-65 uppercase">{index === 0 ? "Away" : "Home"}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );

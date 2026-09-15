@@ -3,7 +3,8 @@
 import { Bug, Lightbulb, X } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 
-import { EMPTY_FEEDBACK_STATE, submitFeedback } from "@/lib/feedback/actions";
+import { submitFeedback } from "@/lib/feedback/actions";
+import { EMPTY_FEEDBACK_STATE } from "@/lib/feedback/state";
 
 type FeedbackKind = "bug" | "feature";
 

@@ -264,7 +264,9 @@ export function HigherOrLowerMatch({
 
   if (board.phase === "complete") {
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-6 py-10">
+      <main className={isSolo
+        ? "app-page flex-1"
+        : "mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-6 py-10"}>
         <FinalScreen
           standings={standings}
           players={players}
@@ -278,11 +280,24 @@ export function HigherOrLowerMatch({
   }
 
   return (
-    <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
-      <header className="flex shrink-0 items-baseline justify-between gap-3">
-        <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
-          {questionLabel(board, "visual", isSolo)}
-        </p>
+    <main className={isSolo
+      ? "app-page flex-1"
+      : "mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4"}>
+      <header className={isSolo
+        ? "mx-auto flex w-full max-w-5xl flex-col gap-3 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between"
+        : "flex shrink-0 items-baseline justify-between gap-3"}>
+        <div>
+          {isSolo ? <p className="font-mono text-[10px] font-bold tracking-[0.16em] text-hidden-text uppercase">Solo challenge</p> : null}
+          <h1 className={isSolo ? "mt-1 font-slab text-4xl leading-none uppercase sm:text-5xl" : "font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase"}>
+            {isSolo ? "Higher or lower" : questionLabel(board, "visual", isSolo)}
+          </h1>
+          {isSolo ? (
+            <p className="mt-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
+              <span>{questionLabel(board, "visual", isSolo)}</span>
+              <span aria-hidden> · make the streak last</span>
+            </p>
+          ) : null}
+        </div>
         <div className="flex items-center gap-3">
           <p
             role="note"
@@ -302,10 +317,12 @@ export function HigherOrLowerMatch({
           This game's rails deliberately stay slimmer than Auction's: a call
           and a streak need less room than bidding controls or full rosters.
           Source order still makes the phone read the cards before the choice. */}
-      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_minmax(4rem,1fr)] gap-3 lg:grid-cols-[12rem_minmax(0,1fr)_14rem] lg:grid-rows-1">
-        <section className="flex min-h-0 flex-col gap-3 lg:col-start-2 lg:row-start-1" aria-label="The comparison">
+      <div className={isSolo
+        ? "mx-auto mt-5 flex w-full max-w-5xl flex-col gap-5"
+        : "grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_minmax(4rem,1fr)] gap-3 lg:grid-cols-[12rem_minmax(0,1fr)_14rem] lg:grid-rows-1"}>
+        <section className={isSolo ? "flex flex-col gap-3" : "flex min-h-0 flex-col gap-3 lg:col-start-2 lg:row-start-1"} aria-label="The comparison">
           {anchor && challenger ? (
-            <div className="grid min-h-0 flex-1 gap-3 sm:grid-cols-2">
+            <div className={isSolo ? "grid gap-4 md:grid-cols-2" : "grid min-h-0 flex-1 gap-3 sm:grid-cols-2"}>
               <LadderCardPanel
                 label="Anchor"
                 card={anchor}
@@ -331,7 +348,9 @@ export function HigherOrLowerMatch({
           )}
         </section>
 
-        <section className="flex shrink-0 flex-col gap-3 lg:col-start-1 lg:row-start-1" aria-label="Your call">
+        <section className={isSolo
+          ? "mx-auto flex w-full max-w-2xl flex-col gap-3"
+          : "flex shrink-0 flex-col gap-3 lg:col-start-1 lg:row-start-1"} aria-label="Your call">
           {isSolo ? (
             board.phase === "reveal" ? (
               <SoloContinue pending={pendingAdvance} error={advanceError} onContinue={advance} />
@@ -350,7 +369,9 @@ export function HigherOrLowerMatch({
           : ""}
       </p>
 
-        <aside aria-label="The table" className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1">
+        {isSolo ? <SoloRunSummary player={viewerPlayer ?? null} /> : null}
+
+        {!isSolo ? <aside aria-label="The table" className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1">
           <div className="flex flex-col border border-line bg-surface-raised">
             <header className="flex items-baseline justify-between gap-2 px-3 py-2">
               <h2 className="font-mono text-[10px] font-bold tracking-[0.15em] text-fg-muted uppercase">Standings</h2>
@@ -385,9 +406,29 @@ export function HigherOrLowerMatch({
               })}
             </ul>
           </div>
-        </aside>
+        </aside> : null}
       </div>
     </main>
+  );
+}
+
+/** A solo player needs progress, not a one-row leaderboard. */
+function SoloRunSummary({ player }: { player: Player | null }) {
+  return (
+    <section aria-label="Your run" className="grid grid-cols-3 divide-x divide-line border border-line bg-surface-raised">
+      <RunStat label="Current" value={player?.current_streak ?? 0} />
+      <RunStat label="Best" value={player?.best_streak ?? 0} />
+      <RunStat label="Correct" value={player?.correct_count ?? 0} />
+    </section>
+  );
+}
+
+function RunStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="px-3 py-3 text-center">
+      <p className="font-mono text-[9px] font-bold tracking-[0.14em] text-fg-muted uppercase">{label}</p>
+      <p className="mt-1 font-slab text-3xl leading-none tabular-nums">{value}</p>
+    </div>
   );
 }
 

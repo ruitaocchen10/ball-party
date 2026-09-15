@@ -37,6 +37,11 @@ export function scoreSlot(slot: Slot, response: string[] | undefined): SlotResul
   return { correctCount, total, pointsEarned, fullyCorrect: correctCount === total };
 }
 
+/** `game_pick` and `weekly_picks` remain readable for posts created before Picks unified them — see types.ts's TemplateKind. */
+export function isPicksPost(post: Pick<Post, "templateKind">): boolean {
+  return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks";
+}
+
 /** Total points a post has paid out, or null while anything remains unresolved. */
 export function totalPoints(post: Post): number | null {
   if (post.status !== "resolved") return null;

@@ -30,7 +30,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <div className="min-h-dvh">
       <AdminNav />
-      {/* Each page manages its own padding/max-width — VariantCComposer already
+      {/* Each page manages its own padding/max-width — PromptPostComposer already
           did before this layout existed, and the placeholder sections match it
           so nothing looks inconsistent side by side. */}
       <main>{children}</main>

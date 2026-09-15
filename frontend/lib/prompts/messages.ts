@@ -17,6 +17,8 @@ export const PROMPT_MESSAGES: Record<string, string> = {
   missing_answer: "Every pick needs an answer before this can resolve.",
   reason_required: "Give a reason before voiding.",
   not_voidable: "This prompt can no longer be voided.",
+  parent_not_found: "That take isn't available anymore. Refresh and try again.",
+  nested_reply: "You can only reply to a take, not to another reply.",
 };
 
 export function promptErrorMessage(message: string): string {

@@ -51,6 +51,7 @@
   --sidebar-w-expanded: 17rem;
   --sidebar-w-collapsed: 5rem;
   --sidebar-w: var(--sidebar-w-expanded);
+  --sidebar-w-half: 8.5rem;
 }
 
 /* The inline script in app/layout.tsx stamps this onto <html> from
@@ -59,6 +60,7 @@
    this attribute in sync with its React state after mount. */
 html[data-sidebar-collapsed] {
   --sidebar-w: var(--sidebar-w-collapsed);
+  --sidebar-w-half: 2.5rem;
 }
 
 @theme inline {
@@ -145,6 +147,35 @@ body {
 @media (min-width: 48rem) {
   body:has(aside[data-sidebar-rail]) {
     padding-left: var(--sidebar-w);
+  }
+}
+
+/* Shared page rhythm for the app's dashboard surfaces. Keeping the container
+   and gutters in one place makes Home, Party, and Solo feel like parts of
+   one product instead of separately sized canvases. */
+.app-page {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding: 1.75rem 1rem 4rem;
+}
+
+@media (min-width: 40rem) {
+  .app-page {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 48rem) {
+  .app-page {
+    padding-top: 6.75rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .app-page {
+    padding-inline: 2rem;
+    padding-bottom: 5rem;
   }
 }
 

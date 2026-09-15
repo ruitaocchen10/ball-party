@@ -1,13 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { submitPromptResponse } from "@/lib/prompts/client";
-import { createClient } from "@/lib/supabase/client";
-import { PostAnswerScreen } from "./PostAnswerScreen";
 import type { MatchupGameContext, Post } from "./types";
-import { VariantCFeed } from "./VariantC";
+import { PromptPostFeed } from "./PromptPostUI";
 
 /** Shown only with the feed; a selected prompt is a focused detail view. */
 export function HuddleHeading() {
@@ -32,50 +28,11 @@ export function HuddleHeading() {
  * rather than hand-patching local state, so the aggregate bars the answer
  * screen hands back to always reflect what the database actually has.
  *
- * Answering is a dedicated screen (PostAnswerScreen), not something done
- * inline in the feed — selectedPostId drives a plain whole-screen swap
- * between the feed and that screen, mirroring the one "focused step, then
- * back" convention already in this app (see AuctionMatch/SabotageDraftMatch,
- * which branch a top-level phase value the same way). No modal, no route.
+ * Answering has a dedicated, shareable route. The feed remains only a prompt
+ * cover; following a card to /prompts/[id] keeps browser history, reloads,
+ * and copied links honest.
  */
-export function SocialPrototypeShell({ initialPosts, canAnswer, displayName, avatarUrl, gameContexts, home = false }: { initialPosts: Post[]; canAnswer: boolean; displayName: string; avatarUrl: string | null; gameContexts: MatchupGameContext[]; home?: boolean }) {
+export function SocialPrototypeShell({ initialPosts, canAnswer, gameContexts, home = false }: { initialPosts: Post[]; canAnswer: boolean; gameContexts: MatchupGameContext[]; home?: boolean }) {
   const router = useRouter();
-  const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
-  const getClient = useCallback(() => (clientRef.current ??= createClient()), []);
-
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const selectedPost = selectedPostId ? (initialPosts.find((p) => p.id === selectedPostId) ?? null) : null;
-
-  if (selectedPost) {
-    return (
-      <PostAnswerScreen
-        post={selectedPost}
-        displayName={displayName}
-        avatarUrl={avatarUrl}
-        pending={pending}
-        error={error}
-        onBack={() => {
-          setSelectedPostId(null);
-          setError(null);
-        }}
-        onAnswer={async (response, comment) => {
-          setPending(true);
-          setError(null);
-          const { error } = await submitPromptResponse(getClient(), { postId: selectedPost.id, choices: response, comment });
-          setPending(false);
-          if (error) {
-            setError(error);
-            return;
-          }
-          setSelectedPostId(null);
-          router.refresh();
-        }}
-      />
-    );
-  }
-
-  return <><HuddleHeading /><VariantCFeed posts={initialPosts} viewerCanAnswer={canAnswer} onSelectPost={setSelectedPostId} gameContexts={gameContexts} home={home} /></>;
+  return <><HuddleHeading /><PromptPostFeed posts={initialPosts} viewerCanAnswer={canAnswer} onSelectPost={(postId) => router.push(`/prompts/${postId}`)} gameContexts={gameContexts} home={home} /></>;
 }

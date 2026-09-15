@@ -234,16 +234,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      player_options: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          display_name: string
-          headshot_url: string | null
-          player_id: string
-          position: string
-          team: string
-        }[]
-      }
       create_post: {
         Args: {
           p_caption: string
@@ -257,6 +247,16 @@ export type Database = {
         }
         Returns: string
       }
+      player_options: {
+        Args: never
+        Returns: {
+          display_name: string
+          headshot_url: string
+          player_id: string
+          position: string
+          team: string
+        }[]
+      }
       post_aggregates: {
         Args: { p_post_id: string }
         Returns: {
@@ -266,8 +266,20 @@ export type Database = {
           total_responses: number
         }[]
       }
+      revealed_responses: {
+        Args: { p_post_id: string }
+        Returns: {
+          chosen_option_ids: string[]
+          profile_id: string
+          slot_id: string
+        }[]
+      }
       post_comment: {
-        Args: { p_body: string; p_post_id: string }
+        Args: {
+          p_body: string
+          p_parent_comment_id?: string
+          p_post_id: string
+        }
         Returns: string
       }
       resolve_post: {
@@ -522,6 +534,44 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          message: string
+          reporter_id: string | null
+          route: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          message: string
+          reporter_id?: string | null
+          route: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          message?: string
+          reporter_id?: string | null
+          route?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guest_account_collisions: {
         Row: {
           account_id: string | null
@@ -556,44 +606,6 @@ export type Database = {
             foreignKeyName: "guest_account_collisions_guest_id_fkey"
             columns: ["guest_id"]
             isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      feedback: {
-        Row: {
-          created_at: string
-          id: string
-          kind: string
-          message: string
-          reporter_id: string | null
-          route: string
-          status: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          kind: string
-          message: string
-          reporter_id?: string | null
-          route: string
-          status?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          kind?: string
-          message?: string
-          reporter_id?: string | null
-          route?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "feedback_reporter_id_fkey"
-            columns: ["reporter_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1074,6 +1086,7 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          parent_comment_id: string | null
           post_id: string
           posted_with_pick: boolean
         }
@@ -1082,6 +1095,7 @@ export type Database = {
           body: string
           created_at?: string
           id?: string
+          parent_comment_id?: string | null
           post_id: string
           posted_with_pick?: boolean
         }
@@ -1090,6 +1104,7 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          parent_comment_id?: string | null
           post_id?: string
           posted_with_pick?: boolean
         }
@@ -1099,6 +1114,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_comments"
             referencedColumns: ["id"]
           },
           {

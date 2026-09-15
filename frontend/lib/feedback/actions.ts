@@ -1,10 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-
-export type FeedbackState = { error: string | null; saved: boolean };
-
-export const EMPTY_FEEDBACK_STATE: FeedbackState = { error: null, saved: false };
+import type { FeedbackState } from "@/lib/feedback/state";
 
 /** Records a short, actionable note without exposing anyone else's feedback. */
 export async function submitFeedback(

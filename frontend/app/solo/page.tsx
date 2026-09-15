@@ -45,7 +45,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-16 pt-7 sm:px-6 md:pt-[108px] lg:px-8 lg:pb-20">
+      <main className="app-page flex-1">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
 
         <section className="pt-10 lg:pt-14">
