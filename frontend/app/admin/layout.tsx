@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AdminNav } from "@/components/admin/AdminNav";
-import { isAdminViewer } from "@/lib/auth/viewer";
+import { isAdminViewer } from "@/lib/foundation/identity/viewer";
 import { createClient } from "@/lib/supabase/server";
 
 /**

@@ -5,11 +5,11 @@ import { GameGrid } from "@/components/home/GameGrid";
 import { JoinRoom } from "@/components/home/JoinRoom";
 import { StartRoom } from "@/components/home/StartRoom";
 import { WayIn } from "@/components/home/WayIn";
-import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { GAMES } from "@/lib/games/catalog";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
+import { GAMES } from "@/lib/platform/orchestration/catalog";
+import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
-import { canCreateLobby, isSignedInViewer } from "@/lib/auth/viewer";
+import { canCreateLobby, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.

@@ -26,12 +26,13 @@ begin;
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+  confirmation_token, email_change, email_change_token_new, recovery_token,
   created_at, updated_at, raw_app_meta_data, raw_user_meta_data
 )
 values
-  ('00000000-0000-0000-0000-00000000d001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'demo@ballparty.local', crypt('ball-party-demo', gen_salt('bf')), now(), now() - interval '7 days', now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Demo Reader"}'),
-  ('00000000-0000-0000-0000-00000000d002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'curator@ballparty.local', crypt('ball-party-demo', gen_salt('bf')), now(), now() - interval '7 days', now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Ball Curator"}'),
-  ('00000000-0000-0000-0000-00000000d003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'tasha@ballparty.local', crypt('ball-party-demo', gen_salt('bf')), now(), now() - interval '7 days', now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Tasha"}');
+  ('00000000-0000-0000-0000-00000000d001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'demo@ballparty.local', crypt('ball-party-demo', gen_salt('bf')), now(), '', '', '', '', now() - interval '7 days', now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Demo Reader"}'),
+  ('00000000-0000-0000-0000-00000000d002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'curator@ballparty.local', crypt('ball-party-demo', gen_salt('bf')), now(), '', '', '', '', now() - interval '7 days', now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Ball Curator"}'),
+  ('00000000-0000-0000-0000-00000000d003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'tasha@ballparty.local', crypt('ball-party-demo', gen_salt('bf')), now(), '', '', '', '', now() - interval '7 days', now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Tasha"}');
 
 insert into public.prompt_posts (
   id, template_kind, template_name, author_id, caption, prompt_text,
@@ -103,10 +104,14 @@ values
   ('00000000-0000-0000-0000-00000000b501', array['00000000-0000-0000-0000-00000000c501'::uuid]),
   ('00000000-0000-0000-0000-00000000b502', array['00000000-0000-0000-0000-00000000c504'::uuid, '00000000-0000-0000-0000-00000000c505'::uuid]);
 
-insert into public.prompt_comments (post_id, author_id, body, posted_with_pick, created_at)
+insert into public.prompt_comments (id, post_id, author_id, body, posted_with_pick, parent_comment_id, created_at)
 values
-  ('00000000-0000-0000-0000-00000000a002', '00000000-0000-0000-0000-00000000d003', 'Ravens on the road feels like the sharp call.', true, now() - interval '1 day'),
-  ('00000000-0000-0000-0000-00000000a002', '00000000-0000-0000-0000-00000000d002', 'I am fading Dallas, but the home teams carry the rest of this ticket.', true, now() - interval '20 hours'),
-  ('00000000-0000-0000-0000-00000000a004', '00000000-0000-0000-0000-00000000d003', 'I had the Bills one spot too high.', false, now() - interval '3 days');
+  ('00000000-0000-0000-0000-00000000e201', '00000000-0000-0000-0000-00000000a002', '00000000-0000-0000-0000-00000000d001', 'Ravens, Eagles, Chargers. Feeling good about this ticket.', true, null, now() - interval '22 hours'),
+  ('00000000-0000-0000-0000-00000000e202', '00000000-0000-0000-0000-00000000a002', '00000000-0000-0000-0000-00000000d003', 'Ravens on the road feels like the sharp call.', true, null, now() - interval '1 day'),
+  ('00000000-0000-0000-0000-00000000e203', '00000000-0000-0000-0000-00000000a002', '00000000-0000-0000-0000-00000000d002', 'I am fading Dallas, but the home teams carry the rest of this ticket.', true, null, now() - interval '20 hours'),
+  ('00000000-0000-0000-0000-00000000e204', '00000000-0000-0000-0000-00000000a004', '00000000-0000-0000-0000-00000000d003', 'I had the Bills one spot too high.', false, null, now() - interval '3 days'),
+  ('00000000-0000-0000-0000-00000000e205', '00000000-0000-0000-0000-00000000a002', '00000000-0000-0000-0000-00000000d002', 'That Ravens call is the one I keep coming back to. Their defense travels.', false, '00000000-0000-0000-0000-00000000e202', now() - interval '18 hours'),
+  ('00000000-0000-0000-0000-00000000e206', '00000000-0000-0000-0000-00000000a002', '00000000-0000-0000-0000-00000000d001', 'Agreed. I like the Chargers at home too, but that is the swing game for me.', false, '00000000-0000-0000-0000-00000000e202', now() - interval '16 hours'),
+  ('00000000-0000-0000-0000-00000000e207', '00000000-0000-0000-0000-00000000a002', '00000000-0000-0000-0000-00000000d003', 'Dallas has the talent, but I do not trust them against this Eagles front.', false, '00000000-0000-0000-0000-00000000e203', now() - interval '12 hours');
 
 commit;

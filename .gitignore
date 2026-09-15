@@ -3,3 +3,4 @@ scripts/player_pool/.cache/
 scripts/av_roster_pool/.cache/
 __pycache__/
 .vercel
+.env*

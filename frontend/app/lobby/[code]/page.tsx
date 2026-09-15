@@ -1,22 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { ButtonLink } from "@/components/ui/Button";
-import { LobbyRealtime } from "@/components/lobby/LobbyRealtime";
-import { LobbyLineup } from "@/components/lobby/LobbyLineup";
-import { LobbyTopStrip } from "@/components/lobby/LobbyTopStrip";
-import { GameSelector } from "@/components/lobby/GameSelector";
-import { LobbyScoreboard } from "@/components/lobby/LobbyScoreboard";
-import { LobbyActivity } from "@/components/lobby/LobbyActivity";
-import { AutoJoinRoom } from "@/components/lobby/AutoJoinRoom";
+import { ButtonLink } from "@/components/foundation/ui-kit/Button";
+import { LobbyRealtime } from "@/components/platform/lobbies/LobbyRealtime";
+import { LobbyLineup } from "@/components/platform/lobbies/LobbyLineup";
+import { LobbyTopStrip } from "@/components/platform/lobbies/LobbyTopStrip";
+import { GameSelector } from "@/components/platform/lobbies/GameSelector";
+import { LobbyScoreboard } from "@/components/platform/lobbies/LobbyScoreboard";
+import { LobbyActivity } from "@/components/platform/lobbies/LobbyActivity";
+import { AutoJoinRoom } from "@/components/platform/lobbies/AutoJoinRoom";
 import { createClient } from "@/lib/supabase/server";
-import { GuestJoin } from "@/components/auth/GuestJoin";
-import { isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
-import { guestSessionFinishedHref } from "@/lib/auth/guest-lifecycle";
-import { fetchLobbyWins } from "@/lib/lobbies/scoreboard";
-import { fetchLobbyActivity } from "@/lib/lobbies/activity";
-import { fetchLobbyMemberStats } from "@/lib/lobbies/player-stats";
-import type { MatchGame } from "@/lib/games/catalog";
+import { GuestJoin } from "@/components/foundation/identity/GuestJoin";
+import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { guestSessionFinishedHref } from "@/lib/foundation/identity/guest-lifecycle";
+import { fetchLobbyWins } from "@/lib/platform/lobbies/scoreboard";
+import { fetchLobbyActivity } from "@/lib/platform/lobbies/activity";
+import { fetchLobbyMemberStats } from "@/lib/platform/lobbies/player-stats";
+import type { MatchGame } from "@/lib/platform/orchestration/catalog";
 
 export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { code: rawCode } = await props.params;

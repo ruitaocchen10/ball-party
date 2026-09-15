@@ -1,4 +1,4 @@
-import { goToLobby } from "@/lib/lobbies/actions";
+import { goToLobby } from "@/lib/platform/lobbies/actions";
 
 /**
  * Join by code. This sits in the page rather than in the top bar because it is

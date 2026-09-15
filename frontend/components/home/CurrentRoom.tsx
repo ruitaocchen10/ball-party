@@ -1,4 +1,4 @@
-import { ButtonLink } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/foundation/ui-kit/Button";
 
 const CAPACITY = 4;
 

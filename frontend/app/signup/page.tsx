@@ -1,5 +1,5 @@
-import { AuthForm } from "@/components/auth/AuthForm";
-import { safeNextPath } from "@/lib/auth/next";
+import { AuthForm } from "@/components/foundation/identity/AuthForm";
+import { safeNextPath } from "@/lib/foundation/identity/next";
 
 export const metadata = { title: "Create an account · Ball Party" };
 

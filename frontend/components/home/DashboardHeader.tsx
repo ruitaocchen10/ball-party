@@ -1,8 +1,8 @@
 import { Bell, Plus, Search } from "lucide-react";
 import Link from "next/link";
 
-import { AccountMenu } from "@/components/layout/AccountMenu";
-import { BrandMark } from "@/components/ui/BrandMark";
+import { AccountMenu } from "@/components/foundation/ui-kit/AccountMenu";
+import { BrandMark } from "@/components/foundation/ui-kit/BrandMark";
 
 /**
  * Desktop-only utility bar for Home. Navigation and identity deliberately

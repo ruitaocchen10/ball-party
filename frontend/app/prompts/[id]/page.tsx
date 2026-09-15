@@ -1,12 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 
 import { DashboardHeader } from "@/components/home/DashboardHeader";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { PostHeroHeader } from "@/components/social/PostHeroHeader";
-import { PromptContext } from "@/components/social/PromptContext";
-import { PromptThread } from "@/components/social/PromptThread";
-import { isSignedInViewer } from "@/lib/auth/viewer";
-import { fetchPromptById } from "@/lib/prompts/feed";
+import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
+import { PostHeroHeader } from "@/components/foundation/content/prompts/PostHeroHeader";
+import { PromptContext } from "@/components/foundation/content/prompts/PromptContext";
+import { PromptThread } from "@/components/foundation/content/prompts/PromptThread";
+import { isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { fetchPromptById } from "@/lib/foundation/content/prompts/feed";
 import { createClient } from "@/lib/supabase/server";
 
 /** A prompt's shareable, reload-safe detail screen. */

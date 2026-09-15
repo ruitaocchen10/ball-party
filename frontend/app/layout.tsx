@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Barlow, Bebas_Neue, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-import { MotionProvider } from "@/components/motion/MotionProvider";
+import { MotionProvider } from "@/components/foundation/ui-kit/MotionProvider";
 
 // Barlow reads; Bebas Neue is the display voice and is only ever used large;
 // JetBrains Mono carries every stat line, budget, and clock.

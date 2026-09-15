@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-import type { Bid, Lot, Player, Standing, Turn } from "@/lib/auction/board";
+import type { Bid, Lot, Player, Standing, Turn } from "@/lib/games/auction/board";
 
 export const MATCH = "11111111-1111-1111-1111-111111111111";
 

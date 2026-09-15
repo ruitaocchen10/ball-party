@@ -95,12 +95,14 @@ if (!window.matchMedia) {
 // replaced wholesale — see test/factories.ts for the RPC spy the suites use.
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => globalThis.__supabaseMock,
+}));
+vi.mock("@/lib/runtime/realtime/client", () => ({
   createRealtimeClient: async () => globalThis.__supabaseMock,
 }));
 
 // A server action, reached through Sidebar -> AccountMenu. Importing it for real
 // pulls next/headers into jsdom, which throws.
-vi.mock("@/lib/auth/actions", () => ({ signOut: vi.fn() }));
+vi.mock("@/lib/foundation/identity/actions", () => ({ signOut: vi.fn() }));
 vi.mock("@/lib/feedback/actions", () => ({ submitFeedback: vi.fn() }));
 
 // jsdom implements no layout or element scrolling. The board strip scrolls its

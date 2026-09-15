@@ -1,0 +1,99 @@
+"use client";
+
+import { Check, MoonStar, X } from "lucide-react";
+import { useState } from "react";
+
+import { teamPrimaryColor } from "@/lib/foundation/content/nfl/team-logos";
+import { PromptTeamLogo } from "./PromptTeamLogo";
+import { PromptTicket } from "./PromptTicket";
+import type { MatchupGameContext, Option, Slot } from "@/lib/foundation/content/prompts/types";
+
+type Props = {
+  slot: Slot;
+  variant: "featured" | "compact";
+  mode: "preview" | "picker" | "revealed";
+  response?: string[];
+  onChange?: (response: string[]) => void;
+  context?: MatchupGameContext;
+  resolved?: boolean;
+  testId?: string;
+};
+
+/** One matchup module for prompt previews, choices, and revealed calls. */
+export function MatchupPicker({ slot, variant, mode, response = [], onChange, context, resolved = false, testId }: Props) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [away, home] = slot.options;
+  if (!away || !home) return null;
+  const selectedId = response[0] ?? null;
+  const activeId = mode === "picker" ? hoveredId ?? selectedId : selectedId;
+  const correct = resolved && selectedId === slot.correct?.[0];
+  const sideProps = (option: Option) => mode !== "picker" ? {} : {
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-pressed": selectedId === option.id,
+    onClick: () => onChange?.([option.id]),
+    onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onChange?.([option.id]); }
+    },
+    onMouseEnter: () => setHoveredId(option.id), onMouseLeave: () => setHoveredId(null),
+    onFocus: () => setHoveredId(option.id), onBlur: () => setHoveredId(null),
+  };
+
+  if (variant === "featured") return (
+    <section data-testid={testId} aria-label={`${away.label} at ${home.label}`} className={mode === "picker" ? "mt-5 px-4 sm:px-6" : undefined}>
+      <PromptTicket className="p-0">
+        <div className="relative">
+          {activeId === away.id ? <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-1/2" style={surface(away, true)} /> : null}
+          {activeId === home.id ? <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-1/2" style={surface(home, true)} /> : null}
+          <div className="relative z-10 px-3 pt-3 sm:px-5 sm:pt-4"><PosterHeader context={context} activeOptionId={activeId} away={away} home={home} /></div>
+          <div aria-hidden className="absolute top-7 bottom-0 left-1/2 z-10 w-px bg-fg/20" />
+          <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2 px-3 py-2 sm:gap-5 sm:px-5 sm:py-3">
+            <FeaturedSide option={away} selected={selectedId === away.id} active={activeId === away.id} interactive={mode === "picker"} sideProps={sideProps(away)} />
+            <span aria-hidden className="flex h-9 w-9 self-center items-center justify-center rounded-full border border-fg/30 bg-transparent text-xs font-bold text-fg shadow-[0_4px_12px_rgb(0_0_0/0.25)] sm:h-11 sm:w-11 sm:text-sm">@</span>
+            <FeaturedSide option={home} selected={selectedId === home.id} active={activeId === home.id} interactive={mode === "picker"} sideProps={sideProps(home)} />
+          </div>
+        </div>
+        <div className="relative mx-3 flex justify-center border-t border-fg/20 pt-2.5 pb-3 font-mono text-[9px] tracking-[0.14em] text-fg/70 uppercase sm:mx-5 sm:pb-4">{formatGameTime(context?.kickoff)}</div>
+      </PromptTicket>
+    </section>
+  );
+
+  return (
+    <PromptTicket data-testid={testId} aria-label={slot.label} className="min-w-0 ring-1 ring-line ring-inset">
+      <div className="relative grid grid-cols-2 divide-x divide-line">
+        <CompactSide option={away} selected={selectedId === away.id} active={activeId === away.id} interactive={mode === "picker"} revealed={mode === "revealed"} correct={correct} sideProps={sideProps(away)} />
+        <CompactSide option={home} selected={selectedId === home.id} active={activeId === home.id} interactive={mode === "picker"} revealed={mode === "revealed"} correct={correct} sideProps={sideProps(home)} />
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 z-10 flex -translate-x-1/2 items-center justify-center"><span className="absolute inset-y-2 left-1/2 w-px bg-line sm:inset-y-3" /><span className="relative flex h-6 w-6 items-center justify-center rounded-full border border-line bg-surface font-mono text-[10px] font-bold text-fg-muted sm:h-8 sm:w-8 sm:text-xs">@</span></div>
+      </div>
+      <div aria-hidden className="mx-2 h-2 border-t border-line/70 sm:mx-3" />
+    </PromptTicket>
+  );
+}
+
+function PosterHeader({ context, activeOptionId, away, home }: { context?: MatchupGameContext; activeOptionId: string | null; away: Option; home: Option }) {
+  return <div className="relative flex items-center justify-between font-mono text-[9px] font-semibold tracking-[0.16em] text-fg/70 uppercase"><span className={activeOptionId === away.id ? "max-w-[28%] truncate text-panel/80" : "max-w-[28%] truncate"}>{context?.stadium || "Venue TBD"}</span><span className={activeOptionId === home.id ? "max-w-[28%] truncate text-right text-panel/80" : "max-w-[28%] truncate text-right"}>Pick the winner</span>{context?.primetime ? <span aria-label="Primetime game" style={{ clipPath: "polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%)" }} className="absolute top-[-5px] left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 border border-fg/60 bg-fg px-3 py-1 font-mono text-[9px] font-bold tracking-[0.16em] text-surface shadow-[0_4px_10px_rgb(0_0_0/0.32)]"><MoonStar aria-hidden className="h-3 w-3" strokeWidth={2.2} /> Primetime</span> : null}</div>;
+}
+
+function surface(option: Option, active: boolean) {
+  const color = option.teamCode ? teamPrimaryColor(option.teamCode) : null;
+  return active && color ? { background: `linear-gradient(135deg, ${color}, #111311)`, color: "#fffdf7" } : undefined;
+}
+
+function FeaturedSide({ option, selected, active, interactive, sideProps }: { option: Option; selected: boolean; active: boolean; interactive: boolean; sideProps: Record<string, unknown> }) {
+  return <div {...sideProps} className={`flex min-h-32 min-w-0 flex-col items-center justify-center gap-1.5 px-3 py-2 text-center transition-all duration-150 sm:min-h-40 sm:px-5 sm:py-3 ${active ? "text-panel" : "text-fg"} ${interactive ? "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-panel" : ""}`}><OptionMark option={option} className="h-12 w-12 drop-shadow-[0_7px_8px_rgb(0_0_0/0.35)] sm:h-[4.5rem] sm:w-[4.5rem]" /><span className="font-slab text-lg leading-none uppercase sm:text-2xl">{option.label}</span>{interactive ? <span className="font-mono text-[9px] tracking-[0.12em] uppercase opacity-80">{selected ? "Your call" : "Pick winner"}</span> : null}</div>;
+}
+
+function CompactSide({ option, selected, active, interactive, revealed, correct, sideProps }: { option: Option; selected: boolean; active: boolean; interactive: boolean; revealed: boolean; correct: boolean; sideProps: Record<string, unknown> }) {
+  const grade = selected && revealed ? correct ? "ring-1 ring-inset ring-grade-elite" : "ring-1 ring-inset ring-grade-rough" : "";
+  return <div {...sideProps} style={{ ...surface(option, active), clipPath: "inset(0 -10rem 0 -10rem)" }} className={`relative flex h-12 min-w-0 items-center justify-center px-1 py-2 transition-all duration-150 sm:h-20 sm:px-2 sm:py-3 ${active ? "" : selected ? "text-fg" : "bg-surface/85 text-fg-muted"} ${grade} ${interactive ? "cursor-pointer hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-panel" : ""}`}><OptionMark option={option} className={`h-28 w-28 sm:h-40 sm:w-40${selected ? "" : " grayscale opacity-40"}`} /><span className="sr-only">{option.label}</span>{revealed && selected ? correct ? <Check aria-label="Correct" className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-grade-elite sm:top-2 sm:right-2 sm:h-4 sm:w-4" strokeWidth={3} /> : <X aria-label="Incorrect" className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-grade-rough sm:top-2 sm:right-2 sm:h-4 sm:w-4" strokeWidth={3} /> : null}</div>;
+}
+
+function OptionMark({ option, className }: { option: Option; className: string }) {
+  if (option.teamCodes) return <span className="flex -space-x-1.5">{option.teamCodes.map((code) => <PromptTeamLogo key={code} code={code} className={className} />)}</span>;
+  return option.teamCode ? <PromptTeamLogo code={option.teamCode} className={className} /> : null;
+}
+
+function formatGameTime(kickoff: string | undefined) {
+  if (!kickoff || Number.isNaN(new Date(kickoff).getTime())) return "Game time TBD";
+  return new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(kickoff));
+}

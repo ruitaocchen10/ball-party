@@ -2,12 +2,12 @@ import { type RoomSummary } from "@/components/home/CurrentRoom";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { QuickActions } from "@/components/home/QuickActions";
 import { SocialFeed } from "@/components/home/SocialFeed";
-import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
+import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
-import { canAnswerPrompt, isSignedInViewer } from "@/lib/auth/viewer";
-import { fetchPromptFeed } from "@/lib/prompts/feed";
-import { fetchNflSchedule } from "@/lib/nfl/schedule";
+import { canAnswerPrompt, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { fetchPromptFeed } from "@/lib/foundation/content/prompts/feed";
+import { fetchNflSchedule } from "@/lib/foundation/content/nfl/schedule";
 
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.

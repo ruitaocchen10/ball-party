@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { safeNextPath } from "@/lib/auth/next";
-import { isGuestViewer } from "@/lib/auth/viewer";
+import { safeNextPath } from "@/lib/foundation/identity/next";
+import { isGuestViewer } from "@/lib/foundation/identity/viewer";
 import { createClient } from "@/lib/supabase/server";
 
 /**

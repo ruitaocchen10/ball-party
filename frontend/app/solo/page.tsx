@@ -1,11 +1,11 @@
 import { ColumnHead } from "@/components/home/ColumnHead";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { SoloGrid } from "@/components/home/SoloGrid";
-import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { GAMES } from "@/lib/games/catalog";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
+import { GAMES } from "@/lib/platform/orchestration/catalog";
+import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
-import { isSignedInViewer } from "@/lib/auth/viewer";
+import { isSignedInViewer } from "@/lib/foundation/identity/viewer";
 
 /**
  * The games a lone player can start right now, on its own route — split out

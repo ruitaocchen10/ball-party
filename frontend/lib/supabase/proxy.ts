@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isGuestViewer, isSignedInViewer } from "@/lib/auth/viewer";
+import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 
 /**
  * Paths reachable while signed out. Everything else redirects to /login.

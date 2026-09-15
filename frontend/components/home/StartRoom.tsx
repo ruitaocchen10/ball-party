@@ -1,7 +1,7 @@
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/foundation/ui-kit/Button";
 import { WayIn } from "@/components/home/WayIn";
-import { createLobby } from "@/lib/lobbies/actions";
-import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
+import { createLobby } from "@/lib/platform/lobbies/actions";
+import { HOST_SIGN_UP_HREF } from "@/lib/platform/lobbies/hosting";
 
 /** The host entry point on the home screen, with an honest account gate for guests. */
 export function StartRoom({ canCreateLobby }: { canCreateLobby: boolean }) {

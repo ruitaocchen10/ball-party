@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 
-import { AuctionMatch } from "@/components/auction/AuctionMatch";
-import type { AuctionFormat, Bid, Lot, Player, Standing, Turn } from "@/lib/auction/board";
+import { AuctionMatch } from "@/components/games/auction/AuctionMatch";
+import type { AuctionFormat, Bid, Lot, Player, Standing, Turn } from "@/lib/games/auction/board";
 
 import { MATCH, board, players, supabaseMock } from "./factories";
 

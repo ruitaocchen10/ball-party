@@ -1,8 +1,8 @@
 import Link from "next/link";
 
-import { GAMES, type Game } from "@/lib/games/catalog";
-import { createLobby } from "@/lib/lobbies/actions";
-import { HOST_SIGN_UP_HREF } from "@/lib/lobbies/hosting";
+import { GAMES, type Game } from "@/lib/platform/orchestration/catalog";
+import { createLobby } from "@/lib/platform/lobbies/actions";
+import { HOST_SIGN_UP_HREF } from "@/lib/platform/lobbies/hosting";
 
 /**
  * The shop window, and the primary way into the product: every tile is a

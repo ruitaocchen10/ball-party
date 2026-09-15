@@ -2,16 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 /* eslint-disable @typescript-eslint/no-explicit-any -- Supabase types are regenerated after migration 0057 lands. */
 
-import { AuctionMatch } from "@/components/auction/AuctionMatch";
-import { MatchSetup } from "@/components/auction/MatchSetup";
-import { HigherOrLowerMatch } from "@/components/higher-or-lower/HigherOrLowerMatch";
-import { SabotageDraftMatch } from "@/components/sabotage-draft/SabotageDraftMatch";
+import { AuctionMatch } from "@/components/games/auction/AuctionMatch";
+import { MatchSetup } from "@/components/games/auction/MatchSetup";
+import { HigherOrLowerMatch } from "@/components/games/higher-or-lower/HigherOrLowerMatch";
+import { SabotageDraftMatch } from "@/components/games/sabotage-draft/SabotageDraftMatch";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
-import { Sidebar } from "@/components/layout/Sidebar";
-import type { AuctionFormat, Player, Turn } from "@/lib/auction/board";
-import type { Board } from "@/lib/higher-or-lower/board";
+import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
+import type { AuctionFormat, Player, Turn } from "@/lib/games/auction/board";
+import type { Board } from "@/lib/games/higher-or-lower/board";
 import { createClient } from "@/lib/supabase/server";
-import { isSignedInViewer } from "@/lib/auth/viewer";
+import { isSignedInViewer } from "@/lib/foundation/identity/viewer";
 
 /**
  * The match screen.

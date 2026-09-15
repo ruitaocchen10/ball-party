@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { safeNextPath } from "@/lib/auth/next";
+import { safeNextPath } from "@/lib/foundation/identity/next";
 import { createClient } from "@/lib/supabase/server";
 
 /**

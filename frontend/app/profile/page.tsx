@@ -1,12 +1,12 @@
 import Link from "next/link";
 
-import { ProfileEditor } from "@/components/profile/ProfileEditor";
-import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { canViewProfile, isSignedInViewer } from "@/lib/auth/viewer";
-import { GuestUpgrade } from "@/components/auth/GuestUpgrade";
-import { matchGameName } from "@/lib/games/catalog";
-import { completedMatchesFromHistory, recentMatches, summarizeMultiplayerProfile, type CompletedMatch, type CompletedMatchWithMode } from "@/lib/profile/summary";
+import { ProfileEditor } from "@/components/foundation/identity/ProfileEditor";
+import { ProfileAvatar } from "@/components/foundation/identity/ProfileAvatar";
+import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
+import { canViewProfile, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { GuestUpgrade } from "@/components/foundation/identity/GuestUpgrade";
+import { matchGameName } from "@/lib/platform/orchestration/catalog";
+import { completedMatchesFromHistory, recentMatches, summarizeMultiplayerProfile, type CompletedMatch, type CompletedMatchWithMode } from "@/lib/foundation/identity/summary";
 import { createClient } from "@/lib/supabase/server";
 
 /** A player's durable record, kept deliberately separate from a live room. */

@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import { canViewProfile } from "@/lib/auth/viewer";
+import { canViewProfile } from "@/lib/foundation/identity/viewer";
 import { createClient } from "@/lib/supabase/server";
-import { validateProfileUpdate } from "@/lib/profile/validation";
+import { validateProfileUpdate } from "@/lib/foundation/identity/validation";
 
 export type ProfileUpdateState = { error: string | null; saved: boolean };
 

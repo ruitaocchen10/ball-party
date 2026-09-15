@@ -1,7 +1,7 @@
 import { Gamepad2 } from "lucide-react";
 
-import { GAMES, type Game } from "@/lib/games/catalog";
-import { playSolo } from "@/lib/lobbies/actions";
+import { GAMES, type Game } from "@/lib/platform/orchestration/catalog";
+import { playSolo } from "@/lib/platform/lobbies/actions";
 
 /**
  * The games a lone player can start right now — carved out of the shop

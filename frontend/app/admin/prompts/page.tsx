@@ -1,7 +1,7 @@
-import { AdminComposerShell } from "@/components/social/AdminComposerShell";
-import type { Player } from "@/components/social/types";
-import { fetchNflPlayers } from "@/lib/nfl/players";
-import { fetchNflSchedule, type NflScheduleGame } from "@/lib/nfl/schedule";
+import { PromptComposerShell } from "@/components/foundation/content/prompts/PromptComposerShell";
+import type { Player } from "@/lib/foundation/content/prompts/types";
+import { fetchNflPlayers } from "@/lib/foundation/content/nfl/players";
+import { fetchNflSchedule, type NflScheduleGame } from "@/lib/foundation/content/nfl/schedule";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -44,5 +44,5 @@ export default async function AdminPromptsPage() {
     }));
   }
 
-  return <AdminComposerShell displayName={displayName} games={games} players={players} />;
+  return <PromptComposerShell displayName={displayName} games={games} players={players} />;
 }
