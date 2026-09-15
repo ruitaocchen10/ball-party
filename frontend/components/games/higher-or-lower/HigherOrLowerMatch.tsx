@@ -36,6 +36,7 @@ import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/ru
 // (docs/architecture/architecture.md). "Replay or return to lobby" is an
 // orchestration decision; move it into game-runtime or an orchestration RPC
 // the game can call instead of reaching into lobbies here.
+// eslint-disable-next-line no-restricted-imports -- tracked by the TODO above, not fixed here.
 import { postGameChoice } from "@/lib/platform/lobbies/actions";
 import { teamLogoCode } from "@/lib/foundation/content/nfl/team-logos";
 import { createClient } from "@/lib/supabase/client";
