@@ -253,6 +253,9 @@ export function PromptPostComposer({
   const [rankingTarget, setRankingTarget] = useState<"teams" | "players" | "games">("teams");
   const [rankingIds, setRankingIds] = useState<string[]>([]);
   const [rankCount, setRankCount] = useState(1);
+  // Defaults live with each template's slot builder. This map only remembers
+  // an author's deliberate overrides, including one value per game in a set.
+  const [pointsBySlot, setPointsBySlot] = useState<Record<string, number>>({});
   const [caption, setCaption] = useState("");
   const [promptText, setPromptText] = useState(defaultPromptText("picks", initialGame));
   const [criteria, setCriteria] = useState(defaultCriteria("picks"));
@@ -316,7 +319,7 @@ export function PromptPostComposer({
   const effectiveRankCount = Math.min(rankCount, rankingIds.length);
   const visibleRankingOptions = rankingTarget === "players" ? playerOptions : rankingOptions;
 
-  const slots =
+  const defaultSlots =
     kind === "picks"
       ? picksMode === "single"
         ? selectedGame ? buildGamePickSlots(selectedGame) : []
@@ -328,6 +331,11 @@ export function PromptPostComposer({
             ? buildRankingSlots(rankingOptions.filter((option) => rankingIds.includes(option.id)), effectiveRankCount)
             : []
           : buildCustomMultiSlots();
+  const slots = defaultSlots.map((slot) => ({
+    ...slot,
+    points: pointsBySlot[slot.id] ?? slot.points,
+  }));
+  const hasInvalidPoints = slots.some((slot) => !Number.isInteger(slot.points) || slot.points < 1 || slot.points > 32767);
 
   const templateName = TEMPLATE_DEFS.find((t) => t.kind === kind)!.name;
   const lockAtDate = new Date(lockAt);
@@ -357,7 +365,7 @@ export function PromptPostComposer({
         {error ? <p role="alert" className="mb-2 font-mono text-[10px] tracking-[0.1em] text-grade-rough uppercase">{error}</p> : null}
         <Button
           fullWidth
-          disabled={pending || lockInPast || slots.length === 0 || (kind === "ranking" && effectiveRankCount === 0)}
+          disabled={pending || lockInPast || slots.length === 0 || hasInvalidPoints || (kind === "ranking" && effectiveRankCount === 0)}
           onClick={async () => {
             setPending(true);
             setError(null);
@@ -582,6 +590,35 @@ export function PromptPostComposer({
               4 division-winner picks + a 3-team wildcard set. A team already picked as a division winner is
               excluded from the wildcard pool automatically.
             </p>
+          </FieldBlock>
+        ) : null}
+
+        {!isOpinion && slots.length ? (
+          <FieldBlock label="Points per slot">
+            <div className="flex flex-col gap-2">
+              {slots.map((slot) => (
+                <label key={slot.id} className="flex items-center justify-between gap-4 rounded border border-line bg-surface-raised px-3 py-2 text-sm">
+                  <span>{slot.label}</span>
+                  <span className="flex shrink-0 items-center gap-2 text-fg-muted">
+                    <input
+                      aria-label={`${slot.label} points`}
+                      type="number"
+                      min={1}
+                      max={32767}
+                      step={1}
+                      value={slot.points}
+                      onChange={(event) => {
+                        const points = Number(event.target.value);
+                        if (!Number.isInteger(points) || points < 0 || points > 32767) return;
+                        setPointsBySlot((current) => ({ ...current, [slot.id]: points }));
+                      }}
+                      className="w-20 rounded border border-line bg-surface px-2 py-1 text-right text-sm text-fg"
+                    />
+                    <span className="font-mono text-[10px] tracking-[0.08em] uppercase">pts</span>
+                  </span>
+                </label>
+              ))}
+            </div>
           </FieldBlock>
         ) : null}
 

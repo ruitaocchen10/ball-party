@@ -92,3 +92,28 @@ it("marking a picks post as opinion publishes it without an auto-resolve source"
   expect(published.isOpinion).toBe(true);
   expect(published.resolutionSource).toBeUndefined();
 });
+
+it("publishes the point value configured for each slot", async () => {
+  const user = userEvent.setup();
+  const onPublish = vi.fn().mockResolvedValue({ id: "new-post" });
+  const games = [{
+    id: "2026_01_KC_BUF",
+    season: 2026,
+    week: 1,
+    kickoff: "2099-09-11T00:20:00.000Z",
+    away: "KC",
+    home: "BUF",
+    label: "Chiefs @ Bills",
+    stadium: "Highmark Stadium",
+    primetime: true,
+  }];
+
+  render(<PromptPostComposer displayName="Admin" games={games} players={[]} onPublish={onPublish} />);
+
+  await user.clear(screen.getByLabelText("Chiefs @ Bills — winner points"));
+  await user.type(screen.getByLabelText("Chiefs @ Bills — winner points"), "42");
+  await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
+
+  expect(onPublish).toHaveBeenCalledTimes(1);
+  expect(onPublish.mock.calls[0][0].slots[0].points).toBe(42);
+});
