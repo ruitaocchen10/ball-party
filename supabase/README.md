@@ -90,14 +90,16 @@ for a comment. A change is a new migration.
 
 ```sh
 supabase start          # first run pulls images and takes a few minutes
-supabase db reset       # apply every migration from scratch, then seed.sql
+npm --prefix frontend run db:reset
 ```
 
 Ports are moved off the defaults in `config.toml` so this stack can run
 alongside another project's. `seed.sql` is local-only and exists to reproduce
 the hosted project's default table grants, which a local CLI stack no longer
 sets — without it the app hits "permission denied" locally for tables that work
-in production.
+in production. The reset command also restores NFL logos to local Storage.
+SQL seed files cannot upload bucket objects, so use this command rather than
+calling `supabase db reset` directly when the UI needs logo assets.
 
 ### Email confirmation locally
 

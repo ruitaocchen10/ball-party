@@ -6,6 +6,7 @@ import { JoinRoom } from "@/components/home/JoinRoom";
 import { StartRoom } from "@/components/home/StartRoom";
 import { WayIn } from "@/components/home/WayIn";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
+import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { GAMES } from "@/lib/platform/orchestration/catalog";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
@@ -60,17 +61,42 @@ export default async function PartyPage(props: PageProps<"/party">) {
       <main className="app-page flex-1">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
 
-        {room ? <CurrentRoom room={room} /> : null}
-        <ActionStrip hasRoom={room !== null} canCreateLobby={canHost} />
+        <div data-party-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
+          <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
+            <PageHeader
+              eyebrow="Party"
+              title={room ? "Your party" : "What are we playing?"}
+              description={
+                room
+                  ? "Your room is ready when everyone is. Start or join another one below when you’re set."
+                  : "Start a room for your crew, or use a code to jump into one that’s already going."
+              }
+            />
 
-        <section className="mt-9" aria-labelledby="play-heading">
-          <ColumnHead
-            id="play-heading"
-            title="Play"
-            meta={`${live} live`}
-          />
-          <GameGrid canCreateLobby={canHost} />
-        </section>
+            {room ? (
+              <div className="xl:hidden">
+                <CurrentRoom room={room} headingId="party-room-heading-mobile" />
+              </div>
+            ) : null}
+            <ActionStrip hasRoom={room !== null} canCreateLobby={canHost} />
+            {!room ? <PartyGuide className="xl:hidden" /> : null}
+
+            <section className="mt-9" aria-labelledby="play-heading">
+              <ColumnHead id="play-heading" title="Choose the vibe" meta={`${live} live`} />
+              <GameGrid canCreateLobby={canHost} />
+            </section>
+          </div>
+
+          <aside className="hidden xl:block">
+            <div className="sticky top-[92px]">
+              {room ? (
+                <CurrentRoom room={room} compact headingId="party-room-heading-rail" />
+              ) : (
+                <PartyGuide className="xl:mt-0" />
+              )}
+            </div>
+          </aside>
+        </div>
       </main>
     </>
   );
@@ -107,21 +133,19 @@ async function currentRoom(supabase: Client, userId: string): Promise<RoomSummar
 }
 
 /**
- * The heading, and the two ways into a room.
+ * The two ways into a room.
  *
- * Both ways in are panels rather than controls in a row. The heading used to
- * read "signed in as <name>" with the actions squeezed beside it — the largest
- * type on the page spending itself on a fact the top bar already carries, and
- * the two things you actually came to do reading as toolbar furniture.
+ * Both ways in are panels rather than controls in a row. The page-level
+ * heading lives in PageHeader above, leaving this section focused on the
+ * actions a player can take.
  *
- * Hosting is the cream panel because cream is what this product gives the thing
- * that matters. Joining is the same size on a dark one: equal standing, clear
- * emphasis. Neither carries the red edge — a room you have not opened yet is
+ * Hosting is the wider cream panel because opening a room is the primary path.
+ * Joining remains a dark companion panel, with the code field immediately
+ * available. Neither carries the red edge — a room you have not opened yet is
  * not concealed information, and red means one thing here.
  *
- * When you are already in a room the whole section steps down: the panel above
- * is the important object, so the heading shrinks and says what these two
- * buttons will cost you.
+ * When you are already in a room the section steps down below that panel and
+ * adds a small warning about what either action will cost you.
  *
  * Carries `id="party-heading"` for aria-labelledby-style anchoring — no
  * longer a URL fragment target now that Party is its own route, but still a
@@ -134,37 +158,18 @@ function ActionStrip({
   hasRoom: boolean;
   canCreateLobby: boolean;
 }) {
-  const Heading = hasRoom ? "h2" : "h1";
-
   return (
-    <section id="party-heading" className={hasRoom ? "pt-6" : "pt-10 lg:pt-14"}>
-      <Heading
-        className={`font-slab leading-[1.02] uppercase ${
-          hasRoom ? "text-2xl sm:text-3xl" : "text-[34px] sm:text-[43px]"
-        }`}
-      >
-        {hasRoom ? (
-          "Start something else"
-        ) : (
-          <>
-            What are we
-            <br />
-            playing?
-          </>
-        )}
-      </Heading>
+    <section id="party-heading" className={hasRoom ? "pt-6" : "pt-8"}>
+      {hasRoom ? (
+        <>
+          <h2 className="font-slab text-2xl leading-[1.02] uppercase sm:text-3xl">Start something else</h2>
+          <p className="mt-2.5 max-w-[48ch] text-[15px] leading-[1.6] text-[#bdb9b2]">
+            Heads up — starting or joining another room leaves the one above.
+          </p>
+        </>
+      ) : null}
 
-      <p
-        className={`max-w-[48ch] text-[15px] leading-[1.6] text-[#bdb9b2] ${
-          hasRoom ? "mt-2.5" : "mt-3.5"
-        }`}
-      >
-        {hasRoom
-          ? "Heads up — starting or joining another room leaves the one above."
-          : "Two ways in. Everything else happens once people are in the room."}
-      </p>
-
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:gap-4 xl:gap-5">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(19rem,0.7fr)] lg:gap-4 xl:gap-5">
         <StartRoom canCreateLobby={canCreateLobby} />
 
         <WayIn
@@ -175,6 +180,34 @@ function ActionStrip({
           <JoinRoom className="w-full" inPanel />
         </WayIn>
       </div>
+
+    </section>
+  );
+}
+
+/** A short promise of what follows the entry actions, not a tutorial. */
+function PartyGuide({ className = "" }: { className?: string }) {
+  const steps = [
+    ["01", "Get together", "Open a room or use your friend’s code."],
+    ["02", "Pick a game", "Choose once everyone has made it in."],
+    ["03", "Make it count", "Play the round, settle the score."],
+  ];
+
+  return (
+    <section aria-label="How party play works" className={`mt-7 border border-line bg-surface-raised p-4 shadow-well ${className}`}>
+      <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Game plan</p>
+      <h2 className="mt-1 font-slab text-[27px] leading-none uppercase">How it works</h2>
+      <ol className="mt-4 border-t border-line">
+        {steps.map(([number, title, body]) => (
+          <li key={number} className="flex gap-3 border-b border-line py-3.5 last:border-b-0">
+            <span className="pt-0.5 font-mono text-[10px] tracking-[0.14em] text-hidden-text">{number}</span>
+            <div>
+              <h3 className="font-slab text-lg leading-none uppercase">{title}</h3>
+              <p className="mt-1 text-[13px] leading-[1.45] text-fg-muted">{body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }

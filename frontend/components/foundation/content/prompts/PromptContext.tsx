@@ -10,7 +10,7 @@ import type { Post } from "@/lib/foundation/content/prompts/types";
  * huddle split. No client interactivity, so this stays a server component.
  */
 export function PromptContext({ post }: { post: Post }) {
-  const singleGameSlot = isPicksPost(post) && post.slots.length === 1 ? post.slots[0] : null;
+  const singleGameSlot = (isPicksPost(post) || post.isOpinion) && post.slots.length === 1 ? post.slots[0] : null;
   const split = singleGameSlot ? post.aggregate?.[singleGameSlot.id] : undefined;
 
   return (

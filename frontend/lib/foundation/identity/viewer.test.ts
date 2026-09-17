@@ -24,6 +24,11 @@ describe("isSignedInViewer", () => {
     expect(isAdminViewer({ email: "other@example.com" })).toBe(false);
   });
 
+  it("accepts the local demo prompt admin", () => {
+    process.env.PROMPTS_ADMIN_EMAILS = "demo@ballparty.local";
+    expect(isAdminViewer({ email: "demo@ballparty.local" })).toBe(true);
+  });
+
   it("rejects absent claims", () => {
     expect(isSignedInViewer(undefined)).toBe(false);
   });

@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 
 import { Card } from "@/components/foundation/ui-kit/Card";
 import { Chevron } from "@/components/foundation/ui-kit/Chevron";
+import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvatar";
 import { countdownDelay, standingsCountdown, winnerPulse } from "@/lib/foundation/ui-kit/motion";
 
 /**
@@ -142,9 +143,9 @@ function Avatar({ name, avatarUrl }: { name: string; avatarUrl: string | null })
   return (
     <span
       aria-hidden="true"
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface font-slab text-base uppercase text-fg"
+      className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full"
     >
-      <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
+      <GeneratedAvatar name={name} size={44} className="h-full w-full" />
     </span>
   );
 }

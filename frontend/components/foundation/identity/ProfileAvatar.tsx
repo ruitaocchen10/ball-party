@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 
 import { fade } from "@/lib/foundation/ui-kit/motion";
+import { GeneratedAvatar } from "./GeneratedAvatar";
 
 export function ProfileAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -37,21 +38,9 @@ export function ProfileAvatar({ name, avatarUrl }: { name: string; avatarUrl: st
           exit="exit"
           className="grid h-20 w-20 shrink-0 place-items-center rounded-full border-4 border-panel bg-hidden font-slab text-2xl text-panel shadow-card"
         >
-          <span className="font-slab-optical-center">{initials(name)}</span>
+          <GeneratedAvatar name={name} size={80} />
         </motion.div>
       )}
     </AnimatePresence>
-  );
-}
-
-function initials(name: string) {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "?"
   );
 }

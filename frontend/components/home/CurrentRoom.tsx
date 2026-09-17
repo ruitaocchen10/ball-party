@@ -21,19 +21,29 @@ export type RoomSummary = {
  * A cream panel, because this is now the most important object on the page and
  * that is what cream means here. Its buttons invert for the same reason.
  */
-export function CurrentRoom({ room }: { room: RoomSummary }) {
+export function CurrentRoom({
+  room,
+  compact = false,
+  headingId = "room-heading",
+}: {
+  room: RoomSummary;
+  /** The party page uses the same room summary in its narrow desktop rail. */
+  compact?: boolean;
+  /** Lets responsive copies avoid duplicate heading ids in the document. */
+  headingId?: string;
+}) {
   const openSeats = Math.max(0, CAPACITY - room.players.length);
 
   return (
-    <section aria-labelledby="room-heading" className="pt-7">
-      <h1 id="room-heading" className="sr-only">
+    <section aria-labelledby={headingId} className={compact ? "" : "pt-7"}>
+      <h2 id={headingId} className="sr-only">
         Your room
-      </h1>
+      </h2>
 
       <div className="relative overflow-hidden rounded-card bg-panel text-panel-fg shadow-card">
         <span aria-hidden className="block h-[5px] bg-hidden" />
 
-        <div className="flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:gap-8">
+        <div className={`flex flex-col p-4 ${compact ? "gap-4" : "gap-5 sm:p-5 lg:flex-row lg:items-center lg:gap-8"}`}>
           <div className="shrink-0">
             <p className="mb-1.5 font-mono text-[10px] tracking-[0.16em] text-hidden-ink uppercase">
               You&apos;re in a room
@@ -78,8 +88,8 @@ export function CurrentRoom({ room }: { room: RoomSummary }) {
           <ButtonLink
             href={`/lobby/${room.code}`}
             variant="ink"
-            fullWidth={false}
-            className="w-full px-7 lg:w-auto"
+            fullWidth={compact}
+            className={compact ? "px-7" : "w-full px-7 lg:w-auto"}
           >
             Back to room
           </ButtonLink>

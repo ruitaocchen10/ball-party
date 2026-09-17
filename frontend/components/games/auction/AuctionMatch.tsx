@@ -11,6 +11,7 @@ import { PostGameControls } from "@/components/runtime/game-runtime/PostGameCont
 import { PostGameNavigation } from "@/components/runtime/game-runtime/PostGameNavigation";
 import { Reveal } from "@/components/foundation/ui-kit/Reveal";
 import { TeamLogo } from "@/components/foundation/ui-kit/TeamLogo";
+import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvatar";
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Concealed } from "@/components/foundation/ui-kit/Concealed";
 import { abbreviate, MatchStrip, StripCell, StripCellAvatar, StripCellCaption, StripCellMedia, StripCellName, StripCellTextColumn, StripCellTitle, StripCellTop } from "@/components/foundation/ui-kit/MatchStrip";
@@ -880,7 +881,7 @@ function PlayerRail({
 function AuctionRosterAvatar({ name, avatarUrl, mine }: { name: string; avatarUrl: string | null; mine: boolean }) {
   const [failed, setFailed] = useState(false);
   if (avatarUrl && !failed) return <img src={avatarUrl} alt="" onError={() => setFailed(true)} className="h-7 w-7 shrink-0 rounded-full object-cover" />;
-  return <span aria-hidden className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-slab text-base ${mine ? "bg-hidden text-panel" : "bg-surface text-fg"}`}><span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span></span>;
+  return <span aria-hidden className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full ${mine ? "ring-2 ring-hidden" : ""}`}><GeneratedAvatar name={name} size={28} className="h-full w-full" /></span>;
 }
 
 function Chevron({ className }: { className?: string }) {

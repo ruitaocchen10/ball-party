@@ -73,8 +73,8 @@ export function TakeComposer({ post, displayName, avatarUrl }: TakeComposerProps
             onChange={(event) => setComment(event.target.value)}
             maxLength={280}
             rows={2}
-            placeholder="What do you think?"
-            className="mt-2 block w-full resize-none border border-line bg-surface px-3 py-2 text-sm leading-5 text-fg placeholder:text-fg-muted focus:border-fg focus:outline-none"
+            placeholder="Share your reasoning…"
+            className="mt-2 block w-full resize-none border border-line bg-surface px-3 py-2 text-lg leading-6 text-fg placeholder:text-fg-muted focus:border-fg focus:outline-none"
           />
         </div>
         {isPicksPost(post) && post.slots.length === 1 ? (

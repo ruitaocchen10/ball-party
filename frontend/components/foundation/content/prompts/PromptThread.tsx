@@ -1,5 +1,6 @@
 "use client";
 
+import { ShareTakeButton } from "./ShareTakeButton";
 import { SlotFaceC, YourCalls } from "./SlotFaces";
 import { TakeCard } from "./TakeCard";
 import { TakeComposer } from "./TakeComposer";
@@ -61,6 +62,10 @@ export function PromptThread({ post, displayName, avatarUrl }: { post: Post; dis
               </div>
             )}
           </TakeCard>
+        ) : null}
+
+        {youComment && isPicksPost(post) ? (
+          <ShareTakeButton post={post} responses={post.viewerResponse ?? {}} resolved={post.status === "resolved"} />
         ) : null}
 
         {post.viewerAnswered && otherTakes.length ? (

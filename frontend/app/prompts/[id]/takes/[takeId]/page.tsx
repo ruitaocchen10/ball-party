@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { DashboardHeader } from "@/components/home/DashboardHeader";
@@ -39,8 +38,7 @@ export default async function TakeDetailPage(props: PageProps<"/prompts/[id]/tak
       <main data-prompt-detail className="app-page flex-1">
         <div data-prompt-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
           <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
-            <PostHeroHeader post={post} />
-            <Link href={`/prompts/${id}`} className="mt-5 inline-flex font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase hover:text-fg">← All takes</Link>
+            <PostHeroHeader post={post} backHref={`/prompts/${id}`} backLabel="All takes" />
             <TakeThread post={post} take={take} displayName={displayName} avatarUrl={avatarUrl} />
           </div>
           <PromptContext post={post} />

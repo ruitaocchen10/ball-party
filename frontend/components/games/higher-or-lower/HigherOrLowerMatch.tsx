@@ -13,6 +13,7 @@ import { Reveal } from "@/components/foundation/ui-kit/Reveal";
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Concealed } from "@/components/foundation/ui-kit/Concealed";
 import { TeamLogo } from "@/components/foundation/ui-kit/TeamLogo";
+import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvatar";
 import {
   byPlacement,
   canCallNow,
@@ -681,8 +682,8 @@ function StandingsAvatar({ name, avatarUrl, mine }: { name: string; avatarUrl: s
     return <img src={avatarUrl} alt="" onError={() => setFailed(true)} className="h-7 w-7 shrink-0 rounded-full object-cover" />;
   }
   return (
-    <span aria-hidden className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-slab text-base ${mine ? "bg-hidden text-panel" : "bg-surface text-fg"}`}>
-      <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
+    <span aria-hidden className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full ${mine ? "ring-2 ring-hidden" : ""}`}>
+      <GeneratedAvatar name={name} size={28} className="h-full w-full" />
     </span>
   );
 }

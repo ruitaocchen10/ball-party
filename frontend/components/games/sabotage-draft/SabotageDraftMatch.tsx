@@ -12,6 +12,7 @@ import { PostGameControls } from "@/components/runtime/game-runtime/PostGameCont
 import { PostGameNavigation } from "@/components/runtime/game-runtime/PostGameNavigation";
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
 import { TeamLogo } from "@/components/foundation/ui-kit/TeamLogo";
+import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvatar";
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Card, CardMeta, CardTitle } from "@/components/foundation/ui-kit/Card";
 import { Chevron } from "@/components/foundation/ui-kit/Chevron";
@@ -288,8 +289,8 @@ function RosterAvatar({ name, avatarUrl, mine }: { name: string; avatarUrl: stri
     return <img src={avatarUrl} alt="" onError={() => setFailed(true)} className="h-7 w-7 shrink-0 rounded-full object-cover" />;
   }
   return (
-    <span aria-hidden="true" className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-slab text-base ${mine ? "bg-hidden text-panel" : "bg-surface text-fg"}`}>
-      <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
+    <span aria-hidden="true" className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full ${mine ? "ring-2 ring-hidden" : ""}`}>
+      <GeneratedAvatar name={name} size={28} className="h-full w-full" />
     </span>
   );
 }

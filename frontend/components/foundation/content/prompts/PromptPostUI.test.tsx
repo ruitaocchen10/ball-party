@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
-import { PromptPostFeed } from "./PromptPostUI";
+import { PromptPostComposer, PromptPostFeed } from "./PromptPostUI";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 
 function post(slots: Post["slots"]): Post {
@@ -65,4 +65,30 @@ it("gives a single matchup its own poster treatment and lets a weekly set page t
 
   expect(screen.getByLabelText("Showing matchup 2 of 2")).toBeInTheDocument();
   expect(screen.getByText("Ravens")).toBeInTheDocument();
+});
+
+it("marking a picks post as opinion publishes it without an auto-resolve source", async () => {
+  const user = userEvent.setup();
+  const onPublish = vi.fn().mockResolvedValue({ id: "new-post" });
+  const games = [{
+    id: "2026_01_KC_BUF",
+    season: 2026,
+    week: 1,
+    kickoff: "2099-09-11T00:20:00.000Z",
+    away: "KC",
+    home: "BUF",
+    label: "Chiefs @ Bills",
+    stadium: "Highmark Stadium",
+    primetime: true,
+  }];
+
+  render(<PromptPostComposer displayName="Admin" games={games} players={[]} onPublish={onPublish} />);
+
+  await user.click(screen.getByRole("button", { name: /Opinion — no correct answer, no points/ }));
+  await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
+
+  expect(onPublish).toHaveBeenCalledTimes(1);
+  const published = onPublish.mock.calls[0][0];
+  expect(published.isOpinion).toBe(true);
+  expect(published.resolutionSource).toBeUndefined();
 });

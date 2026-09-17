@@ -48,8 +48,8 @@ jobs:
       - name: Start local Supabase stack
         run: supabase start
 
-      - name: Apply migrations + seed
-        run: supabase db reset
+      - name: Apply migrations, seed, and Storage assets
+        run: node scripts/team_logos/reset_local_db.mjs
 
       - name: Run pgTAP suite
         run: supabase test db

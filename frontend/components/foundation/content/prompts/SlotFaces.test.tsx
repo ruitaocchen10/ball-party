@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import { GamePickFace, GamePickList, YourCalls } from "./SlotFaces";
+import { MatchupPicker } from "./MatchupPicker";
 import type { Slot } from "@/lib/foundation/content/prompts/types";
 
 const slots: Slot[] = Array.from({ length: 5 }, (_, index) => ({
@@ -64,4 +65,22 @@ it("highlights a featured team pick without throwing", async () => {
   render(<GamePickFace slot={teamSlot} disabled={false} response={[]} onChange={onChange} />);
   await user.click(screen.getByRole("button", { name: /chiefs/i }));
   expect(onChange).toHaveBeenCalledWith(["kc"]);
+});
+
+it("keeps both compact matchup logos in color until a winner is picked", () => {
+  const teamSlot: Slot = {
+    ...slots[0],
+    options: [
+      { id: "kc", label: "Chiefs", teamCode: "KC" },
+      { id: "buf", label: "Bills", teamCode: "BUF" },
+    ],
+  };
+  const { container, rerender } = render(<MatchupPicker slot={teamSlot} variant="compact" mode="picker" />);
+
+  for (const logo of container.querySelectorAll("img")) expect(logo.className).not.toContain("grayscale");
+
+  rerender(<MatchupPicker slot={teamSlot} variant="compact" mode="picker" response={["kc"]} />);
+  const [chiefs, bills] = [...container.querySelectorAll("img")];
+  expect(chiefs.className).not.toContain("grayscale");
+  expect(bills.className).toContain("grayscale");
 });

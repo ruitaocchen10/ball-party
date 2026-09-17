@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { initials } from "@/lib/foundation/content/prompts/logic";
+import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvatar";
 
 /** A compact author avatar and display name for Huddle conversation surfaces. */
 export function AuthorIdentity({
@@ -45,7 +45,7 @@ export function AuthorAvatar({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={avatarUrl!} alt="" className="h-full w-full object-cover object-top" onError={() => setFailed(true)} />
       ) : (
-        initials(name)
+        <GeneratedAvatar name={name} size={40} className="h-full w-full" />
       )}
     </span>
   );

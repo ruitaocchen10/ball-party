@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { HuddleHeading, PromptFeedShell } from "@/components/foundation/content/prompts/PromptFeedShell";
+import { PromptFeedShell } from "@/components/foundation/content/prompts/PromptFeedShell";
+import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import type { MatchupGameContext, Post } from "@/lib/foundation/content/prompts/types";
 
 /** Home is the Huddle's canonical home, using the shared prompt interaction rather than a second preview-only feed. */
@@ -11,10 +12,10 @@ export function SocialFeed({ posts, signedIn, canAnswer, gameContexts }: { posts
         posts.length ? (
           <PromptFeedShell initialPosts={posts} canAnswer={canAnswer} gameContexts={gameContexts} home />
         ) : (
-          <><HuddleHeading /><EmptyFeed /></>
+          <><PageHeader eyebrow="Social" title="The huddle" /><EmptyFeed /></>
         )
       ) : (
-        <><HuddleHeading /><SignInFeed /></>
+        <><PageHeader eyebrow="Social" title="The huddle" /><SignInFeed /></>
       )}
     </section>
   );

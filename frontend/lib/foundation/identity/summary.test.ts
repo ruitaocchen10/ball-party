@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { completedMatchesFromHistory, recentMatches, summarizeMultiplayerProfile, summarizeProfile } from "@/lib/foundation/identity/summary";
+import { completedMatchesFromHistory, recentMatches, summarizeMultiplayerProfile, summarizeMultiplayerProfileRange, summarizeProfile } from "@/lib/foundation/identity/summary";
 
 describe("summarizeProfile", () => {
   it("calculates lifetime stats and sorts recent completed games", () => {
@@ -52,5 +52,18 @@ describe("summarizeProfile", () => {
     ];
 
     expect(recentMatches(matches, 1).map((match) => match.id)).toEqual(["new"]);
+  });
+
+  it("uses rolling reporting windows for multiplayer highlights", () => {
+    const matches = [
+      { id: "week", game: "higher_or_lower" as const, endedAt: "2026-09-14T12:00:00Z", placement: 1, rawScore: 8, mode: "party" as const },
+      { id: "month", game: "higher_or_lower" as const, endedAt: "2026-08-25T12:00:00Z", placement: 2, rawScore: 4, mode: "party" as const },
+      { id: "old", game: "higher_or_lower" as const, endedAt: "2025-09-15T12:00:00Z", placement: 1, rawScore: 12, mode: "party" as const },
+    ];
+    const now = new Date("2026-09-16T12:00:00Z");
+
+    expect(summarizeMultiplayerProfileRange(matches, "week", now)).toMatchObject({ gamesPlayed: 1, wins: 1, winRate: 100 });
+    expect(summarizeMultiplayerProfileRange(matches, "month", now)).toMatchObject({ gamesPlayed: 2, wins: 1, winRate: 50 });
+    expect(summarizeMultiplayerProfileRange(matches, "year", now)).toMatchObject({ gamesPlayed: 2, wins: 1, winRate: 50 });
   });
 });

@@ -244,13 +244,14 @@ function NavList({ pathname, collapsed }: { pathname: string; collapsed: boolean
 function SoloGamesNav({ collapsed, canPlaySolo }: { collapsed: boolean; canPlaySolo: boolean }) {
   return (
     <div className="px-3 pr-8">
-      <p
-        className={`px-3 pb-1.5 font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase ${
+      <Link
+        href="/solo"
+        className={`block px-3 pb-1.5 font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase transition-colors hover:text-fg ${FOCUS} ${
           collapsed ? "sr-only" : ""
         }`}
       >
         Solo games
-      </p>
+      </Link>
       <nav aria-label="Solo games" className="flex flex-col gap-1">
         {SOLO_GAMES.map((game) => (
           <SoloGameLink key={game.slug} game={game} collapsed={collapsed} canPlaySolo={canPlaySolo} />

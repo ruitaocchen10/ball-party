@@ -1,40 +1,81 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
-import { useActionState, useState } from "react";
+import { ArrowLeft, Camera, X } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { type ProfileUpdateState, updateProfile } from "@/app/profile/actions";
+import { ProfileAvatar } from "@/components/foundation/identity/ProfileAvatar";
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
-import { expandCollapse } from "@/lib/foundation/ui-kit/motion";
 import { createClient } from "@/lib/supabase/client";
+import { PresetAvatarPicker } from "./PresetAvatarPicker";
 
 const EMPTY_PROFILE_UPDATE_STATE: ProfileUpdateState = { error: null, saved: false };
-
-// Keeps an accidental multi-megapixel phone photo from tying up the upload
-// and the eventual page load; comfortably above what an avatar needs.
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
-export function ProfileEditor({
-  displayName,
-  avatarUrl,
-  userId,
-}: {
+type ProfileEditorProps = {
   displayName: string;
   avatarUrl: string | null;
   userId: string;
-}) {
+};
+
+/** The profile header's trigger; editing itself happens in a focused dialog. */
+export function ProfileEditor(props: ProfileEditorProps) {
   const [editing, setEditing] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
+
+  useEffect(() => {
+    if (!editing && restoreFocus.current) {
+      trigger.current?.focus();
+      restoreFocus.current = false;
+    }
+  }, [editing]);
+
+  function close() {
+    restoreFocus.current = true;
+    setEditing(false);
+  }
+
+  return (
+    <>
+      <button
+        ref={trigger}
+        type="button"
+        onClick={() => setEditing(true)}
+        className="bg-hidden px-3.5 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-white uppercase transition-colors hover:bg-hidden-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+      >
+        Edit profile
+      </button>
+      {editing ? <ProfileEditorDialog {...props} onClose={close} /> : null}
+    </>
+  );
+}
+
+function ProfileEditorDialog({ displayName, avatarUrl, userId, onClose }: ProfileEditorProps & { onClose: () => void }) {
   const [state, formAction, pending] = useActionState(updateProfile, EMPTY_PROFILE_UPDATE_STATE);
   const [avatar, setAvatar] = useState(avatarUrl ?? "");
-  const [urlMode, setUrlMode] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [presetUploading, setPresetUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
 
-  // Uploads straight to Storage from the browser rather than routing the
-  // file through a server action — avoids base64-inflating an image through
-  // FormData, and the `avatars` bucket's RLS policies (see migration 0070)
-  // already restrict a write to the signed-in user's own `{userId}/` prefix,
-  // so there's no server-side gate this would bypass.
+  useEffect(() => {
+    nameInput.current?.focus();
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = overflow;
+    };
+  }, [onClose]);
+
+  // Uploads straight to Storage from the browser. The avatars bucket's RLS
+  // policy limits a write to the signed-in user's own prefix.
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = ""; // let the same file be re-picked after an error
@@ -51,16 +92,10 @@ export function ProfileEditor({
 
     setUploadError(null);
     setUploading(true);
-
-    // A stable, extension-qualified path so a re-upload overwrites the
-    // previous file (via `upsert`) instead of orphaning it in the bucket.
     const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
     const path = `${userId}/avatar.${extension}`;
-
     const supabase = createClient();
-    const { error } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true, cacheControl: "3600" });
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, cacheControl: "3600" });
 
     setUploading(false);
     if (error) {
@@ -69,119 +104,150 @@ export function ProfileEditor({
     }
 
     const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-    // Cache-bust: the URL itself doesn't change across an upsert, so without
-    // this the <img> (and any browser cache) would keep showing the old file.
     setAvatar(`${data.publicUrl}?t=${Date.now()}`);
+    setEditingPhoto(false);
   }
 
-  // The trigger button and the form are two different elements, not one
-  // panel that grows — AnimatePresence + a shared height/opacity variant
-  // (`expandCollapse`, see lib/motion.ts) crossfades between them instead of
-  // the instant swap this used to be.
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      {editing ? (
-        <motion.form
-          key="form"
-          action={formAction}
-          variants={expandCollapse}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          className="w-full overflow-hidden rounded-card bg-surface-raised p-4 shadow-well sm:w-[360px]"
+    <div className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto p-4" role="presentation">
+      <button type="button" aria-label="Close profile editor" onClick={onClose} className="absolute inset-0 bg-black/60" />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profile-editor-title"
+        className="relative my-auto w-full max-w-md bg-surface-raised p-5 shadow-card"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close profile editor"
+          className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center text-fg-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
         >
-          <p className="font-mono text-[10px] tracking-[0.14em] text-fg-muted uppercase">Edit profile</p>
-          <label className="mt-3 block font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">
-            Display name
-            <input
-              name="display_name"
-              defaultValue={displayName}
-              minLength={2}
-              maxLength={16}
-              required
-              className="mt-1.5 block w-full border border-line bg-surface px-3 py-2.5 font-sans text-sm text-fg outline-none focus:border-panel"
-            />
-          </label>
-          <div className="mt-3">
-            <span className="block font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">
-              Avatar image <span className="normal-case tracking-normal">(optional)</span>
-            </span>
-            <div className="mt-1.5 flex items-center gap-2.5">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                disabled={uploading}
-                className="sr-only"
-                id="avatar-file-input"
-              />
-              <label
-                htmlFor="avatar-file-input"
-                className="inline-flex cursor-pointer border border-line bg-surface px-3 py-2.5 font-sans text-sm text-fg hover:border-panel aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
-                aria-disabled={uploading}
-              >
-                {uploading ? "Uploading…" : "Choose photo"}
-              </label>
+          <X className="h-5 w-5" strokeWidth={1.5} />
+        </button>
+
+        {state.saved ? (
+          <div className="pr-10">
+            <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Profile updated</p>
+            <h2 id="profile-editor-title" className="mt-1 font-slab text-3xl uppercase">Looking good.</h2>
+            <p className="mt-2 text-sm text-fg-muted">Your profile changes have been saved.</p>
+            <button type="button" onClick={onClose} className="mt-5 bg-panel px-3.5 py-2.5 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase">
+              Done
+            </button>
+          </div>
+        ) : editingPhoto ? (
+          <ProfilePhotoChooser
+            avatarUrl={avatar || null}
+            displayName={displayName}
+            userId={userId}
+            uploading={uploading}
+            uploadError={uploadError}
+            onBack={() => setEditingPhoto(false)}
+            onUpload={handleFileChange}
+            onPresetSelected={(url) => {
+              setAvatar(url);
+              setEditingPhoto(false);
+            }}
+            onPresetUploadingChange={setPresetUploading}
+          />
+        ) : (
+          <form action={formAction}>
+            <div className="pr-10">
+              <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Player profile</p>
+              <h2 id="profile-editor-title" className="mt-1 font-slab text-3xl uppercase">Edit profile</h2>
+            </div>
+            <div className="mt-5 pb-5">
               <button
                 type="button"
-                onClick={() => setUrlMode((value) => !value)}
-                className="font-mono text-[10px] tracking-[0.1em] text-fg-muted underline underline-offset-2 hover:text-fg"
+                aria-label="Change profile photo"
+                onClick={() => setEditingPhoto(true)}
+                className="group relative block rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-panel"
               >
-                {urlMode ? "cancel" : "or paste a url"}
+                <ProfileAvatar name={displayName} avatarUrl={avatar || null} />
+                <span className="absolute right-0 bottom-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface-raised bg-panel text-panel-fg transition-transform group-hover:scale-105">
+                  <Camera aria-hidden className="h-4 w-4" strokeWidth={1.8} />
+                </span>
+              </button>
+              <input type="hidden" name="avatar_url" value={avatar} />
+            </div>
+            <label className="mt-5 block font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">
+              Display name
+              <input
+                ref={nameInput}
+                name="display_name"
+                defaultValue={displayName}
+                minLength={2}
+                maxLength={16}
+                required
+                className="mt-1.5 block w-full border border-line bg-surface px-3 py-2.5 font-sans text-sm normal-case tracking-normal text-fg outline-none focus:border-panel"
+              />
+            </label>
+            <AnimatedMessage role="alert" className="mt-3 text-sm text-hidden-text">
+              {state.error}
+            </AnimatedMessage>
+            <div className="mt-5 flex gap-2.5">
+              <button type="submit" disabled={pending || uploading || presetUploading} className="bg-panel px-3.5 py-2.5 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase disabled:opacity-60">
+                {pending ? "Saving…" : "Save profile"}
+              </button>
+              <button type="button" disabled={pending} onClick={onClose} className="px-3 py-2.5 font-mono text-[10px] font-bold tracking-[0.13em] text-fg-muted uppercase hover:text-fg disabled:opacity-60">
+                Cancel
               </button>
             </div>
-            {urlMode ? (
-              <input
-                type="url"
-                value={avatar}
-                onChange={(event) => setAvatar(event.target.value)}
-                placeholder="https://…"
-                className="mt-2 block w-full border border-line bg-surface px-3 py-2.5 font-sans text-sm text-fg outline-none placeholder:text-fg-muted focus:border-panel"
-              />
-            ) : null}
-            <AnimatedMessage role="alert" className="mt-1.5 text-sm text-hidden-text">
-              {uploadError}
-            </AnimatedMessage>
-            <input type="hidden" name="avatar_url" value={avatar} />
-          </div>
-          <AnimatedMessage role="alert" className="mt-3 text-sm text-hidden-text">
-            {state.error}
-          </AnimatedMessage>
-          <AnimatedMessage role="status" className="mt-3 text-sm text-[#bdc9b9]">
-            {state.saved ? "Profile saved." : null}
-          </AnimatedMessage>
-          <div className="mt-4 flex gap-2.5">
-            <button
-              type="submit"
-              disabled={pending}
-              className="bg-panel px-3.5 py-2.5 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase disabled:opacity-60"
-            >
-              {pending ? "Saving…" : "Save profile"}
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => setEditing(false)}
-              className="px-3 py-2.5 font-mono text-[10px] font-bold tracking-[0.13em] text-fg-muted uppercase hover:text-fg disabled:opacity-60"
-            >
-              Cancel
-            </button>
-          </div>
-        </motion.form>
-      ) : (
-        <motion.button
-          key="button"
-          type="button"
-          onClick={() => setEditing(true)}
-          variants={expandCollapse}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          className="bg-hidden px-3.5 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-white uppercase transition-colors hover:bg-hidden-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+          </form>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function ProfilePhotoChooser({
+  avatarUrl,
+  displayName,
+  userId,
+  uploading,
+  uploadError,
+  onBack,
+  onUpload,
+  onPresetSelected,
+  onPresetUploadingChange,
+}: {
+  avatarUrl: string | null;
+  displayName: string;
+  userId: string;
+  uploading: boolean;
+  uploadError: string | null;
+  onBack: () => void;
+  onUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onPresetSelected: (avatarUrl: string) => void;
+  onPresetUploadingChange: (uploading: boolean) => void;
+}) {
+  return (
+    <div>
+      <button type="button" onClick={onBack} className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
+        <ArrowLeft aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
+        Back to profile
+      </button>
+      <div className="mt-5 flex items-center gap-4">
+        <ProfileAvatar name={displayName} avatarUrl={avatarUrl} />
+        <div>
+          <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Profile photo</p>
+          <h2 id="profile-editor-title" className="mt-1 font-slab text-3xl uppercase">Choose your look</h2>
+        </div>
+      </div>
+      <div className="mt-5">
+        <input type="file" accept="image/*" onChange={onUpload} disabled={uploading} className="sr-only" id="avatar-file-input" />
+        <label
+          htmlFor="avatar-file-input"
+          className="flex min-h-12 w-full cursor-pointer items-center justify-center border border-line px-3 font-mono text-[10px] font-bold tracking-[0.1em] text-fg-muted uppercase hover:border-fg-muted hover:text-fg aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          aria-disabled={uploading}
         >
-          Edit profile
-        </motion.button>
-      )}
-    </AnimatePresence>
+          {uploading ? "Uploading…" : "Upload from device"}
+        </label>
+      </div>
+      <PresetAvatarPicker userId={userId} onSelect={onPresetSelected} onUploadingChange={onPresetUploadingChange} />
+      <AnimatedMessage role="alert" className="mt-2 text-sm text-hidden-text">
+        {uploadError}
+      </AnimatedMessage>
+    </div>
   );
 }

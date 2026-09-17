@@ -78,6 +78,8 @@ export type Post = {
   lockAt: string;
   status: LifecycleStatus;
   voidReason?: string;
+  /** No correct answer — do_resolve refuses to ever grade this post. Independent of templateKind. */
+  isOpinion?: boolean;
   slots: Slot[];
   comments: Comment[];
   responseCount: number;

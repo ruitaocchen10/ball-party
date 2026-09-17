@@ -90,6 +90,7 @@ export async function createPromptPost(
     lockAt: string;
     slots: Slot[];
     resolutionSource?: PromptResolutionSource;
+    isOpinion?: boolean;
   },
 ): Promise<{ id: string } | { error: string }> {
   const { data, error } = await supabase.schema("prompts").rpc("create_post", {
@@ -100,6 +101,7 @@ export async function createPromptPost(
     p_resolution_criteria: params.resolutionCriteria,
     p_lock_at: params.lockAt,
     p_slots: toCreatePostSlots(params.slots),
+    p_is_opinion: params.isOpinion ?? false,
     ...(params.resolutionSource
       ? {
           p_resolution_source: {

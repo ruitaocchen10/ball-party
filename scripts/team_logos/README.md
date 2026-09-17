@@ -25,6 +25,14 @@ barely changes — a relocation or rename is the only thing that would — so
 there's no scheduler and no freshness logic. Rerun by hand when it does; a
 rerun overwrites (`x-upsert`), it doesn't duplicate.
 
+### Local reset
+
+After `supabase start`, run `npm --prefix frontend run db:reset`. It resets
+the database, obtains the local service-role key from `supabase status`, and
+uploads all logo PNGs to local Storage. SQL seed files can create the bucket
+but cannot write the PNG bytes, so calling `supabase db reset` directly stays
+database-only.
+
 ## Source
 
 [ESPN's public team-logo CDN](https://a.espncdn.com/i/teamlogos/nfl/500/),

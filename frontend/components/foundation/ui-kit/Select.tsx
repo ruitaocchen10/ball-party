@@ -6,11 +6,8 @@ import type { ReactNode } from "react";
 
 export type SelectOption = { value: string; label: ReactNode };
 
-// Everything this renders sits on a cream panel (a lobby Card), never the
-// dark surface — same reasoning as Button's `ink` variant: the ring has to
-// read as dark-on-cream here, not the cream-on-dark ring most of the app's
-// focus-visible outlines default to.
 const FOCUS_ON_PANEL = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-fg";
+const FOCUS_ON_DARK = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hidden";
 
 /**
  * A themed stand-in for `<select>`. The native element's trigger can be
@@ -33,6 +30,7 @@ export function Select({
   onValueChange,
   options,
   disabled,
+  variant = "panel",
 }: {
   name: string;
   ariaLabel: string;
@@ -41,7 +39,20 @@ export function Select({
   onValueChange?: (value: string) => void;
   options: SelectOption[];
   disabled?: boolean;
+  /** `panel` for cream cards; `dark` for controls embedded in dark surfaces. */
+  variant?: "panel" | "dark";
 }) {
+  const dark = variant === "dark";
+  const focusClass = dark ? FOCUS_ON_DARK : FOCUS_ON_PANEL;
+  const triggerClass = dark
+    ? "border-line bg-surface text-fg"
+    : "border-[#c7bfac] bg-panel-shade text-panel-fg";
+  const contentClass = dark
+    ? "border-line bg-surface-raised text-fg shadow-well"
+    : "border-[#c7bfac] bg-panel text-panel-fg shadow-card";
+  const itemClass = dark ? "data-[highlighted]:bg-surface" : "data-[highlighted]:bg-panel-shade";
+  const mutedTextClass = dark ? "text-fg-muted" : "text-panel-muted";
+
   return (
     <RadixSelect.Root
       name={name}
@@ -52,11 +63,11 @@ export function Select({
     >
       <RadixSelect.Trigger
         aria-label={ariaLabel}
-        className={`flex h-10 items-center justify-between gap-2 rounded border border-[#c7bfac] bg-panel-shade px-2 font-mono text-sm text-panel-fg outline-none disabled:cursor-not-allowed disabled:opacity-60 ${FOCUS_ON_PANEL}`}
+        className={`flex h-10 items-center justify-between gap-2 rounded border px-2 font-mono text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass} ${focusClass}`}
       >
         <RadixSelect.Value />
         <RadixSelect.Icon>
-          <ChevronDown className="h-4 w-4 text-panel-muted" strokeWidth={1.75} />
+          <ChevronDown className={`h-4 w-4 ${mutedTextClass}`} strokeWidth={1.75} />
         </RadixSelect.Icon>
       </RadixSelect.Trigger>
 
@@ -64,10 +75,10 @@ export function Select({
         <RadixSelect.Content
           position="popper"
           sideOffset={4}
-          className="z-50 w-[var(--radix-select-trigger-width)] overflow-hidden rounded border border-[#c7bfac] bg-panel font-mono text-panel-fg shadow-card"
+          className={`z-50 w-[var(--radix-select-trigger-width)] overflow-hidden rounded border font-mono ${contentClass}`}
         >
-          <RadixSelect.ScrollUpButton className="flex h-6 items-center justify-center bg-panel">
-            <ChevronUp className="h-4 w-4 text-panel-muted" strokeWidth={1.75} />
+          <RadixSelect.ScrollUpButton className={`flex h-6 items-center justify-center ${dark ? "bg-surface-raised" : "bg-panel"}`}>
+            <ChevronUp className={`h-4 w-4 ${mutedTextClass}`} strokeWidth={1.75} />
           </RadixSelect.ScrollUpButton>
 
           <RadixSelect.Viewport
@@ -77,7 +88,7 @@ export function Select({
               <RadixSelect.Item
                 key={option.value}
                 value={option.value}
-                className={`flex cursor-pointer items-center justify-between gap-3 px-2 py-1.5 text-sm outline-none select-none data-[highlighted]:bg-panel-shade data-[disabled]:cursor-not-allowed data-[disabled]:opacity-60 ${FOCUS_ON_PANEL}`}
+                className={`flex cursor-pointer items-center justify-between gap-3 px-2 py-1.5 text-sm outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-60 ${itemClass} ${focusClass}`}
               >
                 <RadixSelect.ItemText>{option.label}</RadixSelect.ItemText>
                 <RadixSelect.ItemIndicator>
@@ -87,8 +98,8 @@ export function Select({
             ))}
           </RadixSelect.Viewport>
 
-          <RadixSelect.ScrollDownButton className="flex h-6 items-center justify-center bg-panel">
-            <ChevronDown className="h-4 w-4 text-panel-muted" strokeWidth={1.75} />
+          <RadixSelect.ScrollDownButton className={`flex h-6 items-center justify-center ${dark ? "bg-surface-raised" : "bg-panel"}`}>
+            <ChevronDown className={`h-4 w-4 ${mutedTextClass}`} strokeWidth={1.75} />
           </RadixSelect.ScrollDownButton>
         </RadixSelect.Content>
       </RadixSelect.Portal>

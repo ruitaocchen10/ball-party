@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode, type Ref } from "react";
+import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvatar";
 
 /**
  * The shared shell behind every "what's happened, what's now, what's next"
@@ -158,9 +159,6 @@ export function StripCellAvatar({
 }) {
   const [imageFailed, setImageFailed] = useState(false);
   const size = big ? "h-10 w-10 text-base" : "h-8 w-8 text-sm";
-  const tone = mine
-    ? "bg-hidden text-panel"
-    : "border border-line bg-surface text-fg";
 
   if (avatarUrl && !imageFailed) {
     return (
@@ -176,9 +174,9 @@ export function StripCellAvatar({
   return (
     <span
       aria-hidden="true"
-      className={`mx-auto mt-1 flex shrink-0 items-center justify-center rounded-full font-slab uppercase ${size} ${tone} ${muted ? "opacity-55" : ""}`}
+      className={`mx-auto mt-1 flex shrink-0 items-center justify-center overflow-hidden rounded-full ${size} ${mine ? "ring-2 ring-hidden" : ""} ${muted ? "opacity-55" : ""}`}
     >
-      <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
+      <GeneratedAvatar name={name} size={big ? 40 : 32} className="h-full w-full" />
     </span>
   );
 }

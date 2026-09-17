@@ -217,7 +217,10 @@ export type CreatePromptPostParams = {
   lockAt: string;
   slots: Slot[];
   resolutionSource?: { provider: "nflverse"; rule: "winner" };
+  isOpinion?: boolean;
 };
+
+const OPINION_CRITERIA = "Opinion only — there's no correct answer, so no points are awarded. Just for the debate.";
 
 export function PromptPostComposer({
   displayName,
@@ -238,6 +241,7 @@ export function PromptPostComposer({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [kind, setKind] = useState<TemplateKind>("picks");
+  const [isOpinion, setIsOpinion] = useState(false);
   const [picksMode, setPicksMode] = useState<"single" | "set">("single");
   const [gameId, setGameId] = useState(initialGame?.id ?? "");
   const [season, setSeason] = useState(String(initialGame?.season ?? ""));
@@ -261,7 +265,13 @@ export function PromptPostComposer({
     } else {
       setPromptText(defaultPromptText(next, games.find((game) => game.id === gameId)));
     }
-    setCriteria(defaultCriteria(next));
+    setCriteria(isOpinion ? OPINION_CRITERIA : defaultCriteria(next));
+  }
+
+  function toggleOpinion() {
+    const next = !isOpinion;
+    setIsOpinion(next);
+    setCriteria(next ? OPINION_CRITERIA : defaultCriteria(kind));
   }
 
   const selectedGame = games.find((game) => game.id === gameId);
@@ -335,6 +345,7 @@ export function PromptPostComposer({
     status: "open",
     responseCount: 0,
     viewerAnswered: false,
+    isOpinion,
     slots,
     comments: [],
   };
@@ -358,7 +369,8 @@ export function PromptPostComposer({
               resolutionCriteria: criteria,
               lockAt: lockAtDate.toISOString(),
               slots,
-              ...(kind === "picks" ? { resolutionSource: { provider: "nflverse", rule: "winner" } } : {}),
+              isOpinion,
+              ...(kind === "picks" && !isOpinion ? { resolutionSource: { provider: "nflverse", rule: "winner" } } : {}),
             });
             setPending(false);
             if ("error" in result) {
@@ -397,6 +409,7 @@ export function PromptPostComposer({
               setWeeklyGameIds([]);
               setPromptText(defaultPromptText("picks", initialGame));
               setCriteria(defaultCriteria("picks"));
+              setIsOpinion(false);
               setLockAt(defaultLockAt());
               setError(null);
               setDockOpen(true);
@@ -434,6 +447,17 @@ export function PromptPostComposer({
               </button>
             ))}
           </div>
+        </FieldBlock>
+
+        <FieldBlock label="Resolution">
+          <button
+            type="button"
+            onClick={toggleOpinion}
+            className={`flex items-center gap-1.5 px-3 py-2 font-slab text-xs uppercase ${isOpinion ? "bg-panel text-panel-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
+          >
+            {isOpinion ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> : null}
+            Opinion — no correct answer, no points
+          </button>
         </FieldBlock>
 
         {kind === "picks" ? (

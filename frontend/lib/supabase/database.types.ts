@@ -237,6 +237,7 @@ export type Database = {
       create_post: {
         Args: {
           p_caption: string
+          p_is_opinion?: boolean
           p_lock_at: string
           p_prompt_text: string
           p_resolution_criteria: string
@@ -266,14 +267,6 @@ export type Database = {
           total_responses: number
         }[]
       }
-      revealed_responses: {
-        Args: { p_post_id: string }
-        Returns: {
-          chosen_option_ids: string[]
-          profile_id: string
-          slot_id: string
-        }[]
-      }
       post_comment: {
         Args: {
           p_body: string
@@ -285,6 +278,14 @@ export type Database = {
       resolve_post: {
         Args: { p_answers: Json; p_post_id: string }
         Returns: undefined
+      }
+      revealed_responses: {
+        Args: { p_post_id: string }
+        Returns: {
+          chosen_option_ids: string[]
+          profile_id: string
+          slot_id: string
+        }[]
       }
       submit_response: {
         Args: { p_choices: Json; p_comment?: string; p_post_id: string }
@@ -1057,25 +1058,31 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          deleted_at: string | null
           display_name: string
           id: string
           is_guest: boolean
+          rankings_visible: boolean
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name: string
           id: string
           is_guest?: boolean
+          rankings_visible?: boolean
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string
           id?: string
           is_guest?: boolean
+          rankings_visible?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -1138,6 +1145,7 @@ export type Database = {
           caption: string
           created_at: string
           id: string
+          is_opinion: boolean
           lock_at: string
           prompt_text: string
           resolution_criteria: string
@@ -1153,6 +1161,7 @@ export type Database = {
           caption: string
           created_at?: string
           id?: string
+          is_opinion?: boolean
           lock_at: string
           prompt_text: string
           resolution_criteria: string
@@ -1168,6 +1177,7 @@ export type Database = {
           caption?: string
           created_at?: string
           id?: string
+          is_opinion?: boolean
           lock_at?: string
           prompt_text?: string
           resolution_criteria?: string
@@ -2008,6 +2018,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_own_account: { Args: never; Returns: undefined }
       heartbeat_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       join_lobby: {
         Args: { p_code: string }
@@ -2046,6 +2057,14 @@ export type Database = {
           mode: Database["public"]["Enums"]["run_mode"]
           placement: number
           raw_score: number
+        }[]
+      }
+      my_profile_knower_highlights: {
+        Args: never
+        Returns: {
+          percentile: number
+          total_points: number
+          window_key: string
         }[]
       }
       pause_match: {
@@ -2420,3 +2439,4 @@ export const Constants = {
     },
   },
 } as const
+

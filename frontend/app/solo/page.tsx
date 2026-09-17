@@ -1,8 +1,7 @@
-import { ColumnHead } from "@/components/home/ColumnHead";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { SoloGrid } from "@/components/home/SoloGrid";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
-import { GAMES } from "@/lib/platform/orchestration/catalog";
+import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { isSignedInViewer } from "@/lib/foundation/identity/viewer";
@@ -38,8 +37,6 @@ export default async function SoloPage(props: PageProps<"/solo">) {
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
 
-  const soloLive = GAMES.filter((game) => game.solo && game.status === "live").length;
-
   return (
     <>
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
@@ -48,10 +45,17 @@ export default async function SoloPage(props: PageProps<"/solo">) {
       <main className="app-page flex-1">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
 
-        <section className="pt-10 lg:pt-14">
-          <ColumnHead as="h1" id="solo-heading" title="Solo" meta={`${soloLive} live`} />
-          <SoloGrid canPlaySolo={viewer} />
-        </section>
+        <div className="mx-auto w-full max-w-[1080px]">
+          <PageHeader
+            eyebrow="Solo"
+            title="Play on your own"
+            description="Pick a game and jump in whenever you’re ready."
+          />
+
+          <section className="mt-9" aria-label="Solo games">
+            <SoloGrid canPlaySolo={viewer} />
+          </section>
+        </div>
       </main>
     </>
   );

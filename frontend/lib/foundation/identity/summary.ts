@@ -45,6 +45,22 @@ export type ProfileSummary = {
   recent: CompletedMatch[];
 };
 
+export const profileStatRanges = ["lifetime", "year", "month", "week"] as const;
+export type ProfileStatRange = (typeof profileStatRanges)[number];
+
+/** Uses rolling windows so a player's reporting period is always current. */
+export function matchesInProfileRange(
+  matches: CompletedMatchWithMode[],
+  range: ProfileStatRange,
+  now = new Date(),
+): CompletedMatchWithMode[] {
+  if (range === "lifetime") return matches;
+
+  const days = range === "year" ? 365 : range === "month" ? 30 : 7;
+  const startsAt = now.getTime() - days * 24 * 60 * 60 * 1000;
+  return matches.filter((match) => new Date(match.endedAt).getTime() >= startsAt);
+}
+
 /** The newest first, capped for a compact profile section. */
 export function recentMatches<T extends CompletedMatch>(matches: T[], limit = 3): T[] {
   return [...matches].sort((a, b) => b.endedAt.localeCompare(a.endedAt)).slice(0, limit);
@@ -85,4 +101,12 @@ export function summarizeProfile(matches: CompletedMatch[]): ProfileSummary {
  */
 export function summarizeMultiplayerProfile(matches: CompletedMatchWithMode[]): ProfileSummary {
   return summarizeProfile(matches.filter((match) => match.mode !== "solo"));
+}
+
+export function summarizeMultiplayerProfileRange(
+  matches: CompletedMatchWithMode[],
+  range: ProfileStatRange,
+  now?: Date,
+): ProfileSummary {
+  return summarizeMultiplayerProfile(matchesInProfileRange(matches, range, now));
 }

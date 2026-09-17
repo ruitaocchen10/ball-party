@@ -40,7 +40,7 @@ export function MatchupPicker({ slot, variant, mode, response = [], onChange, co
   };
 
   if (variant === "featured") return (
-    <section data-testid={testId} aria-label={`${away.label} at ${home.label}`} className={mode === "picker" ? "mt-5 px-4 sm:px-6" : undefined}>
+    <section data-testid={testId} aria-label={`${away.label} at ${home.label}`} className={mode === "picker" ? "mt-5 px-4" : undefined}>
       <PromptTicket className="p-0">
         <div className="relative">
           {activeId === away.id ? <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-1/2" style={surface(away, true)} /> : null}
@@ -61,8 +61,8 @@ export function MatchupPicker({ slot, variant, mode, response = [], onChange, co
   return (
     <PromptTicket data-testid={testId} aria-label={slot.label} className="min-w-0 ring-1 ring-line ring-inset">
       <div className="relative grid grid-cols-2 divide-x divide-line">
-        <CompactSide option={away} selected={selectedId === away.id} active={activeId === away.id} interactive={mode === "picker"} revealed={mode === "revealed"} correct={correct} sideProps={sideProps(away)} />
-        <CompactSide option={home} selected={selectedId === home.id} active={activeId === home.id} interactive={mode === "picker"} revealed={mode === "revealed"} correct={correct} sideProps={sideProps(home)} />
+        <CompactSide option={away} selected={selectedId === away.id} hasSelection={selectedId !== null} active={activeId === away.id} interactive={mode === "picker"} revealed={mode === "revealed"} correct={correct} sideProps={sideProps(away)} />
+        <CompactSide option={home} selected={selectedId === home.id} hasSelection={selectedId !== null} active={activeId === home.id} interactive={mode === "picker"} revealed={mode === "revealed"} correct={correct} sideProps={sideProps(home)} />
         <div aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 z-10 flex -translate-x-1/2 items-center justify-center"><span className="absolute inset-y-2 left-1/2 w-px bg-line sm:inset-y-3" /><span className="relative flex h-6 w-6 items-center justify-center rounded-full border border-line bg-surface font-mono text-[10px] font-bold text-fg-muted sm:h-8 sm:w-8 sm:text-xs">@</span></div>
       </div>
       <div aria-hidden className="mx-2 h-2 border-t border-line/70 sm:mx-3" />
@@ -83,9 +83,9 @@ function FeaturedSide({ option, selected, active, interactive, sideProps }: { op
   return <div {...sideProps} className={`flex min-h-32 min-w-0 flex-col items-center justify-center gap-1.5 px-3 py-2 text-center transition-all duration-150 sm:min-h-40 sm:px-5 sm:py-3 ${active ? "text-panel" : "text-fg"} ${interactive ? "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-panel" : ""}`}><OptionMark option={option} className="h-12 w-12 drop-shadow-[0_7px_8px_rgb(0_0_0/0.35)] sm:h-[4.5rem] sm:w-[4.5rem]" /><span className="font-slab text-lg leading-none uppercase sm:text-2xl">{option.label}</span>{interactive ? <span className="font-mono text-[9px] tracking-[0.12em] uppercase opacity-80">{selected ? "Your call" : "Pick winner"}</span> : null}</div>;
 }
 
-function CompactSide({ option, selected, active, interactive, revealed, correct, sideProps }: { option: Option; selected: boolean; active: boolean; interactive: boolean; revealed: boolean; correct: boolean; sideProps: Record<string, unknown> }) {
+function CompactSide({ option, selected, hasSelection, active, interactive, revealed, correct, sideProps }: { option: Option; selected: boolean; hasSelection: boolean; active: boolean; interactive: boolean; revealed: boolean; correct: boolean; sideProps: Record<string, unknown> }) {
   const grade = selected && revealed ? correct ? "ring-1 ring-inset ring-grade-elite" : "ring-1 ring-inset ring-grade-rough" : "";
-  return <div {...sideProps} style={{ ...surface(option, active), clipPath: "inset(0 -10rem 0 -10rem)" }} className={`relative flex h-12 min-w-0 items-center justify-center px-1 py-2 transition-all duration-150 sm:h-20 sm:px-2 sm:py-3 ${active ? "" : selected ? "text-fg" : "bg-surface/85 text-fg-muted"} ${grade} ${interactive ? "cursor-pointer hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-panel" : ""}`}><OptionMark option={option} className={`h-28 w-28 sm:h-40 sm:w-40${selected ? "" : " grayscale opacity-40"}`} /><span className="sr-only">{option.label}</span>{revealed && selected ? correct ? <Check aria-label="Correct" className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-grade-elite sm:top-2 sm:right-2 sm:h-4 sm:w-4" strokeWidth={3} /> : <X aria-label="Incorrect" className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-grade-rough sm:top-2 sm:right-2 sm:h-4 sm:w-4" strokeWidth={3} /> : null}</div>;
+  return <div {...sideProps} style={{ ...surface(option, active), clipPath: "inset(0 -10rem 0 -10rem)" }} className={`relative flex h-12 min-w-0 items-center justify-center px-1 py-2 transition-all duration-150 sm:h-20 sm:px-2 sm:py-3 ${active ? "" : selected ? "text-fg" : "bg-surface/85 text-fg-muted"} ${grade} ${interactive ? "cursor-pointer hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-panel" : ""}`}><OptionMark option={option} className={`h-28 w-28 sm:h-40 sm:w-40${hasSelection && !selected ? " grayscale opacity-40" : ""}`} /><span className="sr-only">{option.label}</span>{revealed && selected ? correct ? <Check aria-label="Correct" className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-grade-elite sm:top-2 sm:right-2 sm:h-4 sm:w-4" strokeWidth={3} /> : <X aria-label="Incorrect" className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-grade-rough sm:top-2 sm:right-2 sm:h-4 sm:w-4" strokeWidth={3} /> : null}</div>;
 }
 
 function OptionMark({ option, className }: { option: Option; className: string }) {

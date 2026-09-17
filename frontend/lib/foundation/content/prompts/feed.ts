@@ -209,6 +209,7 @@ function mapPost(
     lockAt: row.lock_at,
     status: row.status as LifecycleStatus,
     voidReason: row.void_reason ?? undefined,
+    isOpinion: row.is_opinion,
     slots,
     comments,
     responseCount,

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { signOut } from "@/lib/foundation/identity/actions";
+import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvatar";
 import { dropdown, dropdownUp } from "@/lib/foundation/ui-kit/motion";
 
 /**
@@ -143,7 +144,7 @@ export function AccountMenu({
               className="h-full w-full object-cover"
             />
           ) : (
-            <span className="font-slab-optical-center">{initials(displayName)}</span>
+            <GeneratedAvatar name={displayName} size={40} />
           )}
         </span>
         {!compact ? (
@@ -219,11 +220,4 @@ function MenuLink({ href, children }: { href: string; children: React.ReactNode 
       {children}
     </Link>
   );
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0]!.slice(0, 1).toUpperCase();
-  return (parts[0]!.slice(0, 1) + parts[parts.length - 1]!.slice(0, 1)).toUpperCase();
 }

@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 
+import { Button } from "@/components/foundation/ui-kit/Button";
 import { AuthorAvatar } from "./AuthorIdentity";
 
 /** A compact, inline reply control for a focused take discussion. */
@@ -43,13 +44,14 @@ export function TakeReplyComposer({
           placeholder="Post your reply"
           className="min-w-0 flex-1 bg-transparent text-lg text-fg placeholder:text-fg-muted focus:outline-none"
         />
-        <button
+        <Button
           type="submit"
           disabled={pending || !body.trim()}
-          className="shrink-0 rounded-full bg-fg px-5 py-2 text-sm font-semibold text-surface transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+          variant="solid"
+          fullWidth={false}
         >
           {pending ? "Sending…" : "Reply"}
-        </button>
+        </Button>
       </div>
       {error ? <p role="alert" className="mt-2 font-mono text-[10px] tracking-[0.1em] text-grade-rough uppercase">{error}</p> : null}
     </form>
