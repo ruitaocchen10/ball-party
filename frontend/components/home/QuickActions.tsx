@@ -2,21 +2,22 @@ import { ArrowRight, Gamepad2, Users } from "lucide-react";
 import Link from "next/link";
 
 import type { RoomSummary } from "@/components/home/CurrentRoom";
+import { DashboardRail } from "@/components/foundation/ui-kit/DashboardRail";
 
 export function QuickActions({ room }: { room: RoomSummary | null }) {
   return (
-    <aside aria-labelledby="quick-actions-heading" className="sticky top-[92px]">
-      <div className="border border-line bg-surface-raised p-4 shadow-well">
-        <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Make a move</p>
-        <h2 id="quick-actions-heading" className="mt-1 font-slab text-[27px] leading-none uppercase">Quick actions</h2>
-        <div className="mt-4 border-t border-line">
-          {room ? <Action href={`/lobby/${room.code}`} icon={Users} label="Return to room" detail={room.code} featured /> : null}
-          <Action href="/party" icon={Users} label="Start a party" detail="Create or join a room" featured={!room} />
-          <Action href="/solo" icon={Gamepad2} label="Play solo" detail="Pick up a game anytime" />
-        </div>
+    <DashboardRail
+      headingId="quick-actions-heading"
+      eyebrow="Make a move"
+      title="Quick actions"
+      note="More ways to play will land here as Ball Party grows."
+    >
+      <div className="mt-4 border-t border-line">
+        {room ? <Action href={`/lobby/${room.code}`} icon={Users} label="Return to room" detail={room.code} featured /> : null}
+        <Action href="/party" icon={Users} label="Start a party" detail="Create or join a room" featured={!room} />
+        <Action href="/solo" icon={Gamepad2} label="Play solo" detail="Pick up a game anytime" />
       </div>
-      <p className="px-1 pt-3 font-mono text-[9px] leading-4 tracking-[0.08em] text-fg-muted uppercase">More ways to play will land here as Ball Party grows.</p>
-    </aside>
+    </DashboardRail>
   );
 }
 

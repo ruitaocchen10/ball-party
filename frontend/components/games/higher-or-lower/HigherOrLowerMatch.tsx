@@ -14,6 +14,8 @@ import { Button } from "@/components/foundation/ui-kit/Button";
 import { Concealed } from "@/components/foundation/ui-kit/Concealed";
 import { TeamLogo } from "@/components/foundation/ui-kit/TeamLogo";
 import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvatar";
+import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
+import { DashboardRail } from "@/components/foundation/ui-kit/DashboardRail";
 import {
   byPlacement,
   canCallNow,
@@ -291,22 +293,12 @@ export function HigherOrLowerMatch({
     <main className={isSolo
       ? "app-page flex-1"
       : "mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4"}>
-      <header className={isSolo
-        ? "mx-auto flex w-full max-w-5xl flex-col gap-3 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between"
-        : "flex shrink-0 items-baseline justify-between gap-3"}>
-        <div>
-          {isSolo ? <p className="font-mono text-[10px] font-bold tracking-[0.16em] text-hidden-text uppercase">Solo challenge</p> : null}
-          <h1 className={isSolo ? "mt-1 font-slab text-4xl leading-none uppercase sm:text-5xl" : "font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase"}>
-            {isSolo ? "Higher or lower" : questionLabel(board, "visual", isSolo)}
+      {!isSolo && (
+        <header className="flex shrink-0 items-baseline justify-between gap-3">
+          <h1 className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
+            {questionLabel(board, "visual", isSolo)}
           </h1>
-          {isSolo ? (
-            <p className="mt-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
-              <span>{questionLabel(board, "visual", isSolo)}</span>
-              <span aria-hidden> · make the streak last</span>
-            </p>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
           <p
             role="note"
             aria-label="Board format"
@@ -315,20 +307,40 @@ export function HigherOrLowerMatch({
             {scoringModeLabel(board)} · {eraLabel(board)}
           </p>
           {isHost ? <PauseButton matchId={matchId} paused={isPaused} /> : null}
-        </div>
-      </header>
+          </div>
+        </header>
+      )}
 
       {isPaused ? <PauseBanner /> : null}
 
-      {/* The party games share a desktop table shape: time and action at left,
-          the active play in the roomy centre, and everyone else at right.
-          This game's rails deliberately stay slimmer than Auction's: a call
-          and a streak need less room than bidding controls or full rosters.
-          Source order still makes the phone read the cards before the choice. */}
+      {/* Solo follows Home's grid exactly: its shared heading starts the left
+          column while the dashboard rail starts alongside it. On phones, DOM
+          order remains heading, cards, call status, then progress. */}
       <div className={isSolo
-        ? "mx-auto mt-5 flex w-full max-w-5xl flex-col gap-5"
+        ? "grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12"
         : "grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_minmax(4rem,1fr)] gap-3 lg:grid-cols-[12rem_minmax(0,1fr)_14rem] lg:grid-rows-1"}>
-        <section className={isSolo ? "flex flex-col gap-3" : "flex min-h-0 flex-col gap-3 lg:col-start-2 lg:row-start-1"} aria-label="The comparison">
+        <div className={isSolo ? "mx-auto w-full max-w-[1080px] xl:mx-0" : "contents"}>
+        {isSolo ? (
+          <div>
+            <PageHeader
+              eyebrow="Solo challenge"
+              title="Higher or lower"
+              description={<>{questionLabel(board, "visual", isSolo)} <span aria-hidden>· make the streak last</span></>}
+            />
+            <div className="mt-3 flex w-full max-w-[760px] items-center justify-between gap-3">
+              <p
+                role="note"
+                aria-label="Board format"
+                className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase"
+              >
+                {scoringModeLabel(board)} · {eraLabel(board)}
+              </p>
+              {isHost ? <PauseButton matchId={matchId} paused={isPaused} /> : null}
+            </div>
+          </div>
+        ) : null}
+
+        <section className={isSolo ? "mt-5 flex flex-col gap-3" : "flex min-h-0 flex-col gap-3 lg:col-start-2 lg:row-start-1"} aria-label="The comparison">
           {anchor && challenger ? (
             <div className={isSolo ? "grid gap-4 md:grid-cols-2" : "grid min-h-0 flex-1 gap-3 sm:grid-cols-2"}>
               <LadderCardPanel
@@ -359,13 +371,9 @@ export function HigherOrLowerMatch({
         <section className={isSolo
           ? "mx-auto flex w-full max-w-2xl flex-col gap-3"
           : "flex shrink-0 flex-col gap-3 lg:col-start-1 lg:row-start-1"} aria-label="Your call">
-          {isSolo ? (
-            board.phase === "reveal" ? (
-              <SoloContinue pending={pendingAdvance} error={advanceError} onContinue={advance} />
-            ) : null
-          ) : (
+          {!isSolo ? (
             <MatchClock className="lg:order-first" phase={board.phase} remainingMs={remainingMs} />
-          )}
+          ) : null}
           <CallFeedback call={myCall ?? null} error={callError} />
         </section>
 
@@ -376,8 +384,17 @@ export function HigherOrLowerMatch({
           ? `${questionLabel(board, "spoken", isSolo)}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
           : ""}
       </p>
+        </div>
 
-        {isSolo ? <SoloRunSummary player={viewerPlayer ?? null} /> : null}
+        {isSolo ? (
+          <SoloRunSummary
+            player={viewerPlayer ?? null}
+            continueAction={board.phase === "reveal"
+              ? <SoloContinue pending={pendingAdvance} error={advanceError} onContinue={advance} />
+              : null}
+            className=""
+          />
+        ) : null}
 
         {!isSolo ? <aside aria-label="The table" className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1">
           <div className="flex flex-col border border-line bg-surface-raised">
@@ -421,13 +438,23 @@ export function HigherOrLowerMatch({
 }
 
 /** A solo player needs progress, not a one-row leaderboard. */
-function SoloRunSummary({ player }: { player: Player | null }) {
+function SoloRunSummary({ player, continueAction, className }: { player: Player | null; continueAction: ReactNode; className?: string }) {
   return (
-    <section aria-label="Your run" className="grid grid-cols-3 divide-x divide-line border border-line bg-surface-raised">
-      <RunStat label="Current" value={player?.current_streak ?? 0} />
-      <RunStat label="Best" value={player?.best_streak ?? 0} />
-      <RunStat label="Correct" value={player?.correct_count ?? 0} />
-    </section>
+    <DashboardRail
+      headingId="solo-run-heading"
+      eyebrow="Your run"
+      title="Higher or lower"
+      note="Keep the streak alive."
+      className={className}
+    >
+      <div className="mt-4 border-t border-line">
+        <div className="grid grid-cols-2 divide-x divide-line">
+          <RunStat label="Current" value={player?.current_streak ?? 0} />
+          <RunStat label="All time high" value={player?.best_streak ?? 0} />
+        </div>
+        {continueAction ? <div className="border-t border-line">{continueAction}</div> : null}
+      </div>
+    </DashboardRail>
   );
 }
 
@@ -625,9 +652,8 @@ function questionLabel(board: Board, audience: "visual" | "spoken", isSolo: bool
     : `Question ${board.currentQuestion} of ${board.questionCount}`;
 }
 
-/** Solo's untimed stand-in for the clock: the reveal waits here for a tap
- * rather than a deadline, the same way `MatchClock` occupies this rail for a
- * group board. */
+/** Solo's untimed reveal action lives below the run summary until the player
+ * is ready to move to the next card. */
 function SoloContinue({
   pending,
   error,
@@ -638,11 +664,11 @@ function SoloContinue({
   onContinue: () => void;
 }) {
   return (
-    <section aria-label="Continue" className="flex flex-col gap-2 rounded bg-surface-raised p-3 shadow-well">
+    <div aria-label="Continue" className="flex flex-col gap-2 p-3">
       <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">The answer is revealed</p>
       <Button disabled={pending} onClick={onContinue}>Continue</Button>
       <AnimatedMessage role="alert" className="text-sm text-red-700">{error}</AnimatedMessage>
-    </section>
+    </div>
   );
 }
 

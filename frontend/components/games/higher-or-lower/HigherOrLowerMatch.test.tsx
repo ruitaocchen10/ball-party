@@ -664,6 +664,11 @@ describe("solo pacing", () => {
     });
 
     expect(screen.queryByRole("region", { name: /clock/i })).not.toBeInTheDocument();
+    const run = screen.getByRole("complementary", { name: "Higher or lower" });
+    expect(within(run).getByText("Current")).toBeInTheDocument();
+    expect(within(run).getByText("All time high")).toBeInTheDocument();
+    expect(within(run).queryByText("Correct")).not.toBeInTheDocument();
+    expect(within(run).getByRole("button", { name: "Continue" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(globalThis.__supabaseMock.schema).toHaveBeenCalledWith("higher_or_lower");
