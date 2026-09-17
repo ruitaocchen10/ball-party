@@ -16,7 +16,7 @@ describe("LobbyLineup", () => {
     expect(screen.getByText("2 of 4 seats")).toBeInTheDocument();
     expect(screen.getAllByText("Invite a friend")).toHaveLength(2);
     expect(screen.getAllByText("Open seat")).toHaveLength(2);
-    expect(screen.getByText(/guest/i)).toBeInTheDocument();
+    expect(screen.getByText(/playing now/i)).toBeInTheDocument();
 
     const roster = screen.getByRole("list", { name: "Players at the table" });
     expect(roster).toBeInTheDocument();

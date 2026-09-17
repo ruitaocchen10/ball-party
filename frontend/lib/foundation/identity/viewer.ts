@@ -23,12 +23,10 @@ export function canViewProfile(
 }
 
 /**
- * A guest can read the prompts feed — RLS grants prompt_posts et al. to any
- * `authenticated` request, guest sessions included — but prompts.submit_response
- * and prompts.post_comment both raise `not_authenticated` for one (see
- * supabase/migrations/20260909121500_0095_prompts_write_api.sql). This is
- * the UI-side rendering of that same rule, so the "Make your pick" flow
- * doesn't let a guest reach a button the database will refuse anyway.
+ * The Huddle itself is public, but only credentialed accounts may answer or
+ * comment. prompts.submit_response and prompts.post_comment enforce the same
+ * boundary server-side (see 20260909121500_0095_prompts_write_api.sql), so a
+ * temporary player never reaches a control the database will refuse anyway.
  */
 export function canAnswerPrompt(
   claims: { sub?: string; is_anonymous?: boolean } | null | undefined,

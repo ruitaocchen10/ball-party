@@ -9,16 +9,16 @@ import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
 
 /**
  * A prompt's detail page, in the same feed column as the Huddle cards: your own take posts at the top —
- * composer before you've answered and an ordinary TakeCard after. Other
- * takes unlock below it after the viewer has made their own picks; their
- * reply threads stay on their focused take routes.
+ * composer before you've answered and an ordinary TakeCard after. Account
+ * readers unlock other takes by making a pick; public readers can browse the
+ * discussion but never receive a response or reply control.
  */
-export function PromptThread({ post, displayName, avatarUrl }: { post: Post; displayName: string; avatarUrl: string | null }) {
-  const canSubmit = post.status === "open" && !post.viewerAnswered;
+export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = true }: { post: Post; displayName: string; avatarUrl: string | null; viewerCanAnswer?: boolean }) {
+  const canSubmit = viewerCanAnswer && post.status === "open" && !post.viewerAnswered;
   const viewerTake = post.comments.find((item) => item.isViewer && item.postedWithPick);
-  // A response is the social contract: before making a call, the reader
-  // should not be able to browse and copy everyone else's reasoning. Once
-  // they have answered, the whole top-level conversation is available.
+  // A response remains the social contract for account readers. Public
+  // visitors have no way to make a response, so the discussion is readable
+  // rather than presenting an inaccessible gated feed.
   const otherTakes = post.comments.filter((item) => !item.isViewer);
   const points = totalPoints(post);
 
@@ -33,7 +33,7 @@ export function PromptThread({ post, displayName, avatarUrl }: { post: Post; dis
     <section aria-label="The thread" className="mt-5 w-full max-w-[760px] pb-16">
       <div className="flex flex-col gap-5">
         {canSubmit ? <TakeComposer post={post} displayName={displayName} avatarUrl={avatarUrl} /> : null}
-        {!canSubmit && !post.viewerAnswered ? (
+        {!canSubmit && !post.viewerAnswered && viewerCanAnswer ? (
           <p className="border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">You did not make picks for this prompt.</p>
         ) : null}
 
@@ -68,7 +68,7 @@ export function PromptThread({ post, displayName, avatarUrl }: { post: Post; dis
           <ShareTakeButton post={post} responses={post.viewerResponse ?? {}} resolved={post.status === "resolved"} />
         ) : null}
 
-        {post.viewerAnswered && otherTakes.length ? (
+        {(post.viewerAnswered || !viewerCanAnswer) && otherTakes.length ? (
           <div className="flex flex-col gap-3" aria-label="Other takes">
             <h2 className="px-1 font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Other takes</h2>
             {otherTakes.map((take) => (

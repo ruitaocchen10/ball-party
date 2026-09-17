@@ -78,7 +78,7 @@ function GuestSettings() {
         <section className="max-w-xl">
           <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Settings</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Make it yours</h1>
-          <p className="mt-4 text-[15px] leading-6 text-fg-muted">Guest names are just for the current game. Create an account to get settings for credentials, privacy, and more.</p>
+          <p className="mt-4 text-[15px] leading-6 text-fg-muted">Your name is just for the current game. Create an account to get settings for credentials, privacy, and more.</p>
           <div className="mt-6"><GuestUpgrade /></div>
         </section>
       </main>

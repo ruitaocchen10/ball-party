@@ -44,4 +44,12 @@ describe("PromptThread", () => {
     expect(screen.getByText("Bijan has the volume.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Comment on Tasha's take" })).toHaveAttribute("href", "/prompts/week-2/takes/tasha");
   });
+
+  it("lets a public reader browse takes without exposing an answer form", () => {
+    render(<PromptThread post={post(false)} displayName="Player" avatarUrl={null} viewerCanAnswer={false} />);
+
+    expect(screen.getByLabelText("Other takes")).toBeInTheDocument();
+    expect(screen.getByText("Bijan has the volume.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Make your picks")).not.toBeInTheDocument();
+  });
 });

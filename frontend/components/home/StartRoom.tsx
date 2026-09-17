@@ -3,7 +3,7 @@ import { WayIn } from "@/components/home/WayIn";
 import { createLobby } from "@/lib/platform/lobbies/actions";
 import { HOST_SIGN_UP_HREF } from "@/lib/platform/lobbies/hosting";
 
-/** The host entry point on the home screen, with an honest account gate for guests. */
+/** The host entry point on the home screen, with an honest account gate for temporary players. */
 export function StartRoom({ canCreateLobby }: { canCreateLobby: boolean }) {
   return (
     <WayIn
@@ -12,7 +12,7 @@ export function StartRoom({ canCreateLobby }: { canCreateLobby: boolean }) {
       body={
         canCreateLobby
           ? "Opens a five-character code. Send it to three friends and pick a game once they're in."
-          : "Hosting needs an account. Join a friend as a guest, or sign up to open your own room."
+          : "Hosting needs an account. Join a friend to play, or sign up to open your own room."
       }
       lit
     >

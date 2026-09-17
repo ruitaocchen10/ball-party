@@ -17,11 +17,13 @@ export function TakeThread({
   take,
   displayName,
   avatarUrl,
+  viewerCanAnswer = true,
 }: {
   post: Post;
   take: Comment;
   displayName: string;
   avatarUrl: string | null;
+  viewerCanAnswer?: boolean;
 }) {
   const router = useRouter();
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
@@ -58,7 +60,7 @@ export function TakeThread({
         avatarUrl={take.isViewer ? avatarUrl : null}
         commentHref={`#take-comment-${take.id}`}
         collapsedByDefault={Boolean(isPicksPost(post) && takeResponse)}
-        composer={
+        composer={viewerCanAnswer ? (
           <TakeReplyComposer
             takeId={take.id}
             displayName={displayName}
@@ -69,7 +71,7 @@ export function TakeThread({
             onBodyChange={setBody}
             onSubmit={submit}
           />
-        }
+        ) : undefined}
         thread={
           <div>
             {take.replies.length ? (

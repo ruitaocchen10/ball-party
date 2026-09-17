@@ -71,7 +71,7 @@ export function MemberRoster({
                 <span className="mt-2 block min-h-3 font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
                   {[
                     member.user_id === hostId ? "host" : null,
-                    member.profiles?.is_guest ? "guest" : null,
+                    member.profiles?.is_guest ? "playing now" : null,
                     member.user_id === viewerId ? "you" : null,
                   ]
                     .filter(Boolean)

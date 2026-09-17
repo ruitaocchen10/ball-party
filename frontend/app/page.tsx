@@ -26,16 +26,19 @@ export default async function Home(props: PageProps<"/">) {
   const viewer = isSignedInViewer(claims);
 
   // Independent of each other, so they go together rather than in sequence.
-  const [profileResult, room, posts, schedule] = viewer
-    ? await Promise.all([
-        supabase.from("profiles").select("display_name, avatar_url").eq("id", claims!.sub).single(),
-        currentRoom(supabase, claims!.sub),
-        fetchPromptFeed(supabase, claims!.sub),
-        // A schedule outage should never hide the feed; it only removes the
-        // optional primetime treatment until the next cached refresh.
-        fetchNflSchedule().catch(() => []),
-      ])
-    : [{ data: null }, null, [], []];
+  // The Huddle is readable before a player has an account or a temporary
+  // lobby session. The per-player queries remain conditional, but the public
+  // feed and its optional schedule treatment always load.
+  const [profileResult, room, posts, schedule] = await Promise.all([
+    viewer
+      ? supabase.from("profiles").select("display_name, avatar_url").eq("id", claims!.sub).single()
+      : Promise.resolve({ data: null }),
+    viewer ? currentRoom(supabase, claims!.sub) : Promise.resolve(null),
+    fetchPromptFeed(supabase, viewer ? claims!.sub : null),
+    // A schedule outage should never hide the feed; it only removes the
+    // optional primetime treatment until the next cached refresh.
+    fetchNflSchedule().catch(() => []),
+  ]);
 
   const displayName = profileResult.data?.display_name ?? (viewer ? (claims!.email as string) : null);
   const email = viewer ? ((claims!.email as string | undefined) ?? null) : null;
@@ -60,7 +63,7 @@ export default async function Home(props: PageProps<"/">) {
       <main data-home-main className="app-page flex-1">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
         <div data-home-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
-          <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><SocialFeed posts={visiblePosts} signedIn={viewer} canAnswer={canAnswerPrompt(claims)} gameContexts={schedule.map(({ id, stadium, kickoff, primetime }) => ({ id, stadium, kickoff, primetime }))} /></div>
+          <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><SocialFeed posts={visiblePosts} canAnswer={canAnswerPrompt(claims)} gameContexts={schedule.map(({ id, stadium, kickoff, primetime }) => ({ id, stadium, kickoff, primetime }))} /></div>
           <div data-quick-actions className="hidden xl:block"><QuickActions room={room} /></div>
         </div>
       </main>

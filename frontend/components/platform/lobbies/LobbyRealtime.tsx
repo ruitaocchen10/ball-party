@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+import { guestSessionFinishedHref } from "@/lib/foundation/identity/guest-lifecycle";
 import { createRealtimeClient } from "@/lib/runtime/realtime/client";
 
 /**
@@ -57,7 +58,11 @@ export function LobbyRealtime({ lobbyId }: { lobbyId: string }) {
           },
           (payload) => {
             if ((payload.new as { closed_at: string | null }).closed_at) {
-              router.replace("/");
+              // The endpoint preserves an account session, but clears a
+              // temporary player's anonymous session before returning home.
+              // Going straight to `/` used to leave that player authenticated
+              // after the party had ended.
+              router.replace(guestSessionFinishedHref("/"));
               return;
             }
             refresh();

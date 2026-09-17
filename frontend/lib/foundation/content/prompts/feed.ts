@@ -26,9 +26,9 @@ type RevealedResponseRow = { profile_id: string; slot_id: string; chosen_option_
  * ambiguity a table with two FKs to the same relation would otherwise hit
  * (prompt_slot_exclusions has exactly that shape).
  *
- * `viewerId` is null for a signed-out visitor; app/page.tsx only
- * calls this once someone is signed in, since RLS grants prompt tables to
- * `authenticated` only — an anonymous request would just get refused.
+ * `viewerId` is null for a public visitor. Prompt content is deliberately
+ * readable without a session; only an account holder gets their own response
+ * rows and can use the write RPCs.
  */
 export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: string | null): Promise<Post[]> {
   const { data: postRows } = await supabase
@@ -124,7 +124,7 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
  */
 export async function fetchPromptById(
   supabase: SupabaseServerClient,
-  viewerId: string,
+  viewerId: string | null,
   postId: string,
 ): Promise<Post | null> {
   return (await fetchPromptFeed(supabase, viewerId)).find((post) => post.id === postId) ?? null;

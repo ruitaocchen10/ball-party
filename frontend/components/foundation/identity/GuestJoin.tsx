@@ -62,8 +62,8 @@ export function GuestJoin({ code }: { code: string }) {
       <AnimatedMessage role="alert" className="text-sm text-hidden-text">
         {error}
       </AnimatedMessage>
-      <Button type="submit" disabled={pending}>{pending ? "Joining…" : "Join as guest"}</Button>
-      <p className="text-xs leading-5 text-fg-muted">You&apos;re playing without an account. Add one later to keep this record.</p>
+      <Button type="submit" disabled={pending}>{pending ? "Joining…" : "Join game"}</Button>
+      <p className="text-xs leading-5 text-fg-muted">You&apos;re joining for this game. Create an account to keep your record.</p>
     </form>
   );
 }

@@ -12,7 +12,7 @@ import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewe
  * room to someone who is not a member of it.
  */
 // `/social` remains public solely as a legacy redirect to Home.
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/check-email", "/auth", "/lobby", "/party", "/solo", "/social"];
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/check-email", "/auth", "/lobby", "/party", "/solo", "/social", "/prompts"];
 
 /** Signed-in users bounced off these back to the app. */
 const AUTH_ONLY_PATHS = ["/login", "/signup"];
