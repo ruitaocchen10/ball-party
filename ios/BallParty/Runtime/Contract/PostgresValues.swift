@@ -44,6 +44,11 @@ extension KeyedDecodingContainer {
         return number
     }
 
+    /// A `timestamptz` column that is `not null`.
+    func decodeTimestamp(forKey key: Key) throws -> Date {
+        try PostgresTimestamp.parse(try decode(String.self, forKey: key))
+    }
+
     /// A `timestamptz` column, or `nil` when the row carries none.
     func decodeTimestampIfPresent(forKey key: Key) throws -> Date? {
         try decodeIfPresent(String.self, forKey: key).map { try PostgresTimestamp.parse($0) }

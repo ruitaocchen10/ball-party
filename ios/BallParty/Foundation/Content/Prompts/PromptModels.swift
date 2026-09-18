@@ -1,0 +1,364 @@
+import Foundation
+
+// Hand-maintained mirrors of the `prompts` (Huddle) shapes in
+// `docs/architecture/game-runtime.md` ("Huddle's write API", "Huddle's
+// tables"), and of the domain types in
+// `webapp/lib/foundation/content/prompts/types.ts`. Same deal as the other
+// models: there is no Postgres-to-Swift codegen, so a column added on the
+// server has to be added here on purpose.
+//
+// Two layers, on purpose. The `*Row` types are what PostgREST prints — flat,
+// one per table, and all `HuddleClient` ever hands back. The `Prompt*` types
+// are what a screen reads — joined, ordered, and gated by who is looking.
+// `PromptFeed` is the only thing that turns one into the other.
+
+/// `slot.shape` — how many options a slot takes and whether their order counts.
+enum SlotShape: String, Sendable, Equatable {
+    case pick
+    case pickSet = "pick_set"
+    case rank
+}
+
+/// `prompt_posts.status`.
+enum PostStatus: String, Sendable, Equatable {
+    case open, locked, resolved, void
+
+    /// Whether picks are still being taken. `status` alone is not enough:
+    /// nothing on the server ever writes `'locked'` (`0096`) — `lock_at` is
+    /// checked live against `now()` — so a post stays `open` past its lock time
+    /// until it is resolved, which is the ordinary state of every game in
+    /// progress.
+    func isTakingPicks(lockAt: Date, now: Date) -> Bool { self == .open && lockAt > now }
+}
+
+struct PromptOption: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let label: String
+    let sublabel: String?
+    let teamCode: String?
+    let headshotURL: URL?
+}
+
+struct PromptSlot: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let label: String
+    let shape: SlotShape
+    /// How many options the viewer must choose (`pick_set`) or order (`rank`).
+    /// `nil` means "one" for a `pick` and "all of them" otherwise.
+    let pickCount: Int?
+    let points: Int
+    /// Ground truth — `nil` until the post resolves. Order counts for `rank`.
+    let correctOptionIds: [UUID]?
+    let options: [PromptOption]
+
+    /// Whether `optionId` is one of the right answers — `nil` until the post
+    /// resolves. The server did the grading (`resolve_post`); this only reads
+    /// what it wrote.
+    func isCorrect(_ optionId: UUID) -> Bool? {
+        correctOptionIds.flatMap { $0.isEmpty ? nil : $0.contains(optionId) }
+    }
+
+    /// How many options a complete answer to this slot holds.
+    var requiredCount: Int {
+        switch shape {
+        case .pick: 1
+        case .pickSet, .rank: pickCount ?? options.count
+        }
+    }
+}
+
+/// A take (top-level comment) or a reply to one.
+struct PromptComment: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let author: String
+    let body: String
+    let createdAt: Date
+    let isViewer: Bool
+    /// Whether the take was submitted together with the author's picks.
+    let postedWithPick: Bool
+    /// The author's full ticket, `{slot → chosen options}` — present only once
+    /// the post has locked, and only for a take posted with a pick.
+    let response: [UUID: [UUID]]?
+    /// One level deep: `post_comment` refuses a reply to a reply.
+    let replies: [PromptComment]
+}
+
+struct PromptPost: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let templateKind: String
+    let templateName: String
+    let author: String
+    let caption: String
+    let createdAt: Date
+    let promptText: String
+    let resolutionCriteria: String
+    let lockAt: Date
+    let status: PostStatus
+    let voidReason: String?
+    /// No correct answer, ever — the server refuses to grade it.
+    let isOpinion: Bool
+    let slots: [PromptSlot]
+    /// Top-level takes, oldest first, each with its replies.
+    let comments: [PromptComment]
+    /// Known only once `post_aggregates` has been asked for (see `PromptFeed`);
+    /// 0 otherwise, which is not the same as "nobody has answered".
+    let responseCount: Int
+    /// The viewer's own ticket, `{slot → chosen options}`; `nil` if they haven't answered.
+    let viewerResponse: [UUID: [UUID]]?
+    /// What the server paid the viewer — resolved posts only.
+    let viewerPointsAwarded: Int?
+    /// `{slot → {option → percent of that slot's respondents who chose it}}`.
+    /// `nil` until the post is past open or the viewer has answered.
+    let aggregate: [UUID: [UUID: Double]]?
+
+    var viewerAnswered: Bool { viewerResponse != nil }
+
+    func isTakingPicks(at now: Date) -> Bool { status.isTakingPicks(lockAt: lockAt, now: now) }
+
+    /// Whether this viewer can still make picks on it.
+    func canBeAnswered(at now: Date) -> Bool { isTakingPicks(at: now) && !viewerAnswered }
+
+    /// The web home shows Picks posts only ("the picks surface for now" in
+    /// `webapp/app/page.tsx`); the other kinds stay with the admin tooling.
+    /// `game_pick` and `weekly_picks` remain readable for posts written before
+    /// Picks unified them.
+    static let picksKinds = ["picks", "game_pick", "weekly_picks"]
+
+    static func isPicksKind(_ kind: String) -> Bool { picksKinds.contains(kind) }
+}
+
+// MARK: - Rows
+
+struct PromptPostRow: Decodable, Equatable, Sendable {
+    let id: UUID
+    let templateKind: String
+    let templateName: String
+    let authorId: UUID
+    let caption: String
+    let promptText: String
+    let resolutionCriteria: String
+    let lockAt: Date
+    let createdAt: Date
+    /// Raw, so a status the app doesn't know is a post it leaves out rather
+    /// than a decoding failure that takes the whole feed with it.
+    let status: String
+    let voidReason: String?
+    let isOpinion: Bool
+
+    /// `nil` for a status this app doesn't know.
+    var postStatus: PostStatus? { PostStatus(rawValue: status) }
+
+    init(
+        id: UUID, templateKind: String = "picks", templateName: String = "Picks", authorId: UUID,
+        caption: String = "", promptText: String, resolutionCriteria: String = "", lockAt: Date,
+        createdAt: Date, status: String = "open", voidReason: String? = nil, isOpinion: Bool = false
+    ) {
+        self.id = id; self.templateKind = templateKind; self.templateName = templateName
+        self.authorId = authorId; self.caption = caption; self.promptText = promptText
+        self.resolutionCriteria = resolutionCriteria; self.lockAt = lockAt; self.createdAt = createdAt
+        self.status = status; self.voidReason = voidReason; self.isOpinion = isOpinion
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, caption, status
+        case templateKind = "template_kind"
+        case templateName = "template_name"
+        case authorId = "author_id"
+        case promptText = "prompt_text"
+        case resolutionCriteria = "resolution_criteria"
+        case lockAt = "lock_at"
+        case createdAt = "created_at"
+        case voidReason = "void_reason"
+        case isOpinion = "is_opinion"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        templateKind = try c.decode(String.self, forKey: .templateKind)
+        templateName = try c.decode(String.self, forKey: .templateName)
+        authorId = try c.decode(UUID.self, forKey: .authorId)
+        caption = try c.decode(String.self, forKey: .caption)
+        promptText = try c.decode(String.self, forKey: .promptText)
+        resolutionCriteria = try c.decode(String.self, forKey: .resolutionCriteria)
+        lockAt = try c.decodeTimestamp(forKey: .lockAt)
+        createdAt = try c.decodeTimestamp(forKey: .createdAt)
+        status = try c.decode(String.self, forKey: .status)
+        voidReason = try c.decodeIfPresent(String.self, forKey: .voidReason)
+        isOpinion = try c.decode(Bool.self, forKey: .isOpinion)
+    }
+}
+
+struct PromptSlotRow: Decodable, Equatable, Sendable {
+    let id: UUID
+    let postId: UUID
+    let label: String
+    let shape: String
+    let pickCount: Int?
+    let points: Int
+    let sortOrder: Int
+    let correctOptionIds: [UUID]?
+
+    init(
+        id: UUID, postId: UUID, label: String, shape: String = "pick", pickCount: Int? = nil,
+        points: Int = 10, sortOrder: Int = 0, correctOptionIds: [UUID]? = nil
+    ) {
+        self.id = id; self.postId = postId; self.label = label; self.shape = shape
+        self.pickCount = pickCount; self.points = points; self.sortOrder = sortOrder
+        self.correctOptionIds = correctOptionIds
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, label, shape, points
+        case postId = "post_id"
+        case pickCount = "pick_count"
+        case sortOrder = "sort_order"
+        case correctOptionIds = "correct_option_ids"
+    }
+}
+
+struct PromptOptionRow: Decodable, Equatable, Sendable {
+    let id: UUID
+    let slotId: UUID
+    let label: String
+    let sublabel: String?
+    let teamCode: String?
+    let headshotUrl: String?
+    let sortOrder: Int
+
+    init(
+        id: UUID, slotId: UUID, label: String, sublabel: String? = nil, teamCode: String? = nil,
+        headshotUrl: String? = nil, sortOrder: Int = 0
+    ) {
+        self.id = id; self.slotId = slotId; self.label = label; self.sublabel = sublabel
+        self.teamCode = teamCode; self.headshotUrl = headshotUrl; self.sortOrder = sortOrder
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, label, sublabel
+        case slotId = "slot_id"
+        case teamCode = "team_code"
+        case headshotUrl = "headshot_url"
+        case sortOrder = "sort_order"
+    }
+}
+
+/// One of the *viewer's own* `prompt_responses` — the table is own-rows-only at
+/// the database, whatever the client filters for.
+struct PromptResponseRow: Decodable, Equatable, Sendable {
+    let postId: UUID
+    let slotId: UUID
+    let chosenOptionIds: [UUID]
+    let pointsEarned: Int?
+
+    private enum CodingKeys: String, CodingKey {
+        case postId = "post_id"
+        case slotId = "slot_id"
+        case chosenOptionIds = "chosen_option_ids"
+        case pointsEarned = "points_earned"
+    }
+}
+
+struct PromptCommentRow: Decodable, Equatable, Sendable {
+    let id: UUID
+    let postId: UUID
+    let authorId: UUID
+    let body: String
+    let postedWithPick: Bool
+    let parentCommentId: UUID?
+    let createdAt: Date
+
+    private enum CodingKeys: String, CodingKey {
+        case id, body
+        case postId = "post_id"
+        case authorId = "author_id"
+        case postedWithPick = "posted_with_pick"
+        case parentCommentId = "parent_comment_id"
+        case createdAt = "created_at"
+    }
+
+    init(
+        id: UUID, postId: UUID, authorId: UUID, body: String, postedWithPick: Bool = false,
+        parentCommentId: UUID? = nil, createdAt: Date
+    ) {
+        self.id = id; self.postId = postId; self.authorId = authorId; self.body = body
+        self.postedWithPick = postedWithPick; self.parentCommentId = parentCommentId
+        self.createdAt = createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        postId = try c.decode(UUID.self, forKey: .postId)
+        authorId = try c.decode(UUID.self, forKey: .authorId)
+        body = try c.decode(String.self, forKey: .body)
+        postedWithPick = try c.decode(Bool.self, forKey: .postedWithPick)
+        parentCommentId = try c.decodeIfPresent(UUID.self, forKey: .parentCommentId)
+        createdAt = try c.decodeTimestamp(forKey: .createdAt)
+    }
+}
+
+/// `profiles` rows read for author names — `display_name` only.
+struct PromptProfileRow: Decodable, Equatable, Sendable {
+    let id: UUID
+    let displayName: String
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case displayName = "display_name"
+    }
+}
+
+/// Everything `HuddleClient.feedRows` reads in one go: the flat tables the web's
+/// `fetchPromptFeed` joins in JS (`webapp/lib/foundation/content/prompts/feed.ts`).
+struct PromptFeedRows: Equatable, Sendable {
+    var posts: [PromptPostRow] = []
+    var slots: [PromptSlotRow] = []
+    var options: [PromptOptionRow] = []
+    var viewerResponses: [PromptResponseRow] = []
+    var comments: [PromptCommentRow] = []
+    var profiles: [PromptProfileRow] = []
+}
+
+/// One row of `prompts.post_aggregates`.
+struct PromptAggregateRow: Decodable, Equatable, Sendable {
+    let slotId: UUID
+    let optionId: UUID
+    /// Rounded percent of the slot's responses that chose the option; `nil` if
+    /// the slot has none yet.
+    let pct: Double?
+    let totalResponses: Int?
+
+    init(slotId: UUID, optionId: UUID, pct: Double?, totalResponses: Int?) {
+        self.slotId = slotId; self.optionId = optionId; self.pct = pct
+        self.totalResponses = totalResponses
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case slotId = "slot_id"
+        case optionId = "option_id"
+        case pct
+        case totalResponses = "total_responses"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        slotId = try c.decode(UUID.self, forKey: .slotId)
+        optionId = try c.decode(UUID.self, forKey: .optionId)
+        pct = try c.decodeNumericIfPresent(forKey: .pct)
+        totalResponses = try c.decodeNumericIfPresent(forKey: .totalResponses).map { Int($0) }
+    }
+}
+
+/// One row of `prompts.revealed_responses` — a whole ticket for one slot.
+struct PromptRevealedResponseRow: Decodable, Equatable, Sendable {
+    let profileId: UUID
+    let slotId: UUID
+    let chosenOptionIds: [UUID]
+
+    private enum CodingKeys: String, CodingKey {
+        case profileId = "profile_id"
+        case slotId = "slot_id"
+        case chosenOptionIds = "chosen_option_ids"
+    }
+}

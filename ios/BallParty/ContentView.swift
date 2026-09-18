@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Home screen behind the auth gate: the games a signed-in player can start,
-/// and sign-out. Higher or Lower solo is the first; see
-/// `docs/architecture/architecture.md` for what lands next.
+/// Home screen behind the auth gate: Huddle, the games a signed-in player can
+/// start, and sign-out. See `docs/architecture/architecture.md` for what lands
+/// next.
 struct ContentView: View {
     @ObservedObject var viewModel: AuthViewModel
 
@@ -20,6 +20,17 @@ struct ContentView: View {
                 }
 
                 if let viewerId = viewModel.session?.user.id {
+                    NavigationLink {
+                        HuddleScreen(viewerId: viewerId)
+                    } label: {
+                        GameTile(
+                            eyebrow: "Feed",
+                            title: "Huddle",
+                            blurb: "Make your picks on this week's prompts, then talk it over."
+                        )
+                    }
+                    .buttonStyle(.plain)
+
                     NavigationLink {
                         SoloRunScreen(viewerId: viewerId)
                     } label: {

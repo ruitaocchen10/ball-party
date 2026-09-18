@@ -355,6 +355,23 @@ another slot via `prompt_slot_exclusions` → `option_already_used`. Writes one
 `p_comment` is non-empty, a `prompt_comments` row with `posted_with_pick =
 true` in the same call.
 
+**Key `p_choices` by the slot id in lowercase.** The function finds each slot's
+answer with `p_choices -> slot_id::text`, and Postgres prints a uuid in
+lowercase; a jsonb key match is case-sensitive, so a key in another case reads
+as "no answer for this slot" and the call fails `incomplete_slot` for *every*
+slot. This bites Swift specifically — `UUID.uuidString` is uppercase — while
+JavaScript's `crypto.randomUUID()`/PostgREST ids are already lowercase, which
+is why the web never notices. The option ids inside the arrays and every other
+uuid argument are cast by Postgres and are case-insensitive. `p_comment` may be
+omitted or `null` when there is no take — both mean "no comment".
+
+**The rules `pick`/`pick_set`/`rank` enforce today** (`0098` replaced `0095`'s
+version, and only the latest is load-bearing): `pick` → exactly one option;
+`pick_set` and `rank` → exactly `pick_count`. The cross-slot exclusion check
+runs after every slot is written and compares `team_code`, not option id —
+each slot's options are their own rows, so the same team is never the same
+option id in two slots.
+
 ### `prompts.post_comment(p_post_id uuid, p_body text, p_parent_comment_id uuid default null)`
 
 ```sql
@@ -388,9 +405,13 @@ create_post(
 `prompts_private.admin_config` (matched by JWT email), not at the grant layer;
 it's granted to every `authenticated` caller the same way every RPC in this
 codebase is, per convention (see `supabase/README.md`). This is the web
-admin composer's entry point, not a player action — iOS's v1 scope (issue
-#59) has no post-authoring surface, so this almost certainly isn't called
-from the app. Documented here for completeness in case that changes.
+admin composer's entry point, not a player action: the web reaches it only
+from `/admin/prompts`, behind `isAdminViewer`, so a regular player has no
+compose entry point on either client. #59 puts admin tooling out of scope for
+iOS, so **the iOS app never calls this** and its Huddle has no authoring
+surface (issue #66's "post a new prompt where the web app allows it" is,
+today, admins on the web only).
+Documented here for completeness in case that changes.
 `p_slots` is an array, one object per slot in display order:
 `{label, shape, pick_count, points, source_game_id, excludes_slot_indexes,
 options: [{label, sublabel, team_code, headshot_url, sort_order}]}` —
@@ -474,8 +495,8 @@ All `public` schema.
 
 | Table | Columns | RLS for `select` |
 | --- | --- | --- |
-| `prompt_posts` | `id, template_kind, template_name, author_id, caption, prompt_text, resolution_criteria, lock_at, status, void_reason, resolved_at, resolution_source, is_opinion` | `anon, authenticated` — `using (true)` |
-| `prompt_slots` | `id, post_id, label, shape, pick_count, points, sort_order, correct_option_ids` | `anon, authenticated` — `using (true)`; `correct_option_ids` is `null` until resolution, same reveal-by-write-not-by-policy trick as `higher_or_lower_cards.points` |
+| `prompt_posts` | `id, template_kind, template_name, author_id, caption, prompt_text, resolution_criteria, lock_at, created_at, status, void_reason, resolved_at, resolution_source, is_opinion` | `anon, authenticated` — `using (true)` |
+| `prompt_slots` | `id, post_id, label, shape, pick_count, points, sort_order, source_game_id, correct_option_ids` | `anon, authenticated` — `using (true)`; `correct_option_ids` is `null` until resolution, same reveal-by-write-not-by-policy trick as `higher_or_lower_cards.points` |
 | `prompt_slot_options` | `id, slot_id, label, sublabel, team_code, headshot_url, sort_order` | `anon, authenticated` — `using (true)` |
 | `prompt_slot_exclusions` | `slot_id, excluded_slot_id` | `anon, authenticated` — `using (true)` |
 | `prompt_comments` | `id, post_id, author_id, body, posted_with_pick, parent_comment_id, created_at` | `anon, authenticated` — `using (true)` |

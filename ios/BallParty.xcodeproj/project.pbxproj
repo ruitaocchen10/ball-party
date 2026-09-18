@@ -51,6 +51,17 @@
 		8A8B57AC68AA73C81BEF6986 /* Portrait.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23ACBED7835DC8FC3F4775E6 /* Portrait.swift */; };
 		7EBFB2ED841ECE26E8B5BE49 /* MatchStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016E6BC6E0E39A918F04E15F /* MatchStatus.swift */; };
 		51B4D1C4D8BA219ACD2B91AC /* RealtimeSubscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = A039ECFDA68634F4D03A4BDF /* RealtimeSubscription.swift */; };
+		ABA0B637044F0695258EC5A4 /* HuddleClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B76FAA6D148A7279E387EB /* HuddleClient.swift */; };
+		8564C4307DAC33C199CAE294 /* PromptModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA4DD01C8089C840287C3ADF /* PromptModels.swift */; };
+		F4FC2AB5616DE1E8EF1B97A6 /* FakeHuddleClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5B06101F9DA4507EEDA1C9 /* FakeHuddleClient.swift */; };
+		4E8CBCA8BAB0A4F864B0C5F3 /* HuddleViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D946FF67E31EBD458E5E56AE /* HuddleViewModelTests.swift */; };
+		34506E459DEBE6472CF6D1C8 /* HuddleViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0159F22D001D7CBDDDE860A /* HuddleViewModel.swift */; };
+		909B7C9B6306F222D0B90B43 /* PromptFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD7F0E79F865AE97ADE672DC /* PromptFeed.swift */; };
+		062FFEB16D185BDF53F1A976 /* HuddleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D847D9122D409870135D24C5 /* HuddleView.swift */; };
+		DA7C9E60EA753D9C0D7ECD2E /* PromptComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D318883C9DB837B2177EF1A /* PromptComponents.swift */; };
+		DA697A93DFAE4A042F2B8E16 /* PromptDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E13C467022F862423E0B66 /* PromptDetailView.swift */; };
+		CAC5F136454928795283C382 /* TakeThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EF401B82882F0056E7A29B /* TakeThreadView.swift */; };
+		5E439B62812C03AC931340AB /* PromptModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C204F0F834FDBB7C86EB1650 /* PromptModelsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -102,6 +113,17 @@
 		23ACBED7835DC8FC3F4775E6 /* Portrait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portrait.swift; sourceTree = "<group>"; };
 		016E6BC6E0E39A918F04E15F /* MatchStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchStatus.swift; sourceTree = "<group>"; };
 		A039ECFDA68634F4D03A4BDF /* RealtimeSubscription.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeSubscription.swift; sourceTree = "<group>"; };
+		D3B76FAA6D148A7279E387EB /* HuddleClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuddleClient.swift; sourceTree = "<group>"; };
+		EA4DD01C8089C840287C3ADF /* PromptModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptModels.swift; sourceTree = "<group>"; };
+		0E5B06101F9DA4507EEDA1C9 /* FakeHuddleClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeHuddleClient.swift; sourceTree = "<group>"; };
+		D946FF67E31EBD458E5E56AE /* HuddleViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuddleViewModelTests.swift; sourceTree = "<group>"; };
+		F0159F22D001D7CBDDDE860A /* HuddleViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuddleViewModel.swift; sourceTree = "<group>"; };
+		DD7F0E79F865AE97ADE672DC /* PromptFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptFeed.swift; sourceTree = "<group>"; };
+		D847D9122D409870135D24C5 /* HuddleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuddleView.swift; sourceTree = "<group>"; };
+		3D318883C9DB837B2177EF1A /* PromptComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptComponents.swift; sourceTree = "<group>"; };
+		E0E13C467022F862423E0B66 /* PromptDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptDetailView.swift; sourceTree = "<group>"; };
+		98EF401B82882F0056E7A29B /* TakeThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakeThreadView.swift; sourceTree = "<group>"; };
+		C204F0F834FDBB7C86EB1650 /* PromptModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptModelsTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -156,6 +178,7 @@
 			children = (
 				49B09AADCEC3F81C695016EB /* UIKit */,
 				517F03783EC8EC94BBCB8D31 /* Identity */,
+				D3253EB249D6D3F78E52DD2F /* Content */,
 			);
 			path = Foundation;
 			sourceTree = "<group>";
@@ -190,6 +213,9 @@
 				EDCC5165583848E439A00359 /* MatchClockDriverTests.swift */,
 				A00AEBECD0570CBE0D379EDC /* MatchClockTests.swift */,
 				177C2F17C639CEAB760F662C /* SoloRunViewModelTests.swift */,
+				0E5B06101F9DA4507EEDA1C9 /* FakeHuddleClient.swift */,
+				D946FF67E31EBD458E5E56AE /* HuddleViewModelTests.swift */,
+				C204F0F834FDBB7C86EB1650 /* PromptModelsTests.swift */,
 			);
 			path = BallPartyTests;
 			sourceTree = "<group>";
@@ -288,6 +314,29 @@
 				A039ECFDA68634F4D03A4BDF /* RealtimeSubscription.swift */,
 			);
 			path = Realtime;
+			sourceTree = "<group>";
+		};
+		46B97438A64E2DF3973C2601 /* Prompts */ = {
+			isa = PBXGroup;
+			children = (
+				D3B76FAA6D148A7279E387EB /* HuddleClient.swift */,
+				EA4DD01C8089C840287C3ADF /* PromptModels.swift */,
+				F0159F22D001D7CBDDDE860A /* HuddleViewModel.swift */,
+				DD7F0E79F865AE97ADE672DC /* PromptFeed.swift */,
+				D847D9122D409870135D24C5 /* HuddleView.swift */,
+				3D318883C9DB837B2177EF1A /* PromptComponents.swift */,
+				E0E13C467022F862423E0B66 /* PromptDetailView.swift */,
+				98EF401B82882F0056E7A29B /* TakeThreadView.swift */,
+			);
+			path = Prompts;
+			sourceTree = "<group>";
+		};
+		D3253EB249D6D3F78E52DD2F /* Content */ = {
+			isa = PBXGroup;
+			children = (
+				46B97438A64E2DF3973C2601 /* Prompts */,
+			);
+			path = Content;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -422,6 +471,14 @@
 				268AC7CDC575DC4ECFE56F99 /* SoloRecapView.swift in Sources */,
 				DAB7B4A8B5FFA1380BE48CA1 /* SoloRunView.swift in Sources */,
 				3A54E0835D7E9A8898433188 /* SoloRunViewModel.swift in Sources */,
+				ABA0B637044F0695258EC5A4 /* HuddleClient.swift in Sources */,
+				8564C4307DAC33C199CAE294 /* PromptModels.swift in Sources */,
+				34506E459DEBE6472CF6D1C8 /* HuddleViewModel.swift in Sources */,
+				909B7C9B6306F222D0B90B43 /* PromptFeed.swift in Sources */,
+				062FFEB16D185BDF53F1A976 /* HuddleView.swift in Sources */,
+				DA7C9E60EA753D9C0D7ECD2E /* PromptComponents.swift in Sources */,
+				DA697A93DFAE4A042F2B8E16 /* PromptDetailView.swift in Sources */,
+				CAC5F136454928795283C382 /* TakeThreadView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -442,6 +499,9 @@
 				E8AA9D45F9222D5143645E63 /* MatchClockDriverTests.swift in Sources */,
 				5287614E79BF16F2EB918984 /* MatchClockTests.swift in Sources */,
 				334E6F05EE834AD8FAFEAB2B /* SoloRunViewModelTests.swift in Sources */,
+				F4FC2AB5616DE1E8EF1B97A6 /* FakeHuddleClient.swift in Sources */,
+				4E8CBCA8BAB0A4F864B0C5F3 /* HuddleViewModelTests.swift in Sources */,
+				5E439B62812C03AC931340AB /* PromptModelsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
