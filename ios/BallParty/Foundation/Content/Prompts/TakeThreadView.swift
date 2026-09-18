@@ -21,8 +21,7 @@ struct TakeThreadView: View {
 
                         if take.replies.isEmpty {
                             Text("Be the first to add a comment.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .monoLabel(11, tracking: 0.1)
                         } else {
                             VStack(spacing: 8) {
                                 ForEach(take.replies) { reply in
@@ -32,14 +31,18 @@ struct TakeThreadView: View {
                         }
                         ReplyBox(viewModel: viewModel, postId: postId, takeId: takeId)
                     }
-                    .padding()
+                    .padding(16)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .refreshable { await viewModel.load() }
             } else {
-                ContentUnavailableView("This take is no longer available", systemImage: "bubble.left")
+                ScrollView {
+                    EmptyState(title: "This take is no longer available", message: "It may have been removed.")
+                        .padding(16)
+                }
             }
         }
+        .screenBackground()
         .navigationTitle("Take")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -61,12 +64,13 @@ private struct ReplyBox: View {
                 axis: .vertical
             )
             .lineLimit(1...4)
-            .textFieldStyle(.roundedBorder)
+            .padding(.vertical, 10)
+            .fieldStyle()
 
             Button(viewModel.isSending ? "Sending…" : "Reply") {
                 Task { await viewModel.sendReply(to: takeId, on: postId) }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(BPButtonStyle(variant: .solid, fullWidth: false))
             .disabled(!viewModel.canReply(to: takeId))
         }
     }

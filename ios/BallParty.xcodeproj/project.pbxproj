@@ -7,6 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4FB9FA662D4DE41707B4F431 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1ED474535F9547864F48E5B /* Theme.swift */; };
+		8C2749D21E0B84AB7184FB15 /* Surfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B9FF71111FD9D9735FE017 /* Surfaces.swift */; };
+		42190A7B576995422CD3395D /* Controls.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4FC80D1FAFB82954050F5AB /* Controls.swift */; };
+		FEFEB3810EA48B5213A7CD68 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A865AEEE5F77E725C7C0A7B /* ThemeTests.swift */; };
+		4CDB6345A9ECDE95DE76493D /* BebasNeue-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 21CA8AEAFF8BAB2D531AE049 /* BebasNeue-Regular.ttf */; };
+		437719EC0A1E9DB16F62D0DC /* Barlow-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 74C00F5F010089D7B49115FF /* Barlow-Regular.ttf */; };
+		3EEF882DCECFE74B7FCA90DA /* Barlow-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CE8DEF758DFF7491B1DFC6F8 /* Barlow-Medium.ttf */; };
+		50FDC4C3C92A8FB3DF8BF661 /* Barlow-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DA37180CB843393C0E640C73 /* Barlow-SemiBold.ttf */; };
+		F5C2D7A0B1078AA1CD5F274E /* Barlow-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 363E51962E6F169C7E3949F1 /* Barlow-Bold.ttf */; };
+		832A14E24DBEB5D4CE4F2ED4 /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0C56C197D1FA69D7407EC666 /* JetBrainsMono-Regular.ttf */; };
+		203FE9B92BA990E6B5DB4676 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4D467E7A7936D10755419DAD /* JetBrainsMono-Bold.ttf */; };
+		751BA1859A029EA5C71C9616 /* OFL-Barlow.txt in Resources */ = {isa = PBXBuildFile; fileRef = 53802AC25628552A5AD509D7 /* OFL-Barlow.txt */; };
+		439F9854A4183B2C12996603 /* OFL-BebasNeue.txt in Resources */ = {isa = PBXBuildFile; fileRef = A7193900A25A83B54C9926E5 /* OFL-BebasNeue.txt */; };
+		A223659E9A8CE5144CA39829 /* OFL-JetBrainsMono.txt in Resources */ = {isa = PBXBuildFile; fileRef = 52BEB888A2E7363C75923B52 /* OFL-JetBrainsMono.txt */; };
 		129D6AF9C48E6A7BB3521C15 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 23DA30C3359707F7DA8137CE /* Supabase */; };
 		60CEB77CE80375849D19FB8F /* BallPartyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6922E355C2C789A3555050C /* BallPartyApp.swift */; };
 		7C11EB614DE3A2B15C84C767 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 22E9476B19287E93B3829EFB /* Assets.xcassets */; };
@@ -65,6 +79,20 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		E1ED474535F9547864F48E5B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		E4B9FF71111FD9D9735FE017 /* Surfaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Surfaces.swift; sourceTree = "<group>"; };
+		D4FC80D1FAFB82954050F5AB /* Controls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controls.swift; sourceTree = "<group>"; };
+		5A865AEEE5F77E725C7C0A7B /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
+		21CA8AEAFF8BAB2D531AE049 /* BebasNeue-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = BebasNeue-Regular.ttf; sourceTree = "<group>"; };
+		74C00F5F010089D7B49115FF /* Barlow-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Barlow-Regular.ttf; sourceTree = "<group>"; };
+		CE8DEF758DFF7491B1DFC6F8 /* Barlow-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Barlow-Medium.ttf; sourceTree = "<group>"; };
+		DA37180CB843393C0E640C73 /* Barlow-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Barlow-SemiBold.ttf; sourceTree = "<group>"; };
+		363E51962E6F169C7E3949F1 /* Barlow-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Barlow-Bold.ttf; sourceTree = "<group>"; };
+		0C56C197D1FA69D7407EC666 /* JetBrainsMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = JetBrainsMono-Regular.ttf; sourceTree = "<group>"; };
+		4D467E7A7936D10755419DAD /* JetBrainsMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = JetBrainsMono-Bold.ttf; sourceTree = "<group>"; };
+		53802AC25628552A5AD509D7 /* OFL-Barlow.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL-Barlow.txt; sourceTree = "<group>"; };
+		A7193900A25A83B54C9926E5 /* OFL-BebasNeue.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL-BebasNeue.txt; sourceTree = "<group>"; };
+		52BEB888A2E7363C75923B52 /* OFL-JetBrainsMono.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL-JetBrainsMono.txt; sourceTree = "<group>"; };
 		13676475DB11EF7FEDE1A0F8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		22E9476B19287E93B3829EFB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3FD826920DC17F0A393DE271 /* BallParty.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BallParty.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -168,6 +196,7 @@
 				3E5261B818DE4AF134B8761E /* Foundation */,
 				20B084BADD8616DD75ABE461 /* Games */,
 				88F216FC65AE0789C61B4333 /* Info.plist */,
+				2189F0B2AE7E5D1314F1A1B5 /* Resources */,
 				47EF13BD49BE517F4D7A32A0 /* Runtime */,
 			);
 			path = BallParty;
@@ -210,6 +239,7 @@
 				B5D8B8B6428330FD95153F92 /* FakeHigherOrLowerClient.swift */,
 				E06CC9E8D135A5F6BDCAC5D9 /* HigherOrLowerModelsTests.swift */,
 				B57366732C868289247B5FC0 /* IdentityConstantsTests.swift */,
+				5A865AEEE5F77E725C7C0A7B /* ThemeTests.swift */,
 				EDCC5165583848E439A00359 /* MatchClockDriverTests.swift */,
 				A00AEBECD0570CBE0D379EDC /* MatchClockTests.swift */,
 				177C2F17C639CEAB760F662C /* SoloRunViewModelTests.swift */,
@@ -303,7 +333,10 @@
 		49B09AADCEC3F81C695016EB /* UIKit */ = {
 			isa = PBXGroup;
 			children = (
+				D4FC80D1FAFB82954050F5AB /* Controls.swift */,
 				23ACBED7835DC8FC3F4775E6 /* Portrait.swift */,
+				E4B9FF71111FD9D9735FE017 /* Surfaces.swift */,
+				E1ED474535F9547864F48E5B /* Theme.swift */,
 			);
 			path = UIKit;
 			sourceTree = "<group>";
@@ -337,6 +370,31 @@
 				46B97438A64E2DF3973C2601 /* Prompts */,
 			);
 			path = Content;
+			sourceTree = "<group>";
+		};
+		2189F0B2AE7E5D1314F1A1B5 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				116E6A8F096A94C29FCD5476 /* Fonts */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		116E6A8F096A94C29FCD5476 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				363E51962E6F169C7E3949F1 /* Barlow-Bold.ttf */,
+				CE8DEF758DFF7491B1DFC6F8 /* Barlow-Medium.ttf */,
+				74C00F5F010089D7B49115FF /* Barlow-Regular.ttf */,
+				DA37180CB843393C0E640C73 /* Barlow-SemiBold.ttf */,
+				21CA8AEAFF8BAB2D531AE049 /* BebasNeue-Regular.ttf */,
+				4D467E7A7936D10755419DAD /* JetBrainsMono-Bold.ttf */,
+				0C56C197D1FA69D7407EC666 /* JetBrainsMono-Regular.ttf */,
+				53802AC25628552A5AD509D7 /* OFL-Barlow.txt */,
+				A7193900A25A83B54C9926E5 /* OFL-BebasNeue.txt */,
+				52BEB888A2E7363C75923B52 /* OFL-JetBrainsMono.txt */,
+			);
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -425,6 +483,16 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4CDB6345A9ECDE95DE76493D /* BebasNeue-Regular.ttf in Resources */,
+				437719EC0A1E9DB16F62D0DC /* Barlow-Regular.ttf in Resources */,
+				3EEF882DCECFE74B7FCA90DA /* Barlow-Medium.ttf in Resources */,
+				50FDC4C3C92A8FB3DF8BF661 /* Barlow-SemiBold.ttf in Resources */,
+				F5C2D7A0B1078AA1CD5F274E /* Barlow-Bold.ttf in Resources */,
+				832A14E24DBEB5D4CE4F2ED4 /* JetBrainsMono-Regular.ttf in Resources */,
+				203FE9B92BA990E6B5DB4676 /* JetBrainsMono-Bold.ttf in Resources */,
+				751BA1859A029EA5C71C9616 /* OFL-Barlow.txt in Resources */,
+				439F9854A4183B2C12996603 /* OFL-BebasNeue.txt in Resources */,
+				A223659E9A8CE5144CA39829 /* OFL-JetBrainsMono.txt in Resources */,
 				7C11EB614DE3A2B15C84C767 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -443,6 +511,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4FB9FA662D4DE41707B4F431 /* Theme.swift in Sources */,
+				8C2749D21E0B84AB7184FB15 /* Surfaces.swift in Sources */,
+				42190A7B576995422CD3395D /* Controls.swift in Sources */,
 				51B4D1C4D8BA219ACD2B91AC /* RealtimeSubscription.swift in Sources */,
 				7EBFB2ED841ECE26E8B5BE49 /* MatchStatus.swift in Sources */,
 				8A8B57AC68AA73C81BEF6986 /* Portrait.swift in Sources */,
@@ -486,6 +557,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FEFEB3810EA48B5213A7CD68 /* ThemeTests.swift in Sources */,
 				42DE8959220F24CB5701F525 /* MatchViewModelTests.swift in Sources */,
 				DE165F7E7550F0498C813C64 /* LadderStandingsTests.swift in Sources */,
 				0EC30C786785186D83970CA6 /* LobbyViewModelTests.swift in Sources */,
@@ -519,6 +591,7 @@
 				INFOPLIST_FILE = BallParty/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Ball Party";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_BackgroundColor = Surface;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -604,6 +677,7 @@
 				INFOPLIST_FILE = BallParty/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Ball Party";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_BackgroundColor = Surface;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

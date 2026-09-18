@@ -9,108 +9,116 @@ struct SoloRecapView: View {
     var body: some View {
         ScrollView {
             if let recap = viewModel.recap {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 24) {
                     summary(recap)
                     ladder(recap)
 
                     if let message = viewModel.errorMessage {
-                        Text(message).font(.footnote).foregroundStyle(.red)
+                        ErrorBanner(message: message)
                     }
 
                     VStack(spacing: 8) {
                         Button {
                             Task { await viewModel.playAgain() }
                         } label: {
-                            HStack {
-                                if viewModel.isBusy { ProgressView().tint(.white) }
-                                Text("Play again").fontWeight(.semibold)
+                            HStack(spacing: 8) {
+                                if viewModel.isBusy { ProgressView() }
+                                Text("Play again")
                             }
-                            .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
+                        .buttonStyle(.solid)
                         .disabled(viewModel.isBusy)
 
                         Button("Change format") { viewModel.returnToSetup() }
+                            .buttonStyle(.ghost)
                             .disabled(viewModel.isBusy)
                         Button("Back home") { dismiss() }
-                            .foregroundStyle(.secondary)
+                            .buttonStyle(.quiet)
                     }
                     .frame(maxWidth: .infinity)
                 }
-                .padding()
+                .padding(16)
             }
         }
     }
 
     private func summary(_ recap: SoloRunViewModel.Recap) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("RUN COMPLETE")
-                .font(.caption.monospaced().weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text("\(recap.correct) correct")
-                .font(.system(size: 44, weight: .heavy, design: .rounded))
-                .accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Run complete").eyebrow()
+                Text("\(recap.correct) correct")
+                    .slabTitle(56)
+                    .accessibilityAddTraits(.isHeader)
+            }
 
             personalBestBanner(recap)
 
             HStack(spacing: 0) {
                 RunStat(label: "Questions right", value: recap.correct)
-                Divider().frame(height: 36)
+                Theme.line.frame(width: 1, height: 36).accessibilityHidden(true)
                 RunStat(label: "All-time high", value: recap.personalBest)
             }
-            .padding(.vertical, 8)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+            .padding(.vertical, 12)
+            .well()
         }
     }
 
+    /// A new personal best is the one thing on this screen worth a panel.
     @ViewBuilder
     private func personalBestBanner(_ recap: SoloRunViewModel.Recap) -> some View {
         if recap.isNewPersonalBest {
-            Label("New personal best!", systemImage: "trophy.fill")
-                .font(.headline)
-                .foregroundStyle(.orange)
+            PanelCard(edge: false) {
+                Label("New personal best!", systemImage: "trophy.fill")
+                    .font(.slab(24, relativeTo: .title2))
+                    .textCase(.uppercase)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         } else if recap.correct == recap.personalBest {
             Label("You matched your personal best of \(recap.personalBest).", systemImage: "equal.circle.fill")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.sans(15))
+                .foregroundStyle(Theme.fgMuted)
         } else {
             let gap = recap.personalBest - recap.correct
             Text("\(gap) short of your personal best of \(recap.personalBest).")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.sans(15))
+                .foregroundStyle(Theme.fgMuted)
         }
     }
 
     private func ladder(_ recap: SoloRunViewModel.Recap) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Your ladder").font(.title3.weight(.bold))
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("The players you saw").eyebrow()
+                Text("Your ladder").slabTitle(28)
+                    .accessibilityAddTraits(.isHeader)
+            }
             ForEach(recap.ladder) { entry in
                 HStack(spacing: 12) {
                     Text("\(entry.card.ordinal + 1)")
-                        .font(.caption2.monospaced().weight(.bold))
-                        .foregroundStyle(.white)
+                        .font(.mono(10, weight: .bold))
+                        .foregroundStyle(Theme.panelFg)
                         .frame(width: 22, height: 22)
-                        .background(Color.accentColor, in: Circle())
+                        .background(Theme.panel, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(entry.card.displayName).font(.subheadline.weight(.semibold)).lineLimit(1)
+                        Text(entry.card.displayName)
+                            .slabTitle(18)
+                            .lineLimit(1)
                         Text("\(entry.card.position) · \(entry.card.identityLine)")
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(.secondary)
+                            .monoLabel(10, tracking: 0.07)
                             .lineLimit(1)
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: 4) {
                         Text(entry.card.points.map(LadderCardView.formatPoints) ?? "—")
-                            .font(.subheadline.weight(.bold))
+                            .slabTitle(26)
                             .monospacedDigit()
-                        Text(entry.outcome.label)
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(entry.outcome.isCorrect ? Color.green : Color.secondary)
+                        ResultBadge(text: entry.outcome.label, tone: entry.outcome.isCorrect ? .good : .neutral)
                     }
                 }
-                .padding(10)
-                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
+                .padding(12)
+                .frame(maxWidth: .infinity)
+                .well()
                 .accessibilityElement(children: .combine)
             }
         }

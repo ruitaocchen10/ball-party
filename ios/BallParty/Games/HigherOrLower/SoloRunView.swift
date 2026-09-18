@@ -31,6 +31,7 @@ struct SoloRunView: View {
             case .complete: SoloRecapView(viewModel: viewModel)
             }
         }
+        .screenBackground()
         .navigationTitle("Higher or Lower")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.loadSetup() }
@@ -51,36 +52,31 @@ private struct SoloSetupView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("SOLO CHALLENGE")
-                        .font(.caption.monospaced().weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text("Make the streak last.")
-                        .font(.title2.weight(.bold))
-                    Text("Call each hidden card higher or lower. The ladder keeps going until you miss.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                PageHeader(
+                    eyebrow: "Solo challenge",
+                    title: "Make the streak last.",
+                    description: "Call each hidden card higher or lower. The ladder keeps going until you miss."
+                )
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Scoring").font(.headline)
-                    Picker("Scoring", selection: $viewModel.scoringMode) {
-                        ForEach(ScoringMode.allCases) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    Text("Scoring").fieldLabel()
+                    SegmentedChoice(
+                        selection: $viewModel.scoringMode,
+                        options: ScoringMode.allCases,
+                        title: { $0.label },
+                        accessibilityName: "Scoring"
+                    )
                     Text(viewModel.scoringMode.summary)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(.sans(14))
+                        .foregroundStyle(Theme.fgMuted)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Era").font(.headline)
+                    Text("Era").fieldLabel()
                     if viewModel.seasonBounds == nil {
                         HStack(spacing: 8) {
                             ProgressView()
-                            Text("Loading seasons…").font(.footnote).foregroundStyle(.secondary)
+                            Text("Loading seasons…").font(.sans(14)).foregroundStyle(Theme.fgMuted)
                         }
                     } else {
                         HStack(spacing: 12) {
@@ -88,46 +84,39 @@ private struct SoloSetupView: View {
                             SeasonMenu(title: "To", selection: $viewModel.seasonTo, choices: viewModel.seasonChoices)
                         }
                         Text("Cards are dealt from \(SeasonRange(from: viewModel.seasonFrom, to: viewModel.seasonTo).label).")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .font(.sans(14))
+                            .foregroundStyle(Theme.fgMuted)
                     }
                 }
 
                 if let message = viewModel.errorMessage {
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .accessibilityAddTraits(.isStaticText)
+                    ErrorBanner(message: message)
                 }
 
                 Button {
                     Task { await viewModel.start() }
                 } label: {
-                    HStack {
-                        if viewModel.isBusy { ProgressView().tint(.white) }
-                        Text("Start run").fontWeight(.semibold)
+                    HStack(spacing: 8) {
+                        if viewModel.isBusy { ProgressView() }
+                        Text("Start run")
                     }
-                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(.solid)
                 .disabled(!viewModel.canStart)
             }
-            .padding()
+            .padding(16)
         }
     }
 }
 
-private struct SeasonMenu: View {
+struct SeasonMenu: View {
     let title: String
     @Binding var selection: Int
     let choices: [Int]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title.uppercased())
-                .font(.caption2.monospaced().weight(.semibold))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).fieldLabel()
             Picker(title, selection: $selection) {
                 ForEach(choices, id: \.self) { season in
                     Text(String(season)).tag(season)
@@ -136,8 +125,7 @@ private struct SeasonMenu: View {
             .pickerStyle(.menu)
             .labelsHidden()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 8)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+            .fieldStyle()
         }
         .frame(maxWidth: .infinity)
     }

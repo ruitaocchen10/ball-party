@@ -8,21 +8,6 @@ struct Portrait: View {
     var size: CGFloat = 88
 
     var body: some View {
-        AsyncImage(url: url) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().scaledToFill()
-            default:
-                ZStack {
-                    Color.accentColor.opacity(0.85)
-                    Text(String(name.prefix(1)).uppercased())
-                        .font(.system(size: size * 0.42, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-            }
-        }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
-        .accessibilityHidden(true)
+        Avatar(name: name, url: url, size: size)
     }
 }

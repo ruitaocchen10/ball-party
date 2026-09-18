@@ -45,6 +45,8 @@ targets:
         INFOPLIST_FILE: BallParty/Info.plist
         CODE_SIGN_ENTITLEMENTS: BallParty/BallParty.entitlements
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # Matches Theme.surface, so the launch screen doesn't flash a different black.
+        INFOPLIST_KEY_UILaunchScreen_BackgroundColor: Surface
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         TARGETED_DEVICE_FAMILY: "1"

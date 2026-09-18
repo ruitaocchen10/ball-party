@@ -26,19 +26,22 @@ struct HuddleFeedView: View {
         Group {
             switch viewModel.phase {
             case .loading:
-                ProgressView("Loading the feed…")
+                ProgressView {
+                    Text("Loading the feed…").monoLabel(11, tracking: 0.15)
+                }
             case .failed(let message):
-                ContentUnavailableView {
-                    Label("Couldn't load Huddle", systemImage: "wifi.exclamationmark")
-                } description: {
-                    Text(message)
-                } actions: {
-                    Button("Try again") { Task { await viewModel.load() } }
+                ScrollView {
+                    EmptyState(title: "Couldn't load Huddle", message: message) {
+                        Button("Try again") { Task { await viewModel.load() } }
+                            .buttonStyle(BPButtonStyle(variant: .ghost, fullWidth: false))
+                    }
+                    .padding(16)
                 }
             case .loaded:
                 feed
             }
         }
+        .screenBackground()
         .navigationTitle("Huddle")
         .navigationBarTitleDisplayMode(.inline)
         // Also runs on coming back from a prompt, which is when the feed is
@@ -54,15 +57,17 @@ struct HuddleFeedView: View {
     @ViewBuilder
     private var feed: some View {
         if viewModel.posts.isEmpty {
-            ContentUnavailableView(
-                "No prompts yet",
-                systemImage: "text.bubble",
-                description: Text("New prompts show up here. Pull down to check again.")
-            )
+            ScrollView {
+                EmptyState(
+                    title: "No prompts yet",
+                    message: "New prompts show up here. Pull down to check again."
+                )
+                .padding(16)
+            }
             .refreshable { await viewModel.load() }
         } else {
             ScrollView {
-                LazyVStack(spacing: 16) {
+                LazyVStack(spacing: 20) {
                     if let message = viewModel.errorMessage {
                         ErrorBanner(message: message)
                     }
@@ -75,7 +80,7 @@ struct HuddleFeedView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding()
+                .padding(16)
             }
             .refreshable { await viewModel.load() }
         }
@@ -84,53 +89,64 @@ struct HuddleFeedView: View {
 
 /// A prompt as the feed shows it: enough of the matchup to invite a response,
 /// with the picks and the takes behind the tap.
+///
+/// It is a panel because a prompt is the thing that matters here. The red edge
+/// is there while the crowd's answer is still withheld from this viewer —
+/// `aggregate` is nil until they have answered.
 private struct PostCard: View {
     let post: PromptPost
     let actionLabel: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(post.promptText)
-                    .font(.title3.weight(.bold))
-                    .multilineTextAlignment(.leading)
-                Spacer(minLength: 8)
+        PanelCard(edge: post.aggregate == nil) {
+            VStack(alignment: .leading, spacing: 10) {
                 PostStatusLabel(post: post)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-            if !post.caption.isEmpty {
-                Text(post.caption).font(.subheadline).foregroundStyle(.secondary)
-            }
-            if post.status == .void, let reason = post.voidReason {
-                Text(reason).font(.caption.monospaced()).foregroundStyle(.secondary)
-            }
+                    .monoLabel(10, tracking: 0.16, color: Theme.hiddenInk)
 
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(post.slots.prefix(3)) { slot in
-                    Text(matchup(slot)).font(.subheadline.weight(.medium))
+                Text(post.promptText)
+                    .slabTitle(30, color: Theme.panelFg)
+                    .lineSpacing(0)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !post.caption.isEmpty {
+                    Text(post.caption)
+                        .font(.sans(15))
+                        .foregroundStyle(Theme.panelBody)
                 }
-                if post.slots.count > 3 {
-                    Text("+\(post.slots.count - 3) more").font(.caption).foregroundStyle(.secondary)
+                if post.status == .void, let reason = post.voidReason {
+                    Text(reason).monoLabel(11, tracking: 0.08, color: Theme.panelMuted)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(post.slots.prefix(3)) { slot in
+                        Text(matchup(slot)).font(.sans(15, weight: .semibold))
+                    }
+                    if post.slots.count > 3 {
+                        Text("+\(post.slots.count - 3) more").monoLabel(10, tracking: 0.1, color: Theme.panelMuted)
+                    }
+                }
+
+                DashedRule().padding(.top, 4)
+
+                HStack {
+                    if post.aggregate != nil {
+                        Text("\(post.responseCount) \(post.responseCount == 1 ? "person has" : "people have") answered")
+                            .monoLabel(10, tracking: 0.11, color: Theme.panelMuted)
+                    }
+                    Spacer()
+                    Text(actionLabel)
+                        .font(.slab(16, relativeTo: .body))
+                        .tracking(0.64)
+                        .textCase(.uppercase)
+                        .foregroundStyle(Theme.panel)
+                        .padding(.horizontal, 14)
+                        .frame(height: 36)
+                        .background(Theme.panelFg)
                 }
             }
-
-            if post.aggregate != nil {
-                Text("\(post.responseCount) \(post.responseCount == 1 ? "person has" : "people have") answered")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-
-            Text(actionLabel)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(.tint, in: RoundedRectangle(cornerRadius: 10))
-                .foregroundStyle(.white)
+            .padding(16)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
         .opacity(post.status == .void ? 0.5 : 1)
     }
 

@@ -18,21 +18,17 @@ struct SoloPlayView: View {
                     LadderCardView(label: "Challenger", card: challenger)
                 } else {
                     Text("Waiting for the next card…")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .monoLabel(11, tracking: 0.13)
                         .padding(.vertical, 40)
                 }
 
                 callArea
 
                 if let message = viewModel.errorMessage {
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ErrorBanner(message: message)
                 }
             }
-            .padding()
+            .padding(16)
         }
         // Both card faces are visual idioms; this is the whole announcement.
         .accessibilityElement(children: .contain)
@@ -41,24 +37,24 @@ struct SoloPlayView: View {
     private var header: some View {
         VStack(spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text(viewModel.questionLabel.uppercased())
-                    .font(.caption.monospaced().weight(.semibold))
-                    .foregroundStyle(.secondary)
+                Text(viewModel.questionLabel).monoLabel(11, weight: .semibold, tracking: 0.15)
                 Spacer()
-                Text(viewModel.formatLabel.uppercased())
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
+                Text(viewModel.formatLabel).monoLabel(11, tracking: 0.13)
             }
             HStack(spacing: 0) {
                 RunStat(label: "Correct", value: viewModel.correctCount)
-                Divider().frame(height: 36)
+                statDivider
                 RunStat(label: "Streak", value: viewModel.currentStreak)
-                Divider().frame(height: 36)
+                statDivider
                 RunStat(label: "All-time high", value: viewModel.allTimeHigh)
             }
-            .padding(.vertical, 8)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+            .padding(.vertical, 12)
+            .well()
         }
+    }
+
+    private var statDivider: some View {
+        Theme.line.frame(width: 1, height: 36).accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -67,16 +63,13 @@ struct SoloPlayView: View {
             // The question has revealed: say how it went, then wait for the
             // player — solo has no timer pushing them out of a reveal.
             VStack(spacing: 12) {
-                Text(outcome.label)
-                    .font(.headline)
-                    .foregroundStyle(outcome.isCorrect ? Color.green : Color.red)
+                ResultBadge(text: outcome.label, tone: outcome.isCorrect ? .good : .bad)
                 Button {
                     Task { await viewModel.continueRun() }
                 } label: {
-                    Text(outcome.isCorrect ? "Continue" : "See your run").fontWeight(.semibold).frame(maxWidth: .infinity)
+                    Text(outcome.isCorrect ? "Continue" : "See your run")
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(.solid)
                 .disabled(!viewModel.canContinue)
             }
         } else {
@@ -85,23 +78,21 @@ struct SoloPlayView: View {
                     Button {
                         Task { await viewModel.call(.higher) }
                     } label: {
-                        Label("Higher", systemImage: "arrow.up").fontWeight(.semibold).frame(maxWidth: .infinity)
+                        Label("Higher", systemImage: "arrow.up")
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.solid)
                     Button {
                         Task { await viewModel.call(.lower) }
                     } label: {
-                        Label("Lower", systemImage: "arrow.down").fontWeight(.semibold).frame(maxWidth: .infinity)
+                        Label("Lower", systemImage: "arrow.down")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.ghost)
                 }
-                .controlSize(.large)
                 .disabled(!viewModel.canCall)
 
                 if let call = viewModel.myCall {
                     Text(call.timedOut ? "You ran out of time." : "You called \(call.direction?.rawValue ?? "").")
-                        .font(.footnote.monospaced())
-                        .foregroundStyle(.secondary)
+                        .monoLabel(11, tracking: 0.13)
                 }
             }
         }
@@ -113,12 +104,10 @@ struct RunStat: View {
     let value: Int
 
     var body: some View {
-        VStack(spacing: 2) {
-            Text(label.uppercased())
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .foregroundStyle(.secondary)
+        VStack(spacing: 4) {
+            Text(label).monoLabel(10, weight: .bold, tracking: 0.14)
             Text("\(value)")
-                .font(.title2.weight(.bold))
+                .slabTitle(32)
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity)
@@ -129,59 +118,67 @@ struct RunStat: View {
 /// One card and its number. The same view for both sides of a question because
 /// they are the same card at two moments — every challenger becomes the next
 /// anchor.
+///
+/// The number is the concealed thing: red and woven until the server writes it,
+/// then a cream panel.
 struct LadderCardView: View {
     let label: String
     let card: LadderCard
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .top) {
-                HStack {
-                    Text(card.position).font(.title3.weight(.bold))
-                    Spacer()
-                    Text(card.team).font(.caption.monospaced().weight(.bold)).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label).monoLabel(11, tracking: 0.13)
+                .accessibilityHidden(true)
+
+            VStack(spacing: 0) {
+                ZStack(alignment: .top) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(card.position).slabTitle(24)
+                        Spacer()
+                        Text(card.team).monoLabel(11, weight: .bold, tracking: 0.12)
+                    }
+                    VStack(spacing: 8) {
+                        Portrait(name: card.displayName, url: card.headshotUrl.flatMap(URL.init(string:)))
+                        Text(card.displayName)
+                            .slabTitle(32)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                        Text(card.identityLine).monoLabel(10, tracking: 0.12)
+                    }
                 }
-                VStack(spacing: 6) {
-                    Portrait(name: card.displayName, url: card.headshotUrl.flatMap(URL.init(string:)))
-                    Text(card.displayName)
-                        .font(.title2.weight(.bold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                    Text(card.identityLine)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                }
+                .padding(12)
+
+                pointsPanel
             }
-            .padding(12)
-
-            Divider()
-
-            pointsPanel
+            .well()
+            .clipShape(Rectangle())
         }
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.quaternary))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
     }
 
-    @ViewBuilder
     private var pointsPanel: some View {
-        VStack(spacing: 2) {
-            Text("FANTASY POINTS")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundStyle(card.points == nil ? Color.secondary : Color.white.opacity(0.7))
+        Reveal(revealed: card.points != nil) {
             // A missing number is an honest rendering of an absent value: the
             // server has not written this card's points yet.
-            Text(card.points.map(Self.formatPoints) ?? "? ? ?")
-                .font(.system(size: 34, weight: .heavy, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(card.points == nil ? Color.secondary : Color.white)
+            Concealed(label: "Fantasy points, hidden until this question reveals") {
+                VStack(spacing: 4) {
+                    Text("Fantasy points").monoLabel(12, weight: .bold, tracking: 0.15, color: Theme.panel)
+                    Text("? ? ?").slabTitle(40, color: Theme.panel)
+                }
+                .padding(.vertical, 16)
+            }
+        } content: {
+            VStack(spacing: 4) {
+                Text("Fantasy points").monoLabel(12, weight: .bold, tracking: 0.15, color: Theme.panelMuted)
+                Text(card.points.map(Self.formatPoints) ?? "")
+                    .slabTitle(40, color: Theme.panelFg)
+                    .monospacedDigit()
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(Theme.panel)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(card.points == nil ? AnyShapeStyle(.quaternary) : AnyShapeStyle(Color.accentColor))
-        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
-        .animation(.easeOut(duration: 0.25), value: card.points)
     }
 
     private var accessibilitySummary: String {
@@ -205,21 +202,17 @@ struct CountdownView: View {
         if let remainingMs = clock.remainingMs {
             let seconds = Int((Double(remainingMs) / 1_000).rounded(.up))
             let fraction = min(1, Double(remainingMs) / Double(max(1, phase.durationMs - MatchClockConstants.visibleSlackMs)))
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(phase.clockLabel.uppercased())
-                        .font(.caption.monospaced().weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(seconds)s")
-                        .font(.title3.weight(.bold))
-                        .monospacedDigit()
-                }
-                ProgressView(value: fraction)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(phase.clockLabel).monoLabel(11, tracking: 0.15)
+                Text("\(seconds)s")
+                    .slabTitle(32)
+                    .monospacedDigit()
+                MeterBar(fraction: fraction)
                     .animation(.linear(duration: Double(MatchClockConstants.tickMs) / 1_000), value: fraction)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+            .well(bordered: false)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(seconds) seconds left")
         }

@@ -32,6 +32,7 @@ struct LobbyScreen: View {
             case .closed: ClosedRoomView(viewModel: viewModel)
             }
         }
+        .screenBackground()
         .navigationTitle("Play with friends")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(item: presentedMatchBinding) { route in
@@ -79,39 +80,31 @@ private struct LobbyEntryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("TWO TO FOUR PLAYERS")
-                        .font(.caption.monospaced().weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text("Play a room together.")
-                        .font(.title2.weight(.bold))
-                    Text("Host a room and share the code, or join one you were given.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                PageHeader(
+                    eyebrow: "Two to four players",
+                    title: "Play a room together.",
+                    description: "Host a room and share the code, or join one you were given."
+                )
 
                 Button {
                     Task { await viewModel.createRoom() }
                 } label: {
-                    HStack {
-                        if viewModel.isBusy { ProgressView().tint(.white) }
-                        Text("Host a room").fontWeight(.semibold)
+                    HStack(spacing: 8) {
+                        if viewModel.isBusy { ProgressView() }
+                        Text("Host a room")
                     }
-                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(.solid)
                 .disabled(viewModel.isBusy)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Join with a code").font(.headline)
+                    Text("Join with a code").fieldLabel()
                     HStack(spacing: 8) {
                         TextField("ABCDE", text: $viewModel.code)
                             .textInputAutocapitalization(.characters)
                             .autocorrectionDisabled()
-                            .font(.title3.monospaced().weight(.bold))
-                            .padding(10)
-                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                            .font(.mono(20, weight: .bold, relativeTo: .title3))
+                            .fieldStyle()
                             .focused($codeFocused)
                             .submitLabel(.go)
                             .onSubmit { Task { await viewModel.joinRoom() } }
@@ -119,17 +112,16 @@ private struct LobbyEntryView: View {
                             codeFocused = false
                             Task { await viewModel.joinRoom() }
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
+                        .buttonStyle(BPButtonStyle(variant: .ghost, fullWidth: false))
                         .disabled(viewModel.isBusy)
                     }
                 }
 
                 if let message = viewModel.errorMessage {
-                    Text(message).font(.footnote).foregroundStyle(.red)
+                    ErrorBanner(message: message)
                 }
             }
-            .padding()
+            .padding(16)
         }
     }
 }
@@ -149,26 +141,24 @@ private struct LobbyRoomView: View {
                     Button {
                         viewModel.rejoinMatch()
                     } label: {
-                        Text("Rejoin the game").fontWeight(.semibold).frame(maxWidth: .infinity)
+                        Text("Rejoin the game")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .buttonStyle(.solid)
                     .accessibilityHint("Your seat in the game in progress is still yours")
                     .id(matchId)
                 }
 
                 if viewModel.waitingForNextRun {
                     Text("A game is in progress. You're in for the next one.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .padding(10)
+                        .monoLabel(11, tracking: 0.1)
+                        .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                        .well()
                 }
                 nextUp
 
                 if let message = viewModel.errorMessage {
-                    Text(message).font(.footnote).foregroundStyle(.red)
+                    ErrorBanner(message: message)
                 }
 
                 // Both land back on host-or-join rather than popping the
@@ -179,15 +169,16 @@ private struct LobbyRoomView: View {
                         Button("Close the room", role: .destructive) {
                             Task { await viewModel.closeRoom() }
                         }
+                        .buttonStyle(.ghost)
                     }
                     Button("Leave") {
                         Task { await viewModel.leaveRoom() }
                     }
-                    .foregroundStyle(.secondary)
+                    .buttonStyle(.quiet)
                 }
                 .frame(maxWidth: .infinity)
             }
-            .padding()
+            .padding(16)
         }
         // Pushing the match screen takes this one off screen, which stops it
         // observing; coming back has to pick the room up again, or the roster
@@ -199,50 +190,51 @@ private struct LobbyRoomView: View {
         }
     }
 
+    /// The code is what the whole room needs to read out loud, so it gets a panel.
     private var code: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("JOIN CODE")
-                .font(.caption.monospaced().weight(.semibold))
-                .foregroundStyle(.secondary)
+        PanelCard(edge: false) {
             HStack(spacing: 12) {
-                Text(viewModel.roomCode ?? "")
-                    .font(.system(size: 40, weight: .heavy, design: .monospaced))
-                    .kerning(4)
-                    .accessibilityLabel(
-                        "Join code \((viewModel.roomCode ?? "").map(String.init).joined(separator: " "))"
-                    )
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Join code").monoLabel(10, weight: .bold, tracking: 0.16, color: Theme.panelMuted)
+                    Text(viewModel.roomCode ?? "")
+                        .font(.mono(40, weight: .bold, relativeTo: .largeTitle))
+                        .tracking(6)
+                        .foregroundStyle(Theme.panelFg)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                        .accessibilityLabel(
+                            "Join code \((viewModel.roomCode ?? "").map(String.init).joined(separator: " "))"
+                        )
+                }
+                Spacer(minLength: 0)
                 if let code = viewModel.roomCode {
                     ShareLink(item: "Join my Ball Party room with the code \(code)") {
                         Image(systemName: "square.and.arrow.up")
+                            .frame(width: 24)
                     }
+                    .buttonStyle(BPButtonStyle(variant: .ink, fullWidth: false))
                     .accessibilityLabel("Share the join code")
                 }
             }
+            .padding(16)
         }
     }
 
     private var roster: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("At the table").font(.headline)
-                Spacer()
-                Text("\(viewModel.members.count) of 4 seats")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitle(text: "At the table", trailing: "\(viewModel.members.count) of 4 seats")
             ForEach(viewModel.members) { member in
-                HStack(spacing: 10) {
-                    Portrait(name: member.displayName, url: nil, size: 32)
-                    Text(member.displayName).font(.subheadline.weight(.semibold))
+                HStack(spacing: 12) {
+                    Avatar(name: member.displayName, size: 32, isMine: member.userId == viewModel.viewerId)
+                    Text(member.displayName).slabTitle(20).lineLimit(1)
                     if member.userId == viewModel.lobby?.hostId {
-                        Text("HOST")
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.tint)
+                        Text("Host").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
                     }
                     Spacer()
                 }
-                .padding(10)
-                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
+                .padding(12)
+                .frame(maxWidth: .infinity)
+                .well()
                 .accessibilityElement(children: .combine)
             }
         }
@@ -253,7 +245,7 @@ private struct LobbyRoomView: View {
     @ViewBuilder
     private var nextUp: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Next up").font(.headline)
+            SectionTitle(text: "Next up")
 
             if viewModel.isHost {
                 Picker("Game", selection: gameBinding) {
@@ -263,11 +255,13 @@ private struct LobbyRoomView: View {
                     }
                 }
                 .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fieldStyle()
             } else if let game = viewModel.selectedGame {
-                Text(game.label).font(.title3.weight(.bold))
-                Text("Waiting for the host to start").font(.footnote).foregroundStyle(.secondary)
+                Text(game.label).slabTitle(32)
+                Text("Waiting for the host to start").monoLabel(11, tracking: 0.13)
             } else {
-                Text("The host hasn't picked a game yet.").font(.footnote).foregroundStyle(.secondary)
+                Text("The host hasn't picked a game yet.").monoLabel(11, tracking: 0.13)
             }
 
             if viewModel.isHost, viewModel.selectedGame == .higherOrLower {
@@ -275,38 +269,34 @@ private struct LobbyRoomView: View {
                 Button {
                     Task { await viewModel.startGame() }
                 } label: {
-                    HStack {
-                        if viewModel.isBusy { ProgressView().tint(.white) }
-                        Text("Start the game").fontWeight(.semibold)
+                    HStack(spacing: 8) {
+                        if viewModel.isBusy { ProgressView() }
+                        Text("Start the game")
                     }
-                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(.solid)
                 .disabled(!viewModel.canStart)
             }
 
             if let reason = viewModel.startBlockedReason {
-                Text(reason.uppercased())
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
+                Text(reason).monoLabel(11, tracking: 0.1)
             }
         }
     }
 
     private var format: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Picker("Scoring", selection: $viewModel.scoringMode) {
-                ForEach(ScoringMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
+        VStack(alignment: .leading, spacing: 12) {
+            SegmentedChoice(
+                selection: $viewModel.scoringMode,
+                options: ScoringMode.allCases,
+                title: { $0.label },
+                accessibilityName: "Scoring"
+            )
 
             if !viewModel.seasonChoices.isEmpty {
                 HStack(spacing: 12) {
-                    SeasonPicker(title: "From", selection: $viewModel.seasonFrom, choices: viewModel.seasonChoices)
-                    SeasonPicker(title: "To", selection: $viewModel.seasonTo, choices: viewModel.seasonChoices)
+                    SeasonMenu(title: "From", selection: $viewModel.seasonFrom, choices: viewModel.seasonChoices)
+                    SeasonMenu(title: "To", selection: $viewModel.seasonTo, choices: viewModel.seasonChoices)
                 }
             }
         }
@@ -323,39 +313,16 @@ private struct LobbyRoomView: View {
     }
 }
 
-private struct SeasonPicker: View {
-    let title: String
-    @Binding var selection: Int
-    let choices: [Int]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title.uppercased())
-                .font(.caption2.monospaced().weight(.semibold))
-                .foregroundStyle(.secondary)
-            Picker(title, selection: $selection) {
-                ForEach(choices, id: \.self) { season in
-                    Text(String(season)).tag(season)
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 8)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
 private struct ClosedRoomView: View {
     @ObservedObject var viewModel: LobbyViewModel
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("This room has closed.").font(.headline)
+        VStack(alignment: .leading, spacing: 24) {
+            PageHeader(title: "This room has closed.")
             Button("Back") { viewModel.dismissClosedRoom() }
+                .buttonStyle(.solid)
         }
-        .padding()
+        .padding(16)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 }

@@ -27,41 +27,47 @@ struct AuthView: View {
                 } onCompletion: { result in
                     Task { await viewModel.completeAppleSignIn(result) }
                 }
-                .signInWithAppleButtonStyle(.black)
+                .signInWithAppleButtonStyle(.white)
                 .frame(height: 48)
+                .clipShape(Rectangle())
 
                 Button {
                     Task { await viewModel.signInWithGoogle() }
                 } label: {
                     Text(mode == .signUp ? "Sign up with Google" : "Sign in with Google")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .buttonStyle(.ghost)
 
-                Divider()
+                HStack(spacing: 12) {
+                    LineRule()
+                    Text("or").monoLabel(10, tracking: 0.15)
+                    LineRule()
+                }
 
                 VStack(alignment: .leading, spacing: 12) {
                     if mode == .signUp {
-                        TextField("Display name", text: $displayName)
-                            .textContentType(.nickname)
-                            .textFieldStyle(.roundedBorder)
+                        field("Display name") {
+                            TextField("Display name", text: $displayName)
+                                .textContentType(.nickname)
+                        }
                     }
 
-                    TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .textFieldStyle(.roundedBorder)
+                    field("Email") {
+                        TextField("Email", text: $email)
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
 
-                    SecureField("Password", text: $password)
-                        .textContentType(mode == .signUp ? .newPassword : .password)
-                        .textFieldStyle(.roundedBorder)
+                    field("Password") {
+                        SecureField("Password", text: $password)
+                            .textContentType(mode == .signUp ? .newPassword : .password)
+                    }
 
                     if let notice = viewModel.notice {
                         Text(notice.message)
-                            .font(.footnote)
+                            .font(.sans(14))
                             .foregroundStyle(noticeColor(notice))
                     }
 
@@ -69,26 +75,34 @@ struct AuthView: View {
                         Task { await submit() }
                     } label: {
                         Text(viewModel.isBusy ? "Working…" : (mode == .signUp ? "Create account" : "Sign in"))
-                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .buttonStyle(.solid)
                     .disabled(viewModel.isBusy)
+                    .padding(.top, 4)
                 }
 
                 toggleModeButton
             }
             .padding(24)
         }
+        .screenBackground()
+    }
+
+    /// A field with its caption above it, the way the web form lays them out.
+    private func field<Field: View>(_ label: String, @ViewBuilder field: () -> Field) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).font(.sans(14, weight: .medium)).foregroundStyle(Theme.fg)
+            field().fieldStyle()
+        }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(mode == .signUp ? "Get in the game" : "Ball Party")
-                .font(.largeTitle.bold())
+                .slabTitle(48)
+                .accessibilityAddTraits(.isHeader)
             Text(mode == .signUp ? "Takes about ten seconds" : "Sign in to start or join a room")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .monoLabel(11, tracking: 0.15)
         }
     }
 
@@ -98,8 +112,8 @@ struct AuthView: View {
             mode = mode == .signUp ? .signIn : .signUp
         } label: {
             Text(mode == .signUp ? "Already have an account? Sign in" : "New here? Create an account")
-                .font(.footnote)
         }
+        .buttonStyle(.quiet)
     }
 
     private func submit() async {
@@ -113,8 +127,8 @@ struct AuthView: View {
 
     private func noticeColor(_ notice: AuthViewModel.Notice) -> Color {
         switch notice {
-        case .error: .red
-        case .info: .secondary
+        case .error: Theme.hiddenText
+        case .info: Theme.fgMuted
         }
     }
 }

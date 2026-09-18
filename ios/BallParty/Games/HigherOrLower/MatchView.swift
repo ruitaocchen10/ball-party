@@ -30,13 +30,16 @@ struct MatchScreen: View {
     var body: some View {
         Group {
             if viewModel.board == nil {
-                ProgressView("Dealing…")
+                ProgressView {
+                    Text("Dealing…").monoLabel(11, tracking: 0.15)
+                }
             } else if viewModel.isComplete {
                 MatchFinalView(viewModel: viewModel)
             } else {
                 MatchPlayView(viewModel: viewModel)
             }
         }
+        .screenBackground()
         .navigationTitle("Higher or Lower")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
@@ -65,10 +68,10 @@ private struct MatchPlayView: View {
 
                 if viewModel.isPaused {
                     Label("The host paused the game.", systemImage: "pause.circle.fill")
-                        .font(.footnote.weight(.semibold))
+                        .monoLabel(11, weight: .semibold, tracking: 0.13, color: Theme.fg)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                        .padding(12)
+                        .well()
                 }
 
                 if let phase = viewModel.phase {
@@ -80,8 +83,7 @@ private struct MatchPlayView: View {
                     LadderCardView(label: "Challenger", card: challenger)
                 } else {
                     Text("Waiting for the next card…")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .monoLabel(11, tracking: 0.13)
                         .padding(.vertical, 40)
                 }
 
@@ -89,25 +91,18 @@ private struct MatchPlayView: View {
                 StandingsRail(viewModel: viewModel)
 
                 if let message = viewModel.errorMessage {
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ErrorBanner(message: message)
                 }
             }
-            .padding()
+            .padding(16)
         }
     }
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(viewModel.questionLabel.uppercased())
-                .font(.caption.monospaced().weight(.semibold))
-                .foregroundStyle(.secondary)
+            Text(viewModel.questionLabel).monoLabel(11, weight: .semibold, tracking: 0.15)
             Spacer()
-            Text(viewModel.formatLabel.uppercased())
-                .font(.caption.monospaced())
-                .foregroundStyle(.secondary)
+            Text(viewModel.formatLabel).monoLabel(11, tracking: 0.13)
         }
     }
 
@@ -118,17 +113,16 @@ private struct MatchPlayView: View {
                 Button {
                     Task { await viewModel.call(.higher) }
                 } label: {
-                    Label("Higher", systemImage: "arrow.up").fontWeight(.semibold).frame(maxWidth: .infinity)
+                    Label("Higher", systemImage: "arrow.up")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.solid)
                 Button {
                     Task { await viewModel.call(.lower) }
                 } label: {
-                    Label("Lower", systemImage: "arrow.down").fontWeight(.semibold).frame(maxWidth: .infinity)
+                    Label("Lower", systemImage: "arrow.down")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.ghost)
             }
-            .controlSize(.large)
             .disabled(!viewModel.canCall)
 
             // A row with no direction is the miss the server wrote when the
@@ -137,8 +131,7 @@ private struct MatchPlayView: View {
             // difference shows.
             if let call = viewModel.myCall {
                 Text(call.timedOut ? "You ran out of time." : "You called \(call.direction?.rawValue ?? "").")
-                    .font(.footnote.monospaced())
-                    .foregroundStyle(.secondary)
+                    .monoLabel(11, tracking: 0.13)
             }
         }
     }
@@ -149,52 +142,48 @@ private struct StandingsRail: View {
     @ObservedObject var viewModel: MatchViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("STANDINGS")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                Text("Standings").monoLabel(10, weight: .bold, tracking: 0.15)
                 Spacer()
-                Text("CORRECT · BEST")
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                Text("Correct · best").monoLabel(9, tracking: 0.08)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
 
             ForEach(viewModel.standings) { standing in
                 let player = standing.player
+                LineRule()
                 HStack(spacing: 10) {
                     Text("\(standing.tied ? "T-" : "#")\(standing.rank)")
-                        .font(.caption.monospaced().weight(.bold))
-                        .foregroundStyle(standing.rank == 1 ? Color.accentColor : Color.secondary)
-                        .frame(width: 32, alignment: .leading)
+                        .font(.mono(12, weight: .bold))
+                        .foregroundStyle(standing.rank == 1 ? Theme.hiddenText : Theme.fgMuted)
+                        .frame(width: 34, alignment: .leading)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 4) {
-                            Text(player.name).font(.subheadline.weight(.semibold)).lineLimit(1)
+                            Text(player.name).slabTitle(18).lineLimit(1)
                             if player.userId == viewModel.viewerId {
-                                Text("YOU")
-                                    .font(.system(size: 8, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(.tint)
+                                Text("You").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
                             }
                         }
-                        Text(viewModel.status(of: player))
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                        Text(viewModel.status(of: player)).monoLabel(10, tracking: 0.07)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("\(player.correctCount) correct")
-                            .font(.caption.weight(.bold))
+                            .monoLabel(10, weight: .bold, tracking: 0.05, color: Theme.fg)
                             .monospacedDigit()
-                        Text("\(player.bestStreak) best")
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                        Text("\(player.bestStreak) best").monoLabel(10, tracking: 0.05)
                     }
                 }
-                .padding(10)
-                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(standing.rank == 1 ? Theme.panel.opacity(0.05) : .clear)
                 .accessibilityElement(children: .combine)
             }
         }
+        .frame(maxWidth: .infinity)
+        .well()
     }
 }
 
@@ -208,47 +197,59 @@ private struct MatchFinalView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("FINAL")
-                        .font(.caption.monospaced().weight(.semibold))
-                        .foregroundStyle(.secondary)
+                    Text("Final").eyebrow()
                     Text(viewModel.headline)
-                        .font(.system(size: 34, weight: .heavy, design: .rounded))
+                        .slabTitle(44)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                 }
 
                 ForEach(viewModel.finalStandings) { row in
-                    HStack(spacing: 12) {
-                        Text("#\(row.rank)")
-                            .font(.headline.monospaced())
-                            .foregroundStyle(row.rank == 1 ? Color.accentColor : Color.secondary)
-                            .frame(width: 34, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 4) {
-                                Text(row.name).font(.headline).lineLimit(1)
-                                if row.isViewer {
-                                    Text("YOU")
-                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(.tint)
-                                }
-                            }
-                            Text(row.statLine)
-                                .font(.caption.monospaced())
-                                .foregroundStyle(.secondary)
+                    // The winner is the thing that matters, so the winner is a panel.
+                    if row.rank == 1 {
+                        PanelCard(edge: false) {
+                            finalRow(row, onPanel: true).padding(14)
                         }
-                        Spacer()
+                        .accessibilityElement(children: .combine)
+                    } else {
+                        finalRow(row, onPanel: false)
+                            .padding(14)
+                            .frame(maxWidth: .infinity)
+                            .well()
+                            .accessibilityElement(children: .combine)
                     }
-                    .padding(12)
-                    .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
-                    .accessibilityElement(children: .combine)
                 }
 
                 if let message = viewModel.errorMessage {
-                    Text(message).font(.footnote).foregroundStyle(.red)
+                    ErrorBanner(message: message)
                 }
 
                 postGameControls
             }
-            .padding()
+            .padding(16)
+        }
+    }
+
+    private func finalRow(_ row: MatchViewModel.FinalStanding, onPanel: Bool) -> some View {
+        HStack(spacing: 12) {
+            Text("#\(row.rank)")
+                .font(.mono(16, weight: .bold))
+                .foregroundStyle(row.rank == 1 ? (onPanel ? Theme.hiddenInk : Theme.hiddenText) : Theme.fgMuted)
+                .frame(width: 40, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(row.name)
+                        .slabTitle(24, color: onPanel ? Theme.panelFg : Theme.fg)
+                        .lineLimit(1)
+                    if row.isViewer {
+                        Text("You")
+                            .monoLabel(9, weight: .bold, tracking: 0.08, color: onPanel ? Theme.hiddenInk : Theme.hiddenText)
+                    }
+                }
+                Text(row.statLine)
+                    .monoLabel(11, tracking: 0.08, color: onPanel ? Theme.panelMuted : Theme.fgMuted)
+            }
+            Spacer()
         }
     }
 
@@ -263,28 +264,27 @@ private struct MatchFinalView: View {
                 Button {
                     Task { await viewModel.choosePostGame(.replay) }
                 } label: {
-                    HStack {
-                        if viewModel.isBusy { ProgressView().tint(.white) }
-                        Text("Play again").fontWeight(.semibold)
+                    HStack(spacing: 8) {
+                        if viewModel.isBusy { ProgressView() }
+                        Text("Play again")
                     }
-                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(.solid)
                 .disabled(!viewModel.canChoosePostGame)
 
                 Button("Back to the room") {
                     Task { await viewModel.choosePostGame(.lobby) }
                 }
+                .buttonStyle(.ghost)
                 .disabled(!viewModel.canChoosePostGame)
             }
             .frame(maxWidth: .infinity)
         } else {
             VStack(spacing: 8) {
                 Text("Waiting for the host to choose what's next.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .monoLabel(11, tracking: 0.13)
                 Button("Back to the room") { dismiss() }
+                    .buttonStyle(.ghost)
             }
             .frame(maxWidth: .infinity)
         }
