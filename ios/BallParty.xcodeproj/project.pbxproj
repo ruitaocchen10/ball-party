@@ -11,6 +11,18 @@
 		60CEB77CE80375849D19FB8F /* BallPartyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6922E355C2C789A3555050C /* BallPartyApp.swift */; };
 		7C11EB614DE3A2B15C84C767 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 22E9476B19287E93B3829EFB /* Assets.xcassets */; };
 		8BCEE9CDEFA20861493E22C3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13676475DB11EF7FEDE1A0F8 /* ContentView.swift */; };
+		07E051BD31CC211613846724 /* IdentityConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC8A96142A0621FD8ABEA33 /* IdentityConstants.swift */; };
+		A3E8D2B30D1E62CB56A83F1F /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A065A37B29A40FBB799D0B8A /* SupabaseConfig.swift */; };
+		FAD9687F1C07662E5877E74D /* AppleSignInNonce.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F929BCCFB1BB06349501A51 /* AppleSignInNonce.swift */; };
+		AE32C3F402FED7AA379BC9C5 /* AuthBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA291456539C74261724E01 /* AuthBackend.swift */; };
+		597F339E95769DF03F33DCAB /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17FAE7FC496C6B37C6917E34 /* AuthViewModel.swift */; };
+		A62300401A13A2D1F4C0C719 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8216A7CE2D2C62774B54790 /* AuthView.swift */; };
+		696F992F3B9E971D15739013 /* AuthGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB0816A1860592796A6B1F7 /* AuthGateView.swift */; };
+		C0228715574E2C17617AE87E /* FakeAuthBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8810FD20EE533EA2EB24E459 /* FakeAuthBackend.swift */; };
+		32F54770BF21BE083734336D /* IdentityConstantsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B57366732C868289247B5FC0 /* IdentityConstantsTests.swift */; };
+		EC750D5C2C3586D4CCDBD62F /* AppleSignInNonceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB3B711B5508796FC1E770E /* AppleSignInNonceTests.swift */; };
+		2FF1B9274A8DBF77A29DC206 /* AuthViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06ED444F3FC870054ED36B7 /* AuthViewModelTests.swift */; };
+		D954CFA4B4F65D4815B354CC /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 23F185FD6F85A3A67B64E719 /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +30,22 @@
 		22E9476B19287E93B3829EFB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3FD826920DC17F0A393DE271 /* BallParty.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BallParty.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B6922E355C2C789A3555050C /* BallPartyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallPartyApp.swift; sourceTree = "<group>"; };
+		FFC8A96142A0621FD8ABEA33 /* IdentityConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityConstants.swift; sourceTree = "<group>"; };
+		A065A37B29A40FBB799D0B8A /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
+		1F929BCCFB1BB06349501A51 /* AppleSignInNonce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInNonce.swift; sourceTree = "<group>"; };
+		2DA291456539C74261724E01 /* AuthBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthBackend.swift; sourceTree = "<group>"; };
+		17FAE7FC496C6B37C6917E34 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		C8216A7CE2D2C62774B54790 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		EEB0816A1860592796A6B1F7 /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
+		88F216FC65AE0789C61B4333 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		08DD5816569D45BEBD3188F8 /* BallParty.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BallParty.entitlements; sourceTree = "<group>"; };
+		4D3D79552B3DAB01A9BDC949 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
+		B47D2792BF6005A0561238AB /* Secrets.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig.example; sourceTree = "<group>"; };
+		8810FD20EE533EA2EB24E459 /* FakeAuthBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeAuthBackend.swift; sourceTree = "<group>"; };
+		B57366732C868289247B5FC0 /* IdentityConstantsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityConstantsTests.swift; sourceTree = "<group>"; };
+		9BB3B711B5508796FC1E770E /* AppleSignInNonceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInNonceTests.swift; sourceTree = "<group>"; };
+		F06ED444F3FC870054ED36B7 /* AuthViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModelTests.swift; sourceTree = "<group>"; };
+		87E416C0BEF9EE6649E51733 /* BallPartyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BallPartyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -29,6 +57,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		079BAF81BB2783B206C32380 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D954CFA4B4F65D4815B354CC /* Supabase in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -36,6 +72,9 @@
 			isa = PBXGroup;
 			children = (
 				F7C8208AF100FD1733260C2E /* BallParty */,
+				20BD5693A09CAA4BE5C26EAE /* BallPartyTests */,
+				4D3D79552B3DAB01A9BDC949 /* Secrets.xcconfig */,
+				B47D2792BF6005A0561238AB /* Secrets.xcconfig.example */,
 				FA0BD23CA2EBF0B0F2A8A64F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -45,15 +84,52 @@
 			children = (
 				22E9476B19287E93B3829EFB /* Assets.xcassets */,
 				B6922E355C2C789A3555050C /* BallPartyApp.swift */,
+				08DD5816569D45BEBD3188F8 /* BallParty.entitlements */,
 				13676475DB11EF7FEDE1A0F8 /* ContentView.swift */,
+				3E5261B818DE4AF134B8761E /* Foundation */,
+				88F216FC65AE0789C61B4333 /* Info.plist */,
 			);
 			path = BallParty;
+			sourceTree = "<group>";
+		};
+		3E5261B818DE4AF134B8761E /* Foundation */ = {
+			isa = PBXGroup;
+			children = (
+				517F03783EC8EC94BBCB8D31 /* Identity */,
+			);
+			path = Foundation;
+			sourceTree = "<group>";
+		};
+		517F03783EC8EC94BBCB8D31 /* Identity */ = {
+			isa = PBXGroup;
+			children = (
+				2DA291456539C74261724E01 /* AuthBackend.swift */,
+				EEB0816A1860592796A6B1F7 /* AuthGateView.swift */,
+				C8216A7CE2D2C62774B54790 /* AuthView.swift */,
+				17FAE7FC496C6B37C6917E34 /* AuthViewModel.swift */,
+				1F929BCCFB1BB06349501A51 /* AppleSignInNonce.swift */,
+				FFC8A96142A0621FD8ABEA33 /* IdentityConstants.swift */,
+				A065A37B29A40FBB799D0B8A /* SupabaseConfig.swift */,
+			);
+			path = Identity;
+			sourceTree = "<group>";
+		};
+		20BD5693A09CAA4BE5C26EAE /* BallPartyTests */ = {
+			isa = PBXGroup;
+			children = (
+				9BB3B711B5508796FC1E770E /* AppleSignInNonceTests.swift */,
+				F06ED444F3FC870054ED36B7 /* AuthViewModelTests.swift */,
+				8810FD20EE533EA2EB24E459 /* FakeAuthBackend.swift */,
+				B57366732C868289247B5FC0 /* IdentityConstantsTests.swift */,
+			);
+			path = BallPartyTests;
 			sourceTree = "<group>";
 		};
 		FA0BD23CA2EBF0B0F2A8A64F /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				3FD826920DC17F0A393DE271 /* BallParty.app */,
+				87E416C0BEF9EE6649E51733 /* BallPartyTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -81,6 +157,27 @@
 			productReference = 3FD826920DC17F0A393DE271 /* BallParty.app */;
 			productType = "com.apple.product-type.application";
 		};
+		FE4BD0EBC05ADD74F7A688AD /* BallPartyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A8B576B90FAAE5182FB009F6 /* Build configuration list for PBXNativeTarget "BallPartyTests" */;
+			buildPhases = (
+				590DAE0033A52C0210F3FE76 /* Sources */,
+				5D4A1D2BF04C65F26EE093DF /* Resources */,
+				079BAF81BB2783B206C32380 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F1DD80408BE26C2FB690F513 /* PBXTargetDependency */,
+			);
+			name = BallPartyTests;
+			packageProductDependencies = (
+				23F185FD6F85A3A67B64E719 /* Supabase */,
+			);
+			productName = BallPartyTests;
+			productReference = 87E416C0BEF9EE6649E51733 /* BallPartyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -90,6 +187,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					FE4BD0EBC05ADD74F7A688AD = {
+						TestTargetID = C5517EF56CBCF0A603BFE120;
+					};
 				};
 			};
 			buildConfigurationList = 8B483FFB8C9D88ED1CEBE420 /* Build configuration list for PBXProject "BallParty" */;
@@ -110,6 +210,7 @@
 			projectRoot = "";
 			targets = (
 				C5517EF56CBCF0A603BFE120 /* BallParty */,
+				FE4BD0EBC05ADD74F7A688AD /* BallPartyTests */,
 			);
 		};
 /* End PBXProject section */
@@ -123,6 +224,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5D4A1D2BF04C65F26EE093DF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -132,6 +240,24 @@
 			files = (
 				60CEB77CE80375849D19FB8F /* BallPartyApp.swift in Sources */,
 				8BCEE9CDEFA20861493E22C3 /* ContentView.swift in Sources */,
+				07E051BD31CC211613846724 /* IdentityConstants.swift in Sources */,
+				A3E8D2B30D1E62CB56A83F1F /* SupabaseConfig.swift in Sources */,
+				FAD9687F1C07662E5877E74D /* AppleSignInNonce.swift in Sources */,
+				AE32C3F402FED7AA379BC9C5 /* AuthBackend.swift in Sources */,
+				597F339E95769DF03F33DCAB /* AuthViewModel.swift in Sources */,
+				A62300401A13A2D1F4C0C719 /* AuthView.swift in Sources */,
+				696F992F3B9E971D15739013 /* AuthGateView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		590DAE0033A52C0210F3FE76 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0228715574E2C17617AE87E /* FakeAuthBackend.swift in Sources */,
+				32F54770BF21BE083734336D /* IdentityConstantsTests.swift in Sources */,
+				EC750D5C2C3586D4CCDBD62F /* AppleSignInNonceTests.swift in Sources */,
+				2FF1B9274A8DBF77A29DC206 /* AuthViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -143,8 +269,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BallParty/BallParty.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BallParty/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Ball Party";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -155,6 +283,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ballparty.app;
+				PRODUCT_MODULE_NAME = BallParty;
 				PRODUCT_NAME = "Ball Party";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -163,6 +292,7 @@
 		};
 		3375E899B6AA0FE77E4B3EE6 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4D3D79552B3DAB01A9BDC949 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -224,8 +354,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BallParty/BallParty.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BallParty/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Ball Party";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -236,6 +368,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ballparty.app;
+				PRODUCT_MODULE_NAME = BallParty;
 				PRODUCT_NAME = "Ball Party";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -244,6 +377,7 @@
 		};
 		79031DEDD3F4A1ACA871BA76 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4D3D79552B3DAB01A9BDC949 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -307,9 +441,50 @@
 			};
 			name = Debug;
 		};
+		4130224A163D5A81F3B70F27 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ballparty.BallPartyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ball Party.app/Ball Party";
+			};
+			name = Debug;
+		};
+		B1DE2462E32DEA6BD3EDBFAB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ballparty.BallPartyTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ball Party.app/Ball Party";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A8B576B90FAAE5182FB009F6 /* Build configuration list for PBXNativeTarget "BallPartyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4130224A163D5A81F3B70F27 /* Debug */,
+				B1DE2462E32DEA6BD3EDBFAB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		3ABC09C9B935BFF33F40A9D2 /* Build configuration list for PBXNativeTarget "BallParty" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -347,7 +522,30 @@
 			package = 07E67918CCBE665454AB0ED6 /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
 		};
+		23F185FD6F85A3A67B64E719 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 07E67918CCBE665454AB0ED6 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
 /* End XCSwiftPackageProductDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		94595EAAB490CA25934861D2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 60A0C87FDAE285060BA324A1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C5517EF56CBCF0A603BFE120;
+			remoteInfo = BallParty;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		F1DD80408BE26C2FB690F513 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C5517EF56CBCF0A603BFE120 /* BallParty */;
+			targetProxy = 94595EAAB490CA25934861D2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 	};
 	rootObject = 60A0C87FDAE285060BA324A1 /* Project object */;
 }

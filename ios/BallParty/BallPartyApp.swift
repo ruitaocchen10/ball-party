@@ -4,7 +4,7 @@ import SwiftUI
 struct BallPartyApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AuthGateView()
         }
     }
 }

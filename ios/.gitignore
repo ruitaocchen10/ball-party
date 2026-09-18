@@ -3,3 +3,4 @@ xcuserdata/
 DerivedData/
 .build/
 .swiftpm/xcode/package.xcworkspace/xcuserdata/
+Secrets.xcconfig
