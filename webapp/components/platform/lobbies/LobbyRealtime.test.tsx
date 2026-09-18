@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { LobbyRealtime } from "@/components/platform/lobbies/LobbyRealtime";
+import { guestSessionFinishedHref } from "@/lib/foundation/identity/guest-lifecycle";
 
 describe("LobbyRealtime", () => {
   it("returns every open lobby tab home when the host closes the room", async () => {
@@ -30,7 +31,8 @@ describe("LobbyRealtime", () => {
     await waitFor(() => expect(lobbyListener).toBeDefined());
     lobbyListener?.({ new: { closed_at: "2026-08-13T16:00:00.000Z" } });
 
-    expect(replace).toHaveBeenCalledWith("/");
+    // Goes through the sign-out endpoint so a guest's anonymous session ends with the party.
+    expect(replace).toHaveBeenCalledWith(guestSessionFinishedHref("/"));
     expect(refresh).not.toHaveBeenCalled();
   });
 });
