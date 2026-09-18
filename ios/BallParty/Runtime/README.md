@@ -1,5 +1,7 @@
 # Runtime
 
 Mirrors `webapp/components/runtime` (realtime · game-runtime, the contract).
-Empty until iOS work starts landing here — see
-`docs/architecture/architecture.md`.
+`GameRuntime/` holds `MatchClock` — the ported `useMatchClock`
+timer/reconciliation state machine, a pure value type specified in
+`docs/architecture/game-runtime.md` — and `MatchClockDriver`, the thin shell
+that ticks it. See `docs/architecture/architecture.md`.

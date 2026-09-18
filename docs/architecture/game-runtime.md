@@ -237,6 +237,19 @@ instead. Rejects: no session → `not_authenticated`; match not `'playing'` →
 `match_not_playing`; match isn't solo → `not_solo`; caller not a participant
 → `not_a_participant`; current phase isn't `'reveal'` → `advance_not_open`.
 
+### `higher_or_lower.season_bounds()`
+
+```sql
+season_bounds() returns higher_or_lower.era   -- (season_min smallint, season_max smallint)
+```
+
+No arguments; granted to `authenticated` only. The first and last season the
+card pool covers — the limits `start`'s `p_season_from` / `p_season_to` are
+checked against (`season_out_of_range`, `invalid_season_range`). A client that
+offers an era picker reads this rather than hardcoding a year, since the pool
+grows as seasons are added. Omitting both `p_season_*` arguments to `start`
+deals from the whole pool.
+
 ### The `higher_or_lower.board` type
 
 Every RPC above that returns board state returns this same shape:
@@ -272,10 +285,11 @@ no game rule is ever writable except through the RPCs above.
 | `higher_or_lower_matches` | `match_id` | `question_count, spare_count, current_question, scoring_mode, season_from, season_to, phase, phase_deadline, is_solo` + sudden-death bookkeeping | Match members only |
 | `higher_or_lower_cards` | `match_id, ordinal` | `player_id, display_name, position, season, team, week, opponent, headshot_url, points, revealed_at` | Match members only |
 | `higher_or_lower_players` | `match_id, user_id` | `seat, current_streak, best_streak, correct_count, last_seen_at, absent, sudden_death, eliminated_at` | Match members only |
-| `higher_or_lower_calls` | `match_id, question, user_id` | `direction, created_at` | See below — not simply "match members" |
+| `higher_or_lower_calls` | `match_id, question, user_id` | `direction, created_at, timed_out` | See below — not simply "match members" |
 | `higher_or_lower_call_statuses` | `match_id, question, user_id` | (existence only) | Match members only |
 | `match_players` | `match_id, user_id` | `team, raw_score, placement, points_awarded` | Match members only (platform table, written once by `finish_match` at completion) |
 | `matches` | `id` | Client reads `status` specifically to detect `'paused'` | Run members only (platform table) |
+| `higher_or_lower_player_stats` | `user_id` | `all_time_high` (the player's best solo streak) | The player's own row only — and only a real account, not a guest (`0112`). No row exists until a solo run first raises a best streak above 0, so a missing row means 0. |
 
 **Hidden state has two different mechanisms here, and iOS needs both:**
 
@@ -294,6 +308,16 @@ without withholding it forever. `higher_or_lower_call_statuses` deliberately
 carries no columns beyond its key — its mere existence (visible to *any*
 match member regardless of the calls policy) is what lets the UI show a
 "locked in" dot for every seat without revealing which way anyone called.
+
+`higher_or_lower_calls.direction` is `null` and `timed_out` is `true` for the
+miss the server writes when a question's deadline passes with no call from a
+player. It scores exactly as a wrong call; only the wording differs ("ran out
+of time"). A solo match has no deadline, so it never produces one.
+
+`higher_or_lower_player_stats.all_time_high` is bumped by a trigger *as a solo
+run's best streak grows*, not at the end. A client that wants "did this run
+beat my personal best?" must therefore read the row **before** the run's first
+call and compare against that, not against the row at the end.
 
 ## Huddle's write API (`prompts` schema)
 
@@ -419,6 +443,12 @@ lobby" choice after a *match* ends. It has nothing to do with Huddle's
 *posts*; the naming overlap ("post-game" vs. "prompt post") is coincidental.
 It's the RPC behind Higher or Lower's own post-match screen — document it
 once, in an orchestration doc, not under either game.
+
+Returns the `post_game_actions` row: `{match_id, choice, next_match_id,
+chosen_at}`. A `'replay'` of a solo Higher or Lower match creates a new match
+in the same scoring mode and era that is **already dealt and open** —
+`next_match_id` can be read with `state` straight away, with no `start` call —
+and each finished match accepts exactly one choice (`post_game_choice_already_made`).
 
 **`public.claim_guest_identity()`** and
 **`public.record_guest_account_collision(p_nonce uuid)`** (`0016`/`0017`) are
