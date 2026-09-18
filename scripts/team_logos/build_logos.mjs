@@ -3,7 +3,7 @@
 // Supabase Storage bucket (see
 // supabase/migrations/*_sabotage_draft_team_logos_bucket.sql), under
 // `{franchise_code}.png` -- the PFR franchise code every other sabotage
-// draft surface already keys on (frontend/lib/sabotage-draft/franchises.ts).
+// draft surface already keys on (webapp/lib/sabotage-draft/franchises.ts).
 //
 //   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/team_logos/build_logos.mjs
 //
