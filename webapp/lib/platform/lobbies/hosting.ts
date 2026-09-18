@@ -8,3 +8,10 @@ export const HOST_SIGN_UP_HREF = "/signup?next=%2Fparty";
  *  to /solo rather than wherever they clicked from: that page still has the
  *  "Play solo" flow those links stand in for. */
 export const SOLO_SIGN_UP_HREF = "/signup?next=%2Fsolo";
+
+/** The account-creation route for a signed-out visitor who followed an
+ *  invite link. Sends them back to that specific room, since join_lobby
+ *  rejects a guest server-side and the invite is the one flow they came for. */
+export function joinSignUpHref(code: string): string {
+  return `/signup?next=${encodeURIComponent(`/lobby/${code}`)}`;
+}

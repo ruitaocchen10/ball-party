@@ -8,12 +8,12 @@ const FOCUS =
 /**
  * The room's one invite surface: the code, and a one-tap way to hand someone
  * a working link instead of five characters to read out over a call.
- * /lobby/[code] already handles a cold landing — GuestJoin and AutoJoinRoom
- * (see app/lobby/[code]/page.tsx) are exactly what a stranger following this
- * link hits — so there is nothing new to wire up server-side, only a way to
- * hand the link over. Lives in LobbyTopStrip's own empty middle rather than
- * the old below-strip header, so inviting is always in reach instead of
- * scrolled past once the roster fills the screen.
+ * /lobby/[code] already handles a cold landing — InviteAccountGate and
+ * AutoJoinRoom (see app/lobby/[code]/page.tsx) are exactly what a stranger
+ * following this link hits — so there is nothing new to wire up
+ * server-side, only a way to hand the link over. Lives in LobbyTopStrip's
+ * own empty middle rather than the old below-strip header, so inviting is
+ * always in reach instead of scrolled past once the roster fills the screen.
  *
  * `navigator.share` (the OS share sheet — Messages, Mail, AirDrop, whatever
  * the device offers) is preferred where it exists, since "text this to a

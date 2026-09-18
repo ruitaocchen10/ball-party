@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { ButtonLink } from "@/components/foundation/ui-kit/Button";
 import { LobbyRealtime } from "@/components/platform/lobbies/LobbyRealtime";
 import { LobbyLineup } from "@/components/platform/lobbies/LobbyLineup";
 import { LobbyTopStrip } from "@/components/platform/lobbies/LobbyTopStrip";
@@ -9,8 +8,8 @@ import { GameSelector } from "@/components/platform/lobbies/GameSelector";
 import { LobbyScoreboard } from "@/components/platform/lobbies/LobbyScoreboard";
 import { LobbyActivity } from "@/components/platform/lobbies/LobbyActivity";
 import { AutoJoinRoom } from "@/components/platform/lobbies/AutoJoinRoom";
+import { InviteAccountGate } from "@/components/platform/lobbies/InviteAccountGate";
 import { createClient } from "@/lib/supabase/server";
-import { GuestJoin } from "@/components/foundation/identity/GuestJoin";
 import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { guestSessionFinishedHref } from "@/lib/foundation/identity/guest-lifecycle";
 import { fetchLobbyWins } from "@/lib/platform/lobbies/scoreboard";
@@ -33,9 +32,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   if (!isSignedInViewer(claims)) {
     return (
       <Shell code={code} error={errorText}>
-        <p className="text-sm leading-6 text-fg-muted">You&apos;ve been invited to this room. Join in with a name, or sign in to an account.</p>
-        <GuestJoin code={code} />
-        <ButtonLink href={`/login?next=${encodeURIComponent(`/lobby/${code}`)}`} variant="ghost">Sign in instead</ButtonLink>
+        <InviteAccountGate code={code} />
       </Shell>
     );
   }
@@ -64,9 +61,14 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
     .maybeSingle();
 
   if (!lobby) {
+    // A guest with an existing anonymous session (e.g. from playing solo)
+    // reaches this branch too, since RLS finds no row for a room they've
+    // never joined. join_lobby now refuses a guest, so AutoJoinRoom's
+    // automatic join attempt would just fail — the account gate belongs
+    // here, not a failed join.
     return (
       <Shell code={code} error={errorText} displayName={displayName} email={email} avatarUrl={avatarUrl}>
-        <AutoJoinRoom code={code} />
+        {isGuestViewer(claims) ? <InviteAccountGate code={code} /> : <AutoJoinRoom code={code} />}
       </Shell>
     );
   }

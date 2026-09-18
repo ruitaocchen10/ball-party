@@ -40,7 +40,7 @@ export function LobbyTopStrip({
   avatarUrl = null,
 }: {
   /** Absent before the room is known — the "no room yet" and "signed out"
-   * states this same header renders for AutoJoinRoom/GuestJoin. */
+   * states this same header renders for AutoJoinRoom/InviteAccountGate. */
   lobbyId?: string | null;
   code: string;
   isHost?: boolean;
