@@ -125,7 +125,7 @@ final class SoloRunViewModel: ObservableObject {
 
     var board: HigherOrLowerBoard? { snapshot?.board }
 
-    var viewer: LadderPlayer? { snapshot?.players.first { $0.userId == viewerId } }
+    var viewer: LadderPlayer? { snapshot?.player(viewerId) }
 
     var correctCount: Int { viewer?.correctCount ?? 0 }
     var currentStreak: Int { viewer?.currentStreak ?? 0 }
@@ -146,25 +146,9 @@ final class SoloRunViewModel: ObservableObject {
         return "\(board.scoringMode.label) · \(board.season.label)"
     }
 
-    /// The face-up card the challenger is priced against.
-    var anchor: LadderCard? {
-        guard let snapshot else { return nil }
-        return snapshot.cards.first { $0.ordinal == snapshot.board.currentQuestion - 1 }
-    }
-
-    /// The card being called. Its points stay concealed until the phase says
-    /// the question has revealed, even if a card row raced ahead of the board.
-    var challenger: LadderCard? {
-        guard let snapshot,
-              let card = snapshot.cards.first(where: { $0.ordinal == snapshot.board.currentQuestion })
-        else { return nil }
-        return snapshot.board.phase.showsChallengerPoints ? card : card.concealingPoints()
-    }
-
-    var myCall: LadderCall? {
-        guard let snapshot else { return nil }
-        return snapshot.calls.first { $0.question == snapshot.board.currentQuestion && $0.userId == viewerId }
-    }
+    var anchor: LadderCard? { snapshot?.anchor }
+    var challenger: LadderCard? { snapshot?.challenger }
+    var myCall: LadderCall? { snapshot?.currentCall(by: viewerId) }
 
     var canCall: Bool {
         board?.phase == .call && myCall == nil && !isBusy
@@ -219,7 +203,7 @@ final class SoloRunViewModel: ObservableObject {
             seasonFrom = bounds.from
             seasonTo = bounds.to
         } catch {
-            errorMessage = Self.describe(error)
+            errorMessage = HigherOrLowerServerError.describe(error)
         }
     }
 
@@ -238,7 +222,7 @@ final class SoloRunViewModel: ObservableObject {
             personalBestBeforeRun = best
             try await beginRun(matchId: board.matchId)
         } catch {
-            errorMessage = Self.describe(error)
+            errorMessage = HigherOrLowerServerError.describe(error)
         }
     }
 
@@ -249,7 +233,7 @@ final class SoloRunViewModel: ObservableObject {
         do {
             _ = try await client.call(matchId: matchId, direction: direction)
         } catch {
-            errorMessage = Self.describe(error)
+            errorMessage = HigherOrLowerServerError.describe(error)
         }
         // Read back either way: on success this is what shows the reveal, and
         // on a rejection (`already_called`, ...) it puts the screen back on the
@@ -267,7 +251,7 @@ final class SoloRunViewModel: ObservableObject {
         do {
             _ = try await client.advance(matchId: matchId)
         } catch {
-            errorMessage = Self.describe(error)
+            errorMessage = HigherOrLowerServerError.describe(error)
         }
         await reconcile()
         isBusy = false
@@ -293,14 +277,18 @@ final class SoloRunViewModel: ObservableObject {
             if let pending = replayedMatchId {
                 nextMatchId = pending
             } else {
-                nextMatchId = try await client.replay(matchId: matchId)
-                replayedMatchId = nextMatchId
+                let action = try await client.choosePostGame(matchId: matchId, choice: .replay)
+                guard let next = action.nextMatchId else {
+                    throw HigherOrLowerServerError(message: "replay_not_supported")
+                }
+                nextMatchId = next
+                replayedMatchId = next
             }
             personalBestBeforeRun = best
             try await beginRun(matchId: nextMatchId)
             replayedMatchId = nil
         } catch {
-            errorMessage = Self.describe(error)
+            errorMessage = HigherOrLowerServerError.describe(error)
         }
     }
 
@@ -400,23 +388,4 @@ final class SoloRunViewModel: ObservableObject {
         let correct = points > priorPoints ? direction == .higher : direction == .lower
         return correct ? .correct(direction) : .miss(direction)
     }
-
-    /// Maps a raised message to a sentence for the player, the way the web's
-    /// `CALL_MESSAGES` does; anything unmapped falls back to the raw message.
-    static func describe(_ error: Error) -> String {
-        guard let server = error as? HigherOrLowerServerError else {
-            return "Something went wrong. Check your connection and try again."
-        }
-        return messages[server.message] ?? server.message
-    }
-
-    private static let messages: [String: String] = [
-        "already_called": "You already locked in this question.",
-        "call_not_open": "Calls are not open right now.",
-        "call_deadline_passed": "The call window has closed.",
-        "match_not_playing": "This match isn't accepting moves right now.",
-        "advance_not_open": "The answer isn't ready to move past yet.",
-        "season_out_of_range": "That era is outside the seasons we have data for.",
-        "invalid_season_range": "The first season can't be after the last one.",
-    ]
 }

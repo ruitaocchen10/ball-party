@@ -23,20 +23,22 @@ struct ContentView: View {
                     NavigationLink {
                         SoloRunScreen(viewerId: viewerId)
                     } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("SOLO")
-                                .font(.caption.monospaced().weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            Text("Higher or Lower")
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(.primary)
-                            Text("Call the next card. Make the streak last.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+                        GameTile(
+                            eyebrow: "Solo",
+                            title: "Higher or Lower",
+                            blurb: "Call the next card. Make the streak last."
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        LobbyScreen(viewerId: viewerId)
+                    } label: {
+                        GameTile(
+                            eyebrow: "Multiplayer",
+                            title: "Play with friends",
+                            blurb: "Host a room or join with a code, then play a ladder together."
+                        )
                     }
                     .buttonStyle(.plain)
                 }
@@ -47,5 +49,29 @@ struct ContentView: View {
             }
             .padding()
         }
+    }
+}
+
+/// One way into the app from the home screen.
+private struct GameTile: View {
+    let eyebrow: String
+    let title: String
+    let blurb: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(eyebrow.uppercased())
+                .font(.caption.monospaced().weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(title)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.primary)
+            Text(blurb)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
     }
 }

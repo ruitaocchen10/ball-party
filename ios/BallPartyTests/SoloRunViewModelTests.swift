@@ -211,7 +211,7 @@ final class SoloRunViewModelTests: XCTestCase {
         await startRun()
         struct Offline: Error {}
         XCTAssertEqual(
-            SoloRunViewModel.describe(Offline()),
+            HigherOrLowerServerError.describe(Offline()),
             "Something went wrong. Check your connection and try again."
         )
     }

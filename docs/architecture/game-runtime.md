@@ -94,8 +94,18 @@ close_lobby(p_lobby_id uuid) returns void
 
 Rejects: no session → `not_authenticated`; no open lobby with that id →
 `lobby_not_found`; caller isn't `lobbies.host_id` → `not_host`. On success:
-sets `closed_at`, marks every active member `left_at`, and marks any active
-run for the lobby `'abandoned'`.
+sets `closed_at` and marks any active run for the lobby `'abandoned'`.
+
+It deliberately does **not** mark members `left_at`, though it did until
+`0006`. Realtime evaluates RLS per subscriber at the moment it processes the
+change, against current state — so stamping everybody as left in the same
+transaction meant `is_lobby_member` was already false for every subscriber by
+the time the `lobbies` payload was tested, the policy failed for all of them,
+and the "room closed" event reached nobody. Members stay attached to a closed
+lobby, the payload carrying `closed_at` is delivered, and a client reads
+closure from `closed_at` — which is the honest source of truth anyway. They
+are detached later, by `leave_all_lobbies`, the next time they create or join
+anything.
 
 ### `public.select_lobby_game(p_lobby_id uuid, p_game text)`
 
