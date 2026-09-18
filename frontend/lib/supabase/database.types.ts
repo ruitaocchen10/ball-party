@@ -858,6 +858,32 @@ export type Database = {
           },
         ]
       }
+      higher_or_lower_player_stats: {
+        Row: {
+          all_time_high: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          all_time_high?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          all_time_high?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_player_stats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lobbies: {
         Row: {
           closed_at: string | null
@@ -2439,4 +2465,3 @@ export const Constants = {
     },
   },
 } as const
-

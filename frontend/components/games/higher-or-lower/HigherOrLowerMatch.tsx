@@ -19,6 +19,7 @@ import { DashboardRail } from "@/components/foundation/ui-kit/DashboardRail";
 import {
   byPlacement,
   canCallNow,
+  cardIdentityLine,
   eraLabel,
   formatPoints,
   isSuddenDeath,
@@ -77,6 +78,7 @@ export function HigherOrLowerMatch({
     calls: Call[];
     statuses: CallStatus[];
     standings: Standing[];
+    allTimeHigh: number;
   };
 }) {
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
@@ -234,6 +236,7 @@ export function HigherOrLowerMatch({
     : dealtChallenger ? { ...dealtChallenger, points: null, revealed_at: null } : null;
   const myCall = calls.find((call) => call.question === board.currentQuestion && call.user_id === viewerId);
   const viewerPlayer = players.find((player) => player.user_id === viewerId);
+  const allTimeHigh = Math.max(initial.allTimeHigh, viewerPlayer?.best_streak ?? 0);
   const lockedIn = new Set(statuses.filter((status) => status.question === board.currentQuestion).map((status) => status.user_id));
   const makeCall = async (direction: "higher" | "lower") => {
     setPendingCall(true);
@@ -273,10 +276,12 @@ export function HigherOrLowerMatch({
   };
 
   if (board.phase === "complete") {
+    if (isSolo) {
+      return <SoloFinalScreen player={players.find((player) => player.user_id === viewerId) ?? null} matchId={matchId} cards={cards} calls={calls} viewerId={viewerId} allTimeHigh={allTimeHigh} />;
+    }
+
     return (
-      <main className={isSolo
-        ? "app-page flex-1"
-        : "mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-6 py-10"}>
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-6 py-10">
         <FinalScreen
           standings={standings}
           players={players}
@@ -340,7 +345,7 @@ export function HigherOrLowerMatch({
           </div>
         ) : null}
 
-        <section className={isSolo ? "mt-5 flex flex-col gap-3" : "flex min-h-0 flex-col gap-3 lg:col-start-2 lg:row-start-1"} aria-label="The comparison">
+        <section className={isSolo ? "mt-5 flex w-full max-w-[760px] flex-col gap-3" : "flex min-h-0 flex-col gap-3 lg:col-start-2 lg:row-start-1"} aria-label="The comparison">
           {anchor && challenger ? (
             <div className={isSolo ? "grid gap-4 md:grid-cols-2" : "grid min-h-0 flex-1 gap-3 sm:grid-cols-2"}>
               <LadderCardPanel
@@ -389,6 +394,7 @@ export function HigherOrLowerMatch({
         {isSolo ? (
           <SoloRunSummary
             player={viewerPlayer ?? null}
+            allTimeHigh={allTimeHigh}
             continueAction={board.phase === "reveal"
               ? <SoloContinue pending={pendingAdvance} error={advanceError} onContinue={advance} />
               : null}
@@ -438,7 +444,7 @@ export function HigherOrLowerMatch({
 }
 
 /** A solo player needs progress, not a one-row leaderboard. */
-function SoloRunSummary({ player, continueAction, className }: { player: Player | null; continueAction: ReactNode; className?: string }) {
+function SoloRunSummary({ player, allTimeHigh, continueAction, className }: { player: Player | null; allTimeHigh: number; continueAction: ReactNode; className?: string }) {
   return (
     <DashboardRail
       headingId="solo-run-heading"
@@ -450,7 +456,7 @@ function SoloRunSummary({ player, continueAction, className }: { player: Player 
       <div className="mt-4 border-t border-line">
         <div className="grid grid-cols-2 divide-x divide-line">
           <RunStat label="Current" value={player?.current_streak ?? 0} />
-          <RunStat label="All time high" value={player?.best_streak ?? 0} />
+          <RunStat label="All time high" value={allTimeHigh} />
         </div>
         {continueAction ? <div className="border-t border-line">{continueAction}</div> : null}
       </div>
@@ -465,6 +471,113 @@ function RunStat({ label, value }: { label: string; value: number }) {
       <p className="mt-1 font-slab text-3xl leading-none tabular-nums">{value}</p>
     </div>
   );
+}
+
+/** A solo finish is a personal record, not a one-person standings table. */
+function SoloFinalScreen({
+  player,
+  matchId,
+  cards,
+  calls,
+  viewerId,
+  allTimeHigh,
+}: {
+  player: Player | null;
+  matchId: string;
+  cards: LadderCard[];
+  calls: Call[];
+  viewerId: string;
+  allTimeHigh: number;
+}) {
+  const correct = player?.correct_count ?? 0;
+  const revealedCards = cards.filter((card) => card.revealed_at !== null).sort((a, b) => a.ordinal - b.ordinal);
+  return (
+    <main className="app-page flex-1">
+      <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
+        <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
+          <PageHeader
+            eyebrow="Solo challenge"
+            title="Higher or lower"
+            description="Your run is in the books."
+          />
+          <section aria-label="Your final result" className="mt-5 w-full max-w-[760px] overflow-hidden border border-line bg-surface-raised shadow-well">
+            <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
+              <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Run complete</p>
+              <h2 className="mt-1 font-slab text-4xl leading-none uppercase sm:text-5xl">{correct} correct</h2>
+            </div>
+            <section aria-labelledby="ladder-recap-heading" className="border-t border-line">
+              <header className="px-5 pt-5 pb-1">
+              <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">The players you saw</p>
+              <h2 id="ladder-recap-heading" className="mt-1 font-slab text-2xl leading-none uppercase">Your ladder</h2>
+              </header>
+              <ol className="grid grid-cols-2 gap-3 px-5 pt-2 pb-5 sm:grid-cols-3 md:grid-cols-4">
+                {revealedCards.map((card, index) => (
+                  <LadderRecapCard
+                    key={card.ordinal}
+                    card={card}
+                    priorCard={revealedCards[index - 1] ?? null}
+                    call={calls.find((call) => call.user_id === viewerId && call.question === card.ordinal) ?? null}
+                  />
+                ))}
+              </ol>
+            </section>
+            <div className="grid grid-cols-2 divide-x divide-line border-t border-line">
+              <RunStat label="Questions right" value={correct} />
+              <RunStat label="All time high" value={allTimeHigh} />
+            </div>
+          </section>
+        </div>
+
+        <DashboardRail
+          headingId="solo-finish-heading"
+          eyebrow="Your run"
+          title="Run summary"
+          note="A fresh ladder is ready whenever you are."
+        >
+          <div className="mt-4 border-t border-line">
+            <div className="grid grid-cols-2 divide-x divide-line">
+              <RunStat label="Questions right" value={correct} />
+              <RunStat label="All time high" value={allTimeHigh} />
+            </div>
+            <div className="flex flex-col gap-2 border-t border-line p-3">
+              <form action={postGameChoice}>
+                <input type="hidden" name="match_id" value={matchId} />
+                <input type="hidden" name="choice" value="replay" />
+                <Button type="submit" fullWidth>Play again</Button>
+              </form>
+              <Link
+                href="/"
+                className="px-1 py-1 text-center text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
+              >
+                Back home
+              </Link>
+            </div>
+          </div>
+        </DashboardRail>
+      </div>
+    </main>
+  );
+}
+
+function LadderRecapCard({ card, priorCard, call }: { card: LadderCard; priorCard: LadderCard | null; call: Call | null }) {
+  const outcome = recapOutcome(card, priorCard, call);
+  return (
+    <li className="relative flex min-w-0 flex-col items-center border border-line bg-surface px-2 py-3 text-center">
+      <span className="absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full bg-panel font-mono text-[9px] font-bold text-panel-fg tabular-nums">{card.ordinal + 1}</span>
+      <LadderPortrait name={card.display_name} headshotUrl={card.headshot_url} className="h-14 w-14" initialClassName="text-xl" />
+      <strong className="mt-2 w-full truncate font-slab text-base leading-none uppercase">{card.display_name}</strong>
+      <span className="mt-1 w-full truncate font-mono text-[8px] tracking-[0.07em] text-fg-muted uppercase">{card.position} · {cardIdentityLine(card)}</span>
+      <span className="mt-2 font-slab text-2xl leading-none tabular-nums">{formatPoints(card.points!)}</span>
+      <span className={`mt-1 font-mono text-[8px] font-semibold tracking-[0.08em] uppercase ${outcome.correct ? "text-grade-elite" : "text-fg-muted"}`}>{outcome.label}</span>
+    </li>
+  );
+}
+
+function recapOutcome(card: LadderCard, priorCard: LadderCard | null, call: Call | null): { label: string; correct: boolean } {
+  if (!priorCard) return { label: "Starting point", correct: false };
+  if (!call || call.timed_out || call.direction === null) return { label: "Timed out", correct: false };
+  const correct = card.points! > priorCard.points! ? call.direction === "higher" : call.direction === "lower";
+  return { label: correct ? `Called ${call.direction} · correct` : `Called ${call.direction} · miss`, correct };
 }
 
 /**
@@ -524,21 +637,6 @@ function FinalScreen({
         <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} />
       ) : null}
 
-      {!roomCode ? (
-        <div className="mt-2 flex flex-col gap-2">
-          <form action={postGameChoice}>
-            <input type="hidden" name="match_id" value={matchId} />
-            <input type="hidden" name="choice" value="replay" />
-            <Button type="submit" fullWidth>Play again</Button>
-          </form>
-          <Link
-            href="/"
-            className="text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
-          >
-            Back home
-          </Link>
-        </div>
-      ) : null}
     </>
   );
 }
@@ -822,7 +920,17 @@ function LadderMatchup({ card }: { card: LadderCard }) {
 }
 
 /** The same resilient, circular identity treatment used by auction lots. */
-function LadderPortrait({ name, headshotUrl }: { name: string; headshotUrl: string | null }) {
+function LadderPortrait({
+  name,
+  headshotUrl,
+  className = "h-28 w-28",
+  initialClassName = "text-4xl",
+}: {
+  name: string;
+  headshotUrl: string | null;
+  className?: string;
+  initialClassName?: string;
+}) {
   const [failed, setFailed] = useState(false);
   if (headshotUrl && !failed) {
     return (
@@ -830,12 +938,12 @@ function LadderPortrait({ name, headshotUrl }: { name: string; headshotUrl: stri
         src={headshotUrl}
         alt=""
         onError={() => setFailed(true)}
-        className="h-28 w-28 shrink-0 rounded-full bg-panel-shade object-cover object-top"
+        className={`${className} shrink-0 rounded-full bg-panel-shade object-cover object-top`}
       />
     );
   }
   return (
-    <span aria-hidden className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-hidden font-slab text-4xl text-panel">
+    <span aria-hidden className={`flex ${className} shrink-0 items-center justify-center rounded-full bg-hidden font-slab ${initialClassName} text-panel`}>
       <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
     </span>
   );

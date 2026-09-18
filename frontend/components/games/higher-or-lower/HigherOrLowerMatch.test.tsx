@@ -120,6 +120,7 @@ function renderMatch(over: {
   isHost?: boolean;
   paused?: boolean;
   viewerId?: string;
+  allTimeHigh?: number;
 } = {}) {
   return render(
     <HigherOrLowerMatch
@@ -133,8 +134,9 @@ function renderMatch(over: {
         cards: over.cards ?? ladder(),
         players: over.players ?? PLAYERS,
         calls: over.calls ?? [],
-        statuses: over.statuses ?? [],
-        standings: over.standings ?? [],
+      statuses: over.statuses ?? [],
+      standings: over.standings ?? [],
+      allTimeHigh: over.allTimeHigh ?? 0,
       }}
     />,
   );
@@ -620,13 +622,29 @@ describe("the final screen", () => {
   });
 
   it("offers a solo player another match alongside the home link", () => {
+    const revealed = [
+      card({ ordinal: 0, display_name: "Saquon Barkley", points: 289.4, revealed_at: SEEN }),
+      card({ ordinal: 1, display_name: "Patrick Mahomes", points: 417.1, revealed_at: SEEN }),
+    ];
     renderMatch({
       board: { phase: "complete" },
       players: [PLAYERS[0]],
       standings: [standing({ user_id: "u0", placement: 1 })],
       roomCode: null,
+      cards: revealed,
+      calls: [call({ question: 1, direction: "higher" })],
+      allTimeHigh: 8,
     });
 
+    const result = screen.getByRole("region", { name: "Your final result" });
+    expect(result).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Run summary" })).toBeInTheDocument();
+    expect(within(result).getByText("All time high")).toBeInTheDocument();
+    expect(within(result).getByText("All time high").parentElement).toHaveTextContent("8");
+    const recap = screen.getByRole("region", { name: "Your ladder" });
+    expect(within(recap).getByText("Saquon Barkley")).toBeInTheDocument();
+    expect(within(recap).getByText("Patrick Mahomes")).toBeInTheDocument();
+    expect(within(recap).getByText("Called higher · correct")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play again/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back home/i })).toBeInTheDocument();
   });

@@ -151,7 +151,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   }
 
   if (match.game === "higher_or_lower") {
-    const [boardResult, cardsResult, seatsResult, callsResult, statusesResult, standingsResult] = await Promise.all([
+    const [boardResult, cardsResult, seatsResult, callsResult, statusesResult, standingsResult, statsResult] = await Promise.all([
       supabase.schema("higher_or_lower").rpc("state", { p_match_id: id }),
       supabase.from("higher_or_lower_cards").select("*").eq("match_id", id).order("ordinal"),
       supabase
@@ -168,6 +168,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       supabase.from("higher_or_lower_calls").select("*").eq("match_id", id).order("created_at"),
       supabase.from("higher_or_lower_call_statuses").select("*").eq("match_id", id),
       supabase.from("match_players").select("*").eq("match_id", id),
+      supabase.from("higher_or_lower_player_stats").select("all_time_high").eq("user_id", claims.sub).maybeSingle(),
     ]);
 
     const row = boardResult.data;
@@ -211,6 +212,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
           calls: callsResult.data ?? [],
           statuses: statusesResult.data ?? [],
           standings: standingsResult.data ?? [],
+          allTimeHigh: statsResult.data?.all_time_high ?? 0,
         }}
       />
     );
