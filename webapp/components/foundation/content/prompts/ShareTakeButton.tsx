@@ -5,6 +5,7 @@ import { Download, Share2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { SharePicksCard } from "./SharePicksCard";
+import { SharePowerRankingsCard, type ShareFormat } from "./SharePowerRankingsCard";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 
 type Phase = "idle" | "rendering" | "preview" | "error";
@@ -26,15 +27,20 @@ export function ShareTakeButton({
   responses: Record<string, string[]>;
   resolved: boolean;
 }) {
+  const isPowerRankings = post.templateKind === "power_rankings";
+  const shareLabel = isPowerRankings ? "rankings" : "picks";
+  const defaultSubheadline = isPowerRankings ? "My power rankings" : "My picks";
   const cardRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [headline, setHeadline] = useState(post.templateName);
-  const [subheadline, setSubheadline] = useState("My picks");
+  const [subheadline, setSubheadline] = useState(defaultSubheadline);
+  const [format, setFormat] = useState<ShareFormat>("post");
   const [renderedHeadline, setRenderedHeadline] = useState<string | null>(null);
   const [renderedSubheadline, setRenderedSubheadline] = useState<string | null>(null);
+  const [renderedFormat, setRenderedFormat] = useState<ShareFormat | null>(null);
 
-  async function handleGenerate() {
+  async function handleGenerate(selectedFormat: ShareFormat = format) {
     setPhase("rendering");
     // The off-screen card only mounts on this click, so give it a paint
     // before html-to-image reads its layout.
@@ -46,6 +52,7 @@ export function ShareTakeButton({
       setDataUrl(png);
       setRenderedHeadline(headline);
       setRenderedSubheadline(subheadline);
+      setRenderedFormat(selectedFormat);
       setPhase("preview");
     } catch {
       setPhase("error");
@@ -55,7 +62,7 @@ export function ShareTakeButton({
   function handleDownload() {
     if (!dataUrl) return;
     const link = document.createElement("a");
-    link.download = `ball-party-${post.id}-picks.png`;
+    link.download = `ball-party-${post.id}-${shareLabel}-${isPowerRankings ? format : "post"}.png`;
     link.href = dataUrl;
     link.click();
   }
@@ -65,6 +72,15 @@ export function ShareTakeButton({
     setDataUrl(null);
     setRenderedHeadline(null);
     setRenderedSubheadline(null);
+    setRenderedFormat(null);
+  }
+
+  function handleFormatChange(nextFormat: ShareFormat) {
+    if (nextFormat === format) return;
+    setFormat(nextFormat);
+    // Format is a structural change, not merely preview metadata. Rebuild at
+    // once so the image the person sees always matches their selection.
+    void handleGenerate(nextFormat);
   }
 
   return (
@@ -72,19 +88,23 @@ export function ShareTakeButton({
       <div className="fixed right-5 bottom-5 z-40">
         <button
           type="button"
-          onClick={handleGenerate}
+          onClick={() => void handleGenerate()}
           disabled={phase === "rendering"}
-          aria-label="Preview a shareable image of your picks"
+          aria-label={`Preview a shareable image of your ${shareLabel}`}
           className="flex items-center gap-2 bg-panel px-4 py-3 font-slab text-sm tracking-[0.04em] text-panel-fg uppercase shadow-[0_10px_24px_rgb(0_0_0/0.45)] transition-colors hover:bg-[#fffdf7] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Share2 className="h-4 w-4" strokeWidth={2.2} />
-          {phase === "rendering" ? "Making image…" : "Share picks"}
+          {phase === "rendering" ? "Making image…" : `Share ${shareLabel}`}
         </button>
       </div>
 
       {phase === "rendering" ? (
         <div style={{ position: "fixed", top: 0, left: -9999, pointerEvents: "none" }} aria-hidden>
-          <SharePicksCard ref={cardRef} post={post} responses={responses} resolved={resolved} headline={headline} subheadline={subheadline} />
+          {isPowerRankings ? (
+            <SharePowerRankingsCard ref={cardRef} post={post} responses={responses} headline={headline} subheadline={subheadline} format={format} />
+          ) : (
+            <SharePicksCard ref={cardRef} post={post} responses={responses} resolved={resolved} headline={headline} subheadline={subheadline} />
+          )}
         </div>
       ) : null}
 
@@ -94,20 +114,23 @@ export function ShareTakeButton({
             headline={headline}
             defaultHeadline={post.templateName}
             subheadline={subheadline}
-            defaultSubheadline="My picks"
-            previewIsCurrent={headline === renderedHeadline && subheadline === renderedSubheadline}
+            defaultSubheadline={defaultSubheadline}
+            previewIsCurrent={headline === renderedHeadline && subheadline === renderedSubheadline && (!isPowerRankings || format === renderedFormat)}
             onHeadlineChange={setHeadline}
             onResetHeadline={() => setHeadline(post.templateName)}
             onSubheadlineChange={setSubheadline}
-            onResetSubheadline={() => setSubheadline("My picks")}
-            onUpdate={handleGenerate}
+            onResetSubheadline={() => setSubheadline(defaultSubheadline)}
+            format={format}
+            showFormat={isPowerRankings}
+            onFormatChange={handleFormatChange}
+            onUpdate={() => void handleGenerate()}
             onDownload={handleDownload}
             onClose={handleClose}
           />
       ) : null}
 
       {phase === "error" ? (
-        <SharePreviewModal error onRetry={handleGenerate} onClose={handleClose} />
+        <SharePreviewModal error onRetry={() => void handleGenerate()} onClose={handleClose} />
       ) : null}
     </>
   );
@@ -129,6 +152,9 @@ function SharePreviewModal({
   onDownload,
   onRetry,
   onClose,
+  format,
+  showFormat,
+  onFormatChange,
 }: {
   imageUrl?: string;
   error?: boolean;
@@ -145,6 +171,9 @@ function SharePreviewModal({
   onDownload?: () => void;
   onRetry?: () => void;
   onClose: () => void;
+  format?: ShareFormat;
+  showFormat?: boolean;
+  onFormatChange?: (format: ShareFormat) => void;
 }) {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -179,12 +208,13 @@ function SharePreviewModal({
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto bg-surface p-3">
             {/* eslint-disable-next-line @next/next/no-img-element -- a rasterized data URI, not an app asset next/image can optimize */}
-            <img src={imageUrl} alt="Preview of your shareable picks graphic" className="w-full" />
+            <img src={imageUrl} alt="Preview of your shareable picks graphic" className={showFormat ? "mx-auto max-h-[34vh] w-auto max-w-full" : "w-full"} />
           </div>
         )}
 
         {!error ? (
           <div className="flex flex-col gap-3 border-t border-line px-4 py-3">
+            {showFormat ? <ShareFormatField format={format ?? "post"} onChange={onFormatChange} /> : null}
             <ShareHeadlineField id="share-subheadline" label="Subheadline" value={subheadline} defaultValue={defaultSubheadline} maxLength={28} onChange={onSubheadlineChange} onReset={onResetSubheadline} red />
             <ShareHeadlineField id="share-headline" label="Headline" value={headline} defaultValue={defaultHeadline} maxLength={40} onChange={onHeadlineChange} onReset={onResetHeadline} />
           </div>
@@ -209,6 +239,22 @@ function SharePreviewModal({
         </div>
       </section>
     </div>
+  );
+}
+
+function ShareFormatField({ format, onChange }: { format: ShareFormat; onChange?: (format: ShareFormat) => void }) {
+  return (
+    <fieldset>
+      <legend className="mb-1.5 font-mono text-[10px] font-semibold tracking-[0.12em] text-fg-muted uppercase">Instagram format</legend>
+      <div className="grid grid-cols-2 gap-2">
+        {(["post", "reel"] as const).map((value) => (
+          <button key={value} type="button" onClick={() => onChange?.(value)} className={`border px-2.5 py-2 text-left ${format === value ? "border-panel bg-panel text-panel-fg" : "border-line bg-surface text-fg-muted"}`}>
+            <span className="block font-mono text-[10px] font-bold tracking-[0.09em] uppercase">Instagram {value}</span>
+            <span className="mt-0.5 block font-mono text-[10px] opacity-70">{value === "post" ? "4:5 · 1080 × 1350" : "9:16 · 1080 × 1920"}</span>
+          </button>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 

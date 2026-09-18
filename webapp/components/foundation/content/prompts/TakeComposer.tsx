@@ -7,7 +7,7 @@ import { Button } from "@/components/foundation/ui-kit/Button";
 import { submitPromptResponse } from "@/lib/foundation/content/prompts/client";
 import { createClient } from "@/lib/supabase/client";
 import { AuthorIdentity } from "./AuthorIdentity";
-import { GamePickFace, GamePickList, SlotFaceC } from "./SlotFaces";
+import { GamePickFace, GamePickList, PowerRankingsSlot, SlotFaceC } from "./SlotFaces";
 import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 
@@ -37,6 +37,7 @@ export function TakeComposer({ post, displayName, avatarUrl }: TakeComposerProps
   function slotFilled(slotId: string) {
     const slot = post.slots.find((item) => item.id === slotId)!;
     const response = draft[slotId] ?? [];
+    if (post.templateKind === "power_rankings") return response.length === 5 || response.length === 10 || response.length === 32;
     return slot.shape === "pick" ? response.length === 1 : response.length === (slot.pickCount ?? slot.options.length);
   }
 
@@ -81,6 +82,15 @@ export function TakeComposer({ post, displayName, avatarUrl }: TakeComposerProps
           <GamePickFace slot={post.slots[0]} disabled={false} response={draft[post.slots[0].id] ?? []} onChange={(response) => setSlotResponse(post.slots[0].id, response)} />
         ) : isPicksPost(post) ? (
           <GamePickList slots={post.slots} responses={draft} onChange={setSlotResponse} />
+        ) : post.templateKind === "power_rankings" ? (
+          <div className="px-4 pt-4">
+            <PowerRankingsSlot
+              slot={post.slots[0]}
+              response={draft[post.slots[0].id] ?? []}
+              onChange={(response) => setSlotResponse(post.slots[0].id, response)}
+              previousRankByTeam={post.previousRankByTeam ?? {}}
+            />
+          </div>
         ) : (
           <div className="flex flex-col gap-4 px-4 pt-4">
             {post.slots.map((slot) => (

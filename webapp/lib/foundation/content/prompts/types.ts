@@ -7,7 +7,7 @@
 export type SlotShape = "pick" | "pick_set" | "rank";
 
 /** `game_pick` and `weekly_picks` remain readable for posts created before Picks unified them. */
-export type TemplateKind = "picks" | "game_pick" | "weekly_picks" | "stat_leader" | "ranking" | "custom_multi";
+export type TemplateKind = "picks" | "game_pick" | "weekly_picks" | "stat_leader" | "ranking" | "power_rankings" | "custom_multi";
 
 export type LifecycleStatus = "open" | "locked" | "resolved" | "void";
 
@@ -85,9 +85,13 @@ export type Post = {
   responseCount: number;
   viewerAnswered: boolean;
   viewerResponse?: Record<string, string[]>;
+  /** Team-code → position from this viewer's most recent earlier Power Rankings submission. */
+  previousRankByTeam?: Record<string, number>;
   viewerPointsAwarded?: number;
   /** slotId -> optionId -> percent of respondents who picked it. Shown once locked/resolved, or once the viewer has answered. */
   aggregate?: Record<string, Record<string, number>>;
+  /** Consensus from all submitted Power Rankings: teams most often placed in a ballot's top five. */
+  powerRankingTopFive?: { optionId: string; topFiveCount: number; averageRank: number }[];
 };
 
 export type Team = { code: string; name: string; conference: "AFC" | "NFC"; division: string };

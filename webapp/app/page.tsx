@@ -47,10 +47,10 @@ export default async function Home(props: PageProps<"/">) {
   const { error, q } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
   const query = typeof q === "string" ? q.trim().toLocaleLowerCase() : "";
-  // Home is intentionally the picks surface for now. Other prompt templates
-  // remain available to the admin tooling, but do not compete with the
-  // picks-prompt UI while that experience is being refined.
-  const pickPosts = posts.filter(isPickPrompt);
+  // Home stays focused on weekly participation: winner picks and the weekly
+  // Power Rankings ritual. Other composer-only templates remain out of this
+  // dashboard stream while their player experiences are refined.
+  const pickPosts = posts.filter(isHomePrompt);
   const visiblePosts = query
     ? pickPosts.filter((post) => `${post.promptText} ${post.caption} ${post.author}`.toLocaleLowerCase().includes(query))
     : pickPosts;
@@ -72,8 +72,8 @@ export default async function Home(props: PageProps<"/">) {
 }
 
 /** Older single- and weekly-pick rows remain readable while their data is migrated to `picks`. */
-function isPickPrompt(post: { templateKind: string }) {
-  return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks";
+function isHomePrompt(post: { templateKind: string }) {
+  return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks" || post.templateKind === "power_rankings";
 }
 
 /**

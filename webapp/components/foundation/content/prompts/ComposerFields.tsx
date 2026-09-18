@@ -20,6 +20,7 @@ export const TEMPLATE_DEFS: { kind: TemplateKind; name: string; blurb: string }[
   { kind: "picks", name: "Picks", blurb: "Pick winners for one game or a set of games." },
   { kind: "stat_leader", name: "Pick one out of these", blurb: "Choose from a pool — a season stat leader, an award." },
   { kind: "ranking", name: "Rankings", blurb: "Order a pool of teams or players." },
+  { kind: "power_rankings", name: "Power rankings", blurb: "Let each person rank their NFL top 5, 10, or 32." },
   { kind: "custom_multi", name: "Preseason playoff picks", blurb: "4 division winners + 3 wildcards, one prompt." },
 ];
 
@@ -64,6 +65,18 @@ export function buildRankingSlots(selected: Option[], rankCount: number): Slot[]
   ];
 }
 
+/** A Power Rankings post always publishes the full league; the respondent chooses their own top-N. */
+export function buildPowerRankingSlots(): Slot[] {
+  return [{
+    id: "slot-power-rank",
+    label: "NFL Power Rankings",
+    shape: "rank",
+    pickCount: 32,
+    points: 1,
+    options: TEAMS.map((team) => ({ id: team.code, label: team.name, sublabel: team.division, teamCode: team.code })),
+  }];
+}
+
 export function buildCustomMultiSlots(): Slot[] {
   const divisionSlot = (division: string, id: string, label: string): Slot => ({
     id,
@@ -104,6 +117,8 @@ export function defaultPromptText(kind: TemplateKind, game?: NflScheduleGame, pi
       return "Who leads the NFL in rushing yards this season?";
     case "ranking":
       return "Rank the top candidates, best to worst.";
+    case "power_rankings":
+      return "Set your NFL power rankings.";
     case "custom_multi":
       return "Pick your 4 division winners, then 3 wildcard teams.";
   }
@@ -121,6 +136,8 @@ export function defaultCriteria(kind: TemplateKind): string {
       return "Resolves to whoever leads the stat after Week 18. Ties split the points.";
     case "ranking":
       return "Rank the stated top number in order. Points are awarded for every position that matches the final order.";
+    case "power_rankings":
+      return "Rank your NFL top 5, top 10, or all 32 teams. Your movement is compared with your most recent Power Rankings.";
     case "custom_multi":
       return "Each correct division winner is worth 15 points. Each wildcard team that makes the playoffs is worth 10 points, independent of order. A team already picked as a division winner can't also score as a wildcard.";
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { ShareTakeButton } from "./ShareTakeButton";
-import { SlotFaceC, YourCalls } from "./SlotFaces";
+import { PowerRankingsSlot, SlotFaceC, YourCalls } from "./SlotFaces";
 import { TakeCard } from "./TakeCard";
 import { TakeComposer } from "./TakeComposer";
 import { isPicksPost, totalPoints } from "@/lib/foundation/content/prompts/logic";
@@ -54,6 +54,10 @@ export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = t
           >
             {isPicksPost(post) ? (
               <YourCalls slots={post.slots} responses={post.viewerResponse ?? {}} resolved={post.status === "resolved"} />
+            ) : post.templateKind === "power_rankings" ? (
+              <div className="px-4 pt-4">
+                <PowerRankingsSlot slot={post.slots[0]} disabled showEditorHeader={false} response={post.viewerResponse?.[post.slots[0].id] ?? []} onChange={() => {}} previousRankByTeam={post.previousRankByTeam ?? {}} />
+              </div>
             ) : (
               <div className="flex flex-col gap-4 px-4 pt-4">
                 {post.slots.map((slot) => (
@@ -64,7 +68,7 @@ export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = t
           </TakeCard>
         ) : null}
 
-        {youComment && isPicksPost(post) ? (
+        {youComment && (isPicksPost(post) || post.templateKind === "power_rankings") ? (
           <ShareTakeButton post={post} responses={post.viewerResponse ?? {}} resolved={post.status === "resolved"} />
         ) : null}
 

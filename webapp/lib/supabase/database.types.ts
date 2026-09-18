@@ -267,6 +267,14 @@ export type Database = {
           total_responses: number
         }[]
       }
+      power_ranking_top_five: {
+        Args: { p_post_id: string }
+        Returns: {
+          average_rank: number
+          option_id: string
+          top_five_count: number
+        }[]
+      }
       post_comment: {
         Args: {
           p_body: string

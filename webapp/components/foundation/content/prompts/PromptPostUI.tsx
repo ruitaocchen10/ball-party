@@ -10,12 +10,14 @@ import { Select } from "@/components/foundation/ui-kit/Select";
 import type { NflScheduleGame } from "@/lib/foundation/content/nfl/schedule";
 import { OptionIcon } from "./SlotFaces";
 import { MatchupPicker } from "./MatchupPicker";
+import { PROMPT_TICKET_CUT_CORNERS } from "./PromptTicket";
 import {
   CheckboxPoolField,
   GameSelectField,
   TEMPLATE_DEFS,
   buildCustomMultiSlots,
   buildGamePickSlots,
+  buildPowerRankingSlots,
   buildRankingSlots,
   buildStatLeaderSlots,
   defaultCriteria,
@@ -144,6 +146,10 @@ function PostTeaser({ post, gameContexts }: { post: Post; gameContexts: MatchupG
     return <WeeklyMatchupCarousel post={post} gameContexts={gameContexts} />;
   }
 
+  if (post.templateKind === "power_rankings") {
+    return <PowerRankingsBoard post={post} />;
+  }
+
   const allOptions = post.slots.flatMap((slot) => slot.options);
   const options = [...new Map(allOptions.map((option) => [option.id, option])).values()];
   const shown = options.slice(0, 6);
@@ -164,6 +170,71 @@ function PostTeaser({ post, gameContexts }: { post: Post; gameContexts: MatchupG
       </div>
     </div>
   );
+}
+
+/**
+ * A personal prompt needs a personal cover. It never invents a league-wide
+ * order: a saved answer wins, then the viewer's previous board, with an
+ * explicitly unranked starter trio for someone ranking for the first time.
+ */
+function PowerRankingsBoard({ post }: { post: Post }) {
+  const slot = post.slots[0];
+  const currentIds = slot ? post.viewerResponse?.[slot.id] ?? [] : [];
+  const byId = new Map(slot?.options.map((option) => [option.id, option]) ?? []);
+  const byTeamCode = new Map(slot?.options.filter((option) => option.teamCode).map((option) => [option.teamCode!, option]) ?? []);
+  const current = currentIds.map((id) => byId.get(id)).filter((option): option is Option => Boolean(option)).slice(0, 6);
+  const previous = Object.entries(post.previousRankByTeam ?? {})
+    .sort(([, leftRank], [, rightRank]) => leftRank - rightRank)
+    .map(([teamCode]) => byTeamCode.get(teamCode))
+    .filter((option): option is Option => Boolean(option))
+    .slice(0, 6);
+  const starter = ["BAL", "GB", "TB", "KC", "PHI", "BUF"].map((teamCode) => byTeamCode.get(teamCode)).filter((option): option is Option => Boolean(option));
+  const ranked = current.length ? current : previous;
+  const options = ranked.length ? ranked : starter.length ? starter : (slot?.options.slice(0, 6) ?? []);
+  const heading = current.length ? "Your board" : previous.length ? "Last time" : "32 teams. Your order.";
+
+  return (
+    <section data-testid="power-rankings-board" aria-label="Power Rankings board" style={PROMPT_TICKET_CUT_CORNERS} className="relative mx-4 mt-4 min-h-52 overflow-hidden bg-[#11130f] text-[#fff8e4] shadow-[0_10px_20px_rgb(0_0_0/0.35)]">
+      <div aria-hidden className="absolute inset-y-0 left-0 w-1/2 bg-[radial-gradient(ellipse_at_left,rgb(34_197_94_/_0.18),transparent_68%)]" />
+      <div aria-hidden className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(ellipse_at_right,rgb(239_68_68_/_0.18),transparent_68%)]" />
+      <PowerChevron direction="up" className="top-1 left-3 h-12 w-20 text-green-400/70" />
+      <PowerChevron direction="up" className="top-11 left-10 h-10 w-16 text-green-400/45" />
+      <PowerChevron direction="up" className="top-20 left-2 h-8 w-12 text-green-400/25" />
+      <PowerChevron direction="down" className="right-3 bottom-1 h-12 w-20 text-red-500/70" />
+      <PowerChevron direction="down" className="right-10 bottom-11 h-10 w-16 text-red-500/45" />
+      <PowerChevron direction="down" className="right-2 bottom-20 h-8 w-12 text-red-500/25" />
+
+      {options[0] ? <div className="absolute -top-1 -left-4 rotate-[-18deg] opacity-90 drop-shadow-[0_8px_10px_rgb(0_0_0/0.8)]"><OptionIcon option={options[0]} className="h-24 w-24 sm:h-28 sm:w-28" /></div> : null}
+      {options[1] ? <div className="absolute -top-1 -right-4 rotate-[18deg] opacity-90 drop-shadow-[0_8px_10px_rgb(0_0_0/0.8)]"><OptionIcon option={options[1]} className="h-24 w-24 sm:h-28 sm:w-28" /></div> : null}
+      {options[2] ? <div className="absolute bottom-2 -left-4 rotate-[14deg] opacity-75 drop-shadow-[0_8px_10px_rgb(0_0_0/0.8)]"><OptionIcon option={options[2]} className="h-24 w-24 sm:h-28 sm:w-28" /></div> : null}
+      {options[3] ? <div className="absolute right-0 bottom-2 rotate-[-14deg] opacity-75 drop-shadow-[0_8px_10px_rgb(0_0_0/0.8)]"><OptionIcon option={options[3]} className="h-24 w-24 sm:h-28 sm:w-28" /></div> : null}
+      {options[4] ? <div className="absolute top-1/2 left-[15%] z-[1] -translate-y-1/2 rotate-[12deg] opacity-75 drop-shadow-[0_8px_10px_rgb(0_0_0/0.8)]"><OptionIcon option={options[4]} className="h-16 w-16 sm:h-20 sm:w-20" /></div> : null}
+      {options[5] ? <div className="absolute top-1/2 right-[15%] z-[1] -translate-y-1/2 rotate-[-12deg] opacity-75 drop-shadow-[0_8px_10px_rgb(0_0_0/0.8)]"><OptionIcon option={options[5]} className="h-16 w-16 sm:h-20 sm:w-20" /></div> : null}
+
+      <div className="relative z-10 flex min-h-52 flex-col items-center justify-center px-16 text-center [text-shadow:0_3px_0_rgb(0_0_0),0_6px_14px_rgb(0_0_0/0.9)]">
+        <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-white uppercase">NFL · Your order</p>
+        <h3 className="mt-1 font-slab text-4xl leading-[0.78] tracking-[-0.04em] uppercase sm:text-5xl">
+          <span className="block text-white">Power</span>
+          <span className="block text-[#ef4444]">Rankings</span>
+        </h3>
+        <p className="mt-3 font-mono text-[9px] tracking-[0.12em] text-[#fff8e4]/85 uppercase">Top 5 · Top 10 · All 32</p>
+      </div>
+
+      {ranked.length ? (
+        <div className="absolute inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t border-white/15 bg-black/55">
+          {options.slice(0, 4).map((option, index) => <span key={option.id} className="truncate px-2 py-1.5 text-center font-mono text-[9px] tracking-[0.06em] uppercase">#{index + 1} {option.label}</span>)}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/** Bold outlined chevrons carry the up/down motif without reading as text glyphs. */
+function PowerChevron({ direction, className }: { direction: "up" | "down"; className: string }) {
+  const polygon = direction === "up"
+    ? "polygon(50% 0,100% 58%,82% 58%,50% 25%,18% 58%,0 58%)"
+    : "polygon(0 42%,18% 42%,50% 75%,82% 42%,100% 42%,50% 100%)";
+  return <span aria-hidden className={`absolute block ${className}`} style={{ clipPath: polygon, backgroundColor: "currentColor" }} />;
 }
 
 function WeeklyMatchupCarousel({ post, gameContexts }: { post: Post; gameContexts: MatchupGameContext[] }) {
@@ -268,7 +339,11 @@ export function PromptPostComposer({
     } else {
       setPromptText(defaultPromptText(next, games.find((game) => game.id === gameId)));
     }
-    setCriteria(isOpinion ? OPINION_CRITERIA : defaultCriteria(next));
+    // Power Rankings are a personal opinion, never a question with a single
+    // correct order to grade.
+    const nextOpinion = next === "power_rankings" ? true : kind === "power_rankings" ? false : isOpinion;
+    setIsOpinion(nextOpinion);
+    setCriteria(nextOpinion ? OPINION_CRITERIA : defaultCriteria(next));
   }
 
   function toggleOpinion() {
@@ -326,7 +401,9 @@ export function PromptPostComposer({
         : weeklyGames.filter((game) => weeklyGameIds.includes(game.id)).flatMap(buildGamePickSlots)
       : kind === "stat_leader"
         ? buildStatLeaderSlots(players.filter((p) => playerIds.includes(p.id)))
-        : kind === "ranking"
+        : kind === "power_rankings"
+          ? buildPowerRankingSlots()
+          : kind === "ranking"
           ? effectiveRankCount > 0
             ? buildRankingSlots(rankingOptions.filter((option) => rankingIds.includes(option.id)), effectiveRankCount)
             : []
@@ -457,16 +534,18 @@ export function PromptPostComposer({
           </div>
         </FieldBlock>
 
-        <FieldBlock label="Resolution">
-          <button
-            type="button"
-            onClick={toggleOpinion}
-            className={`flex items-center gap-1.5 px-3 py-2 font-slab text-xs uppercase ${isOpinion ? "bg-panel text-panel-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
-          >
-            {isOpinion ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> : null}
-            Opinion — no correct answer, no points
-          </button>
-        </FieldBlock>
+        {kind !== "power_rankings" ? (
+          <FieldBlock label="Resolution">
+            <button
+              type="button"
+              onClick={toggleOpinion}
+              className={`flex items-center gap-1.5 px-3 py-2 font-slab text-xs uppercase ${isOpinion ? "bg-panel text-panel-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
+            >
+              {isOpinion ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> : null}
+              Opinion — no correct answer, no points
+            </button>
+          </FieldBlock>
+        ) : null}
 
         {kind === "picks" ? (
           <>
@@ -515,6 +594,11 @@ export function PromptPostComposer({
             onSearchChange={setPlayerSearch}
             onToggle={(id) => setPlayerIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])}
           />
+        ) : null}
+        {kind === "power_rankings" ? (
+          <FieldBlock label="Power Rankings setup">
+            <p className="text-sm leading-6 text-fg-muted">Each person can choose Top 5, Top 10, or all 32 teams while answering. Their previous ranking will be used to show team movement.</p>
+          </FieldBlock>
         ) : null}
         {kind === "ranking" ? (
           <>

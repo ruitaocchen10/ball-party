@@ -10,8 +10,10 @@ import type { Post } from "@/lib/foundation/content/prompts/types";
  * huddle split. No client interactivity, so this stays a server component.
  */
 export function PromptContext({ post }: { post: Post }) {
-  const singleGameSlot = (isPicksPost(post) || post.isOpinion) && post.slots.length === 1 ? post.slots[0] : null;
+  const singleGameSlot = post.templateKind !== "power_rankings" && (isPicksPost(post) || post.isOpinion) && post.slots.length === 1 ? post.slots[0] : null;
   const split = singleGameSlot ? post.aggregate?.[singleGameSlot.id] : undefined;
+  const consensusSlot = post.templateKind === "power_rankings" ? post.slots[0] : null;
+  const consensusTopFive = post.powerRankingTopFive ?? [];
 
   return (
     <aside aria-label="About this prompt" className="xl:sticky xl:top-[92px] xl:self-start">
@@ -23,13 +25,12 @@ export function PromptContext({ post }: { post: Post }) {
             <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Resolves</p>
             <p className="mt-1.5 text-sm leading-6 text-fg">{post.resolutionCriteria}</p>
           </div>
-          <div className={split ? "border-b border-line py-3.5" : "py-3.5"}>
+          <div className={split || consensusTopFive.length ? "border-b border-line py-3.5" : "py-3.5"}>
             <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Status</p>
             <p className="mt-1.5 text-sm leading-6 text-fg">{statusLine(post)}</p>
           </div>
           {singleGameSlot && split ? (
             <div className="py-3.5">
-              <p className="mb-2.5 font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">How the huddle picked</p>
               <div className="flex flex-col gap-2">
                 {singleGameSlot.options.map((option) => (
                   <div key={option.id} className="flex items-center gap-2">
@@ -43,6 +44,26 @@ export function PromptContext({ post }: { post: Post }) {
                 {singleGameSlot.options.map((option) => (
                   <span key={option.id} style={{ width: `${split[option.id] ?? 0}%` }} className="h-full bg-panel first:bg-panel last:bg-fg-muted/40" />
                 ))}
+              </div>
+            </div>
+          ) : null}
+          {consensusSlot && consensusTopFive.length ? (
+            <div className="py-3.5">
+              <p className="mb-2.5 font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Most common top 5</p>
+              <div className="flex flex-col gap-2">
+                {consensusTopFive.map((team, index) => {
+                  const option = consensusSlot.options.find((candidate) => candidate.id === team.optionId);
+                  if (!option) return null;
+                  const percent = post.responseCount ? Math.round((team.topFiveCount / post.responseCount) * 100) : 0;
+                  return (
+                    <div key={team.optionId} className="flex items-center gap-2">
+                      <span className="w-4 font-slab text-lg leading-none text-fg-muted tabular-nums">{index + 1}</span>
+                      <OptionIcon option={option} className="h-6 w-6" />
+                      <span className="min-w-0 flex-1 truncate font-slab text-sm uppercase">{option.label}</span>
+                      <span className="font-mono text-xs text-fg-muted tabular-nums">{percent}%</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ) : null}

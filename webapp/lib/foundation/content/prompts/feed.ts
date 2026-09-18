@@ -90,6 +90,37 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
     ),
   );
   const aggregateByPost = new Map(aggregateResults.map(({ postId, rows }) => [postId, rows]));
+  const powerRankingResults = await Promise.all(
+    postsNeedingAggregate
+      .filter((row) => row.template_kind === "power_rankings")
+      .map((row) => supabase.schema("prompts").rpc("power_ranking_top_five", { p_post_id: row.id })
+        .then((result) => ({ postId: row.id, rows: result.data ?? [] }))),
+  );
+  const powerRankingTopFiveByPost = new Map(powerRankingResults.map(({ postId, rows }) => [postId, rows]));
+
+  // Option UUIDs are intentionally unique to each post. Power Rankings needs
+  // a stable identity across weekly posts, so compare the responses through
+  // their NFL team_code instead. Do this server-side with the viewer's own
+  // RLS-visible rows; no other participant's history is exposed.
+  const previousRankByPowerPost = new Map<string, Record<string, number>>();
+  let mostRecentPowerRanks: Record<string, number> = {};
+  for (const row of [...postRows].sort((left, right) => left.created_at.localeCompare(right.created_at))) {
+    if (row.template_kind !== "power_rankings") continue;
+    previousRankByPowerPost.set(row.id, mostRecentPowerRanks);
+    const response = (responsesByPost.get(row.id) ?? [])[0];
+    if (!response) continue;
+    const teamCodeByOptionId = new Map(
+      (optionsBySlot.get(response.slot_id) ?? [])
+        .filter((option) => option.team_code)
+        .map((option) => [option.id, option.team_code!]),
+    );
+    mostRecentPowerRanks = Object.fromEntries(
+      response.chosen_option_ids.flatMap((optionId, index) => {
+        const teamCode = teamCodeByOptionId.get(optionId);
+        return teamCode ? [[teamCode, index + 1]] : [];
+      }),
+    );
+  }
 
   // Individual calls become social content only after the board closes. The
   // RPC is security-definer rather than a wider RLS policy, so an open prompt
@@ -111,7 +142,9 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
     nameById,
     viewerId,
     aggregateByPost,
+    powerRankingTopFiveByPost,
     revealedByPost,
+    previousRankByPowerPost,
   }));
 }
 
@@ -141,7 +174,9 @@ function mapPost(
     nameById: Map<string, string>;
     viewerId: string | null;
     aggregateByPost: Map<string, { slot_id: string; option_id: string; pct: number | null; total_responses: number | null }[]>;
+    powerRankingTopFiveByPost: Map<string, { option_id: string; top_five_count: number | null; average_rank: number | null }[]>;
     revealedByPost: Map<string, RevealedResponseRow[]>;
+    previousRankByPowerPost: Map<string, Record<string, number>>;
   },
 ): Post {
   const slots: Slot[] = (ctx.slotsByPost.get(row.id) ?? []).map((slotRow) => ({
@@ -186,6 +221,11 @@ function mapPost(
   const comments = buildCommentTree(ctx.commentsByPost.get(row.id) ?? [], ctx.nameById, ctx.viewerId, revealedByAuthor);
 
   const aggregateRows = ctx.aggregateByPost.get(row.id);
+  const powerRankingTopFive = ctx.powerRankingTopFiveByPost.get(row.id)?.map((team) => ({
+    optionId: team.option_id,
+    topFiveCount: team.top_five_count ?? 0,
+    averageRank: team.average_rank ?? 0,
+  }));
   let aggregate: Post["aggregate"];
   let responseCount = 0;
   if (aggregateRows) {
@@ -216,7 +256,9 @@ function mapPost(
     viewerAnswered,
     viewerResponse,
     viewerPointsAwarded,
+    previousRankByTeam: row.template_kind === "power_rankings" ? ctx.previousRankByPowerPost.get(row.id) : undefined,
     aggregate,
+    powerRankingTopFive,
   };
 }
 

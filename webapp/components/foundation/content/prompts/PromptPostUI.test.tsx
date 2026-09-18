@@ -1,9 +1,15 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { toPng } from "html-to-image";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import { PromptPostComposer, PromptPostFeed } from "./PromptPostUI";
+import { PromptContext } from "./PromptContext";
+import { SharePowerRankingsCard } from "./SharePowerRankingsCard";
+import { ShareTakeButton } from "./ShareTakeButton";
 import type { Post } from "@/lib/foundation/content/prompts/types";
+
+vi.mock("html-to-image", () => ({ toPng: vi.fn().mockResolvedValue("data:image/png;base64,preview") }));
 
 function post(slots: Post["slots"]): Post {
   return {
@@ -116,4 +122,118 @@ it("publishes the point value configured for each slot", async () => {
 
   expect(onPublish).toHaveBeenCalledTimes(1);
   expect(onPublish.mock.calls[0][0].slots[0].points).toBe(42);
+});
+
+it("uses a viewer's current or prior board for Power Rankings cover art", () => {
+  const powerSlot = {
+    id: "power",
+    label: "NFL Power Rankings",
+    shape: "rank" as const,
+    pickCount: 32,
+    points: 1,
+    options: [
+      { id: "kc", label: "Chiefs", teamCode: "KC" },
+      { id: "buf", label: "Bills", teamCode: "BUF" },
+      { id: "phi", label: "Eagles", teamCode: "PHI" },
+    ],
+  };
+  const powerPost: Post = {
+    ...post([powerSlot]),
+    templateKind: "power_rankings",
+    templateName: "Power rankings",
+    viewerAnswered: true,
+    viewerResponse: { power: ["kc", "buf", "phi"] },
+    previousRankByTeam: { PHI: 1, BUF: 2, KC: 3 },
+  };
+  const { rerender } = render(<PromptPostFeed posts={[powerPost]} viewerCanAnswer onSelectPost={() => {}} />);
+
+  expect(screen.getByTestId("power-rankings-board")).toHaveTextContent("#1");
+  expect(screen.getByTestId("power-rankings-board")).toHaveTextContent("Chiefs");
+
+  rerender(<PromptPostFeed posts={[{ ...powerPost, viewerAnswered: false, viewerResponse: undefined }]} viewerCanAnswer onSelectPost={() => {}} />);
+  expect(screen.getByTestId("power-rankings-board")).toHaveTextContent("Eagles");
+});
+
+it("shows Power Rankings consensus as the most common top five in the right rail", () => {
+  const powerSlot = {
+    id: "power",
+    label: "NFL Power Rankings",
+    shape: "rank" as const,
+    pickCount: 32,
+    points: 1,
+    options: [
+      { id: "kc", label: "Chiefs", teamCode: "KC" },
+      { id: "buf", label: "Bills", teamCode: "BUF" },
+      { id: "phi", label: "Eagles", teamCode: "PHI" },
+      { id: "bal", label: "Ravens", teamCode: "BAL" },
+      { id: "gb", label: "Packers", teamCode: "GB" },
+    ],
+  };
+  const powerPost: Post = {
+    ...post([powerSlot]),
+    templateKind: "power_rankings",
+    templateName: "Power rankings",
+    responseCount: 4,
+    powerRankingTopFive: [
+      { optionId: "kc", topFiveCount: 4, averageRank: 1.5 },
+      { optionId: "buf", topFiveCount: 4, averageRank: 2 },
+      { optionId: "phi", topFiveCount: 3, averageRank: 3 },
+      { optionId: "bal", topFiveCount: 2, averageRank: 4 },
+      { optionId: "gb", topFiveCount: 1, averageRank: 5 },
+    ],
+  };
+
+  render(<PromptContext post={powerPost} />);
+
+  expect(screen.getByText("Most common top 5")).toBeInTheDocument();
+  expect(screen.getByText("Chiefs")).toBeInTheDocument();
+  expect(screen.getAllByText("100%")).toHaveLength(2);
+  expect(screen.queryByText("How the huddle picked")).not.toBeInTheDocument();
+});
+
+it("renders a dedicated share board for a respondent's Power Rankings", () => {
+  const powerSlot = {
+    id: "power",
+    label: "NFL Power Rankings",
+    shape: "rank" as const,
+    pickCount: 32,
+    points: 1,
+    options: [
+      { id: "kc", label: "Chiefs", teamCode: "KC" },
+      { id: "buf", label: "Bills", teamCode: "BUF" },
+      { id: "phi", label: "Eagles", teamCode: "PHI" },
+    ],
+  };
+  const powerPost: Post = { ...post([powerSlot]), templateKind: "power_rankings", templateName: "Power rankings" };
+
+  const { container } = render(<SharePowerRankingsCard post={powerPost} responses={{ power: ["kc", "buf", "phi"] }} />);
+
+  expect(screen.getByText("My power rankings")).toBeInTheDocument();
+  expect(container.querySelectorAll("img")).toHaveLength(3);
+  expect(container.querySelector('[style*="grid-auto-flow: column"]')).toBeInTheDocument();
+});
+
+it("regenerates a Power Rankings preview at Reel dimensions when that format is selected", async () => {
+  const powerSlot = {
+    id: "power",
+    label: "NFL Power Rankings",
+    shape: "rank" as const,
+    pickCount: 32,
+    points: 1,
+    options: [{ id: "kc", label: "Chiefs", teamCode: "KC" }],
+  };
+  const powerPost: Post = { ...post([powerSlot]), templateKind: "power_rankings", templateName: "Power rankings" };
+  const png = vi.mocked(toPng);
+  png.mockClear();
+
+  render(<ShareTakeButton post={powerPost} responses={{ power: ["kc"] }} resolved={false} />);
+  await userEvent.click(screen.getByRole("button", { name: /preview a shareable image of your rankings/i }));
+  await waitFor(() => expect(png).toHaveBeenCalledTimes(1));
+  await userEvent.click(screen.getByRole("button", { name: /instagram reel/i }));
+
+  await waitFor(() => expect(png).toHaveBeenCalledTimes(2));
+  const canvas = png.mock.calls[1][0] as HTMLElement;
+  expect(canvas.style.height).toBe("960px");
+  // The card keeps its 4:5 post size and sits centered on the taller canvas.
+  expect((canvas.lastElementChild as HTMLElement).style.height).toBe("675px");
 });
