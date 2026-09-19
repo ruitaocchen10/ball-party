@@ -85,6 +85,8 @@ export type Post = {
   responseCount: number;
   viewerAnswered: boolean;
   viewerResponse?: Record<string, string[]>;
+  /** Power Rankings only: the six teams the admin chose for the cover art, in placement order. */
+  coverTeamCodes?: string[];
   /** Team-code → position from this viewer's most recent earlier Power Rankings submission. */
   previousRankByTeam?: Record<string, number>;
   viewerPointsAwarded?: number;

@@ -91,6 +91,7 @@ export async function createPromptPost(
     slots: Slot[];
     resolutionSource?: PromptResolutionSource;
     isOpinion?: boolean;
+    coverTeamCodes?: string[];
   },
 ): Promise<{ id: string } | { error: string }> {
   const { data, error } = await supabase.schema("prompts").rpc("create_post", {
@@ -102,6 +103,7 @@ export async function createPromptPost(
     p_lock_at: params.lockAt,
     p_slots: toCreatePostSlots(params.slots),
     p_is_opinion: params.isOpinion ?? false,
+    ...(params.coverTeamCodes ? { p_cover_team_codes: params.coverTeamCodes } : {}),
     ...(params.resolutionSource
       ? {
           p_resolution_source: {

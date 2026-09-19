@@ -237,6 +237,7 @@ export type Database = {
       create_post: {
         Args: {
           p_caption: string
+          p_cover_team_codes?: string[]
           p_is_opinion?: boolean
           p_lock_at: string
           p_prompt_text: string
@@ -1177,6 +1178,7 @@ export type Database = {
         Row: {
           author_id: string
           caption: string
+          cover_team_codes: string[] | null
           created_at: string
           id: string
           is_opinion: boolean
@@ -1193,6 +1195,7 @@ export type Database = {
         Insert: {
           author_id: string
           caption: string
+          cover_team_codes?: string[] | null
           created_at?: string
           id?: string
           is_opinion?: boolean
@@ -1209,6 +1212,7 @@ export type Database = {
         Update: {
           author_id?: string
           caption?: string
+          cover_team_codes?: string[] | null
           created_at?: string
           id?: string
           is_opinion?: boolean
