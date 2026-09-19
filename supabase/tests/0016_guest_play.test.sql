@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(10);
 
 \ir support/harness.psql
 
@@ -29,16 +29,17 @@ select tests.act_as((select v from tests.fx where k = 'host'));
 insert into tests.fx (k, v)
 select 'lobby', (public.create_lobby()).id;
 
+-- Multiplayer now requires a real account end to end (issue #61 / 0113): a
+-- guest can no longer join a room, so the old "guest plays out a full
+-- auction match" scenario this file used to cover is not a reachable path
+-- through the API any more. 0113 owns the exhaustive multiplayer-entry-point
+-- coverage; what's left here is guest identity itself, and the two entry
+-- points closest to it.
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
-select lives_ok(
+select throws_ok(
   format($$ select public.join_lobby(%L) $$, tests.lobby_code((select v from tests.fx where k = 'lobby'))),
-  'a guest can join a room'
-);
-
-select is(
-  (select display_name from public.profiles where id = (select v from tests.fx where k = 'host')),
-  'Ava',
-  'a guest can see a co-player name'
+  '42501', 'account_required',
+  'a guest cannot join a room'
 );
 
 select throws_ok(
@@ -52,81 +53,25 @@ update public.lobbies set host_id = (select v from tests.fx where k = 'guest')
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select throws_ok(
   format($$ select public.start_run(%L, 'arcade', 'auction_team_builder') $$, (select v from tests.fx where k = 'lobby')),
-  '42501', 'not_authenticated',
+  '42501', 'account_required',
   'the retained run-start guard still rejects a guest'
 );
 
 select tests.act_as_admin();
 update public.lobbies set host_id = (select v from tests.fx where k = 'host')
  where id = (select v from tests.fx where k = 'lobby');
-select tests.act_as((select v from tests.fx where k = 'host'));
-insert into tests.fx (k, v)
-select 'match', (public.start_run((select v from tests.fx where k = 'lobby'), 'arcade', 'auction_team_builder')).id;
 
-select tests.act_as_guest((select v from tests.fx where k = 'guest'));
-select lives_ok(
-  format($$ select auction.start(%L, 'weekly', 'deep') $$, (select v from tests.fx where k = 'match')),
-  'a guest can set up the deep-preset match they were snapshotted into'
-);
-
-select is(
-  (select row(roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse)::text
-     from public.auction_matches where match_id = (select v from tests.fx where k = 'match')),
-  '(deep,2,2,3,1,2,50)',
-  'a guest can read the frozen deep format they are playing'
-);
-
-select tests.act_as_admin();
-update public.auction_matches set phase = 'bidding', phase_deadline = null,
-  turn_seat = tests.seat_of((select v from tests.fx where k = 'match'), (select v from tests.fx where k = 'guest')),
-  turn_deadline = now() + interval '20 seconds'
- where match_id = (select v from tests.fx where k = 'match');
-select tests.act_as_guest((select v from tests.fx where k = 'guest'));
-select lives_ok(
-  format($$ select auction.place_bid(%L, 1) $$, (select v from tests.fx where k = 'match')),
-  'a guest can bid'
-);
-
-select tests.act_as_admin();
-update public.auction_matches set turn_seat = tests.seat_of((select v from tests.fx where k = 'match'), (select v from tests.fx where k = 'host')),
-  turn_deadline = now() + interval '20 seconds'
- where match_id = (select v from tests.fx where k = 'match');
-select tests.act_as((select v from tests.fx where k = 'host'));
-select lives_ok(
-  format($$ select auction.pass_lot(%L) $$, (select v from tests.fx where k = 'match')),
-  'a co-player can resolve a lot the guest bid on'
-);
-select tests.act_as_admin();
-select is(
-  (select winner_id from public.auction_lots where match_id = (select v from tests.fx where k = 'match') and seq = 1),
-  (select v from tests.fx where k = 'guest'),
-  'a guest can win a lot'
-);
-
-update public.auction_matches set current_lot = 2, phase = 'bidding', phase_deadline = null,
-  turn_seat = tests.seat_of((select v from tests.fx where k = 'match'), (select v from tests.fx where k = 'guest')),
-  turn_deadline = now() + interval '20 seconds'
- where match_id = (select v from tests.fx where k = 'match');
-select tests.act_as_guest((select v from tests.fx where k = 'guest'));
-select lives_ok(
-  format($$ select auction.pass_lot(%L) $$, (select v from tests.fx where k = 'match')),
-  'a guest can pass'
-);
-
-select tests.act_as_admin();
-select private.finish_match(
-  (select v from tests.fx where k = 'match'),
-  jsonb_build_object((select v from tests.fx where k = 'host')::text, 3, (select v from tests.fx where k = 'guest')::text, 8)
-);
--- Scores land on match_players. run_participants.score is dormant until the
--- party loop that owns it is built, so asserting there proves nothing.
-select is(
-  (select raw_score from public.match_players
-    where match_id = (select v from tests.fx where k = 'match')
-      and user_id = (select v from tests.fx where k = 'guest')),
-  8::numeric,
-  'a guest score counts toward the match result'
-);
+-- Cleanup's run-participation guard (below) needs a guest who has actually
+-- played, but that can no longer come from a real run: seat one directly, the
+-- way an already-seated guest from before this migration would still look.
+with new_run as (
+  insert into public.runs (lobby_id, mode)
+  values ((select v from tests.fx where k = 'lobby'), 'arcade')
+  returning id
+)
+insert into tests.fx (k, v) select 'run', id from new_run;
+insert into public.run_participants (run_id, user_id, seat)
+values ((select v from tests.fx where k = 'run'), (select v from tests.fx where k = 'guest'), 0);
 
 -- The collision is asserted in two halves, each proven by auth.uid(): the
 -- guest stakes a claim on itself, the account redeems the nonce. See 0017.

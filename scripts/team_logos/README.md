@@ -4,7 +4,7 @@ Sabotage draft's franchise logos: one PNG per franchise code, uploaded once
 into the `team-logos` Supabase Storage bucket (see
 [`supabase/migrations/*_sabotage_draft_team_logos_bucket.sql`](../../supabase/migrations)),
 under `{franchise_code}.png` — the same PFR code
-[`franchises.ts`](../../frontend/lib/sabotage-draft/franchises.ts) already
+[`franchises.ts`](../../webapp/lib/sabotage-draft/franchises.ts) already
 keys franchise identity on everywhere else in the app.
 
 ## Running it
@@ -27,7 +27,7 @@ rerun overwrites (`x-upsert`), it doesn't duplicate.
 
 ### Local reset
 
-After `supabase start`, run `npm --prefix frontend run db:reset`. It resets
+After `supabase start`, run `npm --prefix webapp run db:reset`. It resets
 the database, obtains the local service-role key from `supabase status`, and
 uploads all logo PNGs to local Storage. SQL seed files can create the bucket
 but cannot write the PNG bytes, so calling `supabase db reset` directly stays
@@ -70,7 +70,7 @@ build_logos.mjs   fetch (ESPN CDN) + upload (Storage REST), no dependencies
 
 No transform step and nothing to unit test here, unlike the roster pool:
 there's no parsing, folding, or identity-reconciliation logic — just a fixed
-32-entry crosswalk, a fetch, and an upload. `frontend/components/sabotage-
+32-entry crosswalk, a fetch, and an upload. `webapp/components/sabotage-
 draft/TeamLogo.tsx` is what's actually exercised by tests; it's written to
 degrade to text-only for any code this script hasn't (yet, or ever)
 succeeded for, so a partial or never-run upload is never a hard failure for

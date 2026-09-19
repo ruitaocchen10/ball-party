@@ -90,7 +90,7 @@ for a comment. A change is a new migration.
 
 ```sh
 supabase start          # first run pulls images and takes a few minutes
-npm --prefix frontend run db:reset
+npm --prefix webapp run db:reset
 ```
 
 Ports are moved off the defaults in `config.toml` so this stack can run

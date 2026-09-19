@@ -75,8 +75,8 @@ the contract is wrong.
 | Identity | `identity.md` *(todo)* | Accounts, profiles, display names, guest vs. authed play |
 | Lobbies | [`lobbies/lobbies.md`](./lobbies/lobbies.md) | Room, join code, membership, the lobby→run→match records |
 | Orchestration | `orchestration.md` *(todo)* | The party loop: pick next game, launch match, take result, award points, decide the win. Arcade is the degenerate one-match case |
-| Game runtime | `game-runtime.md` *(todo)* | **The contract.** Match state, action validation, per-action deadlines, hidden-state projection |
-| Realtime | `realtime.md` *(todo)* | Subscription lifecycle, presence, reconnect and mid-match rejoin, connection state in the UI |
+| Game runtime | [`game-runtime.md`](./game-runtime.md) | **The contract.** Match state, action validation, per-action deadlines, hidden-state projection |
+| Realtime | [`realtime.md`](./realtime.md) | Subscription lifecycle, presence, reconnect and mid-match rejoin, connection state in the UI |
 | Content | [`../../scripts/player_pool/`](../../scripts/player_pool/README.md) | Sports data: players, stats, decks, prompts. Ingestion, caching, freshness, licensing. The auction's player-week pool is built and loaded; decks and prompts are untouched |
 | UI kit | `ui-kit.md` *(todo)* | Primitives (`Card`, `Button`) plus the shared **game shell**: timer bar, player rail, reveal |
 | Games | [`../games/`](../games/) | Rules for one game, and nothing else. One doc each |
