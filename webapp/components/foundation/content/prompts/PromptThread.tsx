@@ -53,7 +53,7 @@ export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = t
             }
           >
             {isPicksPost(post) ? (
-              <YourCalls slots={post.slots} responses={post.viewerResponse ?? {}} resolved={post.status === "resolved"} />
+              <YourCalls slots={post.slots} responses={post.viewerResponse ?? {}} />
             ) : post.templateKind === "power_rankings" ? (
               <div className="px-4 pt-4">
                 <PowerRankingsSlot slot={post.slots[0]} disabled showEditorHeader={false} response={post.viewerResponse?.[post.slots[0].id] ?? []} onChange={() => {}} previousRankByTeam={post.previousRankByTeam ?? {}} />
@@ -69,7 +69,7 @@ export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = t
         ) : null}
 
         {youComment && (isPicksPost(post) || post.templateKind === "power_rankings") ? (
-          <ShareTakeButton post={post} responses={post.viewerResponse ?? {}} resolved={post.status === "resolved"} />
+          <ShareTakeButton post={post} responses={post.viewerResponse ?? {}} />
         ) : null}
 
         {(post.viewerAnswered || !viewerCanAnswer) && otherTakes.length ? (
@@ -83,7 +83,7 @@ export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = t
                 collapsedByDefault={Boolean(isPicksPost(post) && take.response)}
               >
                 {isPicksPost(post) && take.response ? (
-                  <YourCalls slots={post.slots} responses={take.response} resolved={post.status === "resolved"} collapsible />
+                  <YourCalls slots={post.slots} responses={take.response} collapsible />
                 ) : null}
               </TakeCard>
             ))}

@@ -30,7 +30,7 @@ it("uses a compact, direct-selection sheet for a multi-game slate", async () => 
 
 it("keeps a long revealed ticket compact until expanded", async () => {
   const user = userEvent.setup();
-  render(<YourCalls slots={slots} responses={Object.fromEntries(slots.map((slot) => [slot.id, [slot.options[0].id]]))} resolved={false} collapsible />);
+  render(<YourCalls slots={slots} responses={Object.fromEntries(slots.map((slot) => [slot.id, [slot.options[0].id]]))} collapsible />);
 
   expect(screen.getByText("View all 5 picks")).toBeInTheDocument();
   expect(screen.queryByLabelText("Away 4 @ Home 4")).not.toBeInTheDocument();
@@ -47,7 +47,7 @@ it("renders a saved team pick with its franchise-color treatment", () => {
     ],
   };
 
-  render(<YourCalls slots={[teamSlot]} responses={{ [teamSlot.id]: ["kc"] }} resolved={false} />);
+  render(<YourCalls slots={[teamSlot]} responses={{ [teamSlot.id]: ["kc"] }} />);
 
   expect(screen.getByLabelText(teamSlot.label)).toBeInTheDocument();
 });
@@ -170,4 +170,47 @@ it("replaces an occupied rank and lets a ranked team return to the available poo
 
   expect(screen.getByLabelText("Your power rankings").querySelectorAll("ol > li")[0]).toHaveTextContent("Choose a team");
   expect(screen.getByRole("button", { name: "Add Team 1" })).toBeInTheDocument();
+});
+
+const thursday: Slot = {
+  id: "thursday",
+  label: "Lions @ Bills — winner",
+  shape: "pick",
+  points: 10,
+  options: [
+    { id: "det", label: "Lions", teamCode: "DET" },
+    { id: "buf", label: "Bills", teamCode: "BUF" },
+  ],
+};
+const sunday: Slot = {
+  ...thursday,
+  id: "sunday",
+  label: "Panthers @ Falcons — winner",
+  options: [
+    { id: "car", label: "Panthers", teamCode: "CAR" },
+    { id: "atl", label: "Falcons", teamCode: "ATL" },
+  ],
+};
+
+it("marks nothing right or wrong while a pick's game is still ungraded", () => {
+  render(<YourCalls slots={[thursday, sunday]} responses={{ thursday: ["buf"], sunday: ["atl"] }} />);
+
+  expect(screen.queryByLabelText("Correct")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Incorrect")).not.toBeInTheDocument();
+});
+
+it("grades each matchup on its own, leaving a pending game unmarked", () => {
+  const graded: Slot = { ...thursday, correct: ["buf"] };
+  render(<YourCalls slots={[graded, sunday]} responses={{ thursday: ["buf"], sunday: ["atl"] }} />);
+
+  expect(screen.getAllByLabelText("Correct")).toHaveLength(1);
+  expect(screen.queryByLabelText("Incorrect")).not.toBeInTheDocument();
+});
+
+it("marks a wrong pick on a graded matchup as incorrect", () => {
+  const graded: Slot = { ...thursday, correct: ["buf"] };
+  render(<YourCalls slots={[graded]} responses={{ thursday: ["det"] }} />);
+
+  expect(screen.getByLabelText("Incorrect")).toBeInTheDocument();
+  expect(screen.queryByLabelText("Correct")).not.toBeInTheDocument();
 });

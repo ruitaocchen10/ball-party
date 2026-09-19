@@ -41,12 +41,10 @@ export function GamePickFace({
 export function YourCalls({
   slots,
   responses,
-  resolved,
   collapsible = false,
 }: {
   slots: Slot[];
   responses: Record<string, string[]>;
-  resolved: boolean;
   /** Large weekly tickets start compact; a single-game take never needs this. */
   collapsible?: boolean;
 }) {
@@ -57,7 +55,7 @@ export function YourCalls({
     <section className="mt-4 px-4" aria-label="Your calls">
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {visibleSlots.map((slot) => (
-          <MatchupPicker key={slot.id} slot={slot} response={responses[slot.id] ?? []} resolved={resolved} variant="compact" mode="revealed" />
+          <MatchupPicker key={slot.id} slot={slot} response={responses[slot.id] ?? []} variant="compact" mode="revealed" />
         ))}
       </div>
       {hiddenCount > 0 ? (

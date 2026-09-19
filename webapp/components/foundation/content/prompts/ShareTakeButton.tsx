@@ -21,11 +21,9 @@ type Phase = "idle" | "rendering" | "preview" | "error";
 export function ShareTakeButton({
   post,
   responses,
-  resolved,
 }: {
   post: Post;
   responses: Record<string, string[]>;
-  resolved: boolean;
 }) {
   const isPowerRankings = post.templateKind === "power_rankings";
   const shareLabel = isPowerRankings ? "rankings" : "picks";
@@ -103,7 +101,7 @@ export function ShareTakeButton({
           {isPowerRankings ? (
             <SharePowerRankingsCard ref={cardRef} post={post} responses={responses} headline={headline} subheadline={subheadline} format={format} />
           ) : (
-            <SharePicksCard ref={cardRef} post={post} responses={responses} resolved={resolved} headline={headline} subheadline={subheadline} />
+            <SharePicksCard ref={cardRef} post={post} responses={responses} headline={headline} subheadline={subheadline} />
           )}
         </div>
       ) : null}

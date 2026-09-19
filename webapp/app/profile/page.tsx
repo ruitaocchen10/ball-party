@@ -179,7 +179,7 @@ function TakeHistoryItem({
       >
         {hasPickDetails ? (
           isPicksPost(post) ? (
-            <YourCalls slots={post.slots} responses={post.viewerResponse ?? {}} resolved={post.status === "resolved"} />
+            <YourCalls slots={post.slots} responses={post.viewerResponse ?? {}} />
           ) : (
             <div className="flex flex-col gap-4 px-4 pt-4">
               {post.slots.map((slot) => (

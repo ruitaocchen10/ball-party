@@ -36,6 +36,15 @@ export function scoreSlot(slot: Slot, response: string[] | undefined): SlotResul
   return { correctCount, total, pointsEarned, fullyCorrect: correctCount === total };
 }
 
+/**
+ * Whether a slot's answer is known yet. Slots of a multi-game Picks post are
+ * graded one at a time as each game goes final (0117), so this — not the
+ * post's status — decides whether a pick can be shown as right or wrong.
+ */
+export function isSlotGraded(slot: Pick<Slot, "correct">): boolean {
+  return (slot.correct?.length ?? 0) > 0;
+}
+
 /** `game_pick` and `weekly_picks` remain readable for posts created before Picks unified them — see types.ts's TemplateKind. */
 export function isPicksPost(post: Pick<Post, "templateKind">): boolean {
   return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks";
