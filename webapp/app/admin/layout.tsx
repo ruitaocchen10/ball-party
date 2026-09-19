@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AdminNav } from "@/components/admin/AdminNav";
 import { isAdminViewer } from "@/lib/foundation/identity/viewer";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = { title: "Admin", robots: { index: false, follow: false } };
 
 /**
  * Shell for every /admin/* route — nav plus the one place the admin-only

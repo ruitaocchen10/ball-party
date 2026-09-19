@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -16,6 +17,10 @@ import { fetchLobbyWins } from "@/lib/platform/lobbies/scoreboard";
 import { fetchLobbyActivity } from "@/lib/platform/lobbies/activity";
 import { fetchLobbyMemberStats } from "@/lib/platform/lobbies/player-stats";
 import type { MatchGame } from "@/lib/platform/orchestration/catalog";
+
+// An invite link is a private handoff between friends, not a page for a search
+// index — one per room code, all the same content, all short-lived.
+export const metadata: Metadata = { title: "Join a room", robots: { index: false } };
 
 export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   const { code: rawCode } = await props.params;

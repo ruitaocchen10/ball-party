@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { SoloGrid } from "@/components/home/SoloGrid";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
@@ -5,6 +7,10 @@ import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { isSignedInViewer } from "@/lib/foundation/identity/viewer";
+
+// A sign-up destination rather than a landing page (see below), so it stays out
+// of the index until it earns its own content.
+export const metadata: Metadata = { title: "Solo games", robots: { index: false } };
 
 /**
  * The games a lone player can start right now, on its own route — split out

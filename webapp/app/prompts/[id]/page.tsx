@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { DashboardHeader } from "@/components/home/DashboardHeader";
@@ -7,7 +8,29 @@ import { PromptContext } from "@/components/foundation/content/prompts/PromptCon
 import { PromptThread } from "@/components/foundation/content/prompts/PromptThread";
 import { canAnswerPrompt, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPromptById } from "@/lib/foundation/content/prompts/feed";
+import { fetchPromptMeta } from "@/lib/foundation/content/prompts/meta";
+import { SITE_NAME } from "@/lib/seo/site";
 import { createClient } from "@/lib/supabase/server";
+
+/**
+ * What a search result or a shared link shows for this prompt. Reads only the
+ * post row — not the full feed the page itself loads — and the sibling
+ * opengraph-image.tsx draws the preview card from the same row.
+ */
+export async function generateMetadata(props: PageProps<"/prompts/[id]">): Promise<Metadata> {
+  const { id } = await props.params;
+  const meta = await fetchPromptMeta(id);
+  if (!meta) return { title: "Prompt not found", robots: { index: false } };
+
+  const canonical = `/prompts/${id}`;
+  return {
+    title: meta.title,
+    description: meta.description,
+    alternates: { canonical },
+    // Replaces the root layout's openGraph wholesale, so siteName and type come along.
+    openGraph: { type: "website", siteName: SITE_NAME, title: meta.title, description: meta.description, url: canonical },
+  };
+}
 
 /** A prompt's shareable, reload-safe detail screen. */
 export default async function PromptDetailPage(props: PageProps<"/prompts/[id]">) {

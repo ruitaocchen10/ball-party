@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import { type RoomSummary } from "@/components/home/CurrentRoom";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { QuickActions } from "@/components/home/QuickActions";
@@ -12,6 +14,9 @@ import { fetchNflSchedule } from "@/lib/foundation/content/nfl/schedule";
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.
 type Client = Awaited<ReturnType<typeof createClient>>;
+
+// Home also answers to ?q= and ?error=, which are the same page for a crawler.
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 /**
  * The signed-in home is a compact dashboard: the Huddle is the central,

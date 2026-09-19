@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Barlow, Bebas_Neue, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import { MotionProvider } from "@/components/foundation/ui-kit/MotionProvider";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo/site";
 
 // Barlow reads; Bebas Neue is the display voice and is only ever used large;
 // JetBrains Mono carries every stat line, budget, and clock.
@@ -25,9 +26,26 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ball Party",
-  description: "Sports knowledge party games with your friends.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} · Sports knowledge party games`,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  // A child that sets its own `openGraph` replaces this object rather than
+  // merging into it, so pages that do (prompt detail) repeat siteName and type.
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_US",
+  },
+  twitter: { card: "summary_large_image" },
 };
+
+// Matches --surface in globals.css, so the mobile browser chrome and the
+// installed app's splash sit on the same near-black as the page.
+export const viewport: Viewport = { themeColor: "#111311" };
 
 // Runs before first paint so a reload lands at the sidebar width the user
 // last chose instead of flashing expanded-then-collapsing. Mirrors the
