@@ -250,6 +250,7 @@ function mapPost(
     status: row.status as LifecycleStatus,
     voidReason: row.void_reason ?? undefined,
     isOpinion: row.is_opinion,
+    coverTeamCodes: row.cover_team_codes ?? undefined,
     slots,
     comments,
     responseCount,

@@ -172,26 +172,17 @@ function PostTeaser({ post, gameContexts }: { post: Post; gameContexts: MatchupG
   );
 }
 
+const COVER_TEAM_COUNT = 6;
+
 /**
- * A personal prompt needs a personal cover. It never invents a league-wide
- * order: a saved answer wins, then the viewer's previous board, with an
- * explicitly unranked starter trio for someone ranking for the first time.
+ * The cover art shows six teams the admin chose while composing the prompt.
+ * It is the same for every viewer, and the order is the placement order:
+ * 1–2 are the large top corners, 3–4 the large bottom corners, 5–6 the
+ * smaller middle pair.
  */
 function PowerRankingsBoard({ post }: { post: Post }) {
-  const slot = post.slots[0];
-  const currentIds = slot ? post.viewerResponse?.[slot.id] ?? [] : [];
-  const byId = new Map(slot?.options.map((option) => [option.id, option]) ?? []);
-  const byTeamCode = new Map(slot?.options.filter((option) => option.teamCode).map((option) => [option.teamCode!, option]) ?? []);
-  const current = currentIds.map((id) => byId.get(id)).filter((option): option is Option => Boolean(option)).slice(0, 6);
-  const previous = Object.entries(post.previousRankByTeam ?? {})
-    .sort(([, leftRank], [, rightRank]) => leftRank - rightRank)
-    .map(([teamCode]) => byTeamCode.get(teamCode))
-    .filter((option): option is Option => Boolean(option))
-    .slice(0, 6);
-  const starter = ["BAL", "GB", "TB", "KC", "PHI", "BUF"].map((teamCode) => byTeamCode.get(teamCode)).filter((option): option is Option => Boolean(option));
-  const ranked = current.length ? current : previous;
-  const options = ranked.length ? ranked : starter.length ? starter : (slot?.options.slice(0, 6) ?? []);
-  const heading = current.length ? "Your board" : previous.length ? "Last time" : "32 teams. Your order.";
+  const byTeamCode = new Map(post.slots[0]?.options.filter((option) => option.teamCode).map((option) => [option.teamCode!, option]) ?? []);
+  const options = (post.coverTeamCodes ?? []).map((teamCode) => byTeamCode.get(teamCode)).filter((option): option is Option => Boolean(option)).slice(0, 6);
 
   return (
     <section data-testid="power-rankings-board" aria-label="Power Rankings board" style={PROMPT_TICKET_CUT_CORNERS} className="relative mx-4 mt-4 min-h-52 overflow-hidden bg-[#11130f] text-[#fff8e4] shadow-[0_10px_20px_rgb(0_0_0/0.35)]">
@@ -219,12 +210,6 @@ function PowerRankingsBoard({ post }: { post: Post }) {
         </h3>
         <p className="mt-3 font-mono text-[9px] tracking-[0.12em] text-[#fff8e4]/85 uppercase">Top 5 · Top 10 · All 32</p>
       </div>
-
-      {ranked.length ? (
-        <div className="absolute inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t border-white/15 bg-black/55">
-          {options.slice(0, 4).map((option, index) => <span key={option.id} className="truncate px-2 py-1.5 text-center font-mono text-[9px] tracking-[0.06em] uppercase">#{index + 1} {option.label}</span>)}
-        </div>
-      ) : null}
     </section>
   );
 }
@@ -324,6 +309,8 @@ export function PromptPostComposer({
   const [rankingTarget, setRankingTarget] = useState<"teams" | "players" | "games">("teams");
   const [rankingIds, setRankingIds] = useState<string[]>([]);
   const [rankCount, setRankCount] = useState(1);
+  // Team codes in placement order; the Power Rankings cover shows exactly six.
+  const [coverTeamCodes, setCoverTeamCodes] = useState<string[]>([]);
   // Defaults live with each template's slot builder. This map only remembers
   // an author's deliberate overrides, including one value per game in a set.
   const [pointsBySlot, setPointsBySlot] = useState<Record<string, number>>({});
@@ -431,6 +418,7 @@ export function PromptPostComposer({
     responseCount: 0,
     viewerAnswered: false,
     isOpinion,
+    coverTeamCodes: kind === "power_rankings" ? coverTeamCodes : undefined,
     slots,
     comments: [],
   };
@@ -442,7 +430,7 @@ export function PromptPostComposer({
         {error ? <p role="alert" className="mb-2 font-mono text-[10px] tracking-[0.1em] text-grade-rough uppercase">{error}</p> : null}
         <Button
           fullWidth
-          disabled={pending || lockInPast || slots.length === 0 || hasInvalidPoints || (kind === "ranking" && effectiveRankCount === 0)}
+          disabled={pending || lockInPast || slots.length === 0 || hasInvalidPoints || (kind === "ranking" && effectiveRankCount === 0) || (kind === "power_rankings" && coverTeamCodes.length !== COVER_TEAM_COUNT)}
           onClick={async () => {
             setPending(true);
             setError(null);
@@ -455,6 +443,7 @@ export function PromptPostComposer({
               lockAt: lockAtDate.toISOString(),
               slots,
               isOpinion,
+              ...(kind === "power_rankings" ? { coverTeamCodes } : {}),
               ...(kind === "picks" && !isOpinion ? { resolutionSource: { provider: "nflverse", rule: "winner" } } : {}),
             });
             setPending(false);
@@ -490,6 +479,7 @@ export function PromptPostComposer({
               setPlayerIds([]);
               setRankingIds([]);
               setRankCount(1);
+              setCoverTeamCodes([]);
               setGameId(initialGame?.id ?? "");
               setWeeklyGameIds([]);
               setPromptText(defaultPromptText("picks", initialGame));
@@ -596,9 +586,20 @@ export function PromptPostComposer({
           />
         ) : null}
         {kind === "power_rankings" ? (
-          <FieldBlock label="Power Rankings setup">
-            <p className="text-sm leading-6 text-fg-muted">Each person can choose Top 5, Top 10, or all 32 teams while answering. Their previous ranking will be used to show team movement.</p>
-          </FieldBlock>
+          <>
+            <FieldBlock label="Power Rankings setup">
+              <p className="text-sm leading-6 text-fg-muted">Each person can choose Top 5, Top 10, or all 32 teams while answering. Their previous ranking will be used to show team movement.</p>
+            </FieldBlock>
+            <FieldBlock label={`Cover art teams — choose ${COVER_TEAM_COUNT} (${coverTeamCodes.length}/${COVER_TEAM_COUNT})`}>
+              <CheckboxPoolField
+                options={optionPoolFor("ranking")}
+                selectedIds={coverTeamCodes}
+                max={COVER_TEAM_COUNT}
+                onToggle={(id) => setCoverTeamCodes((current) => current.includes(id) ? current.filter((code) => code !== id) : [...current, id])}
+              />
+              <p className="mt-2 text-xs text-fg-muted">Placed in the order you pick them: 1–2 are the large top logos, 3–4 the large bottom logos, 5–6 the smaller pair in the middle.</p>
+            </FieldBlock>
+          </>
         ) : null}
         {kind === "ranking" ? (
           <>

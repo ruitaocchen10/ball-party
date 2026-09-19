@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { toPng } from "html-to-image";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
@@ -7,6 +7,7 @@ import { PromptPostComposer, PromptPostFeed } from "./PromptPostUI";
 import { PromptContext } from "./PromptContext";
 import { SharePowerRankingsCard } from "./SharePowerRankingsCard";
 import { ShareTakeButton } from "./ShareTakeButton";
+import { franchiseLogoUrl, teamLogoCode } from "@/lib/foundation/content/nfl/team-logos";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 
 vi.mock("html-to-image", () => ({ toPng: vi.fn().mockResolvedValue("data:image/png;base64,preview") }));
@@ -124,34 +125,65 @@ it("publishes the point value configured for each slot", async () => {
   expect(onPublish.mock.calls[0][0].slots[0].points).toBe(42);
 });
 
-it("uses a viewer's current or prior board for Power Rankings cover art", () => {
+it("shows the admin's six chosen teams on the Power Rankings cover for every viewer", () => {
+  const teams = [["kc", "Chiefs", "KC"], ["buf", "Bills", "BUF"], ["phi", "Eagles", "PHI"], ["bal", "Ravens", "BAL"], ["gb", "Packers", "GB"], ["tb", "Buccaneers", "TB"], ["dal", "Cowboys", "DAL"]];
   const powerSlot = {
     id: "power",
     label: "NFL Power Rankings",
     shape: "rank" as const,
     pickCount: 32,
     points: 1,
-    options: [
-      { id: "kc", label: "Chiefs", teamCode: "KC" },
-      { id: "buf", label: "Bills", teamCode: "BUF" },
-      { id: "phi", label: "Eagles", teamCode: "PHI" },
-    ],
+    options: teams.map(([id, label, teamCode]) => ({ id, label, teamCode })),
   };
   const powerPost: Post = {
     ...post([powerSlot]),
     templateKind: "power_rankings",
     templateName: "Power rankings",
+    coverTeamCodes: ["DAL", "KC", "BUF", "PHI", "BAL", "GB"],
+    // A viewer's own ballot and history no longer influence the cover.
     viewerAnswered: true,
-    viewerResponse: { power: ["kc", "buf", "phi"] },
-    previousRankByTeam: { PHI: 1, BUF: 2, KC: 3 },
+    viewerResponse: { power: ["tb", "kc"] },
+    previousRankByTeam: { TB: 1 },
   };
-  const { rerender } = render(<PromptPostFeed posts={[powerPost]} viewerCanAnswer onSelectPost={() => {}} />);
+  render(<PromptPostFeed posts={[powerPost]} viewerCanAnswer onSelectPost={() => {}} />);
 
-  expect(screen.getByTestId("power-rankings-board")).toHaveTextContent("#1");
-  expect(screen.getByTestId("power-rankings-board")).toHaveTextContent("Chiefs");
+  const board = screen.getByTestId("power-rankings-board");
+  const logoSources = [...board.querySelectorAll("img")].map((img) => img.getAttribute("src"));
+  expect(logoSources).toEqual(["DAL", "KC", "BUF", "PHI", "BAL", "GB"].map((code) => franchiseLogoUrl(teamLogoCode(code)!)));
+  expect(board).not.toHaveTextContent("#1");
+});
 
-  rerender(<PromptPostFeed posts={[{ ...powerPost, viewerAnswered: false, viewerResponse: undefined }]} viewerCanAnswer onSelectPost={() => {}} />);
-  expect(screen.getByTestId("power-rankings-board")).toHaveTextContent("Eagles");
+it("makes the admin choose exactly six Power Rankings cover teams, in placement order", async () => {
+  const user = userEvent.setup();
+  const onPublish = vi.fn().mockResolvedValue({ id: "new-post" });
+  const games = [{ id: "2026_01_KC_BUF", season: 2026, week: 1, kickoff: "2099-09-11T00:20:00.000Z", away: "KC", home: "BUF", label: "Chiefs @ Bills", stadium: "Highmark Stadium", primetime: true }];
+  render(<PromptPostComposer displayName="Admin" games={games} players={[]} onPublish={onPublish} />);
+
+  await user.click(screen.getByRole("button", { name: "Power rankings" }));
+  const publish = () => screen.getAllByRole("button", { name: "Publish now" })[0];
+  const pool = within(screen.getByText(/Cover art teams/).parentElement!);
+  const team = (name: string) => pool.getByRole("button", { name: new RegExp(`^${name}`) });
+
+  for (const name of ["Chiefs", "Bills", "Eagles", "Ravens", "Packers"]) await user.click(team(name));
+  expect(publish()).toBeDisabled();
+
+  await user.click(team("Buccaneers"));
+  // The picker stops at six; further teams are disabled until one is removed.
+  expect(team("Cowboys")).toBeDisabled();
+  expect(publish()).toBeEnabled();
+
+  await user.click(publish());
+  expect(onPublish.mock.calls[0][0].coverTeamCodes).toEqual(["KC", "BUF", "PHI", "BAL", "GB", "TB"]);
+});
+
+it("does not send cover teams for other templates", async () => {
+  const user = userEvent.setup();
+  const onPublish = vi.fn().mockResolvedValue({ id: "new-post" });
+  const games = [{ id: "2026_01_KC_BUF", season: 2026, week: 1, kickoff: "2099-09-11T00:20:00.000Z", away: "KC", home: "BUF", label: "Chiefs @ Bills", stadium: "Highmark Stadium", primetime: true }];
+  render(<PromptPostComposer displayName="Admin" games={games} players={[]} onPublish={onPublish} />);
+
+  await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
+  expect(onPublish.mock.calls[0][0]).not.toHaveProperty("coverTeamCodes");
 });
 
 it("shows Power Rankings consensus as the most common top five in the right rail", () => {
