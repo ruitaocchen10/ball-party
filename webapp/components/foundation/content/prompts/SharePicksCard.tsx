@@ -3,6 +3,7 @@ import { forwardRef } from "react";
 
 import { PromptTeamLogo } from "./PromptTeamLogo";
 import { teamPrimaryColor } from "@/lib/foundation/content/nfl/team-logos";
+import { isSlotGraded } from "@/lib/foundation/content/prompts/logic";
 import type { Option, Post, Slot } from "@/lib/foundation/content/prompts/types";
 
 const CARD_WIDTH = 540; // doubled on export (see ShareTakeButton's pixelRatio) for a 1080px-wide PNG.
@@ -21,11 +22,10 @@ export const SharePicksCard = forwardRef<
   {
     post: Post;
     responses: Record<string, string[]>;
-    resolved: boolean;
     headline?: string;
     subheadline?: string;
   }
->(function SharePicksCard({ post, responses, resolved, headline = post.templateName, subheadline = "My picks" }, ref) {
+>(function SharePicksCard({ post, responses, headline = post.templateName, subheadline = "My picks" }, ref) {
   const matchupSlots = post.slots.filter((slot) => slot.options.length === 2 && slot.options.every((option) => option.teamCode));
   const single = matchupSlots.length === 1;
   const compactRows = Math.ceil(matchupSlots.length / 2);
@@ -60,11 +60,11 @@ export const SharePicksCard = forwardRef<
 
       <div className={`relative z-10 mt-4 min-h-0 flex-1 px-6 pb-6 ${single ? "flex flex-col px-8" : ""}`}>
         {single ? (
-          <ShareFeaturedMatchup slot={matchupSlots[0]} response={responses[matchupSlots[0].id] ?? []} resolved={resolved} />
+          <ShareFeaturedMatchup slot={matchupSlots[0]} response={responses[matchupSlots[0].id] ?? []} />
         ) : (
           <div className="grid h-full grid-cols-2" style={{ gap: compactGap, gridTemplateRows: `repeat(${compactRows}, minmax(0, 1fr))` }}>
             {matchupSlots.map((slot) => (
-              <ShareCompactMatchup key={slot.id} slot={slot} response={responses[slot.id] ?? []} resolved={resolved} rows={compactRows} />
+              <ShareCompactMatchup key={slot.id} slot={slot} response={responses[slot.id] ?? []} rows={compactRows} />
             ))}
           </div>
         )}
@@ -73,9 +73,10 @@ export const SharePicksCard = forwardRef<
   );
 });
 
-function ShareFeaturedMatchup({ slot, response, resolved }: { slot: Slot; response: string[]; resolved: boolean }) {
+function ShareFeaturedMatchup({ slot, response }: { slot: Slot; response: string[] }) {
   const [away, home] = slot.options;
   const pickedId = response[0] ?? null;
+  const graded = isSlotGraded(slot);
   return (
     <div className="h-full w-full overflow-hidden border border-line bg-surface-raised" style={{ clipPath: ticketClip }}>
       <div className="relative flex h-full flex-col">
@@ -87,9 +88,9 @@ function ShareFeaturedMatchup({ slot, response, resolved }: { slot: Slot; respon
         </div>
         <div aria-hidden className="absolute top-11 bottom-0 left-1/2 z-10 w-px bg-fg/20" />
         <div className="relative z-10 grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-5 px-5 py-3">
-          <ShareFeaturedSide option={away} picked={pickedId === away.id} resolved={resolved} correct={resolved && pickedId === slot.correct?.[0] && pickedId === away.id} />
+          <ShareFeaturedSide option={away} picked={pickedId === away.id} graded={graded} correct={graded && pickedId === slot.correct?.[0] && pickedId === away.id} />
           <span aria-hidden className="flex h-11 w-11 self-center items-center justify-center rounded-full border border-fg/30 bg-transparent font-mono text-sm font-bold text-fg shadow-[0_4px_12px_rgb(0_0_0/0.25)]">@</span>
-          <ShareFeaturedSide option={home} picked={pickedId === home.id} resolved={resolved} correct={resolved && pickedId === slot.correct?.[0] && pickedId === home.id} />
+          <ShareFeaturedSide option={home} picked={pickedId === home.id} graded={graded} correct={graded && pickedId === slot.correct?.[0] && pickedId === home.id} />
         </div>
         <div className="relative mx-5 flex justify-center border-t border-fg/20 pt-3 pb-5 font-mono text-[10px] tracking-[0.14em] text-fg/70 uppercase">{slot.label}</div>
       </div>
@@ -97,7 +98,7 @@ function ShareFeaturedMatchup({ slot, response, resolved }: { slot: Slot; respon
   );
 }
 
-function ShareFeaturedSide({ option, picked, resolved, correct }: { option: Option; picked: boolean; resolved: boolean; correct: boolean }) {
+function ShareFeaturedSide({ option, picked, graded, correct }: { option: Option; picked: boolean; graded: boolean; correct: boolean }) {
   const style = picked && option.teamCode ? { color: "#fffdf7" } : undefined;
   return (
     <div style={style} className="relative flex h-full min-w-0 flex-col items-center justify-center gap-3 px-3 py-3 text-center">
@@ -105,22 +106,23 @@ function ShareFeaturedSide({ option, picked, resolved, correct }: { option: Opti
         <PromptTeamLogo code={option.teamCode} className={`h-44 w-44 drop-shadow-[0_10px_16px_rgb(0_0_0/0.4)] ${picked ? "" : "opacity-40 grayscale"}`} />
       ) : null}
       <span className="font-slab text-2xl leading-none uppercase">{option.label}</span>
-      {resolved && picked ? (
+      {graded && picked ? (
         <span className="absolute top-3 right-3">{correct ? <Check className="h-6 w-6 text-grade-elite" strokeWidth={3} /> : <X className="h-6 w-6 text-grade-rough" strokeWidth={3} />}</span>
       ) : null}
     </div>
   );
 }
 
-function ShareCompactMatchup({ slot, response, resolved, rows }: { slot: Slot; response: string[]; resolved: boolean; rows: number }) {
+function ShareCompactMatchup({ slot, response, rows }: { slot: Slot; response: string[]; rows: number }) {
   const [away, home] = slot.options;
   const pickedId = response[0] ?? null;
-  const correct = resolved && pickedId === slot.correct?.[0];
+  const graded = isSlotGraded(slot);
+  const correct = graded && pickedId === slot.correct?.[0];
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden border border-line bg-surface-raised" style={{ clipPath: ticketClip }}>
       <div className="relative grid min-h-0 flex-1 grid-cols-2 divide-x divide-line">
-        <ShareCompactSide option={away} picked={pickedId === away.id} resolved={resolved} correct={correct} rows={rows} />
-        <ShareCompactSide option={home} picked={pickedId === home.id} resolved={resolved} correct={correct} rows={rows} />
+        <ShareCompactSide option={away} picked={pickedId === away.id} graded={graded} correct={correct} rows={rows} />
+        <ShareCompactSide option={home} picked={pickedId === home.id} graded={graded} correct={correct} rows={rows} />
         <div aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 z-10 flex -translate-x-1/2 items-center justify-center"><span className="absolute inset-y-3 left-1/2 w-px bg-line" /><span className="relative flex h-8 w-8 items-center justify-center rounded-full border border-line bg-surface font-mono text-xs font-bold text-fg-muted">@</span></div>
       </div>
       <div aria-hidden className="mx-3 h-1 border-t border-line/70" />
@@ -128,7 +130,7 @@ function ShareCompactMatchup({ slot, response, resolved, rows }: { slot: Slot; r
   );
 }
 
-function ShareCompactSide({ option, picked, resolved, correct, rows }: { option: Option; picked: boolean; resolved: boolean; correct: boolean; rows: number }) {
+function ShareCompactSide({ option, picked, graded, correct, rows }: { option: Option; picked: boolean; graded: boolean; correct: boolean; rows: number }) {
   const color = option.teamCode ? teamPrimaryColor(option.teamCode) : null;
   const style = picked && color ? surface(option) : undefined;
   // Prioritize the marks: the tile remains readable as a pick at a glance even
@@ -138,7 +140,7 @@ function ShareCompactSide({ option, picked, resolved, correct, rows }: { option:
     <div style={style} className={`relative flex h-full min-h-0 items-center justify-center overflow-hidden ${picked ? "" : "bg-surface/85"}`}>
       {option.teamCode ? <PromptTeamLogo code={option.teamCode} className={`${logoSize} ${picked ? "" : "opacity-40 grayscale"}`} /> : null}
       <span className="sr-only">{option.label}</span>
-      {resolved && picked ? (
+      {graded && picked ? (
         <span className="absolute top-1 right-1">{correct ? <Check className="h-3.5 w-3.5 text-grade-elite" strokeWidth={3} /> : <X className="h-3.5 w-3.5 text-grade-rough" strokeWidth={3} />}</span>
       ) : null}
     </div>

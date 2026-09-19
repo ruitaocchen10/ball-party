@@ -87,7 +87,7 @@ export function TakeThread({
         }
       >
         {isPicksPost(post) && takeResponse ? (
-          <YourCalls slots={post.slots} responses={takeResponse} resolved={post.status === "resolved"} collapsible />
+          <YourCalls slots={post.slots} responses={takeResponse} collapsible />
         ) : null}
       </TakeCard>
 

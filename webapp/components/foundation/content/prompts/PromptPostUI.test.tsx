@@ -226,7 +226,7 @@ it("regenerates a Power Rankings preview at Reel dimensions when that format is 
   const png = vi.mocked(toPng);
   png.mockClear();
 
-  render(<ShareTakeButton post={powerPost} responses={{ power: ["kc"] }} resolved={false} />);
+  render(<ShareTakeButton post={powerPost} responses={{ power: ["kc"] }} />);
   await userEvent.click(screen.getByRole("button", { name: /preview a shareable image of your rankings/i }));
   await waitFor(() => expect(png).toHaveBeenCalledTimes(1));
   await userEvent.click(screen.getByRole("button", { name: /instagram reel/i }));

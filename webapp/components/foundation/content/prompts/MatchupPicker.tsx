@@ -6,6 +6,7 @@ import { useState } from "react";
 import { teamPrimaryColor } from "@/lib/foundation/content/nfl/team-logos";
 import { PromptTeamLogo } from "./PromptTeamLogo";
 import { PromptTicket } from "./PromptTicket";
+import { isSlotGraded } from "@/lib/foundation/content/prompts/logic";
 import type { MatchupGameContext, Option, Slot } from "@/lib/foundation/content/prompts/types";
 
 type Props = {
@@ -15,18 +16,20 @@ type Props = {
   response?: string[];
   onChange?: (response: string[]) => void;
   context?: MatchupGameContext;
-  resolved?: boolean;
   testId?: string;
 };
 
 /** One matchup module for prompt previews, choices, and revealed calls. */
-export function MatchupPicker({ slot, variant, mode, response = [], onChange, context, resolved = false, testId }: Props) {
+export function MatchupPicker({ slot, variant, mode, response = [], onChange, context, testId }: Props) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [away, home] = slot.options;
   if (!away || !home) return null;
   const selectedId = response[0] ?? null;
   const activeId = mode === "picker" ? hoveredId ?? selectedId : selectedId;
-  const correct = resolved && selectedId === slot.correct?.[0];
+  // A pick is only marked once this slot's own answer is known — on a weekly
+  // post the Thursday game can be graded while Monday's is still pending.
+  const graded = mode === "revealed" && isSlotGraded(slot);
+  const correct = graded && selectedId === slot.correct?.[0];
   const sideProps = (option: Option) => mode !== "picker" ? {} : {
     role: "button" as const,
     tabIndex: 0,
@@ -61,8 +64,8 @@ export function MatchupPicker({ slot, variant, mode, response = [], onChange, co
   return (
     <PromptTicket data-testid={testId} aria-label={slot.label} className="min-w-0 ring-1 ring-line ring-inset">
       <div className="relative grid grid-cols-2 divide-x divide-line">
-        <CompactSide option={away} selected={selectedId === away.id} hasSelection={selectedId !== null} active={activeId === away.id} interactive={mode === "picker"} revealed={mode === "revealed"} correct={correct} sideProps={sideProps(away)} />
-        <CompactSide option={home} selected={selectedId === home.id} hasSelection={selectedId !== null} active={activeId === home.id} interactive={mode === "picker"} revealed={mode === "revealed"} correct={correct} sideProps={sideProps(home)} />
+        <CompactSide option={away} selected={selectedId === away.id} hasSelection={selectedId !== null} active={activeId === away.id} interactive={mode === "picker"} revealed={graded} correct={correct} sideProps={sideProps(away)} />
+        <CompactSide option={home} selected={selectedId === home.id} hasSelection={selectedId !== null} active={activeId === home.id} interactive={mode === "picker"} revealed={graded} correct={correct} sideProps={sideProps(home)} />
         <div aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 z-10 flex -translate-x-1/2 items-center justify-center"><span className="absolute inset-y-2 left-1/2 w-px bg-line sm:inset-y-3" /><span className="relative flex h-6 w-6 items-center justify-center rounded-full border border-line bg-surface font-mono text-[10px] font-bold text-fg-muted sm:h-8 sm:w-8 sm:text-xs">@</span></div>
       </div>
       <div aria-hidden className="mx-2 h-2 border-t border-line/70 sm:mx-3" />
