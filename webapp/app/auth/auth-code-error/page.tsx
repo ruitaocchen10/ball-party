@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = { title: "Sign-in problem", robots: { index: false } };
 
 export default async function AuthCodeErrorPage({
   searchParams,

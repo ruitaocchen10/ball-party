@@ -10,9 +10,14 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Everything except static assets. Without the exclusions the auth redirect
-     * would also fire for CSS, JS and images, and the app would render unstyled.
+     * Everything except static assets and the files crawlers and link-preview
+     * bots fetch. Without the asset exclusions the auth redirect would also
+     * fire for CSS, JS and images, and the app would render unstyled. Without
+     * the crawler ones a signed-out bot asking for /robots.txt or
+     * /sitemap.xml is redirected to /login and never sees them — the same goes
+     * for the site-wide /opengraph-image card and the web app manifest.
+     * (Per-prompt images live under /prompts, which is already public.)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest|opengraph-image|twitter-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

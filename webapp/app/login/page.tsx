@@ -1,7 +1,7 @@
 import { AuthForm } from "@/components/foundation/identity/AuthForm";
 import { safeNextPath } from "@/lib/foundation/identity/next";
 
-export const metadata = { title: "Sign in · Ball Party" };
+export const metadata = { title: "Sign in", robots: { index: false } };
 
 export default async function LoginPage({
   searchParams,

@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import { ColumnHead } from "@/components/home/ColumnHead";
 import { CurrentRoom, type RoomSummary } from "@/components/home/CurrentRoom";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
@@ -15,6 +17,12 @@ import { canCreateLobby, isSignedInViewer } from "@/lib/foundation/identity/view
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.
 type Client = Awaited<ReturnType<typeof createClient>>;
+
+export const metadata: Metadata = {
+  title: "Play with friends",
+  description: "Start or join a room and play sports knowledge games with your friends — Higher or Lower, Auction Team Builder, Wavelength and more.",
+  alternates: { canonical: "/party" },
+};
 
 /**
  * The room flow, and the shop window it leads into: start or join a room,
