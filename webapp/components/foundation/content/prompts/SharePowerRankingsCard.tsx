@@ -1,6 +1,8 @@
 import { forwardRef } from "react";
 
 import { PromptTeamLogo } from "./PromptTeamLogo";
+import { SHARE_THEME, ShareBackdrop, shareHeadlineStyle, shareKickerStyle } from "./ShareBackdrop";
+import type { ShareFormat } from "./shareFormat";
 import { teamPrimaryColor } from "@/lib/foundation/content/nfl/team-logos";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 
@@ -8,7 +10,6 @@ const CARD_WIDTH = 540;
 const CARD_HEIGHT = 675;
 const REEL_HEIGHT = 960;
 const TICKET_CUT = "polygon(20px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 20px) 100%, 0 100%, 0 14px)";
-export type ShareFormat = "post" | "reel";
 
 /**
  * Fixed-size export board for a respondent's own Power Rankings ballot. The
@@ -29,25 +30,12 @@ export const SharePowerRankingsCard = forwardRef<
   const canvasHeight = format === "reel" ? REEL_HEIGHT : CARD_HEIGHT;
 
   return (
-    <div ref={ref} style={{ width: CARD_WIDTH, height: canvasHeight, fontFamily: "var(--font-sans)" }} className="relative flex items-center justify-center overflow-hidden bg-[#111311] text-[#fffdf7]">
-      <div
-        aria-hidden
-        className="absolute inset-0"
-        style={{
-          backgroundImage: [
-            "linear-gradient(137deg, rgb(26 154 80 / 0.38) 0%, transparent 24%)",
-            "linear-gradient(318deg, rgb(201 56 44 / 0.42) 0%, transparent 28%)",
-            "linear-gradient(145deg, transparent 0%, transparent 48%, rgb(232 227 214 / 0.1) 48.2%, transparent 48.5%)",
-            "radial-gradient(circle at center, rgb(232 227 214 / 0.07) 0.75px, transparent 1px)",
-            "linear-gradient(160deg, #1a1e1a 0%, #101310 54%, #080a08 100%)",
-          ].join(", "),
-          backgroundSize: "auto, auto, auto, 9px 9px, auto",
-        }}
-      />
+    <div ref={ref} style={{ width: CARD_WIDTH, height: canvasHeight, fontFamily: "var(--font-sans)", backgroundColor: SHARE_THEME.base }} className="relative flex items-center justify-center overflow-hidden text-[#fffdf7]">
+      <ShareBackdrop glowY={(canvasHeight - CARD_HEIGHT) / 2 + 69} />
       <div className="relative z-10 shrink-0" style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
         <header className="flex h-[138px] flex-col items-center justify-center px-8 text-center">
-          <p className="max-w-full overflow-hidden font-mono text-xs font-semibold tracking-[0.18em] text-[#c9382c] text-ellipsis whitespace-nowrap uppercase">{subheadline}</p>
-          <h1 className="max-w-full overflow-hidden font-slab text-[66px] leading-[0.9] text-ellipsis whitespace-nowrap uppercase">{headline}</h1>
+          <p style={shareKickerStyle} className="max-w-full overflow-hidden font-mono tracking-[0.18em] text-ellipsis whitespace-nowrap uppercase">{subheadline}</p>
+          <h1 style={shareHeadlineStyle} className="max-w-full overflow-hidden font-slab leading-[0.9] text-ellipsis whitespace-nowrap uppercase">{headline}</h1>
         </header>
 
         <div className="px-6 pb-6" style={{ height: CARD_HEIGHT - 138 }}>

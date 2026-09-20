@@ -13,6 +13,7 @@ export const PROMPT_MESSAGES: Record<string, string> = {
   invalid_option: "One of those picks isn't valid anymore. Refresh and try again.",
   option_already_used: "You've already used that team in another pick on this prompt.",
   invalid_cover_teams: "Choose exactly six different teams for the cover art.",
+  invalid_cover_options: "Choose four different players for the prompt art.",
   not_authorized: "Only the admin can do that.",
   not_resolvable: "This prompt has already been resolved or voided.",
   missing_answer: "Every pick needs an answer before this can resolve.",

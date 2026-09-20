@@ -1,3 +1,14 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import type { Database } from "@/lib/supabase/database.types";
+
+/**
+ * The regular-season schedule, read from `public.nfl_games` (migration 0119).
+ * The iOS app reads the same table, so a matchup shows the same venue, kickoff
+ * and Primetime flag on both. The database fills it from nflverse's games.csv
+ * (`prompts_private.sync_nfl_games`) and owns the Eastern-time conversion and
+ * the primetime rule, so nothing here fetches or parses the feed.
+ */
 export type NflScheduleGame = {
   id: string;
   season: number;
@@ -26,18 +37,6 @@ const TEAM_FULL_NAMES: Record<string, string> = {
   NYJ: "New York Jets", PHI: "Philadelphia Eagles", PIT: "Pittsburgh Steelers", SEA: "Seattle Seahawks", SF: "San Francisco 49ers", TB: "Tampa Bay Buccaneers", TEN: "Tennessee Titans", WAS: "Washington Commanders",
 };
 
-const EASTERN_TIME_ZONE = "America/New_York";
-const easternTimeFormatter = new Intl.DateTimeFormat("en-US", {
-  timeZone: EASTERN_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hourCycle: "h23",
-});
-
 export function nflTeamName(code: string): string {
   return TEAM_NAMES[code] ?? code;
 }
@@ -47,113 +46,61 @@ export function nflTeamFullName(code: string): string {
   return TEAM_FULL_NAMES[code] ?? nflTeamName(code);
 }
 
-/**
- * The schedule feed has a kickoff but no durable broadcast-window field.
- * Keep the user-facing distinction deliberately broad: the national evening
- * Thursday, Sunday, and Monday windows are all simply "Primetime".
- */
-export function isPrimetimeKickoff(kickoff: string): boolean {
-  const date = new Date(kickoff);
-  if (Number.isNaN(date.getTime())) return false;
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: EASTERN_TIME_ZONE,
-      weekday: "short",
-      hour: "numeric",
-      hourCycle: "h23",
-    }).formatToParts(date).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]),
-  );
-  const weekday = parts.weekday;
-  const hour = Number(parts.hour);
-  return (weekday === "Thu" || weekday === "Sun" || weekday === "Mon") && hour >= 19;
+type NflGameRow = Database["public"]["Tables"]["nfl_games"]["Row"];
+
+/** What a matchup cover needs from a game, keyed by the game id a slot carries as `sourceGameId`. */
+export type NflGameContext = Pick<NflScheduleGame, "id" | "stadium" | "kickoff" | "primetime">;
+
+// PostgREST's default page size (`max_rows`); a larger request is silently cut short.
+const PAGE_SIZE = 1000;
+
+/** PostgREST prints "+00:00"; consumers expect the `Z` form `toISOString` gives. */
+function toIso(timestamp: string): string {
+  return new Date(timestamp).toISOString();
+}
+
+function toScheduleGame(row: NflGameRow): NflScheduleGame {
+  return {
+    id: row.id,
+    season: row.season,
+    week: row.week,
+    kickoff: toIso(row.kickoff),
+    away: row.away_team,
+    home: row.home_team,
+    label: `${nflTeamName(row.away_team)} @ ${nflTeamName(row.home_team)}`,
+    stadium: row.stadium,
+    primetime: row.primetime,
+  };
 }
 
 /**
- * nflverse's `gameday` and `gametime` fields are a wall-clock time in
- * Eastern Time, rather than a UTC timestamp. Convert that local time into a
- * real instant before handing it to browser-local formatting.
+ * Every regular-season game the database knows, earliest kickoff first — the
+ * admin composer's pool, which spans past seasons. Paged, because the table
+ * holds more rows than one PostgREST response returns.
  */
-function easternTimeToIso(gameday: string, gametime: string): string {
-  const localAsUtc = new Date(`${gameday}T${gametime}Z`);
-  if (Number.isNaN(localAsUtc.getTime())) return "";
+export async function fetchNflSchedule(supabase: SupabaseClient<Database>): Promise<NflScheduleGame[]> {
+  const page = (from: number) =>
+    supabase.from("nfl_games").select("*", from === 0 ? { count: "exact" } : undefined)
+      .order("kickoff").order("id").range(from, from + PAGE_SIZE - 1);
 
-  const parts = Object.fromEntries(
-    easternTimeFormatter
-      .formatToParts(localAsUtc)
-      .filter((part) => part.type !== "literal")
-      .map((part) => [part.type, part.value]),
-  );
-  const easternClockAsUtc = Date.UTC(
-    Number(parts.year),
-    Number(parts.month) - 1,
-    Number(parts.day),
-    Number(parts.hour),
-    Number(parts.minute),
-    Number(parts.second),
-  );
-  const easternOffset = easternClockAsUtc - localAsUtc.getTime();
+  const first = await page(0);
+  if (first.error) throw new Error("NFL schedule is unavailable");
+  const rest = Math.ceil(((first.count ?? 0) - PAGE_SIZE) / PAGE_SIZE);
+  const others = await Promise.all(Array.from({ length: Math.max(rest, 0) }, (_, index) => page((index + 1) * PAGE_SIZE)));
+  const failed = others.find((result) => result.error);
+  if (failed) throw new Error("NFL schedule is unavailable");
 
-  return new Date(localAsUtc.getTime() - easternOffset).toISOString();
+  return [first, ...others].flatMap((result) => result.data ?? []).map(toScheduleGame);
 }
 
-function parseCsvRow(row: string): string[] {
-  const values: string[] = [];
-  let value = "";
-  let quoted = false;
-  for (let index = 0; index < row.length; index += 1) {
-    const character = row[index];
-    if (character === '"') {
-      if (quoted && row[index + 1] === '"') {
-        value += '"';
-        index += 1;
-      } else quoted = !quoted;
-    } else if (character === "," && !quoted) {
-      values.push(value);
-      value = "";
-    } else value += character;
-  }
-  values.push(value);
-  return values;
-}
-
-/** Shapes nflverse's released schedule into the small, public composer pool. */
-export function parseNflSchedule(csv: string): NflScheduleGame[] {
-  const [header, ...rows] = csv.trim().split(/\r?\n/);
-  if (!header) return [];
-  const columns = new Map(parseCsvRow(header).map((name, index) => [name, index]));
-  const read = (values: string[], name: string) => values[columns.get(name) ?? -1] ?? "";
-
-  return rows.flatMap((row) => {
-    const values = parseCsvRow(row);
-    const season = Number(read(values, "season"));
-    const week = Number(read(values, "week"));
-    const gameType = read(values, "game_type");
-    const gameId = read(values, "game_id");
-    const away = read(values, "away_team");
-    const home = read(values, "home_team");
-    const gameday = read(values, "gameday");
-    const gametime = read(values, "gametime");
-    const stadium = read(values, "stadium");
-    const kickoff = gameday && gametime ? easternTimeToIso(gameday, gametime) : "";
-    if (gameType !== "REG" || !gameId || !away || !home || !Number.isInteger(season) || !Number.isInteger(week) || !kickoff) return [];
-    return [{
-      id: gameId,
-      season,
-      week,
-      kickoff,
-      away,
-      home,
-      label: `${nflTeamName(away)} @ ${nflTeamName(home)}`,
-      stadium,
-      primetime: isPrimetimeKickoff(kickoff),
-    }];
-  }).sort((left, right) => left.kickoff.localeCompare(right.kickoff));
-}
-
-export async function fetchNflSchedule(): Promise<NflScheduleGame[]> {
-  const response = await fetch("https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv", {
-    next: { revalidate: 3600 },
-  });
-  if (!response.ok) throw new Error("NFL schedule is unavailable");
-  return parseNflSchedule(await response.text());
+/**
+ * The few games a feed's slots point at. The feed only ever needs the games its
+ * own posts are about, so it asks for those rather than the whole table.
+ */
+export async function fetchGameContexts(supabase: SupabaseClient<Database>, gameIds: string[]): Promise<NflGameContext[]> {
+  const ids = [...new Set(gameIds)];
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from("nfl_games").select("id, stadium, kickoff, primetime").in("id", ids);
+  if (error) throw new Error("NFL schedule is unavailable");
+  return data.map(({ id, stadium, kickoff, primetime }) => ({ id, stadium, kickoff: toIso(kickoff), primetime }));
 }

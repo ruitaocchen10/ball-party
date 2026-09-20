@@ -1,45 +1,121 @@
-import { describe, expect, it } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { describe, expect, it, vi } from "vitest";
 
-import { isPrimetimeKickoff, nflTeamFullName, parseNflSchedule } from "./schedule";
+import type { Database } from "@/lib/supabase/database.types";
+import { fetchGameContexts, fetchNflSchedule, nflTeamFullName } from "./schedule";
 
-describe("parseNflSchedule", () => {
+type Row = Database["public"]["Tables"]["nfl_games"]["Row"];
+
+function row(id: string, overrides: Partial<Row> = {}): Row {
+  return {
+    id,
+    season: 2026,
+    week: 1,
+    kickoff: "2026-09-11T00:20:00+00:00",
+    away_team: "KC",
+    home_team: "BUF",
+    stadium: "Highmark Stadium",
+    primetime: true,
+    updated_at: "2026-09-01T00:00:00+00:00",
+    ...overrides,
+  };
+}
+
+/**
+ * A stand-in for the slice of the Supabase query builder these functions use.
+ * `range` honours PostgREST's page cap, so a caller that forgets to page gets
+ * back too few rows, as it would against the real API.
+ */
+function stubClient(table: Row[], { failFrom }: { failFrom?: number } = {}) {
+  const requests: { range?: [number, number]; ids?: string[] } = {};
+  const client = {
+    from: vi.fn(() => ({
+      select: (_columns: string, options?: { count?: string }) => {
+        const query = {
+          order: () => query,
+          in: (_column: string, ids: string[]) => {
+            requests.ids = ids;
+            return Promise.resolve({ data: table.filter((game) => ids.includes(game.id)), error: null });
+          },
+          range: (from: number, to: number) => {
+            requests.range = [from, to];
+            if (failFrom !== undefined && from >= failFrom) return Promise.resolve({ data: null, error: { message: "boom" }, count: null });
+            return Promise.resolve({ data: table.slice(from, Math.min(to + 1, from + 1000)), error: null, count: options?.count ? table.length : null });
+          },
+        };
+        return query;
+      },
+    })),
+  };
+  return { client: client as unknown as SupabaseClient<Database>, spy: client.from, requests };
+}
+
+describe("nflTeamFullName", () => {
   it("expands team codes to their city and mascot for matchup copy", () => {
     expect(nflTeamFullName("CHI")).toBe("Chicago Bears");
     expect(nflTeamFullName("CAR")).toBe("Carolina Panthers");
   });
+});
 
-  it("keeps regular-season games and supplies real game identities", () => {
-    const games = parseNflSchedule([
-      "game_id,season,game_type,week,gameday,gametime,away_team,home_team,stadium",
-      "2026_01_KC_BUF,2026,REG,1,2026-09-10,20:20,KC,BUF,Highmark Stadium",
-      "2026_01_TEST,2026,POST,1,2026-09-10,20:20,KC,BUF,Highmark Stadium",
-    ].join("\n"));
+describe("fetchNflSchedule", () => {
+  it("shapes rows into the composer's games, with a Z-form kickoff and a matchup label", async () => {
+    const { client } = stubClient([row("2026_01_KC_BUF")]);
 
-    expect(games).toEqual([expect.objectContaining({
-      id: "2026_01_KC_BUF", season: 2026, week: 1, away: "KC", home: "BUF", label: "Chiefs @ Bills",
-    })]);
-    expect(games[0].kickoff).toBe("2026-09-11T00:20:00.000Z");
-    expect(games[0].primetime).toBe(true);
-    expect(games[0].stadium).toBe("Highmark Stadium");
+    expect(await fetchNflSchedule(client)).toEqual([{
+      id: "2026_01_KC_BUF",
+      season: 2026,
+      week: 1,
+      kickoff: "2026-09-11T00:20:00.000Z",
+      away: "KC",
+      home: "BUF",
+      label: "Chiefs @ Bills",
+      stadium: "Highmark Stadium",
+      primetime: true,
+    }]);
   });
 
-  it("converts Eastern Time through daylight saving time", () => {
-    const games = parseNflSchedule([
-      "game_id,season,game_type,week,gameday,gametime,away_team,home_team",
-      "2026_15_KC_BUF,2026,REG,15,2026-12-13,13:00,KC,BUF",
-    ].join("\n"));
+  it("pages through a table larger than one response, keeping every row in order", async () => {
+    const table = Array.from({ length: 2300 }, (_, index) => row(`game_${String(index).padStart(4, "0")}`));
+    const { client } = stubClient(table);
 
-    // December is EST (UTC-5), while the September fixture above is EDT
-    // (UTC-4). A fixed offset would render one of them an hour wrong.
-    expect(games[0].kickoff).toBe("2026-12-13T18:00:00.000Z");
+    const games = await fetchNflSchedule(client);
+
+    expect(games).toHaveLength(2300);
+    expect(games.map((game) => game.id)).toEqual(table.map((game) => game.id));
+  });
+
+  it("returns an empty pool for an empty table", async () => {
+    expect(await fetchNflSchedule(stubClient([]).client)).toEqual([]);
+  });
+
+  it("rejects when any page fails, rather than returning a schedule with a hole in it", async () => {
+    const table = Array.from({ length: 2300 }, (_, index) => row(`game_${index}`));
+
+    await expect(fetchNflSchedule(stubClient(table, { failFrom: 1000 }).client)).rejects.toThrow("NFL schedule is unavailable");
   });
 });
 
-describe("isPrimetimeKickoff", () => {
-  it("recognizes the national Thursday, Sunday, and Monday evening windows in Eastern time", () => {
-    expect(isPrimetimeKickoff("2026-09-11T00:20:00.000Z")).toBe(true); // Thursday 8:20 PM EDT
-    expect(isPrimetimeKickoff("2026-09-14T00:20:00.000Z")).toBe(true); // Sunday 8:20 PM EDT
-    expect(isPrimetimeKickoff("2026-09-15T00:15:00.000Z")).toBe(true); // Monday 8:15 PM EDT
-    expect(isPrimetimeKickoff("2026-09-13T17:00:00.000Z")).toBe(false); // Sunday 1:00 PM EDT
+describe("fetchGameContexts", () => {
+  it("returns only the venue, kickoff and primetime flag of the games asked for", async () => {
+    const { client } = stubClient([row("a"), row("b", { stadium: "Arrowhead", primetime: false }), row("c")]);
+
+    expect(await fetchGameContexts(client, ["b"])).toEqual([
+      { id: "b", stadium: "Arrowhead", kickoff: "2026-09-11T00:20:00.000Z", primetime: false },
+    ]);
+  });
+
+  it("asks for each distinct game once", async () => {
+    const { client, requests } = stubClient([row("a"), row("b")]);
+
+    await fetchGameContexts(client, ["a", "b", "a", "b"]);
+
+    expect(requests.ids).toEqual(["a", "b"]);
+  });
+
+  it("makes no request when no slot points at a game", async () => {
+    const { client, spy } = stubClient([row("a")]);
+
+    expect(await fetchGameContexts(client, [])).toEqual([]);
+    expect(spy).not.toHaveBeenCalled();
   });
 });

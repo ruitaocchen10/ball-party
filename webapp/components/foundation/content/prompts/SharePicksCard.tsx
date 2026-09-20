@@ -2,12 +2,14 @@ import { Check, X } from "lucide-react";
 import { forwardRef } from "react";
 
 import { PromptTeamLogo } from "./PromptTeamLogo";
+import { SHARE_THEME, ShareBackdrop, shareHeadlineStyle, shareKickerStyle } from "./ShareBackdrop";
 import { teamPrimaryColor } from "@/lib/foundation/content/nfl/team-logos";
 import { isSlotGraded } from "@/lib/foundation/content/prompts/logic";
 import type { Option, Post, Slot } from "@/lib/foundation/content/prompts/types";
 
 const CARD_WIDTH = 540; // doubled on export (see ShareTakeButton's pixelRatio) for a 1080px-wide PNG.
 const CARD_HEIGHT = 675; // 4:5 at the 540px working size; exported at 1080 × 1350.
+const HEADER_HEIGHT = 138;
 const ticketClip = "polygon(24px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 24px) 100%, 0 100%, 0 14px)";
 
 /**
@@ -34,28 +36,14 @@ export const SharePicksCard = forwardRef<
   return (
     <div
       ref={ref}
-      style={{ width: CARD_WIDTH, height: CARD_HEIGHT, fontFamily: "var(--font-sans)" }}
-      className="relative flex flex-col overflow-hidden bg-surface text-fg"
+      style={{ width: CARD_WIDTH, height: CARD_HEIGHT, fontFamily: "var(--font-sans)", backgroundColor: SHARE_THEME.base }}
+      className="relative flex flex-col overflow-hidden text-fg"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage: [
-            "linear-gradient(143deg, rgb(112 114 106 / 0.46) 0%, rgb(69 72 67 / 0.34) 21%, transparent 21.3%)",
-            "linear-gradient(323deg, rgb(74 77 72 / 0.58) 0%, rgb(35 38 35 / 0.44) 29%, transparent 29.3%)",
-            "radial-gradient(58% 31% at 50% 19%, rgb(201 56 44 / 0.3), transparent 72%)",
-            "radial-gradient(circle at center, rgb(232 227 214 / 0.07) 0.75px, transparent 1px)",
-            "linear-gradient(162deg, transparent 0%, transparent 52%, rgb(232 227 214 / 0.2) 52.15%, rgb(232 227 214 / 0.2) 52.4%, transparent 52.55%)",
-            "linear-gradient(160deg, #1a1e1a 0%, #101310 54%, #080a08 100%)",
-          ].join(", "),
-          backgroundSize: "auto, auto, auto, 9px 9px, auto, auto",
-        }}
-      />
+      <ShareBackdrop glowY={70} />
 
-      <header className="relative z-10 flex h-[128px] shrink-0 flex-col items-center gap-1 px-8 pt-10 text-center">
-        <p className="max-w-full overflow-hidden font-mono text-xs leading-none font-semibold tracking-[0.18em] text-[#c9382c] text-ellipsis whitespace-nowrap uppercase">{subheadline}</p>
-        <h1 className="max-w-full overflow-hidden font-slab text-[66px] leading-[0.95] text-ellipsis whitespace-nowrap uppercase text-fg">{headline}</h1>
+      <header style={{ height: HEADER_HEIGHT }} className="relative z-10 flex shrink-0 flex-col items-center gap-1 px-8 pt-10 text-center">
+        <p style={shareKickerStyle} className="max-w-full overflow-hidden font-mono leading-none tracking-[0.18em] text-ellipsis whitespace-nowrap uppercase">{subheadline}</p>
+        <h1 style={shareHeadlineStyle} className="max-w-full overflow-hidden font-slab leading-[0.95] text-ellipsis whitespace-nowrap uppercase">{headline}</h1>
       </header>
 
       <div className={`relative z-10 mt-4 min-h-0 flex-1 px-6 pb-6 ${single ? "flex flex-col px-8" : ""}`}>

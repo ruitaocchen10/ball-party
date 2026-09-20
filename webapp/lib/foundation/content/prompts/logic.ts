@@ -4,7 +4,7 @@
  * template component because this is data shaping, not layout.
  */
 
-import type { Post, Slot } from "@/lib/foundation/content/prompts/types";
+import type { Option, Post, Slot } from "@/lib/foundation/content/prompts/types";
 
 export type SlotResult = {
   correctCount: number;
@@ -48,6 +48,24 @@ export function isSlotGraded(slot: Pick<Slot, "correct">): boolean {
 /** `game_pick` and `weekly_picks` remain readable for posts created before Picks unified them — see types.ts's TemplateKind. */
 export function isPicksPost(post: Pick<Post, "templateKind">): boolean {
   return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks";
+}
+
+/** How many candidates a pick-one prompt's art has room for. */
+export const COVER_OPTION_LIMIT = 4;
+
+/**
+ * The candidates a pick-one prompt's art shows: the ones the admin placed
+ * (`coverPosition`, in that order), or — for a pool small enough to show whole,
+ * and for prompts published before the admin could choose — the first few.
+ */
+export function coverOptions(options: Option[]): Option[] {
+  const placed = options.filter((option) => option.coverPosition !== undefined).sort((left, right) => left.coverPosition! - right.coverPosition!);
+  return (placed.length ? placed : options).slice(0, COVER_OPTION_LIMIT);
+}
+
+/** A pool bigger than the art, with the admin's choice of exactly four still to be made. */
+export function needsCoverChoice(options: Option[]): boolean {
+  return options.length > COVER_OPTION_LIMIT && options.filter((option) => option.coverPosition !== undefined).length !== COVER_OPTION_LIMIT;
 }
 
 /** Total points a post has paid out, or null while anything remains unresolved. */

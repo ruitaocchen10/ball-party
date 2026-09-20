@@ -7,6 +7,7 @@ import { nflTeamName, type NflScheduleGame } from "@/lib/foundation/content/nfl/
 import { PlayerPortrait } from "./PlayerPortrait";
 import { PromptTeamLogo } from "./PromptTeamLogo";
 import { Select } from "@/components/foundation/ui-kit/Select";
+import { COVER_OPTION_LIMIT } from "@/lib/foundation/content/prompts/logic";
 import type { Option, Player, Slot, TemplateKind } from "@/lib/foundation/content/prompts/types";
 
 /**
@@ -40,14 +41,27 @@ export function buildGamePickSlots(game: NflScheduleGame): Slot[] {
   ];
 }
 
-export function buildStatLeaderSlots(selected: Player[]): Slot[] {
+/**
+ * `coverIds` are the players the admin chose for the prompt's art, in
+ * placement order. Only a pool bigger than the art needs them — a smaller one
+ * is shown whole.
+ */
+export function buildStatLeaderSlots(selected: Player[], coverIds: string[] = []): Slot[] {
+  const choosesCover = selected.length > COVER_OPTION_LIMIT;
   return [
     {
       id: "slot-leader",
       label: "Leader",
       shape: "pick",
       points: 25,
-      options: selected.map((p) => ({ id: p.id, label: p.name, sublabel: p.team, headshotUrl: p.headshotUrl, teamCode: p.team })),
+      options: selected.map((p) => ({
+        id: p.id,
+        label: p.name,
+        sublabel: p.team,
+        headshotUrl: p.headshotUrl,
+        teamCode: p.team,
+        ...(choosesCover && coverIds.includes(p.id) ? { coverPosition: coverIds.indexOf(p.id) + 1 } : {}),
+      })),
     },
   ];
 }
