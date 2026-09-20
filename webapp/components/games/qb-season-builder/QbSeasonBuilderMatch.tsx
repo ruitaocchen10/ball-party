@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
@@ -50,6 +51,7 @@ export function QbSeasonBuilderMatch({
   initial: Board;
   isGuest: boolean;
 }) {
+  const router = useRouter();
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
   const getClient = useCallback(() => (clientRef.current ??= createClient()), []);
   const [board, setBoard] = useState<Board>(initial);
@@ -105,6 +107,29 @@ export function QbSeasonBuilderMatch({
     }
   }
 
+  /**
+   * Turns the six picks into the season and saves it. The page is rendered on
+   * the server from the run, and a complete run renders as the staged reveal,
+   * so moving on is a refresh — the same read a reload does.
+   */
+  async function finish() {
+    if (pending) return;
+    setPending(true);
+    setError(null);
+
+    const { error: rpcError } = await getClient().schema("qb_season_builder").rpc("finish", { p_match_id: matchId });
+
+    // A run that is no longer playing is already finished — from another tab,
+    // or an earlier click whose answer was lost — and its reveal is the right
+    // place to land, not an error.
+    if (rpcError && rpcError.message !== "match_not_playing") {
+      setError(qbErrorMessage(rpcError.message));
+      setPending(false);
+      return;
+    }
+    router.refresh();
+  }
+
   return (
     <main className="app-page flex-1">
       <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
@@ -114,7 +139,7 @@ export function QbSeasonBuilderMatch({
             title="QB Season Builder"
             description={`Round ${board.currentRound} of ${board.roundCount} · Ratings ${board.mode}`}
           />
-          {board.spin === null ? <FinishedPanel board={board} /> : (
+          {board.spin === null ? <FinishedPanel board={board} pending={pending} error={error} onFinish={finish} /> : (
             <SpinPanel
               board={board}
               spin={board.spin}
@@ -251,12 +276,34 @@ function OptionRow({
 }
 
 /** No round is open: all six slots are filled, so there is nothing left to pick. */
-function FinishedPanel({ board }: { board: Board }) {
+function FinishedPanel({
+  board,
+  pending,
+  error,
+  onFinish,
+}: {
+  board: Board;
+  pending: boolean;
+  error: string | null;
+  onFinish: () => void;
+}) {
   return (
     <section aria-label="Your quarterback" className="mt-5 flex w-full max-w-[760px] flex-col gap-3 border border-line bg-surface-raised p-4">
       <p className="font-slab text-[27px] leading-none uppercase">
         {board.phase === "complete" ? "This run is finished." : "All six slots are filled."}
       </p>
+      {board.phase === "ready_to_finish" ? (
+        <>
+          <div>
+            <Button type="button" fullWidth={false} disabled={pending} onClick={onFinish}>
+              {pending ? "Revealing…" : "Reveal my season"}
+            </Button>
+          </div>
+          <AnimatedMessage role="alert" className="text-sm text-hidden-text">
+            {error}
+          </AnimatedMessage>
+        </>
+      ) : null}
       <Link
         href="/solo"
         className="text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"

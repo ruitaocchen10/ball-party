@@ -1,6 +1,12 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const refresh = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
 
 import { QbSeasonBuilderMatch } from "@/components/games/qb-season-builder/QbSeasonBuilderMatch";
 import { boardFromRow, type Board, type BoardRow } from "@/lib/games/qb-season-builder/board";
@@ -293,6 +299,58 @@ describe("QbSeasonBuilderMatch — all six slots filled", () => {
     expect(screen.getByText(/all six slots are filled/i)).toBeInTheDocument();
     const slots = within(screen.getByRole("list", { name: "Your build" })).getAllByRole("listitem");
     expect(slots.every((slot) => within(slot).queryByText("Open") === null)).toBe(true);
+  });
+
+  it("finishes the run through the game API and moves on to the reveal", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderScreen(finished("ready_to_finish"));
+
+    await user.click(screen.getByRole("button", { name: /reveal my season/i }));
+
+    expect(supabase.schema).toHaveBeenCalledWith("qb_season_builder");
+    expect(supabase.rpc).toHaveBeenCalledWith("finish", { p_match_id: MATCH });
+    // The page is server-rendered from the run, which is now complete.
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  it("holds the button while the season is being generated, so it cannot be finished twice", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderScreen(finished("ready_to_finish"));
+    supabase.rpc.mockImplementation(() => new Promise(() => {}));
+
+    await user.click(screen.getByRole("button", { name: /reveal my season/i }));
+
+    expect(screen.getByRole("button", { name: /revealing/i })).toBeDisabled();
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("says why when the season cannot be generated, and lets the player try again", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderScreen(finished("ready_to_finish"));
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: "draft_incomplete" } });
+
+    await user.click(screen.getByRole("button", { name: /reveal my season/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Fill all six slots first.");
+    expect(screen.getByRole("button", { name: /reveal my season/i })).toBeEnabled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("goes to the reveal anyway when the run turns out to be finished already, as from another tab", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderScreen(finished("ready_to_finish"));
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: "match_not_playing" } });
+
+    await user.click(screen.getByRole("button", { name: /reveal my season/i }));
+
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(/already ended/i)).not.toBeInTheDocument();
+  });
+
+  it("has nothing to finish while slots are still open", () => {
+    renderScreen(boardOf());
+
+    expect(screen.queryByRole("button", { name: /reveal my season/i })).not.toBeInTheDocument();
   });
 
   it("opens a finished run read-only from its URL", () => {

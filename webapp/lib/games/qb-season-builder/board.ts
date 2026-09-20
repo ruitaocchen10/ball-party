@@ -1,3 +1,4 @@
+import { isObject, numberOrNull } from "@/lib/games/qb-season-builder/json";
 import type { Database } from "@/lib/supabase/database.types";
 
 /**
@@ -60,6 +61,14 @@ export type DraftPick = {
   value: number | null;
 };
 
+/**
+ * A spin the player was dealt, kept for the reveal: once a run is finished the
+ * server returns every spin it showed, options and values included, whether or
+ * not the run was hidden. `attempt` 2 of a round means attempt 1 was respun
+ * away — the player saw it, so it is here.
+ */
+export type ShownSpin = Spin & { round: number; attempt: number };
+
 export type Board = {
   matchId: string;
   mode: "visible" | "hidden";
@@ -71,6 +80,8 @@ export type Board = {
   /** The current round's spin; null once no round is open. */
   spin: Spin | null;
   picks: DraftPick[];
+  /** Every spin the player saw, values revealed; null until the run is complete. */
+  shown: ShownSpin[] | null;
 };
 
 /**
@@ -88,6 +99,9 @@ export function boardFromRow(row: Partial<BoardRow> | null | undefined): Board |
   const picks = picksFromJson(row.picks);
   if (picks === null) return null;
 
+  const shown = row.shown == null ? null : shownFromJson(row.shown);
+  if (row.shown != null && shown === null) return null;
+
   let spin: Spin | null = null;
   if (row.franchise_code != null && row.season != null) {
     const options = optionsFromJson(row.options);
@@ -104,21 +118,12 @@ export function boardFromRow(row: Partial<BoardRow> | null | undefined): Board |
     respinUsed: row.respin_used,
     spin,
     picks,
+    shown,
   };
 }
 
 export function pickForSlot(board: Board, slot: Slot): DraftPick | null {
   return board.picks.find((pick) => pick.slot === slot) ?? null;
-}
-
-type JsonObject = { [key: string]: unknown };
-
-function isObject(value: unknown): value is JsonObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function numberOrNull(value: unknown): number | null {
-  return typeof value === "number" ? value : null;
 }
 
 function optionsFromJson(json: unknown): Pick<Spin, "quarterbacks" | "supportingCast"> | null {
@@ -147,7 +152,22 @@ function qualityValues(json: unknown): Record<Quality, number> | null {
   return values;
 }
 
-function picksFromJson(json: unknown): DraftPick[] | null {
+function shownFromJson(json: unknown): ShownSpin[] | null {
+  if (!Array.isArray(json)) return null;
+  const shown: ShownSpin[] = [];
+  for (const raw of json) {
+    if (
+      !isObject(raw) || typeof raw.round !== "number" || typeof raw.attempt !== "number" ||
+      typeof raw.franchise_code !== "string" || typeof raw.season !== "number"
+    ) return null;
+    const options = optionsFromJson(raw.options);
+    if (options === null) return null;
+    shown.push({ round: raw.round, attempt: raw.attempt, franchiseCode: raw.franchise_code, season: raw.season, ...options });
+  }
+  return shown;
+}
+
+export function picksFromJson(json: unknown): DraftPick[] | null {
   if (!Array.isArray(json)) return null;
   const picks: DraftPick[] = [];
   for (const raw of json) {

@@ -11,7 +11,9 @@ import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import type { AuctionFormat, Player, Turn } from "@/lib/games/auction/board";
 import type { Board } from "@/lib/games/higher-or-lower/board";
+import { QbSeasonBuilderResult } from "@/components/games/qb-season-builder/QbSeasonBuilderResult";
 import { boardFromRow } from "@/lib/games/qb-season-builder/board";
+import { fetchPersonalBest, fetchResult } from "@/lib/games/qb-season-builder/read";
 import { createClient } from "@/lib/supabase/server";
 import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 
@@ -242,6 +244,27 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
           <HomeLink />
         </Shell>
       );
+    }
+
+    // A finished run is its reveal. The board's `shown` is the player's own —
+    // every option they were dealt, values included — so it comes from here and
+    // not from the public result, which does not carry it.
+    if (board.phase === "complete") {
+      const result = await fetchResult(supabase, id);
+      if (result) {
+        const personalBest = await fetchPersonalBest(supabase, claims, result.mode);
+        return (
+          <SoloMatchShell displayName={displayName} email={email} avatarUrl={avatarUrl}>
+            <QbSeasonBuilderResult
+              result={result}
+              shown={board.shown}
+              personalBest={personalBest}
+              isGuest={isGuestViewer(claims)}
+              staged
+            />
+          </SoloMatchShell>
+        );
+      }
     }
 
     return (

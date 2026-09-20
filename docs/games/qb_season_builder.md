@@ -239,3 +239,38 @@ Two things to know about the model:
   `season_model_real_seasons` copies the six values from `qb_seasons` and
   `team_seasons`, and a ratings retune must be followed by a new fit (the database
   test `0125` fails if they disagree).
+
+## The web UI
+
+Three screens, all reading the calls above and deciding nothing themselves.
+
+- **The pick screen** (`components/games/qb-season-builder/QbSeasonBuilderMatch.tsx`,
+  at `/match/[id]`): this round's spin and the six slots. Once all six are filled it
+  offers **Reveal my season**, which is `finish` followed by `router.refresh()` —
+  the page is rendered on the server from the run, and a `complete` run renders as
+  the reveal below. A `match_not_playing` refusal there is not an error: the run is
+  already finished (another tab, or a lost answer to an earlier click), and the
+  reveal is where the player should land.
+- **The staged reveal** (`QbSeasonBuilderResult.tsx` with `staged`, same URL once
+  the run is `complete`): stat line, record, playoffs, awards, then the score, a
+  step at a time, and only then the breakdown, the per-pick recap and the closest
+  real season. The score holds a beat on its own — it is what the four steps
+  before it build to, so what explains it waits. The order and the one-time-ness
+  live in `lib/games/qb-season-builder/useSeasonReveal.ts`, a hook with its own
+  suite, as for sabotage draft's `useTurnReveal` and the auction's `useLotReveal`.
+  It can be skipped to the end, and it plays **once**: watched through or skipped,
+  the hook remembers the run in `localStorage` so a reload goes straight to the
+  finished state. That is a per-browser convenience and nothing more — blocked or
+  cleared storage, or a second device, costs a replay, which is why it is not on
+  the run.
+  In a hidden run this screen also shows **every option the player saw** with its
+  value, the ones passed on and a respun-away spin included. That is the board's
+  `shown`, which only the run's owner can read, so it is not on the public page.
+- **The public result** (`/solo/qb-season-builder/result/[id]`): the same component
+  unstaged, from `result` alone. Reachable signed out — the path is in the proxy's
+  public list and the run's id is the whole capability — so a link works for a
+  stranger and for a guest's run alike. `noindex`, for the same reason.
+
+The personal best is the **viewer's** own, never the run owner's: it is read for the
+run's mode and only for a signed-in account, since the stat is an account feature
+and RLS refuses a guest the row. A guest gets the nudge to make an account instead.

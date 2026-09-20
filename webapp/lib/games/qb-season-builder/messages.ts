@@ -14,6 +14,7 @@ export const QB_MESSAGES: Record<string, string> = {
   source_not_on_spin: "That option isn't on this spin any more.",
   respin_used: "You've already used your respin.",
   draft_complete: "All six slots are filled.",
+  draft_incomplete: "Fill all six slots first.",
   pool_exhausted: "Couldn't deal a spin. Try again.",
 };
 
