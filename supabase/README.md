@@ -34,6 +34,14 @@ sabotage_draft_private   identity and season) is a column on a client-readable,
                          physical table — RLS restricts it to the pick's own
                          owner. See 0052 and its test file for why that is
                          still leak-safe.
+
+qb_season_builder          the fourth game's pair. Its hidden state is
+qb_season_builder_private  genuinely separate: the finished ratings and the
+                           value each pick was worth live only in the private
+                           schema, because hidden mode is enforced by what the
+                           API returns and no table a client can select from
+                           may hold a number. See 0120 and
+                           docs/games/qb_season_builder.md.
 ```
 
 0029 moved functions only. The auction's tables are still split across `public`
@@ -63,6 +71,12 @@ it is done.
 start a sabotage draft match, add `sabotage_draft` to Settings → API →
 Exposed schemas the same way, and save. Until that step, `sabotage_draft.start`
 and every other call into the schema fails with PGRST106.
+
+**Deploying 0120 takes it once more.** Migration 0120 adds `qb_season_builder`
+to `[api] schemas` above, local development only. Before the hosted project can
+start a QB Season Builder run, add `qb_season_builder` to Settings → API →
+Exposed schemas and save. Until then every call into the schema fails with
+PGRST106. Locally, `supabase stop && supabase start` picks the change up.
 
 ## Migrations
 

@@ -210,3 +210,26 @@ values
   ('00000000-0000-0000-0000-00000000e207', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d003', 'Fair. I am taking Denver again when they get the rematch at home.', false, '00000000-0000-0000-0000-00000000e202', now() - interval '12 hours');
 
 commit;
+
+-- QB Season Builder ratings ---------------------------------------------------
+--
+-- A handful of made-up rating rows so the game can be played locally before the
+-- ratings pipeline ticket loads the real data through a migration. These are
+-- placeholders, not real ratings: the quarterbacks are real names carrying
+-- invented values. Six quarterback-seasons across four spinnable team-seasons,
+-- plus one team-season with a Supporting Cast and no qualifying quarterback,
+-- which the game must never spin. supabase/tests/support/harness.psql carries
+-- its own copy (tests.qsb_fixtures) and clears these first, so the suites never
+-- depend on this block.
+insert into qb_season_builder_private.team_seasons (franchise_code, season, supporting_cast)
+values ('kan', 2018, 88), ('kan', 2019, 81), ('nwe', 2017, 77), ('phi', 2017, 69), ('nyj', 2020, 31);
+
+insert into qb_season_builder_private.qb_seasons
+  (franchise_code, season, player_id, display_name, accuracy, arm_talent, mobility, iq, build)
+values
+  ('kan', 2018, 'MahoPa00', 'Patrick Mahomes', 91, 99, 84, 88, 76),
+  ('kan', 2019, 'MahoPa00', 'Patrick Mahomes', 89, 98, 82, 90, 77),
+  ('kan', 2019, 'MoorMa00', 'Matt Moore',      61, 58, 40, 52, 55),
+  ('nwe', 2017, 'BradTo00', 'Tom Brady',       96, 85, 33, 99, 72),
+  ('phi', 2017, 'WentCa00', 'Carson Wentz',    87, 90, 79, 83, 86),
+  ('phi', 2017, 'FolsNi00', 'Nick Foles',      78, 74, 45, 80, 68);
