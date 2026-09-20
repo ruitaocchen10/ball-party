@@ -16,6 +16,13 @@ enum SupabaseConfig {
         URL(string: "\(oauthCallbackScheme)://login-callback")!
     }
 
+    /// The project URL, for links to public Storage objects such as the team
+    /// logos. `client` traps when it is missing; a logo that can't be built
+    /// should only fall back to text, so this doesn't.
+    static var projectURL: URL? {
+        URL(string: infoPlistString(for: "SUPABASE_URL"))
+    }
+
     static let client: SupabaseClient = {
         guard let url = URL(string: infoPlistString(for: "SUPABASE_URL")) else {
             preconditionFailure(

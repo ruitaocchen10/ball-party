@@ -39,6 +39,33 @@ struct PromptOption: Identifiable, Equatable, Sendable {
     let headshotURL: URL?
 }
 
+/// One game on the schedule the web and this app share (`public.nfl_games`,
+/// migration 0119) — the venue, the kickoff and the Primetime flag a matchup
+/// cover shows. The database fills it from nflverse and does the Eastern-time
+/// conversion, so `kickoff` is already a real instant. Decoded straight from
+/// the row: there is nothing to join or gate, so no separate row type.
+struct NFLGame: Identifiable, Decodable, Equatable, Sendable {
+    /// nflverse's game id — the value a slot keeps in `source_game_id`.
+    let id: String
+    let stadium: String
+    let kickoff: Date
+    let primetime: Bool
+
+    init(id: String, stadium: String = "", kickoff: Date, primetime: Bool = false) {
+        self.id = id; self.stadium = stadium; self.kickoff = kickoff; self.primetime = primetime
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, stadium, kickoff, primetime }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        stadium = try c.decode(String.self, forKey: .stadium)
+        kickoff = try c.decodeTimestamp(forKey: .kickoff)
+        primetime = try c.decode(Bool.self, forKey: .primetime)
+    }
+}
+
 struct PromptSlot: Identifiable, Equatable, Sendable {
     let id: UUID
     let label: String
@@ -50,6 +77,20 @@ struct PromptSlot: Identifiable, Equatable, Sendable {
     /// Ground truth — `nil` until the post resolves. Order counts for `rank`.
     let correctOptionIds: [UUID]?
     let options: [PromptOption]
+    /// The schedule entry this slot is about — set on a game pick, `nil` on
+    /// anything else, and on a game the schedule doesn't know (yet).
+    var game: NFLGame? = nil
+
+    /// The two teams of a game pick, away first and home second — the order the
+    /// composer writes them, and the order a matchup cover draws them in. `nil`
+    /// for anything that isn't a head-to-head between two teams (a ranking, a
+    /// pick of players), which is what keeps those on the plain option list.
+    var matchup: (away: PromptOption, home: PromptOption)? {
+        guard shape == .pick, options.count == 2,
+              options.allSatisfy({ $0.teamCode != nil && $0.headshotURL == nil })
+        else { return nil }
+        return (options[0], options[1])
+    }
 
     /// Whether `optionId` is one of the right answers — `nil` until the post
     /// resolves. The server did the grading (`resolve_post`); this only reads
@@ -112,6 +153,10 @@ struct PromptPost: Identifiable, Equatable, Sendable {
     let aggregate: [UUID: [UUID: Double]]?
 
     var viewerAnswered: Bool { viewerResponse != nil }
+
+    /// Whether every slot is a head-to-head between two teams, which is when
+    /// the post is drawn as matchup covers instead of an option list.
+    var isMatchupPost: Bool { !slots.isEmpty && slots.allSatisfy { $0.matchup != nil } }
 
     func isTakingPicks(at now: Date) -> Bool { status.isTakingPicks(lockAt: lockAt, now: now) }
 
@@ -198,14 +243,16 @@ struct PromptSlotRow: Decodable, Equatable, Sendable {
     let points: Int
     let sortOrder: Int
     let correctOptionIds: [UUID]?
+    /// The nflverse game id of a game pick (`prompt_slots.source_game_id`, 0097).
+    let sourceGameId: String?
 
     init(
         id: UUID, postId: UUID, label: String, shape: String = "pick", pickCount: Int? = nil,
-        points: Int = 10, sortOrder: Int = 0, correctOptionIds: [UUID]? = nil
+        points: Int = 10, sortOrder: Int = 0, correctOptionIds: [UUID]? = nil, sourceGameId: String? = nil
     ) {
         self.id = id; self.postId = postId; self.label = label; self.shape = shape
         self.pickCount = pickCount; self.points = points; self.sortOrder = sortOrder
-        self.correctOptionIds = correctOptionIds
+        self.correctOptionIds = correctOptionIds; self.sourceGameId = sourceGameId
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -214,6 +261,7 @@ struct PromptSlotRow: Decodable, Equatable, Sendable {
         case pickCount = "pick_count"
         case sortOrder = "sort_order"
         case correctOptionIds = "correct_option_ids"
+        case sourceGameId = "source_game_id"
     }
 }
 
@@ -318,6 +366,9 @@ struct PromptFeedRows: Equatable, Sendable {
     var viewerResponses: [PromptResponseRow] = []
     var comments: [PromptCommentRow] = []
     var profiles: [PromptProfileRow] = []
+    /// The schedule entries the slots point at. May come back empty — the
+    /// schedule is garnish for a cover, never a reason to lose the feed.
+    var games: [NFLGame] = []
 }
 
 /// One row of `prompts.post_aggregates`.

@@ -34,7 +34,7 @@ export function parseNflPlayers(csv: string): Player[] {
     const position = read(values, "position");
     const team = read(values, "latest_team");
     if (read(values, "status") !== "ACT" || !id || !name || !team || !position) return [];
-    return [{ id, name, position, team, headshotUrl: read(values, "headshot_url") }];
+    return [{ id, name, position, team, headshotUrl: read(values, "headshot") }];
   }).sort((left, right) => left.position.localeCompare(right.position) || left.name.localeCompare(right.name));
 }
 

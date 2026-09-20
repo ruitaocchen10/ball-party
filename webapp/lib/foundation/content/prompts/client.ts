@@ -66,6 +66,7 @@ function toCreatePostSlots(slots: Slot[]) {
       sublabel: option.sublabel ?? null,
       team_code: option.teamCode ?? null,
       headshot_url: option.headshotUrl ?? null,
+      cover_position: option.coverPosition ?? null,
       sort_order: index,
     })),
   }));

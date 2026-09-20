@@ -22,10 +22,10 @@ export default async function AdminPromptsPage() {
 
   let games: NflScheduleGame[] = [];
   try {
-    games = await fetchNflSchedule();
+    games = await fetchNflSchedule(supabase);
   } catch {
-    // The composer remains usable for its non-schedule templates during a
-    // temporary upstream outage; game templates explain the missing pool.
+    // The composer remains usable for its non-schedule templates while the
+    // schedule is unreadable; game templates explain the missing pool.
   }
 
   let players: Player[] = [];

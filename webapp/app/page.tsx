@@ -9,7 +9,7 @@ import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { canAnswerPrompt, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPromptFeed } from "@/lib/foundation/content/prompts/feed";
-import { fetchNflSchedule } from "@/lib/foundation/content/nfl/schedule";
+import { fetchGameContexts } from "@/lib/foundation/content/nfl/schedule";
 
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.
@@ -34,15 +34,18 @@ export default async function Home(props: PageProps<"/">) {
   // The Huddle is readable before a player has an account or a temporary
   // lobby session. The per-player queries remain conditional, but the public
   // feed and its optional schedule treatment always load.
-  const [profileResult, room, posts, schedule] = await Promise.all([
+  const [profileResult, room, { posts, gameContexts }] = await Promise.all([
     viewer
       ? supabase.from("profiles").select("display_name, avatar_url").eq("id", claims!.sub).single()
       : Promise.resolve({ data: null }),
     viewer ? currentRoom(supabase, claims!.sub) : Promise.resolve(null),
-    fetchPromptFeed(supabase, viewer ? claims!.sub : null),
-    // A schedule outage should never hide the feed; it only removes the
-    // optional primetime treatment until the next cached refresh.
-    fetchNflSchedule().catch(() => []),
+    fetchPromptFeed(supabase, viewer ? claims!.sub : null).then(async (feed) => ({
+      posts: feed,
+      // Only the games these posts are about, read from the same table the iOS
+      // app uses. A schedule outage should never hide the feed; it only drops
+      // the venue, kickoff and primetime details from the covers.
+      gameContexts: await fetchGameContexts(supabase, feed.flatMap((post) => post.slots.flatMap((slot) => slot.sourceGameId ?? []))).catch(() => []),
+    })),
   ]);
 
   const displayName = profileResult.data?.display_name ?? (viewer ? (claims!.email as string) : null);
@@ -68,7 +71,7 @@ export default async function Home(props: PageProps<"/">) {
       <main data-home-main className="app-page flex-1">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
         <div data-home-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
-          <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><SocialFeed posts={visiblePosts} canAnswer={canAnswerPrompt(claims)} gameContexts={schedule.map(({ id, stadium, kickoff, primetime }) => ({ id, stadium, kickoff, primetime }))} /></div>
+          <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><SocialFeed posts={visiblePosts} canAnswer={canAnswerPrompt(claims)} gameContexts={gameContexts} /></div>
           <div data-quick-actions className="hidden xl:block"><QuickActions room={room} /></div>
         </div>
       </main>

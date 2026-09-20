@@ -414,9 +414,12 @@ today, admins on the web only).
 Documented here for completeness in case that changes.
 `p_slots` is an array, one object per slot in display order:
 `{label, shape, pick_count, points, source_game_id, excludes_slot_indexes,
-options: [{label, sublabel, team_code, headshot_url, sort_order}]}` —
+options: [{label, sublabel, team_code, headshot_url, sort_order, cover_position}]}` —
 `excludes_slot_indexes` are 0-based indexes into `p_slots`, not ids, since the
-slots don't have ids yet at call time.
+slots don't have ids yet at call time. `cover_position` (optional, 1–4) marks
+which candidates of a `stat_leader` pool the prompt art shows and in what order
+(0119): a slot's positions must be exactly 1..k, and no other template may set
+them. A pool with none set shows its first four.
 
 ### `prompts.post_aggregates(p_post_id uuid)`
 
@@ -497,7 +500,7 @@ All `public` schema.
 | --- | --- | --- |
 | `prompt_posts` | `id, template_kind, template_name, author_id, caption, prompt_text, resolution_criteria, lock_at, created_at, status, void_reason, resolved_at, resolution_source, is_opinion` | `anon, authenticated` — `using (true)` |
 | `prompt_slots` | `id, post_id, label, shape, pick_count, points, sort_order, source_game_id, correct_option_ids` | `anon, authenticated` — `using (true)`; `correct_option_ids` is `null` until resolution, same reveal-by-write-not-by-policy trick as `higher_or_lower_cards.points` |
-| `prompt_slot_options` | `id, slot_id, label, sublabel, team_code, headshot_url, sort_order` | `anon, authenticated` — `using (true)` |
+| `prompt_slot_options` | `id, slot_id, label, sublabel, team_code, headshot_url, sort_order, cover_position` | `anon, authenticated` — `using (true)` |
 | `prompt_slot_exclusions` | `slot_id, excluded_slot_id` | `anon, authenticated` — `using (true)` |
 | `prompt_comments` | `id, post_id, author_id, body, posted_with_pick, parent_comment_id, created_at` | `anon, authenticated` — `using (true)` |
 | `prompt_responses` | `id, post_id, slot_id, profile_id, chosen_option_ids, points_earned, created_at` | `authenticated` only, `profile_id = auth.uid()` — **own rows only, at the database**, regardless of what the client filters for |

@@ -89,6 +89,36 @@ values
   ('00000000-0000-0000-0000-00000000b707', '00000000-0000-0000-0000-00000000a007', 'Falcons @ Steelers', 'pick', null, 10, 6, array['00000000-0000-0000-0000-00000000c714'::uuid]),
   ('00000000-0000-0000-0000-00000000b708', '00000000-0000-0000-0000-00000000a007', 'Broncos @ Chiefs', 'pick', null, 10, 7, array['00000000-0000-0000-0000-00000000c716'::uuid]);
 
+-- Schedule details for the matchup covers (0119). The `seed_` ids keep these
+-- apart from the real nflverse rows the poll loads, so the gallery reads the
+-- same with or without the network. Kickoffs are relative so the open posts'
+-- games stay in the future however old this database gets.
+insert into public.nfl_games (id, season, week, kickoff, away_team, home_team, stadium, primetime)
+values
+  ('seed_2026_02_KC_BUF',  2026, 2, now() + interval '3 days' + interval '2 hours',  'KC',  'BUF', 'Highmark Stadium',            true),
+  ('seed_2026_02_DET_BUF', 2026, 2, now() + interval '6 days',                       'DET', 'BUF', 'Highmark Stadium',            false),
+  ('seed_2026_02_CAR_ATL', 2026, 2, now() + interval '6 days',                       'CAR', 'ATL', 'Mercedes-Benz Stadium',       false),
+  ('seed_2026_02_NO_BAL',  2026, 2, now() + interval '7 days' + interval '3 hours',  'NO',  'BAL', 'M&T Bank Stadium',            true),
+  ('seed_2026_02_MIN_CHI', 2026, 2, now() + interval '6 days' + interval '3 hours',  'MIN', 'CHI', 'Soldier Field',               false),
+  ('seed_2026_01_DEN_KC',  2026, 1, now() - interval '5 days',                       'DEN', 'KC',  'GEHA Field at Arrowhead Stadium', true),
+  ('seed_2026_01_NE_SEA',  2026, 1, now() - interval '6 days',                       'NE',  'SEA', 'Lumen Field',                 true),
+  ('seed_2026_01_SF_LA',   2026, 1, now() - interval '6 days' + interval '1 day',    'SF',  'LA',  'SoFi Stadium',                false)
+on conflict (id) do nothing;
+
+update public.prompt_slots as s
+   set source_game_id = g.game_id
+  from (values
+    ('00000000-0000-0000-0000-00000000b101'::uuid, 'seed_2026_02_KC_BUF'),
+    ('00000000-0000-0000-0000-00000000b201'::uuid, 'seed_2026_02_DET_BUF'),
+    ('00000000-0000-0000-0000-00000000b202'::uuid, 'seed_2026_02_CAR_ATL'),
+    ('00000000-0000-0000-0000-00000000b203'::uuid, 'seed_2026_02_NO_BAL'),
+    ('00000000-0000-0000-0000-00000000b204'::uuid, 'seed_2026_02_MIN_CHI'),
+    ('00000000-0000-0000-0000-00000000b601'::uuid, 'seed_2026_01_DEN_KC'),
+    ('00000000-0000-0000-0000-00000000b701'::uuid, 'seed_2026_01_NE_SEA'),
+    ('00000000-0000-0000-0000-00000000b702'::uuid, 'seed_2026_01_SF_LA')
+  ) as g(slot_id, game_id)
+ where s.id = g.slot_id;
+
 insert into public.prompt_slot_options (id, slot_id, label, sublabel, team_code, sort_order)
 values
   ('00000000-0000-0000-0000-00000000c101', '00000000-0000-0000-0000-00000000b101', 'Chiefs', 'Away', 'KC', 0), ('00000000-0000-0000-0000-00000000c102', '00000000-0000-0000-0000-00000000b101', 'Bills', 'Home', 'BUF', 1),

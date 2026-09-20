@@ -1053,6 +1053,42 @@ export type Database = {
           },
         ]
       }
+      nfl_games: {
+        Row: {
+          away_team: string
+          home_team: string
+          id: string
+          kickoff: string
+          primetime: boolean
+          season: number
+          stadium: string
+          updated_at: string
+          week: number
+        }
+        Insert: {
+          away_team: string
+          home_team: string
+          id: string
+          kickoff: string
+          primetime?: boolean
+          season: number
+          stadium?: string
+          updated_at?: string
+          week: number
+        }
+        Update: {
+          away_team?: string
+          home_team?: string
+          id?: string
+          kickoff?: string
+          primetime?: boolean
+          season?: number
+          stadium?: string
+          updated_at?: string
+          week?: number
+        }
+        Relationships: []
+      }
       post_game_actions: {
         Row: {
           choice: Database["public"]["Enums"]["post_game_choice"]
@@ -1320,6 +1356,7 @@ export type Database = {
       }
       prompt_slot_options: {
         Row: {
+          cover_position: number | null
           headshot_url: string | null
           id: string
           label: string
@@ -1329,6 +1366,7 @@ export type Database = {
           team_code: string | null
         }
         Insert: {
+          cover_position?: number | null
           headshot_url?: string | null
           id?: string
           label: string
@@ -1338,6 +1376,7 @@ export type Database = {
           team_code?: string | null
         }
         Update: {
+          cover_position?: number | null
           headshot_url?: string | null
           id?: string
           label?: string

@@ -197,6 +197,7 @@ function mapPost(
         sublabel: optionRow.sublabel ?? undefined,
         teamCode: optionRow.team_code ?? undefined,
         headshotUrl: optionRow.headshot_url ?? undefined,
+        coverPosition: optionRow.cover_position ?? undefined,
       }),
     ),
   }));

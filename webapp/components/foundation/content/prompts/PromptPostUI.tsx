@@ -10,7 +10,9 @@ import { Select } from "@/components/foundation/ui-kit/Select";
 import type { NflScheduleGame } from "@/lib/foundation/content/nfl/schedule";
 import { OptionIcon } from "./SlotFaces";
 import { MatchupPicker } from "./MatchupPicker";
+import { PickOneBoard } from "./PickOneBoard";
 import { PROMPT_TICKET_CUT_CORNERS } from "./PromptTicket";
+import { SharePromptButton } from "./SharePromptButton";
 import {
   CheckboxPoolField,
   GameSelectField,
@@ -24,7 +26,7 @@ import {
   defaultPromptText,
   optionPoolFor,
 } from "./ComposerFields";
-import { isPicksPost, relativeTime } from "@/lib/foundation/content/prompts/logic";
+import { COVER_OPTION_LIMIT, coverOptions, isPicksPost, needsCoverChoice, relativeTime } from "@/lib/foundation/content/prompts/logic";
 import type { MatchupGameContext, Option, Player, Post, Slot, TemplateKind } from "@/lib/foundation/content/prompts/types";
 
 /**
@@ -148,6 +150,11 @@ function PostTeaser({ post, gameContexts }: { post: Post; gameContexts: MatchupG
 
   if (post.templateKind === "power_rankings") {
     return <PowerRankingsBoard post={post} />;
+  }
+
+  if (post.templateKind === "stat_leader" && post.slots.length === 1) {
+    const pool = post.slots[0].options;
+    return <PickOneBoard options={coverOptions(pool)} poolSize={pool.length} />;
   }
 
   const allOptions = post.slots.flatMap((slot) => slot.options);
@@ -304,6 +311,8 @@ export function PromptPostComposer({
   const [week, setWeek] = useState(String(initialGame?.week ?? ""));
   const [weeklyGameIds, setWeeklyGameIds] = useState<string[]>([]);
   const [playerIds, setPlayerIds] = useState<string[]>([]);
+  // Players shown in a pick-one prompt's art, in placement order — only used once the pool outgrows the art.
+  const [coverPlayerIds, setCoverPlayerIds] = useState<string[]>([]);
   const [playerPosition, setPlayerPosition] = useState("all");
   const [playerSearch, setPlayerSearch] = useState("");
   const [rankingTarget, setRankingTarget] = useState<"teams" | "players" | "games">("teams");
@@ -381,13 +390,16 @@ export function PromptPostComposer({
   const effectiveRankCount = Math.min(rankCount, rankingIds.length);
   const visibleRankingOptions = rankingTarget === "players" ? playerOptions : rankingOptions;
 
+  // A candidate dropped from the pool can't stay in the art.
+  const coverIds = coverPlayerIds.filter((id) => playerIds.includes(id));
+
   const defaultSlots =
     kind === "picks"
       ? picksMode === "single"
         ? selectedGame ? buildGamePickSlots(selectedGame) : []
         : weeklyGames.filter((game) => weeklyGameIds.includes(game.id)).flatMap(buildGamePickSlots)
       : kind === "stat_leader"
-        ? buildStatLeaderSlots(players.filter((p) => playerIds.includes(p.id)))
+        ? buildStatLeaderSlots(players.filter((p) => playerIds.includes(p.id)), coverIds)
         : kind === "power_rankings"
           ? buildPowerRankingSlots()
           : kind === "ranking"
@@ -430,7 +442,7 @@ export function PromptPostComposer({
         {error ? <p role="alert" className="mb-2 font-mono text-[10px] tracking-[0.1em] text-grade-rough uppercase">{error}</p> : null}
         <Button
           fullWidth
-          disabled={pending || lockInPast || slots.length === 0 || hasInvalidPoints || (kind === "ranking" && effectiveRankCount === 0) || (kind === "power_rankings" && coverTeamCodes.length !== COVER_TEAM_COUNT)}
+          disabled={pending || lockInPast || slots.length === 0 || hasInvalidPoints || (kind === "ranking" && effectiveRankCount === 0) || (kind === "power_rankings" && coverTeamCodes.length !== COVER_TEAM_COUNT) || (kind === "stat_leader" && needsCoverChoice(slots[0]?.options ?? []))}
           onClick={async () => {
             setPending(true);
             setError(null);
@@ -456,6 +468,7 @@ export function PromptPostComposer({
         >
           {pending ? "Publishing…" : "Publish now"}
         </Button>
+        {kind === "stat_leader" ? <div className="mt-2"><SharePromptButton promptText={promptText} options={slots[0]?.options ?? []} /></div> : null}
       </div>
     </>
   );
@@ -468,6 +481,7 @@ export function PromptPostComposer({
         </span>
         <p className="font-slab text-xl uppercase">Published</p>
         <p className="max-w-[38ch] text-sm text-fg-muted">It&apos;s live on the feed now — players can answer it until it locks.</p>
+        {kind === "stat_leader" ? <div className="w-full max-w-xs"><SharePromptButton promptText={promptText} options={slots[0]?.options ?? []} /></div> : null}
         <div className="flex gap-2">
           <Button
             variant="ghost"
@@ -477,6 +491,7 @@ export function PromptPostComposer({
               setPicksMode("single");
               setCaption("");
               setPlayerIds([]);
+              setCoverPlayerIds([]);
               setRankingIds([]);
               setRankCount(1);
               setCoverTeamCodes([]);
@@ -574,16 +589,29 @@ export function PromptPostComposer({
           </>
         ) : null}
         {kind === "stat_leader" ? (
-          <PlayerCandidatePicker
-            allOptions={allPlayerOptions}
-            matchingOptions={playerOptions}
-            position={playerPosition}
-            search={playerSearch}
-            selectedIds={playerIds}
-            onPositionChange={setPlayerPosition}
-            onSearchChange={setPlayerSearch}
-            onToggle={(id) => setPlayerIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])}
-          />
+          <>
+            <PlayerCandidatePicker
+              allOptions={allPlayerOptions}
+              matchingOptions={playerOptions}
+              position={playerPosition}
+              search={playerSearch}
+              selectedIds={playerIds}
+              onPositionChange={setPlayerPosition}
+              onSearchChange={setPlayerSearch}
+              onToggle={(id) => setPlayerIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])}
+            />
+            {playerIds.length > COVER_OPTION_LIMIT ? (
+              <FieldBlock label={`Prompt art players — choose ${COVER_OPTION_LIMIT} of ${playerIds.length} (${coverIds.length}/${COVER_OPTION_LIMIT})`}>
+                <CheckboxPoolField
+                  options={allPlayerOptions.filter((option) => playerIds.includes(option.id))}
+                  selectedIds={coverIds}
+                  max={COVER_OPTION_LIMIT}
+                  onToggle={(id) => setCoverPlayerIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])}
+                />
+                <p className="mt-2 text-xs text-fg-muted">Shown in the art in the order you pick them. Everyone can still answer with any of the {playerIds.length} candidates.</p>
+              </FieldBlock>
+            ) : null}
+          </>
         ) : null}
         {kind === "power_rankings" ? (
           <>

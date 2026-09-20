@@ -32,7 +32,7 @@ struct SoloRecapView: View {
                         Button("Change format") { viewModel.returnToSetup() }
                             .buttonStyle(.ghost)
                             .disabled(viewModel.isBusy)
-                        Button("Back home") { dismiss() }
+                        Button("Back to games") { dismiss() }
                             .buttonStyle(.quiet)
                     }
                     .frame(maxWidth: .infinity)

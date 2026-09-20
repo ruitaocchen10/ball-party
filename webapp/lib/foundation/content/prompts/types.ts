@@ -20,6 +20,12 @@ export type Option = {
   /** Both clubs when an option represents a matchup rather than one team. */
   teamCodes?: string[];
   position?: string;
+  /**
+   * Where this candidate sits in a pick-one prompt's art (1–4), for a pool too
+   * big to show whole — the admin chooses which four and their order. Unset on
+   * a candidate that isn't in the art.
+   */
+  coverPosition?: number;
 };
 
 export type Slot = {

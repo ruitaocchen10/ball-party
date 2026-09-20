@@ -8,7 +8,7 @@ struct AuthGateView: View {
     var body: some View {
         Group {
             if viewModel.session != nil {
-                ContentView(viewModel: viewModel)
+                MainTabView(viewModel: viewModel)
             } else {
                 AuthView(viewModel: viewModel)
             }

@@ -42,6 +42,8 @@ struct MatchScreen: View {
         .screenBackground()
         .navigationTitle("Higher or Lower")
         .navigationBarTitleDisplayMode(.inline)
+        // A live match is not somewhere to tab away from by accident.
+        .toolbar(.hidden, for: .tabBar)
         .task { await viewModel.load() }
         // Coming back from the background is when a screen is most likely to
         // be wrong: the countdown may barely have run, and the match may have

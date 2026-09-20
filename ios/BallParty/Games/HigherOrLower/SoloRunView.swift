@@ -34,6 +34,8 @@ struct SoloRunView: View {
         .screenBackground()
         .navigationTitle("Higher or Lower")
         .navigationBarTitleDisplayMode(.inline)
+        // The ladder is timed; the tab bar comes back for the picker and recap.
+        .toolbar(viewModel.stage == .playing ? .hidden : .automatic, for: .tabBar)
         .task { await viewModel.loadSetup() }
         // Coming back from the background is when a screen is most likely to be
         // wrong: the countdown may barely have run, and the match may have moved.
