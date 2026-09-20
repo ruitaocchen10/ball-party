@@ -6,6 +6,7 @@ import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPersonalBest, fetchResult } from "@/lib/games/qb-season-builder/read";
+import { shareCardFromResult } from "@/lib/games/qb-season-builder/share-card";
 import { SITE_NAME } from "@/lib/seo/site";
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,10 +14,21 @@ import { createClient } from "@/lib/supabase/server";
  * A guest's run is as shareable as an account's, and its id is all that
  * protects it, so it is not something to list in a search index.
  */
-export const metadata: Metadata = {
-  title: `A QB Season Builder season · ${SITE_NAME}`,
-  robots: { index: false },
-};
+export async function generateMetadata(props: PageProps<"/solo/qb-season-builder/result/[id]">): Promise<Metadata> {
+  const { id } = await props.params;
+  const result = await fetchResult(await createClient(), id);
+  if (!result) return { title: "QB Season Builder result not found", robots: { index: false } };
+
+  const card = shareCardFromResult(result);
+  const canonical = `/solo/qb-season-builder/result/${id}`;
+  return {
+    title: card.title,
+    description: card.description,
+    alternates: { canonical },
+    robots: { index: false },
+    openGraph: { type: "website", siteName: SITE_NAME, title: card.title, description: card.description, url: canonical },
+  };
+}
 
 /**
  * The read-only result of a finished QB Season Builder run, for anyone with the
