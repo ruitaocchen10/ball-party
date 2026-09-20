@@ -153,9 +153,9 @@ extension View {
 // MARK: - App chrome
 
 extension Theme {
-    /// Navigation bars are the one piece of chrome SwiftUI can't style from
-    /// the view side on iOS 17, so it goes through UIKit's appearance proxy.
-    /// Call once, before the first scene.
+    /// Navigation and tab bars are the pieces of chrome SwiftUI can't style
+    /// from the view side on iOS 17, so they go through UIKit's appearance
+    /// proxy. Call once, before the first scene.
     @MainActor
     static func applyChrome() {
         let bar = UINavigationBarAppearance()
@@ -170,5 +170,28 @@ extension Theme {
         UINavigationBar.appearance().standardAppearance = bar
         UINavigationBar.appearance().compactAppearance = bar
         UINavigationBar.appearance().scrollEdgeAppearance = bar
+
+        // Same dark bar with a hairline above it; the selected tab is cream,
+        // the rest recede.
+        let tabs = UITabBarAppearance()
+        tabs.configureWithOpaqueBackground()
+        tabs.backgroundColor = UIColor(surface)
+        tabs.shadowColor = UIColor(line)
+        for item in [tabs.stackedLayoutAppearance, tabs.inlineLayoutAppearance, tabs.compactInlineLayoutAppearance] {
+            item.normal.iconColor = UIColor(fgMuted)
+            item.normal.titleTextAttributes = tabTitle(color: fgMuted)
+            item.selected.iconColor = UIColor(fg)
+            item.selected.titleTextAttributes = tabTitle(color: fg)
+        }
+        UITabBar.appearance().standardAppearance = tabs
+        UITabBar.appearance().scrollEdgeAppearance = tabs
+    }
+
+    private static func tabTitle(color: Color) -> [NSAttributedString.Key: Any] {
+        [
+            .foregroundColor: UIColor(color),
+            .font: UIFont(name: Face.monoBold, size: 10) ?? UIFont.systemFont(ofSize: 10, weight: .bold),
+            .kern: 0.8,
+        ]
     }
 }

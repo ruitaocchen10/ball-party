@@ -108,7 +108,8 @@ struct TakeCardView: View {
     }
 }
 
-/// A compact list of what somebody picked, marked right or wrong once the post resolves.
+/// What somebody picked, marked right or wrong once the post resolves: a strip
+/// per game when the post is a set of matchups, a short list otherwise.
 ///
 /// Right is cream — a revealed thing turns cream — and wrong is quiet, not red:
 /// red means concealed, and by now nothing here is.
@@ -117,6 +118,21 @@ struct TicketView: View {
     let response: [UUID: [UUID]]
 
     var body: some View {
+        if post.isMatchupPost {
+            // Two to a row, like the web's "Your calls" grid — or one, for one game.
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: min(2, post.slots.count)), spacing: 8) {
+                ForEach(post.slots) { slot in
+                    if let matchup = slot.matchup {
+                        MatchupTile(away: matchup.away, home: matchup.home, selected: response[slot.id]?.first, winner: slot.winnerId)
+                    }
+                }
+            }
+        } else {
+            list
+        }
+    }
+
+    private var list: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(post.choices(in: response), id: \.slot.id) { entry in
                 HStack(alignment: .firstTextBaseline, spacing: 6) {

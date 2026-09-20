@@ -72,6 +72,7 @@ enum PromptFeed {
         let commentsByPost = Dictionary(grouping: rows.comments, by: \.postId)
         let responsesByPost = Dictionary(grouping: rows.viewerResponses, by: \.postId)
         let nameById = Dictionary(rows.profiles.map { ($0.id, $0.displayName) }, uniquingKeysWith: { first, _ in first })
+        let gameById = Dictionary(rows.games.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
 
         return rows.posts
             .sorted { $0.createdAt > $1.createdAt }
@@ -97,7 +98,8 @@ enum PromptFeed {
                                 id: $0.id, label: $0.label, sublabel: $0.sublabel, teamCode: $0.teamCode,
                                 headshotURL: $0.headshotUrl.flatMap(URL.init(string:))
                             )
-                        }
+                        },
+                        game: slotRow.sourceGameId.flatMap { gameById[$0] }
                     )
                 }
                 let mine = responsesByPost[row.id] ?? []

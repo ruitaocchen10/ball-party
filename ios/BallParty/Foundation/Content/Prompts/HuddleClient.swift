@@ -85,7 +85,7 @@ struct SupabaseHuddleClient: HuddleClient {
             let postIds = posts.map(\.id)
 
             async let slots: [PromptSlotRow] = client.from("prompt_slots")
-                .select("id, post_id, label, shape, pick_count, points, sort_order, correct_option_ids")
+                .select("id, post_id, label, shape, pick_count, points, sort_order, correct_option_ids, source_game_id")
                 .in("post_id", values: postIds)
                 .execute().value
             // Own rows only: `prompt_responses` is `profile_id = auth.uid()`
@@ -108,6 +108,8 @@ struct SupabaseHuddleClient: HuddleClient {
                 .in("slot_id", values: slotIds)
                 .execute().value
 
+            async let games = schedule(for: slotRows.compactMap(\.sourceGameId))
+
             let commentRows = try await comments
             let authorIds = Set(posts.map(\.authorId) + commentRows.map(\.authorId))
             let profiles: [PromptProfileRow] = try await client.from("profiles")
@@ -117,7 +119,7 @@ struct SupabaseHuddleClient: HuddleClient {
 
             return try await PromptFeedRows(
                 posts: posts, slots: slotRows, options: options,
-                viewerResponses: responses, comments: commentRows, profiles: profiles
+                viewerResponses: responses, comments: commentRows, profiles: profiles, games: games
             )
         }
     }
@@ -158,6 +160,20 @@ struct SupabaseHuddleClient: HuddleClient {
     }
 
     // MARK: - Private
+
+    /// The venue and kickoff of the games the feed's slots point at, from the
+    /// same `nfl_games` table the web reads. Deliberately never throws: like
+    /// the web, a schedule outage costs the covers their details, not the
+    /// player their feed.
+    private func schedule(for gameIds: [String]) async -> [NFLGame] {
+        let ids = Array(Set(gameIds))
+        guard !ids.isEmpty else { return [] }
+        let games: [NFLGame]? = try? await client.from("nfl_games")
+            .select("id, stadium, kickoff, primetime")
+            .in("id", values: ids)
+            .execute().value
+        return games ?? []
+    }
 
     private struct PostParam: Encodable, Sendable { let p_post_id: UUID }
 

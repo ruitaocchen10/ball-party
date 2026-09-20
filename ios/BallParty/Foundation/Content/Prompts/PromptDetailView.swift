@@ -88,6 +88,9 @@ struct PromptDetailView: View {
                 Text("+\(points) points").monoLabel(12, weight: .bold, tracking: 0.1)
             }
         }
+        if post.isMatchupPost {
+            SectionTitle(text: post.viewerAnswered ? "Your calls" : "The games")
+        }
         ForEach(post.slots) { slot in
             SlotResultsView(post: post, slot: slot)
         }
@@ -136,8 +139,12 @@ private struct AnswerForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            ForEach(post.slots) { slot in
-                SlotPicker(viewModel: viewModel, post: post, slot: slot)
+            if post.isMatchupPost {
+                MatchupPicks(viewModel: viewModel, post: post)
+            } else {
+                ForEach(post.slots) { slot in
+                    SlotPicker(viewModel: viewModel, post: post, slot: slot)
+                }
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -166,6 +173,44 @@ private struct AnswerForm: View {
             .buttonStyle(.solid)
             .disabled(!viewModel.canSubmit(post.id) || viewModel.isSending)
         }
+    }
+}
+
+/// The picks of a post made only of games: a single game is a full poster to
+/// tap a side of, a slate a column of compact strips to work down.
+private struct MatchupPicks: View {
+    @ObservedObject var viewModel: HuddleViewModel
+    let post: PromptPost
+
+    var body: some View {
+        if post.slots.count == 1, let slot = post.slots.first, let matchup = slot.matchup {
+            MatchupPoster(
+                away: matchup.away, home: matchup.home, game: slot.game,
+                selected: viewModel.selection(in: slot.id, of: post.id).first,
+                onSelect: { viewModel.toggle($0, in: slot.id, of: post.id) }
+            )
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Make each call").monoLabel(10, tracking: 0.1)
+                    Spacer()
+                    Text("\(picked)/\(post.slots.count) picked").monoLabel(10, tracking: 0.08)
+                }
+                ForEach(post.slots) { slot in
+                    if let matchup = slot.matchup {
+                        MatchupTile(
+                            away: matchup.away, home: matchup.home,
+                            selected: viewModel.selection(in: slot.id, of: post.id).first,
+                            onSelect: { viewModel.toggle($0, in: slot.id, of: post.id) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private var picked: Int {
+        post.slots.filter { !viewModel.selection(in: $0.id, of: post.id).isEmpty }.count
     }
 }
 
@@ -233,8 +278,44 @@ private struct SlotResultsView: View {
     let slot: PromptSlot
 
     var body: some View {
+        if let matchup = slot.matchup {
+            matchupResult(matchup)
+        } else {
+            optionResults
+        }
+    }
+
+    /// A game: the strip with the viewer's call on it, and how the crowd split.
+    private func matchupResult(_ matchup: (away: PromptOption, home: PromptOption)) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MatchupTile(
+                away: matchup.away, home: matchup.home,
+                selected: post.viewerResponse?[slot.id]?.first, winner: slot.winnerId
+            )
+            crowd(matchup)
+        }
+    }
+
+    @ViewBuilder
+    private func crowd(_ matchup: (away: PromptOption, home: PromptOption)) -> some View {
+        let split = post.aggregate?[slot.id]
+        if let away = split?[matchup.away.id], let home = split?[matchup.home.id] {
+            VStack(spacing: 6) {
+                HStack {
+                    Text("\(matchup.away.label) \(Int(away.rounded()))%")
+                    Spacer()
+                    Text("\(Int(home.rounded()))% \(matchup.home.label)")
+                }
+                .monoLabel(10, tracking: 0.08)
+                MeterBar(fraction: min(max(away, 0), 100) / 100, fill: Theme.fgMuted)
+            }
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var optionResults: some View {
         let mine = post.viewerResponse?[slot.id] ?? []
-        VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 12) {
             SectionTitle(text: slot.label)
             ForEach(slot.options) { option in
                 let pct = post.aggregate?[slot.id]?[option.id]

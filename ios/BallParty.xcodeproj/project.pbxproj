@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1B2C3D4E5F60718293A4B05 /* ProfileViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B06 /* ProfileViewModelTests.swift */; };
+		A1B2C3D4E5F60718293A4B03 /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B04 /* ProfileViewModel.swift */; };
+		A1B2C3D4E5F60718293A4B01 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B02 /* ProfileView.swift */; };
 		4FB9FA662D4DE41707B4F431 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1ED474535F9547864F48E5B /* Theme.swift */; };
 		8C2749D21E0B84AB7184FB15 /* Surfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B9FF71111FD9D9735FE017 /* Surfaces.swift */; };
 		42190A7B576995422CD3395D /* Controls.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4FC80D1FAFB82954050F5AB /* Controls.swift */; };
@@ -24,7 +27,7 @@
 		129D6AF9C48E6A7BB3521C15 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 23DA30C3359707F7DA8137CE /* Supabase */; };
 		60CEB77CE80375849D19FB8F /* BallPartyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6922E355C2C789A3555050C /* BallPartyApp.swift */; };
 		7C11EB614DE3A2B15C84C767 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 22E9476B19287E93B3829EFB /* Assets.xcassets */; };
-		8BCEE9CDEFA20861493E22C3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13676475DB11EF7FEDE1A0F8 /* ContentView.swift */; };
+		8BCEE9CDEFA20861493E22C3 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13676475DB11EF7FEDE1A0F8 /* MainTabView.swift */; };
 		07E051BD31CC211613846724 /* IdentityConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC8A96142A0621FD8ABEA33 /* IdentityConstants.swift */; };
 		A3E8D2B30D1E62CB56A83F1F /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A065A37B29A40FBB799D0B8A /* SupabaseConfig.swift */; };
 		FAD9687F1C07662E5877E74D /* AppleSignInNonce.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F929BCCFB1BB06349501A51 /* AppleSignInNonce.swift */; };
@@ -76,9 +79,15 @@
 		DA697A93DFAE4A042F2B8E16 /* PromptDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E13C467022F862423E0B66 /* PromptDetailView.swift */; };
 		CAC5F136454928795283C382 /* TakeThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EF401B82882F0056E7A29B /* TakeThreadView.swift */; };
 		5E439B62812C03AC931340AB /* PromptModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C204F0F834FDBB7C86EB1650 /* PromptModelsTests.swift */; };
+		4FDA21D1094F96EBA2E80C55 /* NFLTeams.swift in Sources */ = {isa = PBXBuildFile; fileRef = D14025B7D4BB51302FBC7BD9 /* NFLTeams.swift */; };
+		2BE052FBAA70990942926F54 /* MatchupViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6931E401827645B4B12716D2 /* MatchupViews.swift */; };
+		08BB98537B0108BABCE356CE /* MatchupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B44F7FC9C4A21EC4000278 /* MatchupTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A1B2C3D4E5F60718293A4B06 /* ProfileViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModelTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B04 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B02 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		E1ED474535F9547864F48E5B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		E4B9FF71111FD9D9735FE017 /* Surfaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Surfaces.swift; sourceTree = "<group>"; };
 		D4FC80D1FAFB82954050F5AB /* Controls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controls.swift; sourceTree = "<group>"; };
@@ -93,7 +102,7 @@
 		53802AC25628552A5AD509D7 /* OFL-Barlow.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL-Barlow.txt; sourceTree = "<group>"; };
 		A7193900A25A83B54C9926E5 /* OFL-BebasNeue.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL-BebasNeue.txt; sourceTree = "<group>"; };
 		52BEB888A2E7363C75923B52 /* OFL-JetBrainsMono.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL-JetBrainsMono.txt; sourceTree = "<group>"; };
-		13676475DB11EF7FEDE1A0F8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		13676475DB11EF7FEDE1A0F8 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		22E9476B19287E93B3829EFB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3FD826920DC17F0A393DE271 /* BallParty.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BallParty.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B6922E355C2C789A3555050C /* BallPartyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallPartyApp.swift; sourceTree = "<group>"; };
@@ -152,6 +161,9 @@
 		E0E13C467022F862423E0B66 /* PromptDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptDetailView.swift; sourceTree = "<group>"; };
 		98EF401B82882F0056E7A29B /* TakeThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakeThreadView.swift; sourceTree = "<group>"; };
 		C204F0F834FDBB7C86EB1650 /* PromptModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptModelsTests.swift; sourceTree = "<group>"; };
+		D14025B7D4BB51302FBC7BD9 /* NFLTeams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFLTeams.swift; sourceTree = "<group>"; };
+		6931E401827645B4B12716D2 /* MatchupViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupViews.swift; sourceTree = "<group>"; };
+		04B44F7FC9C4A21EC4000278 /* MatchupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -192,7 +204,7 @@
 				22E9476B19287E93B3829EFB /* Assets.xcassets */,
 				B6922E355C2C789A3555050C /* BallPartyApp.swift */,
 				08DD5816569D45BEBD3188F8 /* BallParty.entitlements */,
-				13676475DB11EF7FEDE1A0F8 /* ContentView.swift */,
+				13676475DB11EF7FEDE1A0F8 /* MainTabView.swift */,
 				3E5261B818DE4AF134B8761E /* Foundation */,
 				20B084BADD8616DD75ABE461 /* Games */,
 				88F216FC65AE0789C61B4333 /* Info.plist */,
@@ -217,6 +229,8 @@
 			children = (
 				2DA291456539C74261724E01 /* AuthBackend.swift */,
 				EEB0816A1860592796A6B1F7 /* AuthGateView.swift */,
+				A1B2C3D4E5F60718293A4B02 /* ProfileView.swift */,
+				A1B2C3D4E5F60718293A4B04 /* ProfileViewModel.swift */,
 				C8216A7CE2D2C62774B54790 /* AuthView.swift */,
 				17FAE7FC496C6B37C6917E34 /* AuthViewModel.swift */,
 				1F929BCCFB1BB06349501A51 /* AppleSignInNonce.swift */,
@@ -244,8 +258,10 @@
 				A00AEBECD0570CBE0D379EDC /* MatchClockTests.swift */,
 				177C2F17C639CEAB760F662C /* SoloRunViewModelTests.swift */,
 				0E5B06101F9DA4507EEDA1C9 /* FakeHuddleClient.swift */,
+				A1B2C3D4E5F60718293A4B06 /* ProfileViewModelTests.swift */,
 				D946FF67E31EBD458E5E56AE /* HuddleViewModelTests.swift */,
 				C204F0F834FDBB7C86EB1650 /* PromptModelsTests.swift */,
+				04B44F7FC9C4A21EC4000278 /* MatchupTests.swift */,
 			);
 			path = BallPartyTests;
 			sourceTree = "<group>";
@@ -360,6 +376,8 @@
 				3D318883C9DB837B2177EF1A /* PromptComponents.swift */,
 				E0E13C467022F862423E0B66 /* PromptDetailView.swift */,
 				98EF401B82882F0056E7A29B /* TakeThreadView.swift */,
+				D14025B7D4BB51302FBC7BD9 /* NFLTeams.swift */,
+				6931E401827645B4B12716D2 /* MatchupViews.swift */,
 			);
 			path = Prompts;
 			sourceTree = "<group>";
@@ -526,7 +544,7 @@
 				31EED3E7CE74DE674478E1FC /* LobbyModels.swift in Sources */,
 				C69FB35F4AA035D13F12F2E3 /* PostgresValues.swift in Sources */,
 				60CEB77CE80375849D19FB8F /* BallPartyApp.swift in Sources */,
-				8BCEE9CDEFA20861493E22C3 /* ContentView.swift in Sources */,
+				8BCEE9CDEFA20861493E22C3 /* MainTabView.swift in Sources */,
 				07E051BD31CC211613846724 /* IdentityConstants.swift in Sources */,
 				A3E8D2B30D1E62CB56A83F1F /* SupabaseConfig.swift in Sources */,
 				FAD9687F1C07662E5877E74D /* AppleSignInNonce.swift in Sources */,
@@ -534,6 +552,8 @@
 				597F339E95769DF03F33DCAB /* AuthViewModel.swift in Sources */,
 				A62300401A13A2D1F4C0C719 /* AuthView.swift in Sources */,
 				696F992F3B9E971D15739013 /* AuthGateView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B01 /* ProfileView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B03 /* ProfileViewModel.swift in Sources */,
 				EA115712F243CC3939D2E466 /* MatchClock.swift in Sources */,
 				9BE94B78BD1BF5D19AC0824D /* MatchClockDriver.swift in Sources */,
 				75476BEA2728BB02F0FBDC76 /* HigherOrLowerClient.swift in Sources */,
@@ -550,6 +570,8 @@
 				DA7C9E60EA753D9C0D7ECD2E /* PromptComponents.swift in Sources */,
 				DA697A93DFAE4A042F2B8E16 /* PromptDetailView.swift in Sources */,
 				CAC5F136454928795283C382 /* TakeThreadView.swift in Sources */,
+				4FDA21D1094F96EBA2E80C55 /* NFLTeams.swift in Sources */,
+				2BE052FBAA70990942926F54 /* MatchupViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -572,8 +594,10 @@
 				5287614E79BF16F2EB918984 /* MatchClockTests.swift in Sources */,
 				334E6F05EE834AD8FAFEAB2B /* SoloRunViewModelTests.swift in Sources */,
 				F4FC2AB5616DE1E8EF1B97A6 /* FakeHuddleClient.swift in Sources */,
+				A1B2C3D4E5F60718293A4B05 /* ProfileViewModelTests.swift in Sources */,
 				4E8CBCA8BAB0A4F864B0C5F3 /* HuddleViewModelTests.swift in Sources */,
 				5E439B62812C03AC931340AB /* PromptModelsTests.swift in Sources */,
+				08BB98537B0108BABCE356CE /* MatchupTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,78 +1,77 @@
 import SwiftUI
 
-/// Home screen behind the auth gate: Huddle, the games a signed-in player can
-/// start, and sign-out. See `docs/architecture/architecture.md` for what lands
-/// next.
-struct ContentView: View {
+/// The app behind the auth gate: four tabs, each with its own navigation
+/// stack, so going into a prompt or a lobby keeps you inside the tab you were
+/// on. See `docs/architecture/architecture.md` for what lands next.
+struct MainTabView: View {
     @ObservedObject var viewModel: AuthViewModel
 
+    private enum Tab: Hashable {
+        case home, games, party, profile
+    }
+
+    @State private var selection: Tab = .home
+
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    PageHeader(
-                        title: "Ball Party",
-                        description: viewModel.session?.user.email.map { "Signed in as \($0)" }
-                    )
+        // `AuthGateView` only builds this with a session, but the session can
+        // clear a beat before the gate swaps this view out.
+        if let user = viewModel.session?.user {
+            TabView(selection: $selection) {
+                NavigationStack { HuddleScreen(viewerId: user.id) }
+                    .tabItem { Label("Home", systemImage: "house") }
+                    .tag(Tab.home)
 
-                    if let viewerId = viewModel.session?.user.id {
-                        NavigationLink {
-                            HuddleScreen(viewerId: viewerId)
-                        } label: {
-                            GameTile(
-                                kind: "Feed",
-                                title: "Huddle",
-                                blurb: "Make your picks on this week's prompts, then talk it over.",
-                                footnote: "Everyone",
-                                action: "Open"
-                            )
-                        }
-                        .buttonStyle(.plain)
+                NavigationStack { GamesScreen(viewerId: user.id) }
+                    .tabItem { Label("Games", systemImage: "gamecontroller") }
+                    .tag(Tab.games)
 
-                        NavigationLink {
-                            SoloRunScreen(viewerId: viewerId)
-                        } label: {
-                            GameTile(
-                                kind: "Solo",
-                                title: "Higher or Lower",
-                                blurb: "Call the next card. Make the streak last.",
-                                footnote: "1 player",
-                                action: "Play"
-                            )
-                        }
-                        .buttonStyle(.plain)
+                NavigationStack { LobbyScreen(viewerId: user.id) }
+                    .tabItem { Label("Party", systemImage: "person.3") }
+                    .tag(Tab.party)
 
-                        NavigationLink {
-                            LobbyScreen(viewerId: viewerId)
-                        } label: {
-                            GameTile(
-                                kind: "Multiplayer",
-                                title: "Play with friends",
-                                blurb: "Host a room or join with a code, then play a ladder together.",
-                                footnote: "2–4 players",
-                                action: "Start"
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    Button("Sign out") {
-                        Task { await viewModel.signOut() }
-                    }
-                    .buttonStyle(.quiet)
-                    .frame(maxWidth: .infinity)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 28)
-                .padding(.bottom, 40)
+                NavigationStack { ProfileView(auth: viewModel, viewerId: user.id, email: user.email) }
+                    .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+                    .tag(Tab.profile)
             }
-            .screenBackground()
-            .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
 
-/// One way into the app from the home screen: a cream card with the red edge
+/// The Games tab: everything a player can start on their own.
+private struct GamesScreen: View {
+    let viewerId: UUID
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                PageHeader(
+                    eyebrow: "Solo",
+                    title: "Games",
+                    description: "Play on your own. Bring friends in from the Party tab."
+                )
+
+                NavigationLink {
+                    SoloRunScreen(viewerId: viewerId)
+                } label: {
+                    GameTile(
+                        kind: "Solo",
+                        title: "Higher or Lower",
+                        blurb: "Call the next card. Make the streak last.",
+                        footnote: "1 player",
+                        action: "Play"
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(16)
+        }
+        .screenBackground()
+        .navigationTitle("Games")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// One way into a game from the Games tab: a cream card with the red edge
 /// (the answer to "how did the room do" is always behind it), the game's name,
 /// and one control.
 private struct GameTile: View {
