@@ -2,12 +2,12 @@
 
 The server-authoritative run loop for the solo game specified in issue #72:
 draft a quarterback season one trait at a time over six rounds. This document
-covers what issue #74 built — start, spin, pick, respin, modes. Season
-generation, the result and the share card are later tickets; a run whose six
-slots are filled is simply *ready to finish*.
+covers what issue #74 built — start, spin, pick, respin, modes — and what issue
+#77 added on top: finishing a run into a generated, saved, shareable season, and
+the personal best. The share card is a later ticket.
 
-Implemented in migrations `0120`–`0122`, tested in
-`supabase/tests/0120`–`0123_qb_season_builder_*.test.sql`. Exposed through
+Implemented in migrations `0120`–`0122` and `0127`, tested in
+`supabase/tests/0120`–`0122` and `0127_qb_season_builder_*.test.sql`. Exposed through
 PostgREST as `supabase.schema("qb_season_builder").rpc(...)`; the schema must
 also be listed under Exposed schemas on the hosted project (see
 `supabase/README.md`).
@@ -29,7 +29,8 @@ also be listed under Exposed schemas on the hosted project (see
   spin is kept, since the player saw it.
 - Mode is `visible` (default) or `hidden`, chosen at start and locked. In a
   hidden run no quarterback-quality or Supporting Cast value is returned until
-  the match is `complete`; visible runs always return them.
+  the match is `complete` (which is what `finish` does); visible runs always
+  return them.
 - Identity is `auth.uid()`, never an argument. Guests may play. Nothing sweeps
   an unfinished run and there is no "continue" entry point: `state` on the
   run's match id is how a run is reopened.
@@ -60,11 +61,12 @@ Rejects: caller not in the run → `not_a_participant`; run not dealt yet →
 
 ```
 board {
-  match_id, mode, phase ('picking' | 'ready_to_finish'),
+  match_id, mode, phase ('picking' | 'ready_to_finish' | 'complete'),
   round_count (6), current_round, respin_used,
-  franchise_code, season,   -- the current spin; null when ready_to_finish
-  options jsonb,            -- null when ready_to_finish
-  picks jsonb
+  franchise_code, season,   -- the current spin; null when ready_to_finish or complete
+  options jsonb,            -- null when ready_to_finish or complete
+  picks jsonb,
+  shown jsonb               -- null until complete: every spin the player was shown
 }
 
 options = { "quarterbacks": [{ "player_id", "display_name",
@@ -76,6 +78,14 @@ picks   = [{ "round", "slot", "franchise_code", "season",
 ```
 
 Every `values` / `value` is `null` in a hidden run until the match is complete.
+
+```
+shown = [{ "round", "attempt", "franchise_code", "season", "options" }]   -- oldest first
+```
+
+`shown` is the reveal: once the run is finished, every spin the player saw with
+every option's values, in either mode. That includes the quarterbacks passed on and
+a spin thrown away by the respin (`attempt` 1 of a round that has an `attempt` 2).
 
 ### `pick(p_match_id uuid, p_slot text, p_player_id text default null) returns board`
 
@@ -95,29 +105,73 @@ quarterback-season (or, for a respin, no team-season other than the current one)
 Rejects: `not_authenticated`; `match_not_found`; `wrong_game`;
 `not_a_participant`; `match_not_playing`; `draft_complete`; `respin_used`.
 
+### `finish(p_match_id uuid) returns jsonb`
+
+Turns the six picked values into a season, saves it and completes the match. The
+seed is drawn here and is not an argument. Returns the saved result (below).
+Rejects: `not_authenticated`; `match_not_found`; `wrong_game`; `not_a_participant`;
+`match_not_playing` (a finished run is no longer playing, so a second `finish`
+raises this; read the result with `result`); `draft_incomplete` (P0001 — a slot is
+still open). One run has exactly one saved result.
+
+### `result(p_match_id uuid) returns jsonb`
+
+The saved result of a finished run. **Callable by anyone, signed out included**: the
+run's id is the whole capability, so the link to a run's result works for a stranger
+and for a guest's run alike. Rejects `result_not_found` (P0002) for a run with none.
+
+```
+{ match_id, mode,
+  stat_line { attempts, completions, pass_yards, pass_tds, interceptions, rating,
+              rush_yards, rush_tds },
+  record { wins, losses },                       -- of 17
+  playoffs { depth 0..5, result },               -- missed_playoffs | lost_wild_card |
+                                                 -- lost_divisional | lost_conference |
+                                                 -- lost_super_bowl | won_super_bowl
+  awards { mvp, opoy, all_pro, pro_bowl, sb_mvp },
+  score,                                         -- 0..100, one decimal
+  breakdown [{ component, weight, percentile, points }],   -- points add up to score
+  closest_season { franchise_code, season, player_id, display_name,
+                   pass_yards, pass_tds, interceptions, wins, losses },
+  picks [{ round, slot, franchise_code, season, player_id, display_name, value }] }
+```
+
+Only blended values: never a source rating and never the seed. The result is saved
+as it was generated, so retuning the model later does not change a saved link. The
+values of options that were passed on are not in it; the owner reads them from
+`state` (`shown`).
+
+### The personal best
+
+`public.qb_season_builder_player_stats (user_id, mode, best_score)`: one row per
+player per mode, raised by `finish` and by nothing else, so a run in play has no
+score and a worse run never lowers it. Readable only by its owner and only when
+signed in with an account (guests are refused, as for Higher or Lower's stat). A
+guest's best is still recorded against their user id.
+
 ## What a client can read
 
 Client-readable through RLS, for the run's owner only (guests included):
 `qb_season_builder_matches` (mode, round, respin spent), `qb_season_builder_spins`
 (only rounds up to the current one) and `qb_season_builder_picks` (slot and
 source, never a value). Everything numeric lives in `qb_season_builder_private`
-— `qb_seasons`, `team_seasons` and `pick_values` — which no client role can
-reach; a value leaves the database only through `state` / `pick` / `respin`,
-which decide per run whether to show it.
+— `qb_seasons`, `team_seasons`, `pick_values`, the season model and
+`season_results` (the saved seasons **and their seeds**) — which no client role can
+reach; a value leaves the database only through `state` / `pick` / `respin` /
+`finish` / `result`, which decide what to show. The one other client-readable table
+is the personal best, for its owner only.
 
-Two things the finish ticket and the pipeline ticket should know:
+Two things to know about the ratings:
 
 - **Reveal of passed options.** Values are hidden until the match is `complete`,
-  which nothing in this ticket does, so a hidden run shows no values even after
-  its sixth pick. `state` returns the values of the *picks* once complete; it
-  does not yet return the options that were passed on. Every spin the player
-  saw is kept (`qb_season_builder_spins`, including a respun-away attempt 1) so
-  the finish ticket can build that reveal.
+  which `finish` does. `state` then returns every spin the player saw in `shown`
+  (`qb_season_builder_spins` keeps a respun-away attempt 1 for exactly this).
 - **Reloading ratings mid-run.** Options are read live from the rating tables,
   but a pick's value is copied at pick time (`pick_values`). A pipeline reload
   while runs are in flight can therefore change what an unpicked option shows,
-  or remove it from a spin (`source_not_on_spin`). Runs are short, but load the
-  data at a quiet moment or snapshot options at deal time if that matters.
+  or remove it from a spin (`source_not_on_spin`), and the reveal of a finished
+  run reads the rating tables live too. Runs are short, but load the data at a
+  quiet moment or snapshot options at deal time if that matters.
 
 The rating tables are loaded by the ratings pipeline ticket. Until then a fresh
 local database carries a few made-up placeholder rows from `seed.sql`.
@@ -150,7 +204,31 @@ How to read each table is written at the top of `0125`. All of it is per full
 17-game season. Every weight, bound, noise scale and threshold is configuration in
 `scripts/qb_season_model/config.py`.
 
-Two things the finish ticket should know:
+## Season generation
+
+`finish` reads the model above with the run's six picked values and a seed drawn at
+that moment (`qb_season_builder_private.finish_run(match, seed)` is the same thing
+with a chosen seed, for tests). In order:
+
+1. each output's formula, plus its noise: a draw from the output's residual table
+   scaled by `noise_scale`, added before the inverse link. The stat line is derived
+   from the outputs and rounded (counts to whole numbers; wins rounded, losses the
+   rest of 17);
+2. the playoff ladder, walked rung by rung at the season's wins until one is missed;
+3. each award: its score, nudged by up to `noise_scale` of the winners' spread either
+   way, against its threshold; Super Bowl MVP needs the title;
+4. the score: the season's percentile on each component (share of real seasons it is
+   strictly better than), mixed by the score weights, capped at 100;
+5. the closest real season: nearest neighbour on the six values.
+
+Every random draw is a hash of the seed and a name (`unit_draw`), so **the same picks
+and the same seed always give the same season**, independent of the order draws are
+made in. It is deliberately not `setseed()`, which would leave the connection's
+`random()` predictable for whoever uses it next. The seed lives in
+`qb_season_builder_private.season_results` beside the saved result and is never
+returned by any call.
+
+Two things to know about the model:
 
 - **The numbers are a regression to the mean.** The six values explain about half
   of a quarterback's passing yards and 60% of a team's wins, so a quarterback's own
