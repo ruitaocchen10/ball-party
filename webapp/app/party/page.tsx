@@ -9,7 +9,7 @@ import { StartRoom } from "@/components/home/StartRoom";
 import { WayIn } from "@/components/home/WayIn";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
-import { GAMES } from "@/lib/platform/orchestration/catalog";
+import { groupGames } from "@/lib/platform/orchestration/catalog";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { canCreateLobby, isSignedInViewer } from "@/lib/foundation/identity/viewer";
@@ -59,7 +59,7 @@ export default async function PartyPage(props: PageProps<"/party">) {
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
 
-  const live = GAMES.filter((game) => game.status === "live").length;
+  const live = groupGames().filter((game) => game.status === "live").length;
 
   return (
     <>

@@ -19,6 +19,7 @@ export const LOBBY_MESSAGES: Record<string, string> = {
   match_not_complete: "This game is still in progress.",
   post_game_choice_already_made: "The next game has already been chosen.",
   not_match_participant: "Only a player in this match can choose what’s next.",
+  invalid_mode: "Choose visible or hidden ratings.",
   replay_not_supported: "This game can’t be replayed yet.",
 };
 

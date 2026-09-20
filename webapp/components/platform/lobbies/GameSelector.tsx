@@ -7,10 +7,10 @@ import { StartRun, type Era } from "@/components/platform/lobbies/StartRun";
 import { StartSabotageDraft } from "@/components/platform/lobbies/StartSabotageDraft";
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Card } from "@/components/foundation/ui-kit/Card";
-import { GAMES, type MatchGame } from "@/lib/platform/orchestration/catalog";
+import { groupGames, type MatchGame } from "@/lib/platform/orchestration/catalog";
 import { selectGame } from "@/lib/platform/lobbies/actions";
 
-const LAUNCHABLE = GAMES.filter((game) => game.match !== null);
+const LAUNCHABLE = groupGames().filter((game) => game.match !== null);
 
 /**
  * The room's one "what's next" slot, always on screen rather than a grid of

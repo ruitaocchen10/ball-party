@@ -1,6 +1,6 @@
 import { Gamepad2 } from "lucide-react";
 
-import { GAMES, type Game } from "@/lib/platform/orchestration/catalog";
+import { GAMES, type Game, type SoloMode } from "@/lib/platform/orchestration/catalog";
 import { playSolo } from "@/lib/platform/lobbies/actions";
 
 /**
@@ -14,9 +14,8 @@ import { playSolo } from "@/lib/platform/lobbies/actions";
  * needs none of that bidding-war framing, just "here's what you can play by
  * yourself right now."
  *
- * Only a game with `solo: true` and `status: "live"` shows up here — Higher
- * or Lower alone today. No account-gated fallback the way GameGrid's tiles
- * have one: solo carries none of hosting's account requirement, so a session
+ * Only a game with `solo: true` and `status: "live"` shows up here. No
+ * account-gated fallback the way GameGrid's tiles have one: solo carries none of hosting's account requirement, so a session
  * that can't play solo is a session with nothing here to act on at all, and
  * the card just drops its Play solo control rather than offering one it
  * can't use.
@@ -67,6 +66,7 @@ function SoloCard({ game, canPlaySolo }: { game: Game; canPlaySolo: boolean }) {
       {canPlaySolo ? (
         <form action={playSolo} className="mt-4 border-t border-line pt-3">
           <input type="hidden" name="game" value={game.match ?? ""} />
+          {game.soloModes ? <ModeChoice modes={game.soloModes} /> : null}
           <button
             type="submit"
             className="inline-flex h-9 w-full cursor-pointer items-center justify-center bg-panel px-3.5 font-mono text-[11px] font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
@@ -79,8 +79,42 @@ function SoloCard({ game, canPlaySolo }: { game: Game; canPlaySolo: boolean }) {
   );
 }
 
-/** Solo's honest-empty state, for the day the catalog's one solo game isn't
- *  live — say so plainly rather than showing nothing. */
+/**
+ * A choice the run is locked to once it starts, made on the card because
+ * there is no screen before the run to make it on. Plain radios so the choice
+ * travels with the form as `mode` and the card still works with no client
+ * script; the first mode is the default and starts checked.
+ */
+function ModeChoice({ modes }: { modes: readonly SoloMode[] }) {
+  return (
+    <fieldset className="mb-3 flex flex-col gap-1.5">
+      <legend className="mb-1.5 font-mono text-[9px] font-semibold tracking-[0.1em] text-fg-muted uppercase">
+        Ratings
+      </legend>
+      {modes.map((mode, index) => (
+        <label
+          key={mode.value}
+          className="flex cursor-pointer items-start gap-2 border border-line px-2.5 py-2 transition-colors has-checked:border-fg has-checked:bg-surface has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-panel"
+        >
+          <input
+            type="radio"
+            name="mode"
+            value={mode.value}
+            defaultChecked={index === 0}
+            className="mt-0.5 accent-current"
+          />
+          <span className="flex flex-col">
+            <span className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase">{mode.label}</span>
+            <span className="text-[12px] leading-4 text-fg-muted">{mode.description}</span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+/** Solo's honest-empty state, for the day no solo game is live — say so
+ *  plainly rather than showing nothing. */
 function NoSoloGames() {
   return (
     <div className="rounded-card bg-surface-raised px-5 py-6 text-sm leading-6 text-fg-muted shadow-well">

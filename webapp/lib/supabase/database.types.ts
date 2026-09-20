@@ -268,14 +268,6 @@ export type Database = {
           total_responses: number
         }[]
       }
-      power_ranking_top_five: {
-        Args: { p_post_id: string }
-        Returns: {
-          average_rank: number
-          option_id: string
-          top_five_count: number
-        }[]
-      }
       post_comment: {
         Args: {
           p_body: string
@@ -283,6 +275,14 @@ export type Database = {
           p_post_id: string
         }
         Returns: string
+      }
+      power_ranking_top_five: {
+        Args: { p_post_id: string }
+        Returns: {
+          average_rank: number
+          option_id: string
+          top_five_count: number
+        }[]
       }
       resolve_post: {
         Args: { p_answers: Json; p_post_id: string }
@@ -813,6 +813,32 @@ export type Database = {
           },
         ]
       }
+      higher_or_lower_player_stats: {
+        Row: {
+          all_time_high: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          all_time_high?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          all_time_high?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "higher_or_lower_player_stats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       higher_or_lower_players: {
         Row: {
           absent: boolean
@@ -862,32 +888,6 @@ export type Database = {
             foreignKeyName: "higher_or_lower_players_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      higher_or_lower_player_stats: {
-        Row: {
-          all_time_high: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          all_time_high?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          all_time_high?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "higher_or_lower_player_stats_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1435,6 +1435,140 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "prompt_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qb_season_builder_matches: {
+        Row: {
+          current_round: number
+          drafted_at: string | null
+          match_id: string
+          mode: string
+          respin_used: boolean
+          round_count: number
+        }
+        Insert: {
+          current_round?: number
+          drafted_at?: string | null
+          match_id: string
+          mode: string
+          respin_used?: boolean
+          round_count?: number
+        }
+        Update: {
+          current_round?: number
+          drafted_at?: string | null
+          match_id?: string
+          mode?: string
+          respin_used?: boolean
+          round_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qb_season_builder_matches_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qb_season_builder_picks: {
+        Row: {
+          display_name: string | null
+          franchise_code: string
+          match_id: string
+          player_id: string | null
+          round_number: number
+          season: number
+          slot: string
+        }
+        Insert: {
+          display_name?: string | null
+          franchise_code: string
+          match_id: string
+          player_id?: string | null
+          round_number: number
+          season: number
+          slot: string
+        }
+        Update: {
+          display_name?: string | null
+          franchise_code?: string
+          match_id?: string
+          player_id?: string | null
+          round_number?: number
+          season?: number
+          slot?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qb_season_builder_picks_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qb_season_builder_player_stats: {
+        Row: {
+          best_score: number
+          mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_score: number
+          mode: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_score?: number
+          mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qb_season_builder_player_stats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qb_season_builder_spins: {
+        Row: {
+          attempt: number
+          franchise_code: string
+          match_id: string
+          round_number: number
+          season: number
+        }
+        Insert: {
+          attempt?: number
+          franchise_code: string
+          match_id: string
+          round_number: number
+          season: number
+        }
+        Update: {
+          attempt?: number
+          franchise_code?: string
+          match_id?: string
+          round_number?: number
+          season?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qb_season_builder_spins_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
             referencedColumns: ["id"]
           },
         ]
@@ -2250,6 +2384,76 @@ export type Database = {
       }
     }
   }
+  qb_season_builder: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      finish: { Args: { p_match_id: string }; Returns: Json }
+      pick: {
+        Args: { p_match_id: string; p_player_id?: string; p_slot: string }
+        Returns: Database["qb_season_builder"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      respin: {
+        Args: { p_match_id: string }
+        Returns: Database["qb_season_builder"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      result: { Args: { p_match_id: string }; Returns: Json }
+      start: {
+        Args: { p_match_id: string; p_mode?: string }
+        Returns: Database["qb_season_builder"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      state: {
+        Args: { p_match_id: string }
+        Returns: Database["qb_season_builder"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      board: {
+        match_id: string | null
+        mode: string | null
+        phase: string | null
+        round_count: number | null
+        current_round: number | null
+        respin_used: boolean | null
+        franchise_code: string | null
+        season: number | null
+        options: Json | null
+        picks: Json | null
+        shown: Json | null
+      }
+    }
+  }
   sabotage_draft: {
     Tables: {
       [_ in never]: never
@@ -2510,9 +2714,13 @@ export const Constants = {
       run_status: ["active", "finished", "abandoned"],
     },
   },
+  qb_season_builder: {
+    Enums: {},
+  },
   sabotage_draft: {
     Enums: {
       guess_result: ["miss", "respun", "sabotaged"],
     },
   },
 } as const
+

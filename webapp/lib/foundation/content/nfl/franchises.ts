@@ -1,8 +1,9 @@
 /**
  * Pro Football Reference's own 3-letter franchise codes, mapped to each
- * franchise's current name. `sabotage_draft_round_spins.franchise_code` (and,
- * before it, the shared `sabotage_draft_rounds.franchise_code`) stores this
- * code because it stays stable across a franchise's entire history — PFR
+ * franchise's current name. The sabotage draft
+ * (`sabotage_draft_round_spins.franchise_code`) and QB Season Builder
+ * (`qb_season_builder_spins.franchise_code`) store this code because it stays
+ * stable across a franchise's entire history — PFR
  * unifies every relocation and rename under one code (see
  * docs/games/sabotage_draft_data_scoping.md §2: `oti` spans the Houston
  * Oilers through the Tennessee Titans, `crd` spans the Chicago through
@@ -54,5 +55,3 @@ export const FRANCHISE_NAMES: Record<string, string> = {
 export function franchiseName(code: string): string {
   return FRANCHISE_NAMES[code] ?? code;
 }
-
-export { franchiseLogoUrl } from "@/lib/foundation/content/nfl/team-logos";

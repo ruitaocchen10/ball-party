@@ -20,7 +20,7 @@ import { Concealed } from "@/components/foundation/ui-kit/Concealed";
 import { abbreviate, MatchStrip, StripCell, StripCellAvatar, StripCellCaption, StripCellMediaBadge, StripCellName, StripCellTextColumn, StripCellTitle } from "@/components/foundation/ui-kit/MatchStrip";
 import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/runtime/game-runtime/useMatchClock";
 import { dropdownUp, springSnappy, tiebreakBoardReveal, tiebreakMatchReveal, tiebreakRoundReveal } from "@/lib/foundation/ui-kit/motion";
-import { FRANCHISE_NAMES, franchiseName } from "@/lib/games/sabotage-draft/franchises";
+import { FRANCHISE_NAMES, franchiseName } from "@/lib/foundation/content/nfl/franchises";
 import { gradeForPick, gradeForTeam } from "@/lib/games/sabotage-draft/grades";
 import { ROUND_SLOTS, X_FACTOR_ROUND, slotForRound } from "@/lib/games/sabotage-draft/rounds";
 import { TURN_REVEAL_MS, useTurnReveal } from "@/lib/games/sabotage-draft/useTurnReveal";
