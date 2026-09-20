@@ -66,6 +66,18 @@ jobs:
 
       - run: python3 -m unittest discover scripts/player_pool
 
+  qb-season-model:
+    name: QB Season Builder season model tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python3 -m unittest discover scripts/qb_season_model
+
   deploy-migrations:
     name: Push migrations to prod
     # Only once they've actually been proven against a fresh local stack --
