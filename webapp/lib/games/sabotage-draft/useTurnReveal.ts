@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useTimedReveal } from "@/lib/foundation/ui-kit/useTimedReveal";
 
 /**
  * The client-side "the system is choosing" pause between one sabotage draft
@@ -30,25 +30,5 @@ export const TURN_REVEAL_MS = 3_000;
  * caller already keys other per-turn state off of.
  */
 export function useTurnReveal(turnKey: string, delayMs: number = TURN_REVEAL_MS): { revealed: boolean } {
-  // The very first key a mount ever sees is already revealed: a viewer who
-  // lands mid-turn -- a fresh page load, a reconnect -- must not be made to
-  // sit through an artificial wait for a turn that was already announced
-  // before they arrived. Only an actual *change*, the ref catching up to a
-  // new key below, ever re-enters the spinning phase.
-  const lastKey = useRef(turnKey);
-  const [revealed, setRevealed] = useState(true);
-
-  useEffect(() => {
-    if (turnKey === lastKey.current) return;
-    lastKey.current = turnKey;
-    setRevealed(false);
-  }, [turnKey]);
-
-  useEffect(() => {
-    if (revealed) return;
-    const timeout = setTimeout(() => setRevealed(true), delayMs);
-    return () => clearTimeout(timeout);
-  }, [revealed, delayMs]);
-
-  return { revealed };
+  return useTimedReveal(turnKey, delayMs);
 }

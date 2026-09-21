@@ -18,7 +18,7 @@ function post(viewerAnswered: boolean): Post {
     createdAt: "2026-09-01T12:00:00.000Z",
     promptText: "Who leads the league in rushing yards?",
     resolutionCriteria: "Official Week 18 totals.",
-    lockAt: "2026-09-20T12:00:00.000Z",
+    lockAt: "2099-09-20T12:00:00.000Z",
     status: "open",
     slots: [],
     comments: [
@@ -51,5 +51,12 @@ describe("PromptThread", () => {
     expect(screen.getByLabelText("Other takes")).toBeInTheDocument();
     expect(screen.getByText("Bijan has the volume.")).toBeInTheDocument();
     expect(screen.queryByLabelText("Make your picks")).not.toBeInTheDocument();
+  });
+
+  it("does not render a pick form after an open prompt's deadline passes", () => {
+    render(<PromptThread post={{ ...post(false), lockAt: new Date(Date.now() - 1_000).toISOString() }} displayName="Demo Reader" avatarUrl={null} />);
+
+    expect(screen.queryByLabelText("Make your picks")).not.toBeInTheDocument();
+    expect(screen.getByText("You did not make picks for this prompt.")).toBeInTheDocument();
   });
 });

@@ -22,7 +22,7 @@ function post(slots: Post["slots"]): Post {
     createdAt: "2026-09-01T12:00:00.000Z",
     promptText: "Week 1 picks",
     resolutionCriteria: "Final score wins.",
-    lockAt: "2026-09-20T12:00:00.000Z",
+    lockAt: "2099-09-20T12:00:00.000Z",
     status: "open",
     slots,
     comments: [],
@@ -72,6 +72,35 @@ it("gives a single matchup its own poster treatment and lets a weekly set page t
 
   expect(screen.getByLabelText("Showing matchup 2 of 2")).toBeInTheDocument();
   expect(screen.getByText("Ravens")).toBeInTheDocument();
+});
+
+it("replaces a completed prompt's timing label with a completion marker", () => {
+  render(<PromptPostFeed posts={[{ ...post([chiefsAtBills]), lockAt: "2099-09-20T12:00:00.000Z", viewerAnswered: true, viewerResponse: { "chiefs-bills": ["kc"] } }]} viewerCanAnswer onSelectPost={() => {}} />);
+
+  expect(screen.getByText("Complete")).toBeInTheDocument();
+  expect(screen.queryByText(/^Closes /)).not.toBeInTheDocument();
+});
+
+it("replaces an unanswered locked prompt's timing label with a locked marker", () => {
+  render(<PromptPostFeed posts={[{ ...post([chiefsAtBills]), status: "locked", lockAt: "2026-09-19T12:00:00.000Z" }]} viewerCanAnswer onSelectPost={() => {}} />);
+
+  expect(screen.getByText("Locked")).toBeInTheDocument();
+  expect(screen.queryByText(/^\d+[hd] ago$/)).not.toBeInTheDocument();
+});
+
+it("does not invite an unanswered prompt past its deadline even while its status remains open", () => {
+  render(<PromptPostFeed posts={[{ ...post([chiefsAtBills]), lockAt: new Date(Date.now() - 1_000).toISOString() }]} viewerCanAnswer onSelectPost={() => {}} />);
+
+  expect(screen.getByText("Locked")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Make your picks" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "See takes" })).toBeInTheDocument();
+});
+
+it("replaces an unanswered resolved prompt's timing label with a resolved marker", () => {
+  render(<PromptPostFeed posts={[{ ...post([chiefsAtBills]), status: "resolved", lockAt: "2026-09-19T12:00:00.000Z" }]} viewerCanAnswer onSelectPost={() => {}} />);
+
+  expect(screen.getByText("Resolved")).toBeInTheDocument();
+  expect(screen.queryByText(/^\d+[hd] ago$/)).not.toBeInTheDocument();
 });
 
 it("marking a picks post as opinion publishes it without an auto-resolve source", async () => {

@@ -4,7 +4,8 @@ import { ShareTakeButton } from "./ShareTakeButton";
 import { PowerRankingsSlot, SlotFaceC, YourCalls } from "./SlotFaces";
 import { TakeCard } from "./TakeCard";
 import { TakeComposer } from "./TakeComposer";
-import { isPicksPost, totalPoints } from "@/lib/foundation/content/prompts/logic";
+import { usePromptDeadlineNow } from "./usePromptDeadline";
+import { isPicksPost, isPromptOpenForAnswers, totalPoints } from "@/lib/foundation/content/prompts/logic";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
 
 /**
@@ -14,7 +15,8 @@ import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
  * discussion but never receive a response or reply control.
  */
 export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = true }: { post: Post; displayName: string; avatarUrl: string | null; viewerCanAnswer?: boolean }) {
-  const canSubmit = viewerCanAnswer && post.status === "open" && !post.viewerAnswered;
+  const now = usePromptDeadlineNow(post);
+  const canSubmit = viewerCanAnswer && isPromptOpenForAnswers(post, now) && !post.viewerAnswered;
   const viewerTake = post.comments.find((item) => item.isViewer && item.postedWithPick);
   // A response remains the social contract for account readers. Public
   // visitors have no way to make a response, so the discussion is readable

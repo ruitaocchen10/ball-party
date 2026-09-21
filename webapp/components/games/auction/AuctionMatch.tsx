@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type Ref } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from "react";
 import Link from "next/link";
 
 import { FinalStandings, type FinalStandingsRow } from "@/components/runtime/game-runtime/FinalStandings";
@@ -10,6 +10,7 @@ import { PauseButton } from "@/components/runtime/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/runtime/game-runtime/PostGameControls";
 import { PostGameNavigation } from "@/components/runtime/game-runtime/PostGameNavigation";
 import { Reveal } from "@/components/foundation/ui-kit/Reveal";
+import { SlotReel } from "@/components/foundation/ui-kit/SlotReel";
 import { TeamLogo } from "@/components/foundation/ui-kit/TeamLogo";
 import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvatar";
 import { Button } from "@/components/foundation/ui-kit/Button";
@@ -682,36 +683,29 @@ function LotSpinner({ lot, lots, currentLot }: { lot: Lot; lots: Lot[]; currentL
   const reelItems = [...decoys, lot];
 
   return (
-    <div className="h-52 w-full overflow-hidden" aria-hidden="true">
-      {/* Motion-safe: the slot-machine scroll, timed to run for
-          useLotReveal's whole delay -- animation-duration is set from
-          LOT_REVEAL_MS inline so the two can't drift apart (see globals.css's
-          .animate-reel-spin comment, shared with sabotage draft's own reel). */}
-      <div
-        className="animate-reel-spin motion-reduce:hidden flex flex-col"
-        style={{ "--reel-count": reelItems.length, animationDuration: `${LOT_REVEAL_MS}ms` } as CSSProperties}
-      >
-        {reelItems.map((item, index) => (
-          <span key={item ? `${item.seq}-${index}` : `placeholder-${index}`} className="flex h-52 shrink-0 flex-col items-center justify-center gap-2">
-            {item ? (
-              <>
-                <LotPortrait name={item.display_name} headshotUrl={item.headshot_url} className="h-20 w-20 text-2xl" />
-                <span className="max-w-[85%] truncate font-slab text-lg tracking-[0.02em] text-panel uppercase">{item.display_name}</span>
-              </>
-            ) : (
-              <>
-                <span aria-hidden className="flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-panel-muted font-slab text-4xl text-panel-muted">?</span>
-                <span className="font-mono text-xs tracking-[0.15em] text-panel-muted uppercase">Scanning…</span>
-              </>
-            )}
-          </span>
-        ))}
-      </div>
-      {/* Motion-reduce: no animation to spin, so this never depends on one
-          -- a plain "still choosing" state instead of a reel frozen on a
-          decoy. */}
-      <p className="hidden h-52 items-center justify-center font-mono text-xs text-panel-muted uppercase motion-reduce:flex">Spinning…</p>
-    </div>
+    <SlotReel
+      items={reelItems}
+      durationMs={LOT_REVEAL_MS}
+      reelKey={lot.seq}
+      viewportClassName="h-52 w-full"
+      rowClassName="h-52 flex-col items-center justify-center gap-2"
+      itemKey={(item, index) => item ? `${item.seq}-${index}` : `placeholder-${index}`}
+      renderItem={(item) => (
+        <>
+          {item ? (
+            <>
+              <LotPortrait name={item.display_name} headshotUrl={item.headshot_url} className="h-20 w-20 text-2xl" />
+              <span className="max-w-[85%] truncate font-slab text-lg tracking-[0.02em] text-panel uppercase">{item.display_name}</span>
+            </>
+          ) : (
+            <>
+              <span aria-hidden className="flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-panel-muted font-slab text-4xl text-panel-muted">?</span>
+              <span className="font-mono text-xs tracking-[0.15em] text-panel-muted uppercase">Scanning…</span>
+            </>
+          )}
+        </>
+      )}
+    />
   );
 }
 

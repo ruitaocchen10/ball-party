@@ -47,6 +47,10 @@ values
   ('00000000-0000-0000-0000-00000000a002', 'weekly_picks', '2026 Week 2 · Full slate', '00000000-0000-0000-0000-00000000d002', 'Sixteen games. One ticket. No hedging.', 'Pick every 2026 Week 2 winner', 'Each game resolves from its final score.', now() + interval '6 days', 'open', null, now() - interval '45 minutes', null),
   -- Open + answered: generic card result mode before the answer is known.
   ('00000000-0000-0000-0000-00000000a003', 'stat_leader', 'Stat leader', '00000000-0000-0000-0000-00000000d002', 'Settle the Sunday argument early.', 'Who leads the league in rushing yards?', 'Official regular-season rushing-yard total after Week 18.', now() + interval '10 days', 'open', null, now() - interval '3 hours', null),
+  -- Locked + unanswered: the deadline passed before the demo reader made a call.
+  ('00000000-0000-0000-0000-00000000a008', 'picks', 'Single game picks', '00000000-0000-0000-0000-00000000d002', 'The voting window is closed.', 'Who wins Packers @ Bears?', 'The winner is the team with more points at final whistle.', now() - interval '2 hours', 'locked', null, now() - interval '2 days', null),
+  -- Resolved + unanswered: results are in, but the demo reader did not participate.
+  ('00000000-0000-0000-0000-00000000a009', 'picks', 'Single game picks', '00000000-0000-0000-0000-00000000d002', 'The final whistle has blown.', 'Who won Cowboys @ Eagles?', 'The winner is the team with more points at final whistle.', now() - interval '3 days', 'resolved', null, now() - interval '5 days', now() - interval '2 days'),
   -- Resolved rank: partial-credit order, correct/wrong rows, and scoremark.
   ('00000000-0000-0000-0000-00000000a004', 'ranking', 'Top-three ranking', '00000000-0000-0000-0000-00000000d002', 'Rank the three offenses you trust most.', 'Rank these offenses', 'The editorial panel publishes its Week 1 power ranking.', now() - interval '5 days', 'resolved', null, now() - interval '8 days', now() - interval '4 days'),
   -- Resolved custom multi: pick, pick-set and cross-slot result faces.
@@ -76,6 +80,8 @@ values
   ('00000000-0000-0000-0000-00000000b215', '00000000-0000-0000-0000-00000000a002', 'Colts @ Chiefs', 'pick', null, 10, 14, null),
   ('00000000-0000-0000-0000-00000000b216', '00000000-0000-0000-0000-00000000a002', 'Giants @ Rams', 'pick', null, 10, 15, null),
   ('00000000-0000-0000-0000-00000000b301', '00000000-0000-0000-0000-00000000a003', 'Rushing leader', 'pick', null, 15, 0, null),
+  ('00000000-0000-0000-0000-00000000b801', '00000000-0000-0000-0000-00000000a008', 'Packers @ Bears', 'pick', null, 10, 0, null),
+  ('00000000-0000-0000-0000-00000000b901', '00000000-0000-0000-0000-00000000a009', 'Cowboys @ Eagles', 'pick', null, 10, 0, array['00000000-0000-0000-0000-00000000c902'::uuid]),
   ('00000000-0000-0000-0000-00000000b401', '00000000-0000-0000-0000-00000000a004', 'Your top three', 'rank', 3, 18, 0, array['00000000-0000-0000-0000-00000000c402'::uuid, '00000000-0000-0000-0000-00000000c401'::uuid, '00000000-0000-0000-0000-00000000c403'::uuid]),
   ('00000000-0000-0000-0000-00000000b501', '00000000-0000-0000-0000-00000000a005', 'AFC East winner', 'pick', null, 12, 0, array['00000000-0000-0000-0000-00000000c501'::uuid]),
   ('00000000-0000-0000-0000-00000000b502', '00000000-0000-0000-0000-00000000a005', 'Two AFC wild cards', 'pick_set', 2, 12, 1, array['00000000-0000-0000-0000-00000000c504'::uuid, '00000000-0000-0000-0000-00000000c505'::uuid]),
@@ -139,6 +145,8 @@ values
   ('00000000-0000-0000-0000-00000000c229', '00000000-0000-0000-0000-00000000b215', 'Colts', 'Away', 'IND', 0), ('00000000-0000-0000-0000-00000000c230', '00000000-0000-0000-0000-00000000b215', 'Chiefs', 'Home', 'KC', 1),
   ('00000000-0000-0000-0000-00000000c231', '00000000-0000-0000-0000-00000000b216', 'Giants', 'Away', 'NYG', 0), ('00000000-0000-0000-0000-00000000c232', '00000000-0000-0000-0000-00000000b216', 'Rams', 'Home', 'LAR', 1),
   ('00000000-0000-0000-0000-00000000c301', '00000000-0000-0000-0000-00000000b301', 'Bijan Robinson', 'ATL · RB', null, 0), ('00000000-0000-0000-0000-00000000c302', '00000000-0000-0000-0000-00000000b301', 'Jahmyr Gibbs', 'DET · RB', null, 1), ('00000000-0000-0000-0000-00000000c303', '00000000-0000-0000-0000-00000000b301', 'Saquon Barkley', 'PHI · RB', null, 2), ('00000000-0000-0000-0000-00000000c304', '00000000-0000-0000-0000-00000000b301', 'Derrick Henry', 'BAL · RB', null, 3),
+  ('00000000-0000-0000-0000-00000000c801', '00000000-0000-0000-0000-00000000b801', 'Packers', 'Away', 'GB', 0), ('00000000-0000-0000-0000-00000000c802', '00000000-0000-0000-0000-00000000b801', 'Bears', 'Home', 'CHI', 1),
+  ('00000000-0000-0000-0000-00000000c901', '00000000-0000-0000-0000-00000000b901', 'Cowboys', 'Away', 'DAL', 0), ('00000000-0000-0000-0000-00000000c902', '00000000-0000-0000-0000-00000000b901', 'Eagles', 'Home', 'PHI', 1),
   ('00000000-0000-0000-0000-00000000c401', '00000000-0000-0000-0000-00000000b401', 'Bills', null, 'BUF', 0), ('00000000-0000-0000-0000-00000000c402', '00000000-0000-0000-0000-00000000b401', 'Chiefs', null, 'KC', 1), ('00000000-0000-0000-0000-00000000c403', '00000000-0000-0000-0000-00000000b401', 'Eagles', null, 'PHI', 2), ('00000000-0000-0000-0000-00000000c404', '00000000-0000-0000-0000-00000000b401', 'Ravens', null, 'BAL', 3),
   ('00000000-0000-0000-0000-00000000c501', '00000000-0000-0000-0000-00000000b501', 'Bills', null, 'BUF', 0), ('00000000-0000-0000-0000-00000000c502', '00000000-0000-0000-0000-00000000b501', 'Dolphins', null, 'MIA', 1), ('00000000-0000-0000-0000-00000000c503', '00000000-0000-0000-0000-00000000b501', 'Jets', null, 'NYJ', 2),
   ('00000000-0000-0000-0000-00000000c504', '00000000-0000-0000-0000-00000000b502', 'Ravens', null, 'BAL', 0), ('00000000-0000-0000-0000-00000000c505', '00000000-0000-0000-0000-00000000b502', 'Chargers', null, 'LAC', 1), ('00000000-0000-0000-0000-00000000c506', '00000000-0000-0000-0000-00000000b502', 'Bengals', null, 'CIN', 2),
@@ -210,26 +218,3 @@ values
   ('00000000-0000-0000-0000-00000000e207', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d003', 'Fair. I am taking Denver again when they get the rematch at home.', false, '00000000-0000-0000-0000-00000000e202', now() - interval '12 hours');
 
 commit;
-
--- QB Season Builder ratings ---------------------------------------------------
---
--- A handful of made-up rating rows so the game can be played locally before the
--- ratings pipeline ticket loads the real data through a migration. These are
--- placeholders, not real ratings: the quarterbacks are real names carrying
--- invented values. Six quarterback-seasons across four spinnable team-seasons,
--- plus one team-season with a Supporting Cast and no qualifying quarterback,
--- which the game must never spin. supabase/tests/support/harness.psql carries
--- its own copy (tests.qsb_fixtures) and clears these first, so the suites never
--- depend on this block.
-insert into qb_season_builder_private.team_seasons (franchise_code, season, supporting_cast)
-values ('kan', 2018, 88), ('kan', 2019, 81), ('nwe', 2017, 77), ('phi', 2017, 69), ('nyj', 2020, 31);
-
-insert into qb_season_builder_private.qb_seasons
-  (franchise_code, season, player_id, display_name, accuracy, arm_talent, mobility, iq, build)
-values
-  ('kan', 2018, 'MahoPa00', 'Patrick Mahomes', 91, 99, 84, 88, 76),
-  ('kan', 2019, 'MahoPa00', 'Patrick Mahomes', 89, 98, 82, 90, 77),
-  ('kan', 2019, 'MoorMa00', 'Matt Moore',      61, 58, 40, 52, 55),
-  ('nwe', 2017, 'BradTo00', 'Tom Brady',       96, 85, 33, 99, 72),
-  ('phi', 2017, 'WentCa00', 'Carson Wentz',    87, 90, 79, 83, 86),
-  ('phi', 2017, 'FolsNi00', 'Nick Foles',      78, 74, 45, 80, 68);

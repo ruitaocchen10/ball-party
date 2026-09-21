@@ -50,6 +50,16 @@ export function isPicksPost(post: Pick<Post, "templateKind">): boolean {
   return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks";
 }
 
+/**
+ * The client-side counterpart to `prompts.submit_response`'s authoritative
+ * lock check. A post can remain stored as `open` after its deadline passes,
+ * so the status alone must never decide whether to offer a pick form.
+ */
+export function isPromptOpenForAnswers(post: Pick<Post, "status" | "lockAt">, now = Date.now()): boolean {
+  const lockAt = new Date(post.lockAt).getTime();
+  return post.status === "open" && Number.isFinite(lockAt) && lockAt > now;
+}
+
 /** How many candidates a pick-one prompt's art has room for. */
 export const COVER_OPTION_LIMIT = 4;
 
