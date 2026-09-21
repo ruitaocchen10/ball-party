@@ -21,7 +21,7 @@ from transform import (
     TeamSeason, composite, earns, expected_depth, expected_metrics, fit,
     fit_awards, fit_distributions, fit_formulas, fit_ladder, fit_norms, fit_outputs,
     passer_rating, percentile_of, predict,
-    qb_lines_from_weeks, quantile, real_seasons, score, season_metrics,
+    qb_lines_from_weeks, quantile, real_seasons, rung_chance, score, season_metrics,
     team_seasons_from_games, values_of,
 )
 
@@ -618,6 +618,63 @@ class LadderTest(unittest.TestCase):
         coin = tuple(LadderRung(step, 0.0, 0.0) for step in LADDER_STEPS)
         # Every rung a coin flip: 1/2 + 1/4 + 1/8 + 1/16 + 1/32.
         self.assertAlmostEqual(expected_depth(coin, 10), 0.96875)
+
+
+class LadderGuaranteeTest(unittest.TestCase):
+    TRUE = LadderTest.TRUE
+
+    def fit(self, guarantees):
+        return fit_ladder(league_from(self.TRUE), cfg(ladder_ridge=1e-9, ladder_guarantees=guarantees))
+
+    def test_a_guarantee_is_carried_on_its_rung_and_no_other(self):
+        ladder = self.fit({"make_playoffs": (5, 12)})
+        self.assertEqual((ladder[0].never_to, ladder[0].always_from), (5, 12))
+        for rung in ladder[1:]:
+            self.assertEqual((rung.never_to, rung.always_from), (None, None), rung.step)
+
+    def test_a_guarantee_does_not_change_what_the_logistic_fits(self):
+        plain, guarded = self.fit(None), self.fit({"make_playoffs": (5, 12)})
+        self.assertEqual([(r.intercept, r.slope) for r in plain],
+                         [(r.intercept, r.slope) for r in guarded])
+
+    def test_either_end_of_a_guarantee_may_be_left_open(self):
+        ladder = self.fit({"make_playoffs": (None, 12)})
+        self.assertEqual((ladder[0].never_to, ladder[0].always_from), (None, 12))
+
+    def test_a_guarantee_decides_the_chance_at_its_wins_and_beyond(self):
+        rung = LadderRung("make_playoffs", -17.0, 1.8, never_to=5, always_from=12)
+        self.assertEqual(rung_chance(rung, 12), 1.0)
+        self.assertEqual(rung_chance(rung, 17), 1.0)
+        self.assertEqual(rung_chance(rung, 5), 0.0)
+        self.assertEqual(rung_chance(rung, 0), 0.0)
+
+    def test_between_the_guarantees_the_logistic_still_decides(self):
+        rung = LadderRung("make_playoffs", -17.0, 1.8, never_to=5, always_from=12)
+        for wins in (6, 9, 11):
+            self.assertAlmostEqual(rung_chance(rung, wins), 1 / (1 + math.exp(17.0 - 1.8 * wins)))
+        self.assertGreater(rung_chance(rung, 11), 0.0)
+        self.assertLess(rung_chance(rung, 11), 1.0)
+
+    def test_a_rung_without_a_guarantee_is_the_plain_logistic_at_any_wins(self):
+        rung = LadderRung("make_playoffs", -17.0, 1.8)
+        self.assertAlmostEqual(rung_chance(rung, 16), 1 / (1 + math.exp(17.0 - 1.8 * 16)))
+        self.assertLess(rung_chance(rung, 16), 1.0)
+
+    def test_expected_depth_honours_a_guarantee(self):
+        guarded = (LadderRung("make_playoffs", -50.0, 0.0, always_from=12),
+                   *(LadderRung(step, 0.0, 0.0) for step in LADDER_STEPS[1:]))
+        # The logistic alone would never make the playoffs; the guarantee does, then coin flips.
+        self.assertAlmostEqual(expected_depth(guarded, 13), 1 + 0.5 + 0.25 + 0.125 + 0.0625)
+        self.assertAlmostEqual(expected_depth(guarded, 11), 0.0, places=6)
+
+    def test_an_unknown_step_is_an_error(self):
+        with self.assertRaisesRegex(ValueError, "unknown ladder step"):
+            self.fit({"make_the_playoffs": (5, 12)})
+
+    def test_a_floor_at_or_above_its_ceiling_is_an_error(self):
+        for bad in ((12, 12), (13, 12)):
+            with self.assertRaisesRegex(ValueError, "cannot also be"):
+                self.fit({"make_playoffs": bad})
 
 
 # ------------------------------------------------------------ metrics, norms --

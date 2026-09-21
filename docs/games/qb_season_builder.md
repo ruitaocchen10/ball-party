@@ -190,11 +190,15 @@ ratings no client role can read it. It holds:
   `rush_yards`, `rush_td`, `wins`), each linear in the six values on a link scale.
   Yards, touchdowns, interceptions and rating are derived from them. The formulas
   extrapolate, so a top-of-scale build can beat any real season, while wins can
-  never pass 17 and a rate can never go negative;
+  never pass 17, a rate can never go negative and attempts saturate (a logit link capped
+  at 670, where a straight line asked for 700+ from a build stacked with 90s);
 - the real residual around each formula as a quantile table plus a per-output
   `noise_scale` (1 for wins, 0.5 for the quarterback's line), so noise is bounded by
   what really happened and lands mostly on team outcomes;
-- a five-rung playoff ladder, each rung a logistic in wins;
+- a five-rung playoff ladder, each rung a logistic in wins. The first rung also carries
+  guarantees (`never_to`, `always_from`): 12 or more wins is always a playoff team and 5 or
+  fewer never is, as it was for every real team, because a logistic alone let a 13-4 team miss
+  about 1 time in 520 (migration `0139`, values from `LADDER_GUARANTEES` in the fit's config);
 - a threshold for each award, calibrated on the real winners' seasons, with the
   winners' spread for noise near the edge, and the award it requires, if any (the MVP
   needs the All-Pro, and the All-Pro and Offensive Player of the Year the Pro Bowl,
@@ -216,7 +220,8 @@ with a chosen seed, for tests). In order:
    scaled by `noise_scale`, added before the inverse link. The stat line is derived
    from the outputs and rounded (counts to whole numbers; wins rounded, losses the
    rest of 17);
-2. the playoff ladder, walked rung by rung at the season's wins until one is missed;
+2. the playoff ladder, walked rung by rung at the season's wins until one is missed (a rung
+   with a guarantee is cleared or missed outright at those wins, whatever the draw);
 3. each award: its score, nudged by up to `noise_scale` of the winners' spread either
    way, against its threshold, judged in order of what it requires (Pro Bowl, All-Pro,
    Offensive Player of the Year, MVP) so a season never has an award without the one it

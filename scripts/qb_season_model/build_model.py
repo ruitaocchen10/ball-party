@@ -47,7 +47,7 @@ from config import (
 from transform import (
     AWARDS, SLOTS, Award, RatedSeason, composite, earns, expected_depth,
     expected_metrics, fit, percentile_of,
-    qb_lines_from_weeks, real_seasons, score, season_metrics, sigmoid,
+    qb_lines_from_weeks, real_seasons, rung_chance, scaled_wins, score, season_metrics,
     team_seasons_from_games, values_of,
 )
 
@@ -237,6 +237,24 @@ def run_guards(model, rated, teams, awards, seasons, config):
         check(counts[(season, "mvp")] <= 1 and counts[(season, "opoy")] <= 1,
               f"{season}: more than one MVP or Offensive Player of the Year")
 
+    # A ladder guarantee is a claim about the real teams, so the real teams have to bear
+    # it out: nobody with that many wins missed the rung, nobody with that few cleared it.
+    # A rung is judged on the teams that reached it, as it was fitted.
+    for k, rung in enumerate(model.ladder):
+        for t in teams:
+            if t.playoff_depth < k:
+                continue
+            wins = scaled_wins(t.wins, t.losses, t.ties, config.season_games)
+            cleared = t.playoff_depth >= k + 1
+            if rung.always_from is not None:
+                check(cleared or wins < rung.always_from,
+                      f"{rung.step}: {t.franchise_code} {t.season} had {wins:.1f} wins and did not "
+                      f"clear it, but the ladder guarantees it from {rung.always_from} wins")
+            if rung.never_to is not None:
+                check(not cleared or wins > rung.never_to,
+                      f"{rung.step}: {t.franchise_code} {t.season} had {wins:.1f} wins and cleared "
+                      f"it, but the ladder guarantees it never at {rung.never_to} wins or fewer")
+
     # Each formula has to explain something, or its coefficients are noise.
     for o in model.outputs:
         check(o.r_squared >= MIN_R_SQUARED[o.name],
@@ -372,8 +390,10 @@ def emit_sql(model, awards, season_count):
             [(o.name, slot, c) for o in model.outputs for slot, c in zip(SLOTS, o.coefficients)])
     _insert(out, "season_model_residuals", ("output", "p", "residual"),
             [(o.name, p, r) for o in model.outputs for p, r in o.residuals])
-    _insert(out, "season_model_playoff_ladder", ("rung", "step", "intercept", "slope"),
-            [(i + 1, r.step, r.intercept, r.slope) for i, r in enumerate(model.ladder)])
+    _insert(out, "season_model_playoff_ladder",
+            ("rung", "step", "intercept", "slope", "never_to", "always_from"),
+            [(i + 1, r.step, r.intercept, r.slope, r.never_to, r.always_from)
+             for i, r in enumerate(model.ladder)])
     _insert(out, "season_model_metrics", ("metric", "mean", "sd"),
             [(n.metric, n.mean, n.sd) for n in model.norms])
     _insert(out, "season_model_formulas", ("formula", "term", "weight"),
@@ -401,7 +421,7 @@ def print_summary(model, seasons, config):
     print(f"  {'':18} " + " ".join(f"{w:>6}" for w in (4, 8, 10, 12, 14, 16)))
     for r in model.ladder:
         print(f"  {r.step:18} " + " ".join(
-            f"{sigmoid(r.intercept + r.slope * w):6.2f}" for w in (4, 8, 10, 12, 14, 16)))
+            f"{rung_chance(r, w):6.2f}" for w in (4, 8, 10, 12, 14, 16)))
 
     shares = award_shares(model, seasons, config)
     print("\nawards:")

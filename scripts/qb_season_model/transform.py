@@ -27,7 +27,7 @@ seasons of 16 and 17 games are comparable.
 
 import math
 from collections import defaultdict
-from typing import Mapping, NamedTuple
+from typing import Mapping, NamedTuple, Optional
 
 # The formula outputs a Config may fit, each per full season: volume, the rates
 # a passing line is made of, the rushing line, and expected wins.
@@ -122,6 +122,12 @@ class Config(NamedTuple):
     # take this one, however good its own score. Real awards nest this way (an MVP
     # is nearly always an All-Pro), and judged alone they do not. Optional.
     award_requires: Mapping[str, str] = None
+    # step -> (never_at_or_below, always_at_or_above), in whole wins per full season: a
+    # team with that few wins never clears the rung and one with that many always does,
+    # whatever the logistic says. A logistic in wins cannot be sharp, so at 13 wins it
+    # still lets 0.2% of teams miss a playoffs no real team of that record ever missed.
+    # Either end may be None. Optional.
+    ladder_guarantees: Mapping[str, tuple] = None
 
 
 # ------------------------------------------------------------------- inputs --
@@ -534,11 +540,15 @@ class OutputFit(NamedTuple):
 
 
 class LadderRung(NamedTuple):
-    """P(clear this rung | reached it) = sigmoid(intercept + slope * wins)."""
+    """P(clear this rung | reached it) = sigmoid(intercept + slope * wins), except that
+    a team with `never_to` wins or fewer never clears it and one with `always_from` or
+    more always does (None: no such end)."""
 
     step: str
     intercept: float
     slope: float
+    never_to: Optional[int] = None
+    always_from: Optional[int] = None
 
 
 class Norm(NamedTuple):
@@ -725,6 +735,7 @@ def fit_ladder(teams, config):
     because the ladder is about how wins turn into playoffs.
     """
     teams = sorted(teams, key=lambda t: (t.season, t.franchise_code))
+    guarantees = _ladder_guarantees(config)
     out = []
     for k, step in enumerate(LADDER_STEPS):
         eligible = [t for t in teams if t.playoff_depth >= k]
@@ -733,15 +744,38 @@ def fit_ladder(teams, config):
         xs = [scaled_wins(t.wins, t.losses, t.ties, config.season_games) for t in eligible]
         ys = [1.0 if t.playoff_depth >= k + 1 else 0.0 for t in eligible]
         intercept, slope = _logistic(xs, ys, config.ladder_ridge)
-        out.append(LadderRung(step, intercept, slope))
+        never_to, always_from = guarantees.get(step, (None, None))
+        out.append(LadderRung(step, intercept, slope, never_to, always_from))
     return tuple(out)
+
+
+def _ladder_guarantees(config):
+    """The configured guarantees, checked: real steps, and a floor below its ceiling."""
+    guarantees = dict(config.ladder_guarantees or {})
+    for step, (never_to, always_from) in guarantees.items():
+        if step not in LADDER_STEPS:
+            raise ValueError(f"unknown ladder step {step!r}; expected one of {LADDER_STEPS}")
+        if never_to is not None and always_from is not None and never_to >= always_from:
+            raise ValueError(f"{step}: never at {never_to} wins or fewer cannot also be "
+                             f"always at {always_from} or more")
+    return guarantees
+
+
+def rung_chance(rung, wins):
+    """P(clear this rung | reached it) at this many wins: the logistic, unless a
+    guarantee decides it."""
+    if rung.always_from is not None and wins >= rung.always_from:
+        return 1.0
+    if rung.never_to is not None and wins <= rung.never_to:
+        return 0.0
+    return sigmoid(rung.intercept + rung.slope * wins)
 
 
 def expected_depth(ladder, wins):
     """The average playoff depth of a team with this many wins."""
     survive, total = 1.0, 0.0
     for rung in ladder:
-        survive *= sigmoid(rung.intercept + rung.slope * wins)
+        survive *= rung_chance(rung, wins)
         total += survive
     return total
 

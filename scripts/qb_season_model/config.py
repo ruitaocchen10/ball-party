@@ -64,12 +64,25 @@ QB_SLOTS = ("accuracy", "arm_talent", "mobility", "iq", "build")
 # 0.7, Mobility 0.4.
 CAST_WINS_TRIM = 0.8
 
-# `attempts` is linear, not log: a multiplicative link doubled the volume of a
-# build that is elite in every trait (all 99 gave 794 attempts and 6,663 yards, a
-# record by 20%). A game holds only so many plays, and the linear fit tracks
-# volume slightly better anyway.
+# `attempts` saturates: a logit link between 100 and ATTEMPTS_CAP. It was linear, which
+# fits the steep part of the real data (a starter throws far more than a backup, so the
+# formula climbs with Build, IQ and Accuracy) and then keeps climbing where the real data
+# go flat: real seasons in the top build buckets throw 540-560 passes, and a straight line
+# asked for 650-690 from the same builds. The cost showed up in play. A player who drafts
+# well is stacking 90s, and 4.2% of those runs came out at 680+ attempts (0.6% of real
+# seasons did) and 2.5% at 5,500+ yards (a record by a margin nobody believes).
+#
+# Replaying the same 18,000 simulated builds with a cap of 640 / 670 / 700 / 740 gave
+# 5,500+ yards in 0.10 / 0.15 / 0.40 / 1.10% of well-drafted runs, against 0.26% of real
+# seasons. 670 keeps a record-level passer reachable (the best-drafted runs' 99th percentile
+# is 5,294 yards, where real seasons' is 5,419 scaled to 17 games) and costs nothing in fit
+# (R2 0.451 against 0.467); every guard below still holds. A multiplicative (log) link was
+# the other thing tried, and doubled the volume of a build that is elite in every trait
+# (all 99: 794 attempts and 6,663 yards); the logit is bounded, so it cannot.
+ATTEMPTS_CAP = 670.0
+
 OUTPUTS = {
-    "attempts": OutputSpec("identity", 100.0, 800.0, LINE_NOISE, "qb_line"),
+    "attempts": OutputSpec("logit", 100.0, ATTEMPTS_CAP, LINE_NOISE, "qb_line"),
     "comp_pct": OutputSpec("logit", 0.45, 0.80, LINE_NOISE, "qb_line"),
     "ypa": OutputSpec("identity", 4.0, 11.5, LINE_NOISE, "qb_line"),
     "td_rate": OutputSpec("log", 0.0, 0.12, LINE_NOISE, "qb_line"),
@@ -139,6 +152,15 @@ AWARD_NOISE_SCALE = {award: 0.5 for award in AWARDS}
 # (Super Bowl MVP is not tied: 5 of 13 real ones were not Pro Bowlers.)
 AWARD_REQUIRES = {"mvp": "all_pro", "opoy": "pro_bowl", "all_pro": "pro_bowl"}
 
+# Where the playoff ladder is sharper than a logistic in wins can be: (never at or below,
+# always at or above), in wins per 17 games. Of the real 2006-2025 teams, none of the 105
+# with 12 or more wins missed the playoffs and none of the 109 with 5 or fewer made them,
+# yet the fitted curve lets a 13-4 team miss 1 time in 520 and a 12-5 one 1 in 87. That is
+# rare enough to be invisible in a fit and common enough for a player to meet within a few
+# hundred runs, and a 13-4 team out of the playoffs reads as a broken game. A guard in
+# build_model.py fails the build if the real data ever contradict either end.
+LADDER_GUARANTEES = {"make_playoffs": (5, 12)}
+
 DEFAULT_CONFIG = Config(
     season_games=SEASON_GAMES,
     outputs=OUTPUTS,
@@ -156,6 +178,7 @@ DEFAULT_CONFIG = Config(
     award_quantile=AWARD_QUANTILE,
     award_noise_scale=AWARD_NOISE_SCALE,
     award_requires=AWARD_REQUIRES,
+    ladder_guarantees=LADDER_GUARANTEES,
     distribution_points=101,
 )
 
