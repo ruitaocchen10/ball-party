@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useTimedReveal } from "@/lib/foundation/ui-kit/useTimedReveal";
 
 /**
  * The client-side suspense pause before a new lot's player appears. Every
@@ -28,25 +28,5 @@ export const LOT_REVEAL_MS = 3_000;
  * already keys other per-lot state off of.
  */
 export function useLotReveal(lotKey: string, delayMs: number = LOT_REVEAL_MS): { revealed: boolean } {
-  // The very first key a mount ever sees is already revealed: a viewer who
-  // lands mid-preview -- a fresh page load, a reconnect -- must not be made
-  // to sit through an artificial wait for a lot that was already shown
-  // before they arrived. Only an actual *change*, the ref catching up to a
-  // new key below, ever re-enters the concealed phase.
-  const lastKey = useRef(lotKey);
-  const [revealed, setRevealed] = useState(true);
-
-  useEffect(() => {
-    if (lotKey === lastKey.current) return;
-    lastKey.current = lotKey;
-    setRevealed(false);
-  }, [lotKey]);
-
-  useEffect(() => {
-    if (revealed) return;
-    const timeout = setTimeout(() => setRevealed(true), delayMs);
-    return () => clearTimeout(timeout);
-  }, [revealed, delayMs]);
-
-  return { revealed };
+  return useTimedReveal(lotKey, delayMs);
 }

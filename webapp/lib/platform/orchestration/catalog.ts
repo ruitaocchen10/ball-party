@@ -13,6 +13,9 @@
  */
 export type GameStatus = "live" | "development";
 
+/** One choice offered when a solo run starts — see `Game.soloModes`. */
+export type SoloMode = { value: string; label: string; description: string };
+
 export type Game = {
   slug: string;
   /**
@@ -42,6 +45,20 @@ export type Game = {
   /** Whether one person alone gets anything out of it. */
   solo: boolean;
   /**
+   * Whether a room can start it. False for a game that only exists as a solo
+   * run — it has no lobby to open, so it stays out of the room grid, the
+   * host's picker and `startableGames()`.
+   */
+  group: boolean;
+  /**
+   * The choices a solo run makes at start, first one the default. Sent with
+   * the Play solo form as `mode`; a start with none sent gets the game's own
+   * default. Surfaces that start a run in one tap (the sidebar) send the player
+   * to the Solo games page for a game that has any, so the choice is never
+   * skipped. Absent when a game has nothing to choose.
+   */
+  soloModes?: readonly SoloMode[];
+  /**
    * The one game the home grid gives a double-width tile to. Exactly one live
    * game should carry it — the grid places it explicitly and lets the rest
    * flow around it, so two would collide.
@@ -59,6 +76,7 @@ export const MATCH_GAME_NAMES = {
   higher_or_lower: "Higher or Lower",
   wavelength_2v2: "2v2 Wavelength",
   sabotage_draft: "Sabotage Draft",
+  qb_season_builder: "QB Season Builder",
 } as const;
 
 export type MatchGame = keyof typeof MATCH_GAME_NAMES;
@@ -67,9 +85,14 @@ export function matchGameName(game: MatchGame): string {
   return MATCH_GAME_NAMES[game];
 }
 
+/** The games a room can offer at all, live or not — the one place `group` is read. */
+export function groupGames(): Game[] {
+  return GAMES.filter((game) => game.group);
+}
+
 /** The games a room can actually start today, by their durable record name. */
 export function startableGames(): MatchGame[] {
-  return GAMES.map((game) => game.match).filter((game) => game !== null);
+  return groupGames().map((game) => game.match).filter((game) => game !== null);
 }
 
 /** The games a lone player can actually start today, by their durable record name. */
@@ -88,6 +111,7 @@ export const GAMES: readonly Game[] = [
     players: "2–4 players",
     status: "live",
     solo: false,
+    group: true,
     featured: false,
   },
   {
@@ -100,6 +124,7 @@ export const GAMES: readonly Game[] = [
     players: "2–4 players",
     status: "live",
     solo: true,
+    group: true,
     featured: false,
   },
   {
@@ -112,7 +137,25 @@ export const GAMES: readonly Game[] = [
     players: "2–4 players",
     status: "live",
     solo: false,
+    group: true,
     featured: true,
+  },
+  {
+    slug: "qb-season-builder",
+    match: "qb_season_builder",
+    name: ["QB season", "builder"],
+    shortName: ["QB season", "builder"],
+    kind: "Solo · draft",
+    tagline: "Spin a team-season six times and build one quarterback from the best trait on offer.",
+    players: "1 player",
+    status: "live",
+    solo: true,
+    group: false,
+    soloModes: [
+      { value: "visible", label: "Visible", description: "Ratings show while you pick." },
+      { value: "hidden", label: "Hidden", description: "No ratings until the run is over. Pick on what you know." },
+    ],
+    featured: false,
   },
   {
     slug: "wavelength",
@@ -124,6 +167,7 @@ export const GAMES: readonly Game[] = [
     players: "4 players",
     status: "development",
     solo: false,
+    group: true,
     featured: false,
   },
 ] as const;

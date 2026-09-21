@@ -1,5 +1,8 @@
+"use client";
+
 import { OptionIcon } from "./SlotFaces";
-import { isPicksPost, relativeTime } from "@/lib/foundation/content/prompts/logic";
+import { usePromptDeadlineNow } from "./usePromptDeadline";
+import { isPicksPost, isPromptOpenForAnswers, relativeTime } from "@/lib/foundation/content/prompts/logic";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 
 /**
@@ -7,9 +10,11 @@ import type { Post } from "@/lib/foundation/content/prompts/types";
  * differently-styled list of the same takes now shown in the thread; carries
  * prompt context instead — what it takes to resolve, where it stands, and
  * (for a single-game pick, the only shape with exactly two options) how the
- * huddle split. No client interactivity, so this stays a server component.
+ * huddle split. It is client-rendered so an open status turns locked at the
+ * deadline without requiring the reader to refresh.
  */
 export function PromptContext({ post }: { post: Post }) {
+  const now = usePromptDeadlineNow(post);
   const singleGameSlot = post.templateKind !== "power_rankings" && (isPicksPost(post) || post.isOpinion) && post.slots.length === 1 ? post.slots[0] : null;
   const split = singleGameSlot ? post.aggregate?.[singleGameSlot.id] : undefined;
   const consensusSlot = post.templateKind === "power_rankings" ? post.slots[0] : null;
@@ -27,7 +32,7 @@ export function PromptContext({ post }: { post: Post }) {
           </div>
           <div className={split || consensusTopFive.length ? "border-b border-line py-3.5" : "py-3.5"}>
             <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Status</p>
-            <p className="mt-1.5 text-sm leading-6 text-fg">{statusLine(post)}</p>
+            <p className="mt-1.5 text-sm leading-6 text-fg">{statusLine(post, now)}</p>
           </div>
           {singleGameSlot && split ? (
             <div className="py-3.5">
@@ -73,10 +78,10 @@ export function PromptContext({ post }: { post: Post }) {
   );
 }
 
-function statusLine(post: Post): string {
+function statusLine(post: Post, now: number): string {
   const people = `${post.responseCount} ${post.responseCount === 1 ? "person" : "people"} answered`;
   if (post.status === "void") return `Voided — ${post.voidReason ?? "no reason given"}`;
   if (post.status === "resolved") return `Resolved · ${people}`;
-  if (post.status === "locked") return `Locked · ${people}`;
+  if (!isPromptOpenForAnswers(post, now)) return `Locked · ${people}`;
   return `Open · closes ${relativeTime(post.lockAt)}`;
 }

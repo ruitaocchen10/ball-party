@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { FRANCHISE_NAMES, franchiseLogoUrl, franchiseName } from "./franchises";
+import { FRANCHISE_NAMES, franchiseName } from "./franchises";
+import { franchiseLogoUrl } from "./team-logos";
 
-describe("sabotage draft franchise names", () => {
+describe("franchise names", () => {
   it("covers exactly the pool's thirty-two franchises", () => {
     expect(Object.keys(FRANCHISE_NAMES)).toHaveLength(32);
   });

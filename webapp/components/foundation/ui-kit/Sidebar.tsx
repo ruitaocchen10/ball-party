@@ -25,8 +25,8 @@ import { SOLO_SIGN_UP_HREF } from "@/lib/platform/lobbies/hosting";
 import { drawerBackdrop, drawerPanel } from "@/lib/foundation/ui-kit/motion";
 
 /** The solo-playable games, in catalog order — everything the Solo games
- *  section lists. Just Higher or Lower today; a second live+solo game shows
- *  up here with no further change. */
+ *  section lists. A further live+solo game shows up here with no further
+ *  change. */
 const SOLO_GAMES = GAMES.filter((game) => game.solo && game.status === "live");
 
 /**
@@ -270,8 +270,10 @@ const NAV_ITEM_CLASSES = (collapsed: boolean) =>
  * One solo game's entry: a form that starts a fresh run via `playSolo` when
  * the viewer can play (a signed-in button beats a link nobody can act on
  * twice in a row the same way — each click deals a new match), or a sign-up
- * link when they can't. Styled to match NavList's links exactly, since this
- * reads as a continuation of the same nav rather than a distinct widget.
+ * link when they can't. A game whose run is set up at start (`soloModes`) links
+ * to the Solo games page instead, where that choice is made — one tap must not
+ * skip it. Styled to match NavList's links exactly, since this reads as a
+ * continuation of the same nav rather than a distinct widget.
  */
 function SoloGameLink({
   game,
@@ -287,6 +289,15 @@ function SoloGameLink({
   if (!canPlaySolo) {
     return (
       <Link href={SOLO_SIGN_UP_HREF} className={NAV_ITEM_CLASSES(collapsed)}>
+        <Play className="h-5 w-5 shrink-0" strokeWidth={1.5} />
+        <span className={collapsed ? "sr-only" : ""}>{label}</span>
+      </Link>
+    );
+  }
+
+  if (game.soloModes) {
+    return (
+      <Link href="/solo" className={NAV_ITEM_CLASSES(collapsed)}>
         <Play className="h-5 w-5 shrink-0" strokeWidth={1.5} />
         <span className={collapsed ? "sr-only" : ""}>{label}</span>
       </Link>

@@ -19,4 +19,11 @@ describe("GameGrid", () => {
     expect(higherOrLowerTile?.parentElement).not.toHaveClass("lg:row-span-2");
     expect(within(higherOrLowerTile as HTMLElement).getByText("2–4 players")).toBeInTheDocument();
   });
+
+  it("leaves a solo-only game out of the room grid", () => {
+    render(<GameGrid canCreateLobby />);
+
+    expect(screen.queryByText("QB season")).not.toBeInTheDocument();
+    expect(screen.queryByText("1 player")).not.toBeInTheDocument();
+  });
 });

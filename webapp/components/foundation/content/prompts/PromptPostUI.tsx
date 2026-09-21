@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Lock } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Card } from "@/components/foundation/ui-kit/Card";
@@ -13,6 +13,7 @@ import { MatchupPicker } from "./MatchupPicker";
 import { PickOneBoard } from "./PickOneBoard";
 import { PROMPT_TICKET_CUT_CORNERS } from "./PromptTicket";
 import { SharePromptButton } from "./SharePromptButton";
+import { usePromptDeadlineNow } from "./usePromptDeadline";
 import {
   CheckboxPoolField,
   GameSelectField,
@@ -26,7 +27,7 @@ import {
   defaultPromptText,
   optionPoolFor,
 } from "./ComposerFields";
-import { COVER_OPTION_LIMIT, coverOptions, isPicksPost, needsCoverChoice, relativeTime } from "@/lib/foundation/content/prompts/logic";
+import { COVER_OPTION_LIMIT, coverOptions, isPicksPost, isPromptOpenForAnswers, needsCoverChoice, relativeTime } from "@/lib/foundation/content/prompts/logic";
 import type { MatchupGameContext, Option, Player, Post, Slot, TemplateKind } from "@/lib/foundation/content/prompts/types";
 
 /**
@@ -80,16 +81,25 @@ function PostCardC({
   onOpenAnswer: () => void;
   gameContexts?: MatchupGameContext[];
 }) {
-  const canAnswer = post.status === "open" && !post.viewerAnswered;
+  const now = usePromptDeadlineNow(post);
+  const promptOpen = isPromptOpenForAnswers(post, now);
+  const canAnswer = promptOpen && !post.viewerAnswered;
   const void_ = post.status === "void";
-  const actionLabel = canAnswer ? "Make your picks" : post.viewerAnswered && post.status === "open" ? "View your picks" : "See takes";
-  const timingLabel = usePostTimingLabel(post);
+  const actionLabel = canAnswer ? "Make your picks" : post.viewerAnswered && promptOpen ? "View your picks" : "See takes";
+  const timingLabel = postTimingLabel(post, now);
+  const statusChip = post.viewerAnswered
+    ? <span className="inline-flex shrink-0 items-center gap-1 bg-grade-elite px-2 py-1 font-mono text-[9px] font-bold leading-none tracking-[0.1em] text-[#fffdf7] uppercase"><Check aria-hidden className="h-3 w-3" strokeWidth={3} /> Complete</span>
+    : post.status !== "void" && !promptOpen && post.status !== "resolved"
+      ? <span className="inline-flex shrink-0 items-center gap-1 border border-fg-muted/50 bg-surface px-2 py-1 font-mono text-[9px] font-bold leading-none tracking-[0.1em] text-fg-muted uppercase"><Lock aria-hidden className="h-3 w-3" strokeWidth={2.5} /> Locked</span>
+      : post.status === "resolved"
+        ? <span className="inline-flex shrink-0 border border-panel/50 bg-panel/10 px-2 py-1 font-mono text-[9px] font-bold leading-none tracking-[0.1em] text-panel uppercase">Resolved</span>
+      : null;
 
   return (
     <Card edge={false} className={`rounded-none border border-line !bg-surface-raised !text-fg !shadow-[0_10px_24px_rgb(0_0_0/0.4)] ${void_ ? "opacity-45" : ""}`}>
       <div className="flex items-start gap-3 px-4 pt-4">
         <h2 className="min-w-0 flex-1 font-slab text-2xl leading-[1.05] uppercase">{post.promptText}</h2>
-        <span className="shrink-0 pt-0.5 font-mono text-[10px] tracking-[0.14em] text-fg-muted uppercase">{timingLabel}</span>
+        {statusChip ?? <span className="shrink-0 pt-0.5 font-mono text-[10px] tracking-[0.14em] text-fg-muted uppercase">{timingLabel}</span>}
       </div>
       <p className="px-4 pt-1 text-[13px] text-fg-muted">{post.caption}</p>
 
@@ -104,7 +114,6 @@ function PostCardC({
         <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">
           {post.responseCount} {post.responseCount === 1 ? "person has" : "people have"} answered
         </p>
-        {post.status === "locked" ? <span className="font-mono text-[9px] tracking-[0.1em] text-fg-muted uppercase">Locked</span> : null}
       </div>
       <div className="px-4 pt-3 pb-4">
         {canAnswer && !viewerCanAnswer ? (
@@ -119,19 +128,8 @@ function PostCardC({
   );
 }
 
-/** Refreshes open prompts once per minute so their close countdown stays honest without a live subscription. */
-function usePostTimingLabel(post: Post) {
-  const [now, setNow] = useState(() => Date.now());
-  const closesAt = new Date(post.lockAt).getTime();
-  const countingDown = post.status === "open" && Number.isFinite(closesAt) && closesAt > now;
-
-  useEffect(() => {
-    if (!countingDown) return;
-    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(interval);
-  }, [countingDown]);
-
-  return countingDown ? `Closes ${relativeTime(post.lockAt)}` : relativeTime(post.createdAt);
+function postTimingLabel(post: Post, now: number) {
+  return isPromptOpenForAnswers(post, now) ? `Closes ${relativeTime(post.lockAt)}` : relativeTime(post.createdAt);
 }
 
 /**

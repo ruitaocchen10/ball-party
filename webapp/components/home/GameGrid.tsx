@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { GAMES, type Game } from "@/lib/platform/orchestration/catalog";
+import { groupGames, type Game } from "@/lib/platform/orchestration/catalog";
 import { createLobby } from "@/lib/platform/lobbies/actions";
 import { HOST_SIGN_UP_HREF } from "@/lib/platform/lobbies/hosting";
 
@@ -24,7 +24,7 @@ import { HOST_SIGN_UP_HREF } from "@/lib/platform/lobbies/hosting";
  * down the last column regardless of catalog order.
  */
 export function GameGrid({ canCreateLobby }: { canCreateLobby: boolean }) {
-  const live = GAMES.filter((game) => game.status === "live");
+  const live = groupGames().filter((game) => game.status === "live");
 
   return (
     <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4 xl:gap-5">

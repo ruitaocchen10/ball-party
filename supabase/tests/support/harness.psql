@@ -583,6 +583,248 @@ language sql stable security definer as $$
    where pick.match_id = p_match_id and pick.user_id = p_user_id and pick.round_number = 14;
 $$;
 
-grant usage on schema tests to authenticated;
+-- ------------------------------------------------------ qb season builder --
+
+-- A small, fully known set of finished ratings, in place of whatever the game
+-- holds in production. Clears the two rating tables first, inside the test's
+-- own transaction, so an assertion on a value can never be broken by the real
+-- data (or by retuning it) being loaded.
+--
+--   kan 2018   one quarterback
+--   kan 2019   two quarterbacks (a starter and a mid-season replacement)
+--   nwe 2017   one quarterback
+--   phi 2017   two quarterbacks
+--   nyj 2020   a Supporting Cast and nobody who qualified: it must never be
+--              spun, which is the whole reason the fixture carries it
+--
+-- Every value is distinct within its row, so a test that reads the wrong
+-- column fails instead of passing by coincidence.
+create function tests.qsb_fixtures() returns void
+language plpgsql security definer as $$
+begin
+  delete from qb_season_builder_private.qb_seasons;
+  delete from qb_season_builder_private.team_seasons;
+
+  insert into qb_season_builder_private.team_seasons (franchise_code, season, supporting_cast)
+  values ('kan', 2018, 88), ('kan', 2019, 81), ('nwe', 2017, 77), ('phi', 2017, 69), ('nyj', 2020, 31);
+
+  insert into qb_season_builder_private.qb_seasons
+    (franchise_code, season, player_id, display_name, accuracy, arm_talent, mobility, iq, build)
+  values
+    ('kan', 2018, 'MahoPa00', 'Patrick Mahomes', 91, 99, 84, 88, 76),
+    ('kan', 2019, 'MahoPa00', 'Patrick Mahomes', 89, 98, 82, 90, 77),
+    ('kan', 2019, 'MoorMa00', 'Matt Moore',      61, 58, 40, 52, 55),
+    ('nwe', 2017, 'BradTo00', 'Tom Brady',       96, 85, 33, 99, 72),
+    ('phi', 2017, 'WentCa00', 'Carson Wentz',    87, 90, 79, 83, 86),
+    ('phi', 2017, 'FolsNi00', 'Nick Foles',      78, 74, 45, 80, 68);
+end $$;
+
+-- A player's own QB Season Builder run, started and dealt, in the given mode.
+-- Leaves the session acting as that player. The same two public calls a client
+-- makes, in the same order.
+create function tests.qsb_start(
+  p_user uuid,
+  p_mode text default 'visible',
+  p_guest boolean default false,
+  out match_id uuid
+)
+returns uuid
+language plpgsql as $$
+begin
+  if p_guest then
+    perform tests.act_as_guest(p_user);
+  else
+    perform tests.act_as(p_user);
+  end if;
+  select id into match_id from public.start_solo_run('qb_season_builder');
+  perform qb_season_builder.start(match_id, p_mode);
+end $$;
+
+-- Put a round's current spin on a chosen team-season, the way tests.open_question
+-- puts a Higher or Lower board on a chosen phase. Spins are random by design
+-- and a test that asserts on options has to know which ones are on offer.
+create function tests.qsb_set_spin(
+  p_match_id uuid, p_round smallint, p_franchise text, p_season smallint
+)
+returns void
+language plpgsql security definer as $$
+begin
+  update public.qb_season_builder_spins s
+     set franchise_code = p_franchise, season = p_season
+   where s.match_id = p_match_id and s.round_number = p_round
+     and s.attempt = (select max(attempt) from public.qb_season_builder_spins x
+                       where x.match_id = s.match_id and x.round_number = s.round_number);
+end $$;
+
+-- Fill a fresh run's first n slots, in the order accuracy, arm talent, mobility,
+-- IQ, build, Supporting Cast, each from Carson Wentz on a pinned phi 2017 spin.
+-- Runs as whoever the session is acting as, so it goes through the same public
+-- pick call a player does; it only gets a run to a later round without a test
+-- restating six identical picks. The run must be on round 1.
+create function tests.qsb_fill(p_match_id uuid, p_rounds int) returns void
+language plpgsql as $$
+declare
+  v_slots constant text[] := array['accuracy', 'arm_talent', 'mobility', 'iq', 'build', 'supporting_cast'];
+  v_i     int;
+begin
+  for v_i in 1 .. p_rounds loop
+    perform tests.qsb_set_spin(p_match_id, v_i::smallint, 'phi', 2017::smallint);
+    perform qb_season_builder.pick(
+      p_match_id, v_slots[v_i],
+      case when v_slots[v_i] = 'supporting_cast' then null else 'WentCa00' end
+    );
+  end loop;
+end $$;
+
+-- A run played to the end and finished from a FIXED seed, so a test can compare
+-- seasons. The public finish draws its own seed and takes none, on purpose, so
+-- this goes through the private finisher the way tests.deal goes through the
+-- auction's private dealer. The six picks are tests.qsb_fill's (Carson Wentz on a
+-- phi 2017 spin) unless a mode or guest is asked for. Returns the match id and
+-- leaves the session acting as the admin.
+create function tests.qsb_finish_with_seed(
+  p_user uuid,
+  p_seed bigint,
+  p_mode text default 'visible',
+  p_guest boolean default false,
+  out match_id uuid
+)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.qsb_start(p_user, p_mode, p_guest);
+  perform tests.qsb_fill(match_id, 6);
+  perform tests.act_as_admin();
+  perform qb_season_builder_private.finish_run(match_id, p_seed);
+end $$;
+
+-- A small season model of our own, in place of the fitted one, so a test can
+-- work an expected season out by hand and retuning the real numbers can never
+-- break it. Every output is a straight line (identity link) of ONE slot:
+--
+--   attempts   200 + 2 x accuracy         rush_yards  10 x mobility
+--   comp_pct   0.4 + 0.004 x accuracy     rush_td     0.1 x mobility
+--   ypa        2 + 0.1 x arm_talent       wins        0.2 x supporting_cast
+--   td_rate    0.001 x iq                 int_rate    0.1 - 0.001 x iq
+--
+-- so the six values a test picks (see tests.qsb_fill: 87 / 90 / 79 / 83 / 86 and a
+-- cast of 69) give a season that can be checked with a pencil. Noise is off unless
+-- asked for: p_wins_noise scales the team outcome, p_line_noise the quarterback's
+-- own line, p_award_noise the edge of each award. p_ladder is the intercept of
+-- every playoff rung (slope 0): +50 clears every rung, -50 misses the first.
+--
+-- Scoring: stat_line is the z-score of pass yards, team_success half the z-score
+-- of wins and half of playoff depth, awards the points earned (5 / 3 / 3 / 1 / 3),
+-- weighted 50 / 30 / 20 against five-point distributions.
+create function tests.qsb_model_fixtures(
+  p_wins_noise  double precision default 0,
+  p_line_noise  double precision default 0,
+  p_award_noise double precision default 0,
+  p_ladder      double precision default 50
+) returns void
+language plpgsql security definer as $$
+begin
+  delete from qb_season_builder_private.season_model_outputs;      -- cascades to coefficients, residuals
+  delete from qb_season_builder_private.season_model_playoff_ladder;
+  delete from qb_season_builder_private.season_model_metrics;
+  delete from qb_season_builder_private.season_model_formulas;
+  delete from qb_season_builder_private.season_model_awards;
+  delete from qb_season_builder_private.season_model_distributions;
+  delete from qb_season_builder_private.season_model_real_seasons;
+
+  insert into qb_season_builder_private.season_model_outputs
+    (output, link, low, high, intercept, residual_sd, r_squared, noise_scale, noise_group)
+  values
+    ('attempts',   'identity', 100,  800, 200,   0, 0, p_line_noise, 'qb_line'),
+    ('comp_pct',   'identity', 0.3,  0.9, 0.4,   0, 0, p_line_noise, 'qb_line'),
+    ('ypa',        'identity', 3,    13,  2,     0, 0, p_line_noise, 'qb_line'),
+    ('td_rate',    'identity', 0,    0.2, 0,     0, 0, p_line_noise, 'qb_line'),
+    ('int_rate',   'identity', 0,    0.2, 0.1,   0, 0, p_line_noise, 'qb_line'),
+    ('rush_yards', 'identity', 0,    1500, 0,    0, 0, p_line_noise, 'qb_line'),
+    ('rush_td',    'identity', 0,    20,  0,     0, 0, p_line_noise, 'qb_line'),
+    ('wins',       'identity', 0,    17,  0,     0, 0, p_wins_noise, 'team');
+
+  insert into qb_season_builder_private.season_model_coefficients (output, slot, coefficient)
+  select o.output, s.slot, coalesce(c.coefficient, 0)
+    from qb_season_builder_private.season_model_outputs o
+   cross join unnest(array['accuracy', 'arm_talent', 'mobility', 'iq', 'build', 'supporting_cast']) as s(slot)
+    left join (values
+      ('attempts',   'accuracy',        2.0),
+      ('comp_pct',   'accuracy',        0.004),
+      ('ypa',        'arm_talent',      0.1),
+      ('td_rate',    'iq',              0.001),
+      ('int_rate',   'iq',             -0.001),
+      ('rush_yards', 'mobility',       10.0),
+      ('rush_td',    'mobility',        0.1),
+      ('wins',       'supporting_cast', 0.2)
+    ) c (output, slot, coefficient) on c.output = o.output and c.slot = s.slot;
+
+  -- A spread symmetric about the formula: -width .. +width in five steps, so a
+  -- draw can be at most `width` (times the output's noise_scale) either side.
+  insert into qb_season_builder_private.season_model_residuals (output, p, residual)
+  select w.output, q.p, q.k * w.width
+    from (values
+      ('attempts', 40.0), ('comp_pct', 0.02), ('ypa', 1.0), ('td_rate', 0.01),
+      ('int_rate', 0.01), ('rush_yards', 100.0), ('rush_td', 4.0), ('wins', 2.0)
+    ) w (output, width)
+   cross join (values (0.0, -1.0), (0.25, -0.5), (0.5, 0.0), (0.75, 0.5), (1.0, 1.0)) q (p, k);
+
+  insert into qb_season_builder_private.season_model_playoff_ladder (rung, step, intercept, slope)
+  values
+    (1, 'make_playoffs',    p_ladder, 0),
+    (2, 'reach_divisional', p_ladder, 0),
+    (3, 'reach_conference', p_ladder, 0),
+    (4, 'reach_super_bowl', p_ladder, 0),
+    (5, 'win_super_bowl',   p_ladder, 0);
+
+  insert into qb_season_builder_private.season_model_metrics (metric, mean, sd)
+  values
+    ('pass_yards', 3000, 1000), ('pass_td', 20, 10), ('interceptions', 10, 5),
+    ('rating', 90, 10), ('rush_yards', 100, 100), ('rush_td', 2, 2),
+    ('wins', 8, 3), ('playoff_depth', 1, 1);
+
+  insert into qb_season_builder_private.season_model_formulas (formula, term, weight)
+  values
+    ('score', 'stat_line', 50), ('score', 'team_success', 30), ('score', 'awards', 20),
+    ('stat_line', 'pass_yards', 1),
+    ('team_success', 'wins', 0.5), ('team_success', 'playoff_depth', 0.5),
+    ('awards', 'mvp', 5), ('awards', 'opoy', 3), ('awards', 'all_pro', 3),
+    ('awards', 'pro_bowl', 1), ('awards', 'sb_mvp', 3),
+    ('award_mvp', 'wins', 1),
+    ('award_opoy', 'pass_yards', 1), ('award_all_pro', 'pass_yards', 1),
+    ('award_pro_bowl', 'pass_yards', 1), ('award_sb_mvp', 'pass_yards', 1);
+
+  insert into qb_season_builder_private.season_model_awards (award, threshold, spread, noise_scale, winners)
+  values
+    ('mvp', 1.5, 0.5, p_award_noise, 1), ('opoy', 1.5, 0.5, p_award_noise, 1),
+    ('all_pro', 1.0, 0.5, p_award_noise, 1), ('pro_bowl', 0.0, 0.5, p_award_noise, 1),
+    ('sb_mvp', 1.0, 0.5, p_award_noise, 1);
+
+  insert into qb_season_builder_private.season_model_distributions (component, p, value)
+  select d.component, q.p, d.base + q.k * d.step
+    from (values ('stat_line', -2.0, 1.0), ('team_success', 1.0, 1.0), ('awards', 0.0, 1.0))
+         d (component, base, step)
+   cross join (values (0.0, 0), (0.25, 1), (0.5, 2), (0.75, 3), (1.0, 4)) q (p, k);
+
+  -- Three real seasons: the six values of the fixtures in qsb_fixtures, so a build
+  -- picked from one of those seasons has an exact neighbour.
+  insert into qb_season_builder_private.season_model_real_seasons
+    (franchise_code, season, player_id, display_name,
+     accuracy, arm_talent, mobility, iq, build, supporting_cast,
+     attempts, completions, pass_yards, pass_tds, interceptions, rush_yards, rush_tds,
+     wins, losses, ties, playoff_depth, mvp, opoy, all_pro, pro_bowl, sb_mvp)
+  values
+    ('kan', 2018, 'MahoPa00', 'Patrick Mahomes', 91, 99, 84, 88, 76, 88,
+       580, 383, 5097, 50, 12, 272, 2, 12, 4, 0, 3, true,  true,  true,  true,  false),
+    ('phi', 2017, 'WentCa00', 'Carson Wentz',    87, 90, 79, 83, 86, 69,
+       440, 265, 3296, 33,  7, 299, 0, 13, 3, 0, 5, false, false, false, true,  false),
+    ('nwe', 2017, 'BradTo00', 'Tom Brady',       96, 85, 33, 99, 72, 77,
+       581, 385, 4577, 32,  8,  28, 0, 13, 3, 0, 4, true,  false, true,  true,  false);
+end $$;
+
+grant usage on schema tests to authenticated, anon;
 grant execute on all functions in schema tests to authenticated;
 grant all on all tables in schema tests to authenticated;
+-- A signed-out client is exercised by the QB Season Builder suites, and their
+-- assertions read the fixture table for the ids they look up.
+grant select on all tables in schema tests to anon;

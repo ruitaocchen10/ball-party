@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { coverOptions, needsCoverChoice } from "./logic";
+import { coverOptions, isPromptOpenForAnswers, needsCoverChoice } from "./logic";
 import type { Option } from "./types";
 
 const pool = (count: number, placed: Record<number, number> = {}): Option[] =>
@@ -37,5 +37,22 @@ describe("needsCoverChoice", () => {
     expect(needsCoverChoice(pool(5))).toBe(true);
     expect(needsCoverChoice(pool(5, { 1: 1, 2: 2, 3: 3 }))).toBe(true);
     expect(needsCoverChoice(pool(5, { 1: 1, 2: 2, 3: 3, 5: 4 }))).toBe(false);
+  });
+});
+
+describe("isPromptOpenForAnswers", () => {
+  const lockAt = "2026-09-20T12:00:00.000Z";
+  const deadline = new Date(lockAt).getTime();
+
+  it("accepts an open prompt only before its deadline", () => {
+    expect(isPromptOpenForAnswers({ status: "open", lockAt }, deadline - 1)).toBe(true);
+    expect(isPromptOpenForAnswers({ status: "open", lockAt }, deadline)).toBe(false);
+    expect(isPromptOpenForAnswers({ status: "open", lockAt }, deadline + 1)).toBe(false);
+  });
+
+  it("never offers a closed lifecycle state or malformed deadline", () => {
+    expect(isPromptOpenForAnswers({ status: "locked", lockAt }, deadline - 1)).toBe(false);
+    expect(isPromptOpenForAnswers({ status: "resolved", lockAt }, deadline - 1)).toBe(false);
+    expect(isPromptOpenForAnswers({ status: "open", lockAt: "not-a-date" }, deadline - 1)).toBe(false);
   });
 });

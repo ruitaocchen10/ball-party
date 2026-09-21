@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Supabase types are regenerated after this migration lands. */
 
 import { motion } from "motion/react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Ref } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
 import { createPortal } from "react-dom";
 
 import { FinalStandings, type FinalStandingsRow } from "@/components/runtime/game-runtime/FinalStandings";
@@ -11,6 +11,7 @@ import { PauseButton } from "@/components/runtime/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/runtime/game-runtime/PostGameControls";
 import { PostGameNavigation } from "@/components/runtime/game-runtime/PostGameNavigation";
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
+import { SlotReel } from "@/components/foundation/ui-kit/SlotReel";
 import { TeamLogo } from "@/components/foundation/ui-kit/TeamLogo";
 import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvatar";
 import { Button } from "@/components/foundation/ui-kit/Button";
@@ -20,7 +21,7 @@ import { Concealed } from "@/components/foundation/ui-kit/Concealed";
 import { abbreviate, MatchStrip, StripCell, StripCellAvatar, StripCellCaption, StripCellMediaBadge, StripCellName, StripCellTextColumn, StripCellTitle } from "@/components/foundation/ui-kit/MatchStrip";
 import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/runtime/game-runtime/useMatchClock";
 import { dropdownUp, springSnappy, tiebreakBoardReveal, tiebreakMatchReveal, tiebreakRoundReveal } from "@/lib/foundation/ui-kit/motion";
-import { FRANCHISE_NAMES, franchiseName } from "@/lib/games/sabotage-draft/franchises";
+import { FRANCHISE_NAMES, franchiseName } from "@/lib/foundation/content/nfl/franchises";
 import { gradeForPick, gradeForTeam } from "@/lib/games/sabotage-draft/grades";
 import { ROUND_SLOTS, X_FACTOR_ROUND, slotForRound } from "@/lib/games/sabotage-draft/rounds";
 import { TURN_REVEAL_MS, useTurnReveal } from "@/lib/games/sabotage-draft/useTurnReveal";
@@ -373,22 +374,20 @@ function TurnSpinner({ board, players, spins, revealed }: { board: Board; player
                 comment). Row height only needs to stay consistent across
                 rows and match the container -- the keyframes translate by
                 percentages of --reel-count, not a hardcoded pixel height. */}
-            <div
-              key={reelKey}
-              className="animate-reel-spin motion-reduce:hidden flex flex-col"
-              style={{ "--reel-count": reelItems.length, animationDuration: `${TURN_REVEAL_MS}ms` } as CSSProperties}
-            >
-              {reelItems.map(([code, name], index) => (
-                <span key={`${code}-${index}`} className="flex h-24 shrink-0 flex-col items-center justify-center gap-1 font-slab text-lg tracking-[0.02em] text-panel uppercase">
+            <SlotReel
+              items={reelItems}
+              durationMs={TURN_REVEAL_MS}
+              reelKey={reelKey}
+              viewportClassName="h-24"
+              rowClassName="h-24 flex-col items-center justify-center gap-1 font-slab text-lg tracking-[0.02em] text-panel uppercase"
+              itemKey={([code], index) => `${code}-${index}`}
+              renderItem={([code, name]) => (
+                <>
                   <TeamLogo code={code} className="h-12 w-12" />
                   {name}
-                </span>
-              ))}
-            </div>
-            {/* Motion-reduce: no animation to land on anything, so this never
-                depends on one -- a plain "still choosing" state instead of a
-                reel frozen on whichever decoy rendered first. */}
-            <p className="hidden motion-reduce:flex h-24 items-center justify-center font-mono text-xs text-panel-muted uppercase">Spinning…</p>
+                </>
+              )}
+            />
           </>
         )}
       </div>

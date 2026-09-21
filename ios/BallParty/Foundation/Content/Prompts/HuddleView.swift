@@ -107,9 +107,7 @@ private struct PostCard: View {
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                PostStatusLabel(post: post)
-                    .monoLabel(10, tracking: 0.14)
-                    .multilineTextAlignment(.trailing)
+                PostCardStatusBadge(post: post)
                     .padding(.top, 2)
             }
             .padding(.horizontal, 16)
@@ -174,6 +172,42 @@ private struct PostCard: View {
             }
         } else {
             OptionStrip(options: post.slots.flatMap(\.options))
+        }
+    }
+}
+
+/// The feed's top-right marker is about this reader first: a submitted ticket
+/// is complete even after results arrive. Otherwise it makes the prompt's
+/// terminal lifecycle immediately scannable without repeating the timestamp.
+private struct PostCardStatusBadge: View {
+    let post: PromptPost
+
+    var body: some View {
+        if post.viewerAnswered {
+            Label("Complete", systemImage: "checkmark")
+                .monoLabel(9, weight: .bold, tracking: 0.1, color: Theme.panel)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Theme.gradeElite)
+                .accessibilityLabel("Complete")
+        } else if post.status == .resolved {
+            Text("Resolved")
+                .monoLabel(9, weight: .bold, tracking: 0.1, color: Theme.panel)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Theme.panel.opacity(0.1))
+                .overlay(Rectangle().strokeBorder(Theme.panel.opacity(0.5), lineWidth: 1))
+        } else if !post.isTakingPicks(at: Date()) {
+            Label("Locked", systemImage: "lock.fill")
+                .monoLabel(9, weight: .bold, tracking: 0.1)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Theme.surface)
+                .overlay(Rectangle().strokeBorder(Theme.fgMuted.opacity(0.5), lineWidth: 1))
+        } else {
+            PostStatusLabel(post: post)
+                .monoLabel(10, tracking: 0.14)
+                .multilineTextAlignment(.trailing)
         }
     }
 }

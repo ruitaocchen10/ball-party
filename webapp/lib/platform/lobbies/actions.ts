@@ -168,10 +168,11 @@ export async function startRun(formData: FormData) {
 /**
  * Which solo-capable game the tile asked for, or null.
  *
- * A narrower check than `submittedGame`: every startable game can open a room,
- * but not every one has a solo floor low enough to deal for one player yet —
- * today that is only Higher or Lower. Checked against the catalogue so this
- * gate and the "Play solo" tile's own visibility can never drift apart.
+ * A narrower check than `submittedGame`, and not a subset of it: every
+ * startable game can open a room, but not every one has a solo floor low enough
+ * to deal for one player yet, and a game that is solo only (QB Season Builder)
+ * cannot open a room at all. Checked against the catalogue so this gate and
+ * the "Play solo" tile's own visibility can never drift apart.
  */
 function submittedSoloGame(value: FormDataEntryValue | null): MatchGame | null {
   const game = String(value ?? "");
@@ -193,13 +194,12 @@ export async function playSolo(formData: FormData) {
     redirect(`/solo?error=${encodeURIComponent("Pick a game that's ready to play solo.")}`);
   }
 
-  // `soloGames()` is catalogue-driven and already admits only Higher or Lower
-  // today, but it is a list of names, not a list of setup RPCs — this is the
-  // one place that turns a name into the call, the same seam `startRun` keeps
-  // for its two games. A second solo game has to be added here, not just to
-  // the catalogue, or this falls through to the same refusal rather than
-  // silently dealing the wrong game.
-  if (game !== "higher_or_lower") {
+  // `soloGames()` is catalogue-driven, but it is a list of names, not a list of
+  // setup RPCs — this is the one place that turns a name into the call, the
+  // same seam `startRun` keeps for its games. A further solo game has to be
+  // added here, not just to the catalogue, or this falls through to the same
+  // refusal rather than silently dealing the wrong game.
+  if (game !== "higher_or_lower" && game !== "qb_season_builder") {
     redirect(`/solo?error=${encodeURIComponent("Pick a game that's ready to play solo.")}`);
   }
 
@@ -208,9 +208,17 @@ export async function playSolo(formData: FormData) {
   const { data: match, error } = await supabase.rpc("start_solo_run", { p_game: game });
   if (error) redirect(withError("/solo", error));
 
-  const { error: dealError } = await supabase.schema("higher_or_lower").rpc("start", {
-    p_match_id: match.id,
-  });
+  // QB Season Builder's mode is chosen here and locked for the run. Sent as
+  // submitted, and only when one was: the Sidebar's one-tap entry sends none
+  // and gets the game's own default, and a value that is not a mode is the
+  // game's to refuse (`invalid_mode`), not this action's to second-guess.
+  const mode = String(formData.get("mode") ?? "");
+  const { error: dealError } = game === "qb_season_builder"
+    ? await supabase.schema("qb_season_builder").rpc("start", {
+      p_match_id: match.id,
+      ...(mode ? { p_mode: mode } : {}),
+    })
+    : await supabase.schema("higher_or_lower").rpc("start", { p_match_id: match.id });
   if (dealError) redirect(withError("/solo", dealError));
 
   revalidatePath("/", "layout");

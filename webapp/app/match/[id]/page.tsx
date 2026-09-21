@@ -5,13 +5,17 @@ import { redirect } from "next/navigation";
 import { AuctionMatch } from "@/components/games/auction/AuctionMatch";
 import { MatchSetup } from "@/components/games/auction/MatchSetup";
 import { HigherOrLowerMatch } from "@/components/games/higher-or-lower/HigherOrLowerMatch";
+import { QbSeasonBuilderMatch } from "@/components/games/qb-season-builder/QbSeasonBuilderMatch";
 import { SabotageDraftMatch } from "@/components/games/sabotage-draft/SabotageDraftMatch";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import type { AuctionFormat, Player, Turn } from "@/lib/games/auction/board";
 import type { Board } from "@/lib/games/higher-or-lower/board";
+import { QbSeasonBuilderResult } from "@/components/games/qb-season-builder/QbSeasonBuilderResult";
+import { boardFromRow } from "@/lib/games/qb-season-builder/board";
+import { fetchPersonalBest, fetchResult } from "@/lib/games/qb-season-builder/read";
 import { createClient } from "@/lib/supabase/server";
-import { isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 
 /**
  * The match screen.
@@ -225,6 +229,49 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         {matchScreen}
       </SoloMatchShell>
     ) : matchScreen;
+  }
+
+  // A solo run only: it has no room, so it takes the solo shell. It is the same
+  // read for a fresh start, a reload and a run reopened by its URL — the server
+  // keeps the spin and the picks, so "resume" is just this fetch.
+  if (match.game === "qb_season_builder") {
+    const { data: row } = await supabase.schema("qb_season_builder").rpc("state", { p_match_id: id });
+    const board = boardFromRow(row);
+    if (!board) {
+      return (
+        <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}>
+          <p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p>
+          <HomeLink />
+        </Shell>
+      );
+    }
+
+    // A finished run is its reveal. The board's `shown` is the player's own —
+    // every option they were dealt, values included — so it comes from here and
+    // not from the public result, which does not carry it.
+    if (board.phase === "complete") {
+      const result = await fetchResult(supabase, id);
+      if (result) {
+        const personalBest = await fetchPersonalBest(supabase, claims, result.mode);
+        return (
+          <SoloMatchShell displayName={displayName} email={email} avatarUrl={avatarUrl}>
+            <QbSeasonBuilderResult
+              result={result}
+              shown={board.shown}
+              personalBest={personalBest}
+              isGuest={isGuestViewer(claims)}
+              staged
+            />
+          </SoloMatchShell>
+        );
+      }
+    }
+
+    return (
+      <SoloMatchShell displayName={displayName} email={email} avatarUrl={avatarUrl}>
+        <QbSeasonBuilderMatch matchId={id} initial={board} isGuest={isGuestViewer(claims)} />
+      </SoloMatchShell>
+    );
   }
 
   const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult, formatResult, eraResult] = await Promise.all([

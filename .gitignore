@@ -1,6 +1,8 @@
 supabase/.temp/
 scripts/player_pool/.cache/
 scripts/av_roster_pool/.cache/
+scripts/qb_ratings/.cache/
+scripts/qb_season_model/.cache/
 __pycache__/
 .vercel
 .env*
