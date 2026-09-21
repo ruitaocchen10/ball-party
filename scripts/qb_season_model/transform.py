@@ -128,6 +128,26 @@ class Config(NamedTuple):
     # still lets 0.2% of teams miss a playoffs no real team of that record ever missed.
     # Either end may be None. Optional.
     ladder_guarantees: Mapping[str, tuple] = None
+    # (start, exponent): a soft ceiling on the finished score. At or below `start` a score is
+    # unchanged; above it the score is start + (100 - start) * ((score - start) / (100 - start))
+    # ** exponent, so 0 and 100 stay where they are and an exponent above 1 makes the top
+    # harder to reach. A well-drafted build is better than nearly every real season on nearly
+    # everything, so ranking it against real seasons alone leaves it no room. None: no curve.
+    # Optional.
+    score_curve: tuple = None
+    # The correlation, in normal scores, between the wins draw and the quarterback's rate
+    # draws (yards per attempt, touchdown rate, interception rate and completion %, the last
+    # one reversed): 0 keeps the record independent of how the quarterback happened to play,
+    # and above it a season with a better line than his values predicted tends to have won
+    # more, with the record's own spread unchanged. Real seasons show about 0.13. None: no link.
+    # Optional.
+    wins_link: float = None
+    # (pivot, slope): how much a high value counts. A value at or below `pivot` counts in full;
+    # above it, only `slope` of each point does (so a 90 with a pivot of 70 and a slope of 0.85
+    # plays like an 87). The formulas are fitted on the real values, so this is not part of the
+    # fit: it is a difficulty setting, and leaves the floor alone. None: every value counts in
+    # full. Optional.
+    value_curve: tuple = None
 
 
 # ------------------------------------------------------------------- inputs --
@@ -648,7 +668,16 @@ def fit_outputs(seasons, config):
                  for name in sorted(config.outputs))
 
 
-def predict(outputs, values, draws=None):
+def effective_values(values, curve=None):
+    """The six values as the game counts them: above the curve's pivot only `slope` of each
+    point counts. With no curve, the values as given."""
+    if curve is None:
+        return tuple(values)
+    pivot, slope = curve
+    return tuple(v if v <= pivot else pivot + (v - pivot) * slope for v in values)
+
+
+def predict(outputs, values, draws=None, curve=None):
     """The season for six values in SLOTS order: {output: value}.
 
     With no `draws` it is the expected season. `draws` maps an output to a number
@@ -658,6 +687,7 @@ def predict(outputs, values, draws=None):
     inverse link. So noise is bounded by the real extremes at u = 0 and u = 1.
     """
     draws = draws or {}
+    values = effective_values(values, curve)
     out = {}
     for o in outputs:
         z = o.intercept + sum(c * v for c, v in zip(o.coefficients, values))
@@ -667,14 +697,14 @@ def predict(outputs, values, draws=None):
     return out
 
 
-def expected_metrics(outputs, values, draws=None):
+def expected_metrics(outputs, values, draws=None, curve=None):
     """The expected season's metrics: the fitted outputs turned into a line.
 
     Needs every output in LINE_OUTPUTS. `playoff_depth` is not here: it comes
     from the ladder (`expected_depth`) or from the season that was actually
     played.
     """
-    e = predict(outputs, values, draws)
+    e = predict(outputs, values, draws, curve)
     return {
         "pass_yards": e["attempts"] * e["ypa"],
         "pass_td": e["attempts"] * e["td_rate"],
@@ -833,6 +863,24 @@ def fit_formulas(config):
         if award not in AWARDS:
             raise ValueError(f"award points for unknown award {award!r}")
         rows.append(Formula("awards", award, points))
+    if config.score_curve is not None:
+        start, exponent = config.score_curve
+        if not 0 <= start < 100 or exponent <= 0:
+            raise ValueError(f"score_curve {config.score_curve!r}: the start must be in [0, 100) "
+                             "and the exponent above 0")
+        rows.append(Formula("score_curve", "start", float(start)))
+        rows.append(Formula("score_curve", "exponent", float(exponent)))
+    if config.value_curve is not None:
+        pivot, slope = config.value_curve
+        if not 0 <= pivot < 100 or not 0 < slope <= 1:
+            raise ValueError(f"value_curve {config.value_curve!r}: the pivot must be in [0, 100) "
+                             "and the slope in (0, 1]")
+        rows.append(Formula("value_curve", "pivot", float(pivot)))
+        rows.append(Formula("value_curve", "slope", float(slope)))
+    if config.wins_link is not None:
+        if not 0 <= config.wins_link < 1:
+            raise ValueError(f"wins_link {config.wins_link!r} must be in [0, 1)")
+        rows.append(Formula("wins_link", "rho", float(config.wins_link)))
     return tuple(sorted(rows))
 
 
@@ -855,15 +903,25 @@ def percentile_of(table, x):
     return sum(1 for _, v in table if v < x) / len(table)
 
 
+def curved(model, raw):
+    """A mixed score after the model's soft ceiling (no change when it has none)."""
+    curve = {f.term: f.weight for f in model.formulas if f.name == "score_curve"}
+    if not curve or raw <= curve["start"]:
+        return raw
+    start = curve["start"]
+    return start + (100.0 - start) * ((raw - start) / (100.0 - start)) ** curve["exponent"]
+
+
 def score(model, metrics, awards=()):
     """The 0-100 score of a season: its stat line, team success and awards, each
-    ranked against the real seasons, mixed by the configured weights."""
+    ranked against the real seasons, mixed by the configured weights, then held to the
+    model's soft ceiling."""
     weights = {f.term: f.weight for f in model.formulas if f.name == "score"}
     total = sum(weights.values())
     mixed = sum(
         w * percentile_of(model.distributions[c], composite(model, c, metrics, awards))
         for c, w in weights.items())
-    return 100.0 * mixed / total
+    return curved(model, 100.0 * mixed / total)
 
 
 def fit_distributions(seasons, norms, formulas, config):

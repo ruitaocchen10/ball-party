@@ -193,7 +193,7 @@ ratings no client role can read it. It holds:
   never pass 17, a rate can never go negative and attempts saturate (a logit link capped
   at 670, where a straight line asked for 700+ from a build stacked with 90s);
 - the real residual around each formula as a quantile table plus a per-output
-  `noise_scale` (1 for wins, 0.5 for the quarterback's line), so noise is bounded by
+  `noise_scale` (0.8 for wins, 0.5 for the quarterback's line), so noise is bounded by
   what really happened and lands mostly on team outcomes;
 - a five-rung playoff ladder, each rung a logistic in wins. The first rung also carries
   guarantees (`never_to`, `always_from`): 12 or more wins is always a playoff team and 5 or
@@ -202,9 +202,11 @@ ratings no client role can read it. It holds:
 - a threshold for each award, calibrated on the real winners' seasons, with the
   winners' spread for noise near the edge, and the award it requires, if any (the MVP
   needs the All-Pro, and the All-Pro and Offensive Player of the Year the Pro Bowl,
-  as in the real data: 17 of 18 MVPs were All-Pro);
+  as in the real data: 17 of 18 MVPs were All-Pro). All-Pro is judged on wins as well
+  as the stat line, so a 13-win, 4,500-yard season is a real MVP candidate;
 - the score: how the real seasons spread on stat line, team success and awards, and
-  the 50 / 30 / 20 weights that mix them;
+  the 55 / 30 / 15 weights that mix them, and a soft ceiling on the mixed score (a
+  `score_curve`: see below);
 
 How to read each table is written at the top of `0125`. All of it is per full
 17-game season. Every weight, bound, noise scale and threshold is configuration in
@@ -216,10 +218,16 @@ How to read each table is written at the top of `0125`. All of it is per full
 that moment (`qb_season_builder_private.finish_run(match, seed)` is the same thing
 with a chosen seed, for tests). In order:
 
-1. each output's formula, plus its noise: a draw from the output's residual table
+1. each output's formula over the six values as the game counts them (a value counts in full
+   up to 70 and only 0.85 of each point above it, the difficulty setting `VALUE_CURVE`,
+   migration `0146`), plus its noise: a draw from the output's residual table
    scaled by `noise_scale`, added before the inverse link. The stat line is derived
    from the outputs and rounded (counts to whole numbers; wins rounded, losses the
-   rest of 17);
+   rest of 17). The record's draw follows how the quarterback happened to play: it is
+   correlated (0.3, `WINS_LINE_LINK`, migration `0144`) in normal scores with the draws of
+   yards per attempt, touchdown rate, interception rate (reversed) and completion %, so a
+   better line than his values predicted tends to come with more wins, and the record's own
+   spread and a build's average record do not change;
 2. the playoff ladder, walked rung by rung at the season's wins until one is missed (a rung
    with a guarantee is cleared or missed outright at those wins, whatever the draw);
 3. each award: its score, nudged by up to `noise_scale` of the winners' spread either
@@ -227,7 +235,12 @@ with a chosen seed, for tests). In order:
    Offensive Player of the Year, MVP) so a season never has an award without the one it
    depends on; Super Bowl MVP needs the title (migration `0136` added the requirement);
 4. the score: the season's percentile on each component (share of real seasons it is
-   strictly better than), mixed by the score weights, capped at 100;
+   strictly better than), mixed by the score weights, then held to the soft ceiling and
+   capped at 100. The ceiling (migration `0141`, values in the fit's `SCORE_CURVE`) leaves a
+   score at or below its `start` (70) alone and above it makes the top harder:
+   `start + (100 - start) * ((score - start) / (100 - start)) ^ exponent` (1.6), so a mixed 90
+   reads 86 and 0 and 100 stay put. Every component's points are scaled by the same factor,
+   so the breakdown still adds up to the score;
 
 Every random draw is a hash of the seed and a name (`unit_draw`), so **the same picks
 and the same seed always give the same season**, independent of the order draws are

@@ -18,10 +18,10 @@ import unittest
 from transform import (
     AWARDS, LADDER_STEPS, SLOTS, Award, Config, Formula,
     LadderRung, Norm, OutputSpec, QbLine, RatedSeason, RealSeason, SeasonModel,
-    TeamSeason, composite, earns, expected_depth, expected_metrics, fit,
+    TeamSeason, composite, earns, effective_values, expected_depth, expected_metrics, fit,
     fit_awards, fit_distributions, fit_formulas, fit_ladder, fit_norms, fit_outputs,
     passer_rating, percentile_of, predict,
-    qb_lines_from_weeks, quantile, real_seasons, rung_chance, score, season_metrics,
+    curved, qb_lines_from_weeks, quantile, real_seasons, rung_chance, score, season_metrics,
     team_seasons_from_games, values_of,
 )
 
@@ -423,6 +423,13 @@ class FitOutputsTest(unittest.TestCase):
         self.assertGreater(perfect, best_real + 0.05)
         self.assertGreater(predict(outputs, (150,) * 6)["ypa"], perfect)
 
+    def test_the_value_curve_lowers_a_strong_build_and_leaves_a_weak_one(self):
+        outputs = fit_outputs(self.synthetic(), ypa_only())
+        curve = (70.0, 0.5)
+        self.assertEqual(predict(outputs, (50,) * 6, curve=curve), predict(outputs, (50,) * 6))
+        self.assertLess(predict(outputs, (99,) * 6, curve=curve)["ypa"], predict(outputs, (99,) * 6)["ypa"])
+        self.assertEqual(predict(outputs, (99,) * 6, curve=curve), predict(outputs, (84.5,) * 6))
+
     def test_a_better_build_never_predicts_a_worse_season_when_every_effect_is_positive(self):
         outputs = fit_outputs(self.synthetic(), ypa_only())
         low = predict(outputs, (40, 40, 40, 40, 40, 40))["ypa"]
@@ -764,6 +771,101 @@ class CompositeTest(unittest.TestCase):
         # Best possible stat line, nothing else: only the 5 of (5+3+2) counts.
         m = {"pass_yards": 1e9, "wins": -1e9, "playoff_depth": -1e9}
         self.assertAlmostEqual(score(model, m, set()), 50.0)
+
+
+class ScoreCurveTest(unittest.TestCase):
+    def with_curve(self, start, exponent):
+        return bare_model(formulas=bare_model().formulas + (
+            Formula("score_curve", "start", start), Formula("score_curve", "exponent", exponent)))
+
+    def test_a_model_without_a_curve_leaves_the_score_alone(self):
+        self.assertEqual(curved(bare_model(), 87.3), 87.3)
+
+    def test_at_or_below_the_start_the_score_is_unchanged(self):
+        model = self.with_curve(70.0, 1.5)
+        self.assertEqual(curved(model, 0.0), 0.0)
+        self.assertEqual(curved(model, 41.2), 41.2)
+        self.assertEqual(curved(model, 70.0), 70.0)
+
+    def test_above_the_start_the_top_is_harder_to_reach_and_100_stays_100(self):
+        model = self.with_curve(70.0, 1.5)
+        self.assertAlmostEqual(curved(model, 100.0), 100.0)
+        # 70 + 30 * (20 / 30) ** 1.5 = 86.32
+        self.assertAlmostEqual(curved(model, 90.0), 70.0 + 30.0 * (20.0 / 30.0) ** 1.5)
+        self.assertLess(curved(model, 90.0), 90.0)
+
+    def test_a_better_raw_score_is_never_a_worse_curved_one(self):
+        model = self.with_curve(70.0, 1.5)
+        raws = [x / 2 for x in range(0, 201)]
+        curves = [curved(model, r) for r in raws]
+        self.assertEqual(curves, sorted(curves))
+
+    def test_score_applies_the_curve_to_the_mixed_score(self):
+        table = tuple((i / 4, float(i + 1)) for i in range(5))
+        model = bare_model(distributions={"stat_line": table, "team_success": table, "awards": table},
+                           formulas=self.with_curve(30.0, 2.0).formulas)
+        m = {"pass_yards": 1e9, "wins": -1e9, "playoff_depth": -1e9}
+        # Uncurved this is 50 (see the score-weights test); 30 + 70 * (20 / 70) ** 2.
+        self.assertAlmostEqual(score(model, m, set()), 30.0 + 70.0 * (20.0 / 70.0) ** 2)
+
+    def test_the_curve_is_configured_as_two_formula_rows(self):
+        rows = fit_formulas(cfg(score_curve=(70.0, 1.5)))
+        self.assertIn(Formula("score_curve", "start", 70.0), rows)
+        self.assertIn(Formula("score_curve", "exponent", 1.5), rows)
+        self.assertFalse([f for f in fit_formulas(cfg()) if f.name == "score_curve"])
+
+    def test_a_curve_that_starts_at_100_or_never_bends_is_refused(self):
+        for bad in ((100.0, 1.5), (-1.0, 1.5), (70.0, 0.0)):
+            with self.assertRaises(ValueError):
+                fit_formulas(cfg(score_curve=bad))
+
+
+class ValueCurveTest(unittest.TestCase):
+    def test_no_curve_counts_every_value_in_full(self):
+        self.assertEqual(effective_values((25, 70, 99)), (25, 70, 99))
+
+    def test_at_or_below_the_pivot_a_value_is_unchanged(self):
+        self.assertEqual(effective_values((0, 40, 70), (70.0, 0.5)), (0, 40, 70))
+
+    def test_above_the_pivot_only_the_slope_of_each_point_counts(self):
+        self.assertEqual(effective_values((90, 99), (70.0, 0.5)), (80.0, 84.5))
+
+    def test_a_slope_of_one_is_no_curve(self):
+        self.assertEqual(effective_values((25, 80, 99), (70.0, 1.0)), (25, 80.0, 99.0))
+
+    def test_a_better_value_never_counts_for_less(self):
+        counted = effective_values(tuple(range(0, 100)), (70.0, 0.85))
+        self.assertEqual(list(counted), sorted(counted))
+
+    def test_the_curve_is_configured_as_two_formula_rows(self):
+        rows = fit_formulas(cfg(value_curve=(70.0, 0.85)))
+        self.assertIn(Formula("value_curve", "pivot", 70.0), rows)
+        self.assertIn(Formula("value_curve", "slope", 0.85), rows)
+        self.assertFalse([f for f in fit_formulas(cfg()) if f.name == "value_curve"])
+
+    def test_a_pivot_at_100_or_a_slope_that_is_not_a_share_is_refused(self):
+        for bad in ((100.0, 0.85), (-1.0, 0.85), (70.0, 0.0), (70.0, 1.2)):
+            with self.assertRaises(ValueError):
+                fit_formulas(cfg(value_curve=bad))
+
+
+class WinsLinkTest(unittest.TestCase):
+    def test_the_link_is_configured_as_one_formula_row(self):
+        rows = fit_formulas(cfg(wins_link=0.3))
+        self.assertIn(Formula("wins_link", "rho", 0.3), rows)
+        self.assertEqual(len([f for f in rows if f.name == "wins_link"]), 1)
+
+    def test_a_model_with_no_link_has_no_row(self):
+        self.assertFalse([f for f in fit_formulas(cfg()) if f.name == "wins_link"])
+        self.assertFalse([f for f in fit_formulas(cfg(wins_link=None)) if f.name == "wins_link"])
+
+    def test_zero_is_a_link_of_nothing_and_still_a_row(self):
+        self.assertIn(Formula("wins_link", "rho", 0.0), fit_formulas(cfg(wins_link=0.0)))
+
+    def test_a_correlation_outside_zero_to_one_is_refused(self):
+        for bad in (-0.1, 1.0, 1.5):
+            with self.assertRaises(ValueError):
+                fit_formulas(cfg(wins_link=bad))
 
 
 class QuantileTest(unittest.TestCase):
