@@ -19,15 +19,17 @@ import { useEffect, useState } from "react";
 import { AccountMenu } from "@/components/foundation/ui-kit/AccountMenu";
 import { FeedbackModal } from "@/components/feedback/FeedbackModal";
 import { BrandMark } from "@/components/foundation/ui-kit/BrandMark";
-import { GAMES, type Game } from "@/lib/platform/orchestration/catalog";
+import { GAMES, matchGameName, type Game } from "@/lib/platform/orchestration/catalog";
 import { playSolo } from "@/lib/platform/lobbies/actions";
 import { SOLO_SIGN_UP_HREF } from "@/lib/platform/lobbies/hosting";
 import { drawerBackdrop, drawerPanel } from "@/lib/foundation/ui-kit/motion";
 
-/** The solo-playable games, in catalog order — everything the Solo games
- *  section lists. A further live+solo game shows up here with no further
- *  change. */
-const SOLO_GAMES = GAMES.filter((game) => game.solo && game.status === "live");
+/** The solo-playable games — everything the Solo games section lists. QB
+ * Season Builder leads the shortcuts; further live solo games follow in
+ * catalog order. */
+const SOLO_GAMES = GAMES.filter((game) => game.solo && game.status === "live").toSorted(
+  (a, b) => Number(b.match === "qb_season_builder") - Number(a.match === "qb_season_builder"),
+);
 
 /**
  * The app's persistent navigation — a fixed left rail below the desktop top
@@ -284,7 +286,9 @@ function SoloGameLink({
   collapsed: boolean;
   canPlaySolo: boolean;
 }) {
-  const label = game.name.join(" ");
+  // Card titles intentionally retain their editorial casing and line breaks.
+  // Navigation needs a single, fully capitalized accessible label instead.
+  const label = game.match ? matchGameName(game.match) : game.name.join(" ");
 
   if (!canPlaySolo) {
     return (
