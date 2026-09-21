@@ -45,10 +45,6 @@ function resultRow(over: Record<string, unknown> = {}) {
       { component: "team_success", weight: 30, percentile: 0.8, points: 24 },
       { component: "awards", weight: 20, percentile: 0.97, points: 19.4 },
     ],
-    closest_season: {
-      franchise_code: "den", season: 2013, player_id: PEYTON.player_id, display_name: "Peyton Manning",
-      pass_yards: 5477, pass_tds: 55, interceptions: 10, wins: 13, losses: 3,
-    },
     picks: [
       { round: 1, slot: "accuracy", franchise_code: "den", season: 2013, ...PEYTON, value: 91 },
       { round: 2, slot: "arm_talent", franchise_code: "kan", season: 2018, ...MAHOMES, value: 97 },
@@ -148,7 +144,7 @@ describe("QbSeasonBuilderResult — the staged reveal", () => {
     expect(screen.queryByRole("region", { name: /breakdown/i })).not.toBeInTheDocument();
     step();
     expect(stages()).toEqual([
-      "Stat line", "Record", "Playoffs", "Awards", "Score", "Score breakdown", "Your six picks", "Closest real season",
+      "Stat line", "Record", "Playoffs", "Awards", "Score", "Score breakdown", "Your six picks",
     ]);
   });
 
@@ -177,7 +173,7 @@ describe("QbSeasonBuilderResult — the staged reveal", () => {
     renderResult({ staged: true });
 
     // Straight to the final state: no first stage waiting on a timer.
-    expect(stages()).toContain("Closest real season");
+    expect(stages()).toContain("Your six picks");
     expect(screen.queryByRole("button", { name: /skip/i })).not.toBeInTheDocument();
   });
 
@@ -206,7 +202,7 @@ describe("QbSeasonBuilderResult — the staged reveal", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
     const first = renderResult({ staged: true });
     step(); step(); step(); step(); step();
-    expect(stages()).toContain("Closest real season");
+    expect(stages()).toContain("Your six picks");
     first.unmount();
 
     renderResult({ staged: true });
@@ -223,7 +219,7 @@ describe("QbSeasonBuilderResult — skipping", () => {
     await user.click(screen.getByRole("button", { name: /skip/i }));
 
     expect(stages()).toEqual([
-      "Stat line", "Record", "Playoffs", "Awards", "Score", "Score breakdown", "Your six picks", "Closest real season",
+      "Stat line", "Record", "Playoffs", "Awards", "Score", "Score breakdown", "Your six picks",
     ]);
     // Nothing left to skip.
     expect(screen.queryByRole("button", { name: /skip/i })).not.toBeInTheDocument();
@@ -237,7 +233,7 @@ describe("QbSeasonBuilderResult — skipping", () => {
 
     renderResult({ staged: true });
 
-    expect(stages()).toContain("Closest real season");
+    expect(stages()).toContain("Your six picks");
   });
 });
 
@@ -287,15 +283,6 @@ describe("QbSeasonBuilderResult — the final state", () => {
     expect(picks[5]).toHaveTextContent(/supporting cast/i);
     expect(picks[5]).toHaveTextContent("New England Patriots");
     expect(picks[5]).toHaveTextContent("93");
-  });
-
-  it("names the closest real season", () => {
-    renderResult();
-
-    const closest = within(screen.getByRole("region", { name: "Closest real season" }));
-    expect(closest.getByText(/Peyton Manning/)).toBeInTheDocument();
-    expect(closest.getByText(/2013 Denver Broncos/)).toBeInTheDocument();
-    expect(closest.getByText(/5,477/)).toBeInTheDocument();
   });
 
   it("never says where the ratings came from", () => {
@@ -363,7 +350,7 @@ describe("QbSeasonBuilderResult — read-only", () => {
     renderResult({ staged: false });
 
     expect(stages()).toEqual([
-      "Stat line", "Record", "Playoffs", "Awards", "Score", "Score breakdown", "Your six picks", "Closest real season",
+      "Stat line", "Record", "Playoffs", "Awards", "Score", "Score breakdown", "Your six picks",
     ]);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });

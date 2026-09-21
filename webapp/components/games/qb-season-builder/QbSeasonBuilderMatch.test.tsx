@@ -3,9 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 const refresh = vi.fn();
+const timedReveal = vi.hoisted(() => ({ revealed: true }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
+}));
+
+vi.mock("@/lib/foundation/ui-kit/useTimedReveal", () => ({
+  useTimedReveal: () => ({ revealed: timedReveal.revealed }),
 }));
 
 import { QbSeasonBuilderMatch } from "@/components/games/qb-season-builder/QbSeasonBuilderMatch";
@@ -28,7 +33,7 @@ import { supabaseMock } from "@/test/factories";
 
 const MATCH = "22222222-2222-2222-2222-222222222222";
 
-const PEYTON = { player_id: "00-0010346", display_name: "Peyton Manning" };
+const PEYTON = { player_id: "00-0010346", display_name: "Peyton Manning", headshot_url: "https://example.test/peyton.png" };
 const BRADY = { player_id: "00-0019596", display_name: "Tom Brady" };
 
 /** The five qualities of a quarterback, or null the way a hidden run sends them. */
@@ -110,6 +115,12 @@ function roundTwo(over: Partial<BoardRow> = {}): BoardRow {
 }
 
 describe("QbSeasonBuilderMatch — picking", () => {
+  it("shows a quarterback's portrait beside their name", () => {
+    renderScreen(boardOf());
+
+    expect(screen.getByRole("group", { name: "Peyton Manning" }).querySelector("img")).toHaveAttribute("src", PEYTON.headshot_url);
+  });
+
   it("lets a quality of a quarterback be chosen, says which slot it fills, and locks it in through the game API", async () => {
     const user = userEvent.setup();
     const { supabase } = renderScreen(boardOf());
@@ -163,6 +174,17 @@ describe("QbSeasonBuilderMatch — picking", () => {
 });
 
 describe("QbSeasonBuilderMatch — the respin", () => {
+  it("keeps run controls in the sidebar and confirms before leaving for a new season", async () => {
+    const user = userEvent.setup();
+    renderScreen(boardOf());
+
+    const controls = screen.getByRole("complementary", { name: /current run/i });
+    expect(within(controls).getByRole("button", { name: /respin team/i })).toBeEnabled();
+    await user.click(within(controls).getByRole("button", { name: /new season/i }));
+    expect(within(controls).getByRole("link", { name: /choose new season/i })).toHaveAttribute("href", "/solo");
+    expect(within(controls).getByRole("button", { name: /keep this run/i })).toBeInTheDocument();
+  });
+
   it("rerolls the whole spin through the game API and shows the respin as spent", async () => {
     const user = userEvent.setup();
     const { supabase } = renderScreen(boardOf());
@@ -362,7 +384,24 @@ describe("QbSeasonBuilderMatch — all six slots filled", () => {
 });
 
 describe("QbSeasonBuilderMatch — the spin", () => {
-  it("shows the round, the spun team-season and its qualifying quarterbacks", () => {
+  it("keeps quarterback options hidden until the team spinner finishes", () => {
+    timedReveal.revealed = false;
+    const initial = boardOf();
+    const { container, rerender } = renderScreen(initial);
+
+    expect(container.querySelector(".animate-reel-spin")).toBeInTheDocument();
+    expect(container.querySelector(".animate-reel-spin")).toHaveStyle({ animationDuration: "2000ms" });
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /lock in/i })).not.toBeInTheDocument();
+
+    timedReveal.revealed = true;
+    rerender(<QbSeasonBuilderMatch matchId={MATCH} initial={initial} isGuest={false} />);
+
+    expect(screen.getByText("Denver Broncos")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /accuracy/i })).toBeEnabled();
+  });
+
+  it("shows the round, the spun team-season and its qualifying quarterbacks", async () => {
     renderScreen(boardOf({
       current_round: 2,
       options: {
@@ -379,7 +418,25 @@ describe("QbSeasonBuilderMatch — the spin", () => {
     expect(screen.getByText("2013")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Peyton Manning" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Tom Brady" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /supporting cast/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("radio", { name: /supporting cast/i })).toHaveLength(2);
+  });
+
+  it("shows Supporting Cast in every quarterback card and keeps those copies in sync", async () => {
+    const user = userEvent.setup();
+    renderScreen(boardOf({
+      options: {
+        quarterbacks: [
+          { ...PEYTON, values: values(80, true) },
+          { ...BRADY, values: values(70, true) },
+        ],
+        supporting_cast: { value: 71 },
+      },
+    }));
+
+    const supportingCast = screen.getAllByRole("radio", { name: /supporting cast/i });
+    expect(supportingCast).toHaveLength(2);
+    await user.click(supportingCast[1]!);
+    supportingCast.forEach((radio) => expect(radio).toBeChecked());
   });
 
   it("offers each of a quarterback's five qualities as its own option", () => {
@@ -405,6 +462,16 @@ describe("QbSeasonBuilderMatch — the spin", () => {
     expect(slots.map((slot) => within(slot).queryByText("Open") !== null)).toEqual([false, true, true, true, true, false]);
     expect(within(slots[0]).getByText("Patrick Mahomes")).toBeInTheDocument();
     expect(within(slots[5]).getByText("New England Patriots")).toBeInTheDocument();
+  });
+
+  it("shows a picked quarterback's portrait beside their build source", () => {
+    renderScreen(boardOf({
+      current_round: 2,
+      picks: [{ round: 1, slot: "accuracy", franchise_code: "den", season: 2013, ...PEYTON, value: 81 }],
+    }));
+
+    const accuracy = within(screen.getByRole("list", { name: "Your build" })).getAllByRole("listitem")[0];
+    expect(accuracy?.querySelector("img")).toHaveAttribute("src", PEYTON.headshot_url);
   });
 });
 

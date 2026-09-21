@@ -164,9 +164,9 @@ select is(
   (select options from qb_season_builder.state((select v from tests.fx where k = 'm'))),
   '{
     "quarterbacks": [
-      {"player_id": "FolsNi00", "display_name": "Nick Foles",
+      {"player_id": "FolsNi00", "display_name": "Nick Foles", "headshot_url": null,
        "values": {"accuracy": 78, "arm_talent": 74, "mobility": 45, "iq": 80, "build": 68}},
-      {"player_id": "WentCa00", "display_name": "Carson Wentz",
+      {"player_id": "WentCa00", "display_name": "Carson Wentz", "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66",
        "values": {"accuracy": 87, "arm_talent": 90, "mobility": 79, "iq": 83, "build": 86}}
     ],
     "supporting_cast": {"value": 69}

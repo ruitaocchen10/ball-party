@@ -50,7 +50,8 @@ select ok(
 select is(
   (select picks from qb_season_builder.pick((select v from tests.fx where k = 'h'), 'accuracy', 'WentCa00')),
   '[{"round": 1, "slot": "accuracy", "franchise_code": "phi", "season": 2017,
-     "player_id": "WentCa00", "display_name": "Carson Wentz", "value": null}]'::jsonb,
+     "player_id": "WentCa00", "display_name": "Carson Wentz", "value": null,
+     "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"}]'::jsonb,
   'a hidden pick records what was taken from whom but not what it was worth'
 );
 

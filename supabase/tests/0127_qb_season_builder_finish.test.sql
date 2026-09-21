@@ -20,6 +20,16 @@ values ('a', tests.mkuser('ava')),
 
 select tests.act_as_admin();
 select tests.qsb_fixtures();
+-- Migration 0128 draws every spin from a team-season not yet shown in the run, so a
+-- run of six needs a pool of at least seven. The shared fixtures have five; these two
+-- keep the pool from running dry when a test steers the spins by hand.
+insert into qb_season_builder_private.team_seasons (franchise_code, season, supporting_cast)
+values ('gnb', 2011, 87), ('sea', 2015, 78);
+insert into qb_season_builder_private.qb_seasons
+  (franchise_code, season, player_id, display_name, accuracy, arm_talent, mobility, iq, build)
+values
+  ('gnb', 2011, 'RodgAa00', 'Aaron Rodgers', 98, 96, 92, 98, 39),
+  ('sea', 2015, 'WilsRu00', 'Russell Wilson', 93, 83, 91, 87, 62);
 select tests.qsb_model_fixtures();
 
 -- ------------------------------------------------------------------ finishing --
@@ -435,8 +445,8 @@ select is(
 select is(
   (select array_agg(k order by k)
      from jsonb_object_keys(qb_season_builder.result((select v from tests.fx where k = 'r')) -> 'picks' -> 0) k),
-  array['display_name', 'franchise_code', 'player_id', 'round', 'season', 'slot', 'value'],
-  'a pick in the recap says what was taken from whom and what it was worth, and nothing else'
+  array['display_name', 'franchise_code', 'headshot_url', 'player_id', 'round', 'season', 'slot', 'value'],
+  'a pick in the recap says what was taken from whom, what it was worth and their headshot, and nothing else'
 );
 select ok(
   (select qb_season_builder.result((select v from tests.fx where k = 'r'))::text !~* '(seed|madden|source)'),

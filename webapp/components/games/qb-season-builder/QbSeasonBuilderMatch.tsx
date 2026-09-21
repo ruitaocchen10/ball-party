@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
-import { Button } from "@/components/foundation/ui-kit/Button";
+import { Button, ButtonLink } from "@/components/foundation/ui-kit/Button";
 import { Concealed } from "@/components/foundation/ui-kit/Concealed";
 import { DashboardRail } from "@/components/foundation/ui-kit/DashboardRail";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
+import { SlotReel } from "@/components/foundation/ui-kit/SlotReel";
 import { TeamLogo } from "@/components/foundation/ui-kit/TeamLogo";
-import { franchiseName } from "@/lib/foundation/content/nfl/franchises";
+import { PlayerPortrait } from "@/components/foundation/content/prompts/PlayerPortrait";
+import { FRANCHISE_NAMES, franchiseName } from "@/lib/foundation/content/nfl/franchises";
+import { stableReelDecoys } from "@/lib/foundation/ui-kit/reel";
+import { useTimedReveal } from "@/lib/foundation/ui-kit/useTimedReveal";
 import {
   QUALITIES,
   SLOTS,
@@ -28,6 +32,9 @@ import { createClient } from "@/lib/supabase/client";
 type Choice = { slot: Slot; playerId: string | null };
 
 type Move = "pick" | "respin";
+
+/** Long enough to read the reel, short enough not to interrupt each pick. */
+const SPIN_REVEAL_MS = 2_000;
 
 /**
  * The pick screen of a QB Season Builder run: this round's spin, what it
@@ -139,19 +146,25 @@ export function QbSeasonBuilderMatch({
             title="QB Season Builder"
             description={`Round ${board.currentRound} of ${board.roundCount} · Ratings ${board.mode}`}
           />
-          {board.spin === null ? <FinishedPanel board={board} pending={pending} error={error} onFinish={finish} /> : (
+          {board.spin === null ? (
+            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+              <FinishedPanel board={board} pending={pending} error={error} onFinish={finish} />
+              <BuildCard board={board} isGuest={isGuest} />
+            </div>
+          ) : (
             <SpinPanel
               board={board}
               spin={board.spin}
               choice={choice}
               pending={pending}
               error={error}
+              isGuest={isGuest}
               onChoose={setChoice}
               onPlay={play}
             />
           )}
         </div>
-        <BuildRail board={board} isGuest={isGuest} />
+        <RunControlRail board={board} pending={pending} onRespin={() => play("respin")} />
       </div>
     </main>
   );
@@ -163,6 +176,7 @@ function SpinPanel({
   choice,
   pending,
   error,
+  isGuest,
   onChoose,
   onPlay,
 }: {
@@ -171,6 +185,7 @@ function SpinPanel({
   choice: Choice | null;
   pending: boolean;
   error: string | null;
+  isGuest: boolean;
   onChoose: (choice: Choice) => void;
   onPlay: (move: Move) => void;
 }) {
@@ -179,66 +194,95 @@ function SpinPanel({
     ? spin.quarterbacks.find((quarterback) => quarterback.playerId === choice.playerId)?.displayName
     : franchiseName(spin.franchiseCode);
   const taken = (slot: Slot) => pickForSlot(board, slot) !== null;
+  const spinKey = `${board.currentRound}-${spin.franchiseCode}-${spin.season}-${board.respinUsed}`;
+  // Entering a QB run is the first deal, unlike a viewer reconnecting to a
+  // live multiplayer turn, so its initial team-year deserves the same reel.
+  const { revealed } = useTimedReveal(spinKey, SPIN_REVEAL_MS, false);
+  const reelItems = useMemo(() => {
+    const decoys = stableReelDecoys(
+      Object.entries(FRANCHISE_NAMES).filter(([code]) => code !== spin.franchiseCode),
+      spinKey,
+      7,
+    );
+    return [...decoys, [spin.franchiseCode, franchiseName(spin.franchiseCode)] as [string, string]];
+  }, [spin.franchiseCode, spinKey]);
 
   return (
     <section aria-label="The spin" className="mt-5 flex w-full max-w-[760px] flex-col gap-4">
-      <div className="flex items-center gap-3 border border-line bg-surface-raised p-4">
-        <TeamLogo code={spin.franchiseCode} className="h-12 w-12" />
-        <div>
-          <p className="font-slab text-[27px] leading-none uppercase">{franchiseName(spin.franchiseCode)}</p>
-          <p className="mt-1 font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{spin.season}</p>
+      {revealed ? (
+        <div className="flex items-center gap-3 border border-line bg-surface-raised p-4">
+          <TeamSpinIdentity code={spin.franchiseCode} name={franchiseName(spin.franchiseCode)} season={spin.season} />
         </div>
-      </div>
+      ) : (
+        <div className="border border-line bg-surface-raised p-4">
+          <SlotReel
+            items={reelItems}
+            durationMs={SPIN_REVEAL_MS}
+            reelKey={spinKey}
+            viewportClassName="h-12"
+            rowClassName="h-12 items-center gap-3"
+            itemKey={([code], index) => `${code}-${index}`}
+            renderItem={([code, name]) => (
+              <TeamSpinIdentity code={code} name={name} season={spin.season} />
+            )}
+          />
+        </div>
+      )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {spin.quarterbacks.map((quarterback) => (
-          <fieldset key={quarterback.playerId} className="border border-line bg-surface-raised p-4">
-            <legend className="px-1 font-slab text-xl uppercase">{quarterback.displayName}</legend>
-            <div className="flex flex-col gap-1.5">
-              {QUALITIES.map((quality) => (
-                <OptionRow
-                  key={quality}
-                  label={SLOT_LABELS[quality]}
-                  rating={quarterback.values?.[quality] ?? null}
-                  disabled={taken(quality) || pending}
-                  checked={choice?.slot === quality && choice.playerId === quarterback.playerId}
-                  onChoose={() => onChoose({ slot: quality, playerId: quarterback.playerId })}
-                />
+      {revealed ? (
+        <>
+          <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+            <div className="flex flex-col gap-4">
+              {spin.quarterbacks.map((quarterback) => (
+              <fieldset key={quarterback.playerId} className="border border-line bg-surface-raised p-4">
+                <legend className="flex items-center gap-2 px-1 font-slab text-xl uppercase">
+                  <span aria-hidden="true">
+                    <PlayerPortrait name={quarterback.displayName} headshotUrl={quarterback.headshotUrl} className="h-9 w-9 text-[11px]" />
+                  </span>
+                  {quarterback.displayName}
+                </legend>
+                <div className="flex flex-col gap-1.5">
+                  {QUALITIES.map((quality) => (
+                    <OptionRow
+                      key={quality}
+                      label={SLOT_LABELS[quality]}
+                      rating={quarterback.values?.[quality] ?? null}
+                      disabled={taken(quality) || pending}
+                      checked={choice?.slot === quality && choice.playerId === quarterback.playerId}
+                      onChoose={() => onChoose({ slot: quality, playerId: quarterback.playerId })}
+                    />
+                  ))}
+                </div>
+                <div className="mt-4 border-t border-line pt-4">
+                  <OptionRow
+                    label={SLOT_LABELS.supporting_cast}
+                    rating={spin.supportingCast}
+                    name={`supporting-cast-${quarterback.playerId}`}
+                    disabled={taken("supporting_cast") || pending}
+                    checked={choice?.slot === "supporting_cast"}
+                    onChoose={() => onChoose({ slot: "supporting_cast", playerId: null })}
+                  />
+                </div>
+              </fieldset>
               ))}
             </div>
-          </fieldset>
-        ))}
-        <fieldset className="border border-line bg-surface-raised p-4">
-          <legend className="px-1 font-slab text-xl uppercase">The team</legend>
-          <OptionRow
-            label={SLOT_LABELS.supporting_cast}
-            rating={spin.supportingCast}
-            disabled={taken("supporting_cast") || pending}
-            checked={choice?.slot === "supporting_cast"}
-            onChoose={() => onChoose({ slot: "supporting_cast", playerId: null })}
-          />
-        </fieldset>
-      </div>
+            <BuildCard board={board} isGuest={isGuest} />
+          </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-        <p role="status" className="min-h-5 text-sm leading-5 text-fg-muted">
-          {choice ? `Taking ${SLOT_LABELS[choice.slot]} from ${chosenFrom}` : "Choose one thing from this spin."}
-        </p>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            fullWidth={false}
-            disabled={board.respinUsed || pending}
-            onClick={() => onPlay("respin")}
-          >
-            {board.respinUsed ? "Respin used" : "Respin"}
-          </Button>
-          <Button type="button" fullWidth={false} disabled={!choice || pending} onClick={() => onPlay("pick")}>
-            Lock in pick
-          </Button>
-        </div>
-      </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+            <p role="status" className="min-h-5 text-sm leading-5 text-fg-muted">
+              {choice ? `Taking ${SLOT_LABELS[choice.slot]} from ${chosenFrom}` : "Choose one thing from this spin."}
+            </p>
+            <div className="flex gap-2">
+              <Button type="button" fullWidth={false} disabled={!choice || pending} onClick={() => onPlay("pick")}>
+                Lock in pick
+              </Button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <p role="status" className="text-sm text-fg-muted">Finding this team&apos;s quarterback options…</p>
+      )}
       <AnimatedMessage role="alert" className="text-sm text-hidden-text">
         {error}
       </AnimatedMessage>
@@ -246,16 +290,31 @@ function SpinPanel({
   );
 }
 
+/** One reel row and the landed state deliberately share this exact layout. */
+function TeamSpinIdentity({ code, name, season }: { code: string; name: string; season: number }) {
+  return (
+    <>
+      <TeamLogo code={code} className="h-12 w-12" />
+      <div>
+        <p className="font-slab text-[27px] leading-none uppercase">{name}</p>
+        <p className="mt-1 font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{season}</p>
+      </div>
+    </>
+  );
+}
+
 /** One thing a spin offers. A native radio so the group behaves as one choice. */
 function OptionRow({
   label,
   rating,
+  name = "option",
   disabled,
   checked,
   onChoose,
 }: {
   label: string;
   rating: number | null;
+  name?: string;
   disabled: boolean;
   checked: boolean;
   onChoose: () => void;
@@ -263,7 +322,7 @@ function OptionRow({
   return (
     <label className="flex items-center justify-between gap-3 border border-line px-2.5 py-2">
       <span className="flex items-center gap-2">
-        <input type="radio" name="option" checked={checked} disabled={disabled} onChange={onChoose} />
+        <input type="radio" name={name} checked={checked} disabled={disabled} onChange={onChoose} />
         <span className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase">{label}</span>
       </span>
       {rating === null ? (
@@ -314,9 +373,11 @@ function FinishedPanel({
   );
 }
 
-function BuildRail({ board, isGuest }: { board: Board; isGuest: boolean }) {
+function BuildCard({ board, isGuest }: { board: Board; isGuest: boolean }) {
   return (
-    <DashboardRail headingId="qb-build-heading" eyebrow="Your quarterback" title="Your build">
+    <section aria-labelledby="qb-build-heading" className="border border-line bg-surface-raised p-4 shadow-well">
+      <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Your quarterback</p>
+      <h2 id="qb-build-heading" className="mt-1 font-slab text-[27px] leading-none uppercase">Your build</h2>
       <ol aria-label="Your build" className="mt-4 divide-y divide-line border-t border-line">
         {SLOTS.map((slot) => (
           <SlotRow key={slot} slot={slot} board={board} />
@@ -331,6 +392,35 @@ function BuildRail({ board, isGuest }: { board: Board; isGuest: boolean }) {
           to keep your runs.
         </p>
       ) : null}
+    </section>
+  );
+}
+
+function RunControlRail({ board, pending, onRespin }: { board: Board; pending: boolean; onRespin: () => void }) {
+  const [confirmingNewSeason, setConfirmingNewSeason] = useState(false);
+
+  return (
+    <DashboardRail headingId="qb-run-control-heading" eyebrow="Run control" title="Current run">
+      <p className="mt-4 font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{board.currentRound} / {board.roundCount} rounds · mode: {board.mode}</p>
+      {board.spin !== null ? (
+        <div className="mt-4 border-t border-line pt-3">
+          <Button type="button" variant="ghost" disabled={board.respinUsed || pending} onClick={onRespin}>
+            {board.respinUsed ? "Respin used" : "Respin team"}
+          </Button>
+          <p className="mt-2 text-[12px] leading-4 text-fg-muted">One reroll per season.</p>
+        </div>
+      ) : null}
+      <div className="mt-4 border-t border-line pt-3">
+        {confirmingNewSeason ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-[12px] leading-4 text-fg-muted">Leave this run and choose a new season?</p>
+            <ButtonLink href="/solo" variant="ghost">Choose new season</ButtonLink>
+            <Button type="button" variant="ghost" onClick={() => setConfirmingNewSeason(false)}>Keep this run</Button>
+          </div>
+        ) : (
+          <Button type="button" variant="ghost" onClick={() => setConfirmingNewSeason(true)}>New season</Button>
+        )}
+      </div>
     </DashboardRail>
   );
 }
@@ -342,12 +432,15 @@ function SlotRow({ slot, board }: { slot: Slot; board: Board }) {
     <li className="flex items-baseline justify-between gap-3 py-2.5">
       <span className="font-mono text-[10px] font-bold tracking-[0.13em] uppercase">{SLOT_LABELS[slot]}</span>
       {pick ? (
-        <span className="flex flex-col items-end text-right text-[13px] leading-4">
-          <span>{pick.displayName ?? franchiseName(pick.franchiseCode)}</span>
-          <span className="font-mono text-[10px] text-fg-muted">
-            {pick.displayName ? `${pick.season} ${franchiseName(pick.franchiseCode)}` : pick.season}
+        <span className="flex items-start gap-2">
+          {pick.displayName ? <PlayerPortrait name={pick.displayName} headshotUrl={pick.headshotUrl} className="h-7 w-7 text-[8px]" /> : null}
+          <span className="flex flex-col items-end text-right text-[13px] leading-4">
+            <span>{pick.displayName ?? franchiseName(pick.franchiseCode)}</span>
+            <span className="font-mono text-[10px] text-fg-muted">
+              {pick.displayName ? `${pick.season} ${franchiseName(pick.franchiseCode)}` : pick.season}
+            </span>
+            {pick.value !== null ? <span className="font-slab text-lg tabular-nums">{pick.value}</span> : null}
           </span>
-          {pick.value !== null ? <span className="font-slab text-lg tabular-nums">{pick.value}</span> : null}
         </span>
       ) : (
         <span className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Open</span>

@@ -4,8 +4,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 
 /**
  * The staged reveal of a finished season: stat line, record, playoffs, awards,
- * then the score, and only then the details that explain it — the breakdown,
- * the per-pick recap and the closest real season. The score gets a beat of its
+ * then the score, and only then the details that explain it — the breakdown
+ * and per-pick recap. The score gets a beat of its
  * own, because it is the payoff the four steps before it build to.
  *
  * Like sabotage draft's `useTurnReveal` and the auction's `useLotReveal`, this

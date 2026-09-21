@@ -26,7 +26,6 @@ const result: SeasonResult = {
   awards: { mvp: true, opoy: false, all_pro: true, pro_bowl: true, sb_mvp: false },
   score: 88.4,
   breakdown: [],
-  closestSeason: { franchiseCode: "den", season: 2013, displayName: "Peyton Manning", passYards: 5477, passTds: 55, interceptions: 10, wins: 13, losses: 3 },
   picks: [],
 };
 

@@ -34,8 +34,8 @@ const oneDecimal = (value: number) => value.toFixed(1);
  * anyone can open by its link.
  *
  * `staged` is the difference. The player's own reveal plays stat line, record,
- * playoffs, awards, then the score, and only then shows the breakdown, the
- * recap and the closest real season; anyone else gets all of it at once. A
+ * playoffs, awards, then the score, and only then shows the breakdown and
+ * recap; anyone else gets all of it at once. A
  * reveal that has been watched through, or skipped, does not play again on a
  * reload of the same run in this browser.
  *
@@ -93,7 +93,6 @@ export function QbSeasonBuilderResult({
           <div className="mt-4 flex w-full max-w-[760px] flex-col gap-4">
             <Breakdown result={result} />
             <Recap picks={result.picks} />
-            <Closest result={result} />
             {result.mode === "hidden" && shown ? <EverythingSeen shown={shown} picks={result.picks} /> : null}
             <ResultFooter result={result} personalBest={personalBest} isGuest={isGuest} staged={staged} />
           </div>
@@ -229,21 +228,6 @@ function Recap({ picks }: { picks: DraftPick[] }) {
           </li>
         ))}
       </ol>
-    </Panel>
-  );
-}
-
-function Closest({ result }: { result: SeasonResult }) {
-  const real = result.closestSeason;
-  return (
-    <Panel label="Closest real season">
-      <p className="mt-2 text-sm leading-6">
-        <span className="font-slab text-xl uppercase">{real.displayName}</span>,{" "}
-        <span>{seasonOf(real)}</span>
-        <span className="text-fg-muted">
-          {" "}— {thousands(real.passYards)} yards, {real.passTds} TD, {real.interceptions} INT, {real.wins}–{real.losses}
-        </span>
-      </p>
     </Panel>
   );
 }

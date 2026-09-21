@@ -67,17 +67,6 @@ export type ScoreComponent = {
   points: number;
 };
 
-export type ClosestSeason = {
-  franchiseCode: string;
-  season: number;
-  displayName: string;
-  passYards: number;
-  passTds: number;
-  interceptions: number;
-  wins: number;
-  losses: number;
-};
-
 export type SeasonResult = {
   matchId: string;
   mode: "visible" | "hidden";
@@ -87,7 +76,6 @@ export type SeasonResult = {
   awards: Record<Award, boolean>;
   score: number;
   breakdown: ScoreComponent[];
-  closestSeason: ClosestSeason;
   picks: DraftPick[];
 };
 
@@ -124,13 +112,6 @@ export function resultFromJson(json: unknown): SeasonResult | null {
     breakdown.push({ component: raw.component, ...parts });
   }
 
-  const closest = json.closest_season;
-  const closestNumbers = numbers(closest, ["season", "pass_yards", "pass_tds", "interceptions", "wins", "losses"] as const);
-  if (
-    !closestNumbers || !isObject(closest) ||
-    typeof closest.franchise_code !== "string" || typeof closest.display_name !== "string"
-  ) return null;
-
   const picks = picksFromJson(json.picks);
   if (picks === null) return null;
 
@@ -152,16 +133,6 @@ export function resultFromJson(json: unknown): SeasonResult | null {
     awards,
     score: json.score,
     breakdown,
-    closestSeason: {
-      franchiseCode: closest.franchise_code,
-      season: closestNumbers.season,
-      displayName: closest.display_name,
-      passYards: closestNumbers.pass_yards,
-      passTds: closestNumbers.pass_tds,
-      interceptions: closestNumbers.interceptions,
-      wins: closestNumbers.wins,
-      losses: closestNumbers.losses,
-    },
     picks,
   };
 }

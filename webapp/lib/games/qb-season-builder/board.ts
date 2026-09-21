@@ -38,6 +38,8 @@ export const SLOT_LABELS: Record<Slot, string> = {
 export type Quarterback = {
   playerId: string;
   displayName: string;
+  /** Null when no portrait is available for this quarterback. */
+  headshotUrl: string | null;
   /** Null when the run is hidden and not yet finished. */
   values: Record<Quality, number> | null;
 };
@@ -58,6 +60,8 @@ export type DraftPick = {
   /** Null for the Supporting Cast, whose source is the team. */
   playerId: string | null;
   displayName: string | null;
+  /** Null for Supporting Cast or when the portrait dataset has no match. */
+  headshotUrl: string | null;
   value: number | null;
 };
 
@@ -135,6 +139,7 @@ function optionsFromJson(json: unknown): Pick<Spin, "quarterbacks" | "supporting
     quarterbacks.push({
       playerId: raw.player_id,
       displayName: raw.display_name,
+      headshotUrl: typeof raw.headshot_url === "string" ? raw.headshot_url : null,
       values: qualityValues(raw.values),
     });
   }
@@ -183,6 +188,7 @@ export function picksFromJson(json: unknown): DraftPick[] | null {
       season: raw.season,
       playerId: typeof raw.player_id === "string" ? raw.player_id : null,
       displayName: typeof raw.display_name === "string" ? raw.display_name : null,
+      headshotUrl: typeof raw.headshot_url === "string" ? raw.headshot_url : null,
       value: numberOrNull(raw.value),
     });
   }

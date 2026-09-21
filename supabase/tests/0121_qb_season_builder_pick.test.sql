@@ -30,7 +30,8 @@ select tests.act_as((select v from tests.fx where k = 'a'));
 select is(
   (select picks from qb_season_builder.pick((select v from tests.fx where k = 'm'), 'accuracy', 'WentCa00')),
   '[{"round": 1, "slot": "accuracy", "franchise_code": "phi", "season": 2017,
-     "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 87}]'::jsonb,
+     "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 87,
+     "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"}]'::jsonb,
   'picking one quality of a quarterback on the spin fills that slot with his value'
 );
 select is(
@@ -142,12 +143,12 @@ select is(
 select is(
   (select picks from qb_season_builder.pick((select v from tests.fx where k = 'm'), 'build', 'WentCa00')),
   '[
-    {"round": 1, "slot": "accuracy",        "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 87},
+    {"round": 1, "slot": "accuracy",        "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 87, "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"},
     {"round": 2, "slot": "iq",              "franchise_code": "phi", "season": 2017, "player_id": "FolsNi00", "display_name": "Nick Foles",   "value": 80},
     {"round": 3, "slot": "supporting_cast", "franchise_code": "phi", "season": 2017, "player_id": null,       "display_name": null,           "value": 69},
-    {"round": 4, "slot": "mobility",        "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 79},
+    {"round": 4, "slot": "mobility",        "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 79, "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"},
     {"round": 5, "slot": "arm_talent",      "franchise_code": "phi", "season": 2017, "player_id": "FolsNi00", "display_name": "Nick Foles",   "value": 74},
-    {"round": 6, "slot": "build",           "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 86}
+    {"round": 6, "slot": "build",           "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 86, "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"}
   ]'::jsonb,
   'six picks fill six slots, each with the value of the source it took'
 );
