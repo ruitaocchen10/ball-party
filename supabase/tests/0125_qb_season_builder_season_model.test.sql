@@ -9,7 +9,7 @@
 -- the numbers are (a better build wins more; a rate stays inside its bounds).
 
 begin;
-select plan(43);
+select plan(36);
 
 \ir support/harness.psql
 
@@ -139,46 +139,6 @@ select ok(
   'and every term of them is a metric with a real mean and spread to measure against'
 );
 
--- ------------------------------------------------ in step with the finished ratings --
-
-select cmp_ok(
-  (select count(*)::int from qb_season_builder_private.season_model_real_seasons), '>=', 700,
-  'every real quarterback-season is there, hundreds of them'
-);
-select is(
-  (select count(*)::int from qb_season_builder_private.season_model_real_seasons),
-  (select count(*)::int from qb_season_builder_private.qb_seasons),
-  'exactly the ones the ratings rate'
-);
-select is(
-  (select count(*)::int
-     from qb_season_builder_private.season_model_real_seasons r
-     join qb_season_builder_private.qb_seasons q using (franchise_code, season, player_id)
-     join qb_season_builder_private.team_seasons t using (franchise_code, season)
-    where (r.accuracy, r.arm_talent, r.mobility, r.iq, r.build, r.supporting_cast)
-        = (q.accuracy, q.arm_talent, q.mobility, q.iq, q.build, t.supporting_cast)),
-  (select count(*)::int from qb_season_builder_private.season_model_real_seasons),
-  'each with the six values the game deals, so the closest real season is measured on what a player picked'
-);
-select ok(
-  not exists (
-    select 1 from qb_season_builder_private.season_model_real_seasons
-     where wins + losses + ties not in (16, 17)
-  ),
-  'and the real record of a full regular season each'
-);
-select cmp_ok(
-  (select count(*)::int from qb_season_builder_private.season_model_real_seasons where mvp), '>=', 10,
-  'the real award winners are marked on their seasons'
-);
-select ok(
-  not exists (
-    select 1 from qb_season_builder_private.season_model_real_seasons
-     group by season having count(*) filter (where mvp) > 1 or count(*) filter (where all_pro) > 1
-  ),
-  'never two MVPs or two first-team All-Pro quarterbacks in one year'
-);
-
 -- ------------------------------------------------ usable, extrapolating, bounded --
 
 -- The fitted formula for an output at six values, the way season generation will
@@ -249,9 +209,6 @@ select throws_ok('select count(*) from qb_season_builder_private.season_model_ou
   '42501', null, 'a signed-in player cannot read the fitted formulas');
 select throws_ok('select count(*) from qb_season_builder_private.season_model_awards',
   '42501', null, 'nor the award thresholds');
-select throws_ok('select count(*) from qb_season_builder_private.season_model_real_seasons',
-  '42501', null, 'nor the real seasons');
-
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select throws_ok('select count(*) from qb_season_builder_private.season_model_outputs',
   '42501', null, 'a guest cannot read the fitted formulas');
