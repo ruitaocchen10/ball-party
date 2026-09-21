@@ -20,7 +20,7 @@ from transform import (
     LadderRung, Norm, OutputSpec, QbLine, RatedSeason, RealSeason, SeasonModel,
     TeamSeason, composite, earns, expected_depth, expected_metrics, fit,
     fit_awards, fit_distributions, fit_formulas, fit_ladder, fit_norms, fit_outputs,
-    nearest_real_seasons, passer_rating, percentile_of, predict,
+    passer_rating, percentile_of, predict,
     qb_lines_from_weeks, quantile, real_seasons, score, season_metrics,
     team_seasons_from_games, values_of,
 )
@@ -663,7 +663,7 @@ def bare_model(**over):
             Formula("score", "stat_line", 5.0), Formula("score", "team_success", 3.0),
             Formula("score", "awards", 2.0),
         ),
-        awards=(), distributions={}, real=(),
+        awards=(), distributions={},
     )
     base.update(over)
     return SeasonModel(**base)
@@ -837,24 +837,6 @@ class AwardTest(unittest.TestCase):
                 fit_awards(seasons, norms, config._replace(award_requires=bad))
 
 
-# -------------------------------------------------------- nearest real season --
-
-
-class NearestTest(unittest.TestCase):
-    def test_the_closest_real_season_on_the_six_values_comes_first(self):
-        real = tuple(sorted([season(0, (50,) * 6), season(1, (70,) * 6), season(2, (95,) * 6)],
-                            key=lambda s: s.player_id))
-        model = bare_model(real=real)
-        (best,) = nearest_real_seasons(model, (72, 68, 70, 71, 69, 70), 1)
-        self.assertEqual(best.player_id, "P0001")
-        order = [s.player_id for s in nearest_real_seasons(model, (62,) * 6, 3)]
-        self.assertEqual(order, ["P0001", "P0000", "P0002"])
-
-    def test_a_tie_is_broken_by_the_real_seasons_own_order(self):
-        real = (season(0, (50,) * 6), season(1, (50,) * 6))
-        self.assertEqual(nearest_real_seasons(bare_model(real=real), (50,) * 6, 1)[0].player_id, "P0000")
-
-
 # ------------------------------------------------------------ the whole fit --
 
 
@@ -957,7 +939,6 @@ class FitTest(unittest.TestCase):
         self.assertEqual([r.step for r in model.ladder], list(LADDER_STEPS))
         self.assertEqual([a.award for a in model.awards], list(AWARDS))
         self.assertEqual(sorted(model.distributions), ["awards", "stat_line", "team_success"])
-        self.assertEqual(len(model.real), len(seasons))
         formulas = {f.name for f in model.formulas}
         self.assertEqual(formulas, {"score", "stat_line", "team_success", "awards",
                                     *(f"award_{a}" for a in AWARDS)})

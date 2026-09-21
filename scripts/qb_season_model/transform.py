@@ -19,9 +19,7 @@ What it turns the six rating values (issue #72, "Season generation") into:
 * *award thresholds* calibrated on the stat lines and records of the real
   winners;
 * the *score distribution*: how the real seasons spread on stat line, team
-  success and awards, so a generated season can be ranked against them;
-* the real seasons themselves on the six values, for the closest-real-season
-  comparison.
+  success and awards, so a generated season can be ranked against them.
 
 Everything is expressed per full season (`Config.season_games` games) so that
 seasons of 16 and 17 games are comparable.
@@ -36,8 +34,7 @@ from typing import Mapping, NamedTuple
 LINE_OUTPUTS = ("attempts", "comp_pct", "ypa", "td_rate", "int_rate",
                 "rush_yards", "rush_td", "wins")
 
-# What a season is measured on, per full season. The score, the awards and the
-# closest-real-season all read these.
+# What a season is measured on, per full season. The score and awards read these.
 METRICS = ("pass_yards", "pass_td", "interceptions", "rating", "rush_yards",
            "rush_td", "wins", "playoff_depth")
 SCORE_COMPONENTS = ("stat_line", "team_success", "awards")
@@ -580,7 +577,6 @@ class SeasonModel(NamedTuple):
     formulas: tuple             # Formula, by (name, term)
     awards: tuple               # AwardThreshold, in AWARDS order
     distributions: Mapping      # component -> ((p, composite), ...) over the real seasons
-    real: tuple                 # RealSeason, by (season, franchise, player)
 
 
 def _sorted(seasons):
@@ -839,7 +835,7 @@ def score(model, metrics, awards=()):
 def fit_distributions(seasons, norms, formulas, config):
     """How the real seasons spread on each score component: a quantile table each."""
     seasons = _sorted(seasons)
-    shell = SeasonModel((), (), tuple(norms), tuple(formulas), (), {}, ())
+    shell = SeasonModel((), (), tuple(norms), tuple(formulas), (), {})
     grid = _grid(config.distribution_points)
     out = {}
     for component in SCORE_COMPONENTS:
@@ -861,7 +857,7 @@ def fit_awards(seasons, norms, config):
     real winner to calibrate on.
     """
     seasons = _sorted(seasons)
-    shell = SeasonModel((), (), tuple(norms), fit_formulas(config), (), {}, ())
+    shell = SeasonModel((), (), tuple(norms), fit_formulas(config), (), {})
     requires = dict(config.award_requires or {})
     for award, needed in requires.items():
         if award not in AWARDS or needed not in AWARDS or award == needed:
@@ -890,19 +886,6 @@ def earns(model, award, metrics):
             and (not found.requires or earns(model, found.requires, metrics)))
 
 
-# ------------------------------------------------------------- nearest season --
-
-
-def nearest_real_seasons(model, values, k=1):
-    """The k real seasons closest to six values, by squared distance on the six.
-
-    A tie goes to the real season that comes first, so the answer is stable.
-    """
-    def distance(s):
-        return sum((a - b) ** 2 for a, b in zip(values_of(s), values))
-    return sorted(model.real, key=distance)[:k]
-
-
 # --------------------------------------------------------------------- the fit --
 
 
@@ -918,5 +901,4 @@ def fit(seasons, teams, config):
         formulas=formulas,
         awards=fit_awards(seasons, norms, config),
         distributions=fit_distributions(seasons, norms, formulas, config),
-        real=tuple(seasons),
     )

@@ -5,8 +5,7 @@ of #72). It takes the finished ratings (the six values per quarterback-season, f
 [`../qb_ratings/`](../qb_ratings/)) and the real 2006-2025 results and turns them
 into data the game reads: the formulas from six picked values to a stat line and
 expected wins, the real spread of noise around them, the playoff ladder, the award
-thresholds, the score distributions and the real seasons for the closest-season
-comparison. Game rules in
+thresholds and the score distributions. Game rules in
 [`docs/games/qb_season_builder.md`](../../docs/games/qb_season_builder.md).
 
 ## Loading it
@@ -32,7 +31,6 @@ rates are not. That makes a 16-game 2007 and a 17-game 2023 comparable.
 | **Playoff ladder** | Five rungs (make the playoffs, reach the divisional round, the conference game, the Super Bowl, win it), each the chance of clearing it given the last as a logistic in wins, fitted on every team-season. More wins is never a worse chance, so a slope the data gives the wrong sign is held flat (the Super Bowl rung is a coin flip). |
 | **Awards** | MVP, Offensive Player of the Year, First-Team All-Pro, Pro Bowl and Super Bowl MVP. Each has a score (a weighted sum of z-scored stat-line and record metrics) and a threshold at a configured quantile of the **real winners'** scores. Awards nest as they did (`AWARD_REQUIRES`): an MVP must also be All-Pro, and an All-Pro or Offensive Player of the Year a Pro Bowler, or 46% of generated MVPs were not All-Pro against 6% of real ones. Real winners' `spread` is recorded so noise near the edge scales with it. |
 | **Score** | How the real seasons spread on stat line, team success and awards, as quantile tables. A generated season is ranked on each as the share of real seasons it is strictly better than (a tie is not better, so a season with no awards, like most real ones, gets nothing on that component); the score is the weighted mix (50 / 30 / 20). A season better than every real one reads 100 on that component. |
-| **Real seasons** | Every real quarterback-season on the six values with its real line, record, playoff depth and awards, for the closest-real-season comparison. |
 
 How season generation (issue #77) uses each table is written at the top of
 [`0125`](../../supabase/migrations/20260920132000_0125_qb_season_builder_season_model_schema.sql).

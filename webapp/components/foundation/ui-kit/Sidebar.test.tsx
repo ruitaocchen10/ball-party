@@ -15,16 +15,19 @@ describe("Sidebar — Solo games", () => {
     render(<Sidebar displayName="Ava" canPlaySolo />);
 
     // One tap: a form button that deals a fresh run.
-    expect(soloNav().getByRole("button", { name: "Higher or lower" })).toBeInTheDocument();
+    expect(soloNav().getByRole("button", { name: "Higher or Lower" })).toBeInTheDocument();
     // QB Season Builder's mode is chosen at start, so one tap must not skip it.
-    expect(soloNav().getByRole("link", { name: "QB season builder" })).toHaveAttribute("href", "/solo");
-    expect(soloNav().queryByRole("button", { name: "QB season builder" })).not.toBeInTheDocument();
+    expect(soloNav().getByRole("link", { name: "QB Season Builder" })).toHaveAttribute("href", "/solo");
+    expect(soloNav().queryByRole("button", { name: "QB Season Builder" })).not.toBeInTheDocument();
+
+    const games = Array.from(screen.getByRole("navigation", { name: "Solo games" }).querySelectorAll("a, button")).map((item) => item.textContent);
+    expect(games).toEqual(["QB Season Builder", "Higher or Lower"]);
   });
 
   it("sends a visitor with no session to sign up for either game", () => {
     render(<Sidebar canPlaySolo={false} />);
 
-    for (const name of ["Higher or lower", "QB season builder"]) {
+    for (const name of ["Higher or Lower", "QB Season Builder"]) {
       expect(soloNav().getByRole("link", { name })).toHaveAttribute("href", "/signup?next=%2Fsolo");
     }
   });

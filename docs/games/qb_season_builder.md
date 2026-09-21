@@ -131,8 +131,6 @@ and for a guest's run alike. Rejects `result_not_found` (P0002) for a run with n
   awards { mvp, opoy, all_pro, pro_bowl, sb_mvp },
   score,                                         -- 0..100, one decimal
   breakdown [{ component, weight, percentile, points }],   -- points add up to score
-  closest_season { franchise_code, season, player_id, display_name,
-                   pass_yards, pass_tds, interceptions, wins, losses },
   picks [{ round, slot, franchise_code, season, player_id, display_name, value }] }
 ```
 
@@ -203,8 +201,6 @@ ratings no client role can read it. It holds:
   as in the real data: 17 of 18 MVPs were All-Pro);
 - the score: how the real seasons spread on stat line, team success and awards, and
   the 50 / 30 / 20 weights that mix them;
-- every real quarterback-season on the six values with what he really did, for the
-  closest-real-season comparison.
 
 How to read each table is written at the top of `0125`. All of it is per full
 17-game season. Every weight, bound, noise scale and threshold is configuration in
@@ -227,7 +223,6 @@ with a chosen seed, for tests). In order:
    depends on; Super Bowl MVP needs the title (migration `0136` added the requirement);
 4. the score: the season's percentile on each component (share of real seasons it is
    strictly better than), mixed by the score weights, capped at 100;
-5. the closest real season: nearest neighbour on the six values.
 
 Every random draw is a hash of the seed and a name (`unit_draw`), so **the same picks
 and the same seed always give the same season**, independent of the order draws are
@@ -243,10 +238,6 @@ Two things to know about the model:
   six values fit to a good season, not a copy of his real one (a record-setting
   5,476-yard year fits at about 4,200). Noise is drawn from the real spread and
   bounded by it. Do not add more variance than the residual tables carry.
-- **The tables agree with the ratings only as of the last fit.**
-  `season_model_real_seasons` copies the six values from `qb_seasons` and
-  `team_seasons`, and a ratings retune must be followed by a new fit (the database
-  test `0125` fails if they disagree).
 
 ## The web UI
 

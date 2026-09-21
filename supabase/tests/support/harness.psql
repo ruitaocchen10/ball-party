@@ -730,7 +730,6 @@ begin
   delete from qb_season_builder_private.season_model_formulas;
   delete from qb_season_builder_private.season_model_awards;
   delete from qb_season_builder_private.season_model_distributions;
-  delete from qb_season_builder_private.season_model_real_seasons;
 
   insert into qb_season_builder_private.season_model_outputs
     (output, link, low, high, intercept, residual_sd, r_squared, noise_scale, noise_group)
@@ -806,20 +805,6 @@ begin
          d (component, base, step)
    cross join (values (0.0, 0), (0.25, 1), (0.5, 2), (0.75, 3), (1.0, 4)) q (p, k);
 
-  -- Three real seasons: the six values of the fixtures in qsb_fixtures, so a build
-  -- picked from one of those seasons has an exact neighbour.
-  insert into qb_season_builder_private.season_model_real_seasons
-    (franchise_code, season, player_id, display_name,
-     accuracy, arm_talent, mobility, iq, build, supporting_cast,
-     attempts, completions, pass_yards, pass_tds, interceptions, rush_yards, rush_tds,
-     wins, losses, ties, playoff_depth, mvp, opoy, all_pro, pro_bowl, sb_mvp)
-  values
-    ('kan', 2018, 'MahoPa00', 'Patrick Mahomes', 91, 99, 84, 88, 76, 88,
-       580, 383, 5097, 50, 12, 272, 2, 12, 4, 0, 3, true,  true,  true,  true,  false),
-    ('phi', 2017, 'WentCa00', 'Carson Wentz',    87, 90, 79, 83, 86, 69,
-       440, 265, 3296, 33,  7, 299, 0, 13, 3, 0, 5, false, false, false, true,  false),
-    ('nwe', 2017, 'BradTo00', 'Tom Brady',       96, 85, 33, 99, 72, 77,
-       581, 385, 4577, 32,  8,  28, 0, 13, 3, 0, 4, true,  false, true,  true,  false);
 end $$;
 
 grant usage on schema tests to authenticated, anon;

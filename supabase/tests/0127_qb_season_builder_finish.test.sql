@@ -9,7 +9,7 @@
 -- tests deal from a fixed seed: the public call takes none, on purpose.
 
 begin;
-select plan(70);
+select plan(68);
 
 \ir support/harness.psql
 
@@ -107,12 +107,6 @@ select is(
     {"component": "team_success", "weight": 30, "percentile": 0.4, "points": 12.0},
     {"component": "awards",       "weight": 20, "percentile": 1.0, "points": 20.0}]'::jsonb,
   'and a breakdown of what drove it'
-);
-select is(
-  (select qb_season_builder.result((select v from tests.fx where k = 'r')) -> 'closest_season'),
-  '{"franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz",
-    "pass_yards": 3296, "pass_tds": 33, "interceptions": 7, "wins": 13, "losses": 3}'::jsonb,
-  'and the real season nearest the six values picked'
 );
 select is(
   (select jsonb_path_query_array(qb_season_builder.result((select v from tests.fx where k = 'r')), '$.picks[*].slot')),
@@ -439,7 +433,7 @@ select tests.act_as_admin();
 
 select is(
   (select array_agg(k order by k) from jsonb_object_keys(qb_season_builder.result((select v from tests.fx where k = 'r'))) k),
-  array['awards', 'breakdown', 'closest_season', 'match_id', 'mode', 'picks', 'playoffs', 'record', 'score', 'stat_line'],
+  array['awards', 'breakdown', 'match_id', 'mode', 'picks', 'playoffs', 'record', 'score', 'stat_line'],
   'a result holds the season and the recap and nothing else'
 );
 select is(
@@ -481,8 +475,6 @@ select throws_ok('select count(*) from qb_season_builder_private.madden_ratings'
   'a signed-in player cannot read the source ratings');
 select throws_ok('select count(*) from qb_season_builder_private.season_model_outputs', '42501', null,
   'nor the season model');
-select throws_ok('select count(*) from qb_season_builder_private.season_model_real_seasons', '42501', null,
-  'nor the real seasons it was fitted on');
 set local role anon;
 select throws_ok('select count(*) from qb_season_builder_private.madden_ratings', '42501', null,
   'a signed-out client cannot read the source ratings');
