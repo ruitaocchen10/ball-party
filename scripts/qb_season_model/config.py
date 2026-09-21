@@ -5,7 +5,7 @@ Everything here is an input to `transform.fit` and to the build's guards, not a
 constant of the algorithm: retune by editing this file and rebuilding a new data
 migration. Issue #72 fixes the shape (formulas that may extrapolate; noise that
 is mostly on team outcomes; thresholds calibrated on real winners; a score of
-roughly 50% stat line, 30% team success and 20% awards) and leaves the numbers
+roughly 55% stat line, 30% team success and 15% awards) and leaves the numbers
 to be tuned against known quarterbacks and playtesting.
 """
 
@@ -37,7 +37,15 @@ SEASON_GAMES = 17
 # 0.5 lets a line move enough to feel like a season and still be its build's. More line noise
 # also makes rare awards more common (they sit in the tail of the stat line), so the award
 # quantiles below were set with it in place: replaying the real builds gives the real rates.
-TEAM_NOISE = 1.0
+#
+# Team outcomes took the whole real spread (1.0) and are now held to 0.8, to take some luck out
+# of the score: the same well-drafted build scored about 10 points apart run to run, and wins
+# and the bracket are the largest share of it. It is a trade, not a free one. The real season's
+# wins landed inside its build's generated middle 80% of wins 76% of the time at 1.0 and 66% at
+# 0.8, so wins are now a little tighter than real life; playoffs (34.9% against 35.1% real) and
+# the title (2.6% against 2.7%) still match. Lower costs more: in the fit's own replay 0.65 gave
+# a title rate of 2.1% and 0.5 gave 1.9%.
+TEAM_NOISE = 0.8
 LINE_NOISE = 0.5
 
 # The five quarterback values are read off overlapping stats (CPOE, EPA and air yards feed
@@ -81,22 +89,104 @@ CAST_WINS_TRIM = 0.8
 # (all 99: 794 attempts and 6,663 yards); the logit is bounded, so it cannot.
 ATTEMPTS_CAP = 670.0
 
+# Balancing what each value is worth. Left to the fit, a value's swing on the score (25 to 99, the
+# rest as they were) ran from IQ 32.5 and Supporting Cast 28.2 down to Build 12.9, Mobility 16.1
+# and Arm Talent 7.3: 4.4 to 1. The data really do say Arm Talent adds little once Accuracy and IQ
+# are known, but a slot worth a fifth of another is a round that hardly matters, so the game
+# leans against it (issue #72 leaves the numbers to playtesting). A trim holds a value's
+# coefficient at a multiple of the fitted one and refits the rest around it, so what a value is
+# given is taken from the values it is tangled with, mostly IQ and Accuracy.
+#
+# Each is a multiple of the fitted coefficient, on the outputs where the value has an effect.
+# Swept over Arm 1.5-3, Build's wins 1-4 and Mobility's rushing 1-1.5, keeping the cheapest
+# (in fit) setting where the biggest swing is under twice the smallest and none is under 15:
+#   Arm Talent x2.5 on yards per attempt, touchdown rate and wins. x2 left it at 12.8.
+#   Build x3 on wins (its own yards and touchdown coefficients are held where the fit put them).
+#   Mobility x1.25 on rush yards and rush touchdowns, where it does its work.
+# With the score changes below, swings are IQ 28.0, Supporting Cast 26.0, Accuracy 23.3,
+# Mobility 16.6, Build 16.5 and Arm Talent 15.4 (1.82 to 1), measured on the real builds in the
+# database. It costs fit, and that is the price: yards per attempt R2 0.558 to 0.483, touchdown
+# rate -0.023, rush yards -0.031, wins -0.011. Every guard below still holds.
+ARM_TALENT_SHARE = 2.5
+BUILD_WINS_SHARE = 3.0
+MOBILITY_RUSH_SHARE = 1.25
+
+# What the Supporting Cast does to the quarterback's own line. The data give it a real but small
+# effect on yards per attempt and touchdown rate (regression on the 777 seasons: t = 4.8 and 5.5;
+# one standard deviation of cast, about 16 points, is worth 0.12 yards a pass against 0.58 of
+# noise) and, if anything, fewer passes (t = -1.7, not distinguishable from zero: a better team
+# leads more and throws less). Left as fitted, going from a Cast of 25 to 99 changed a season by
+# -84 passing yards and +4 touchdowns, which reads as the cast not mattering to a stat line.
+# A judgment, not a measurement: the cast's effect on yards per attempt and touchdown rate is
+# held at this multiple of the fit (1.5 is 2.4 standard errors above the regression for yards
+# per attempt), and its effect on attempts at this share (0: no effect).
+# Measured on the real builds, 25 to 99: +382 yards and +9 touchdowns, and the cast's swing on
+# the score 26.1 to 32.8 (the largest of the six), so the biggest swing is 2.16 times the
+# smallest and not 1.82. Yards per attempt R2 0.483 to 0.478, touchdown rate 0.463 to 0.457.
+CAST_LINE_SHARE = 1.5
+CAST_ATTEMPTS_SHARE = 0.0
+
+# Whether a quarterback who played better than his values predicted also won more. In the data
+# only a little: the wins residual correlates +0.06 to +0.13 with each of the line residuals
+# (0.13 with all four together, which would shrink the record's noise by 1%). In the game
+# that left the record independent of the line, so a build whose passing came out average
+# could go 12-5 as easily as one whose passing came out great. This makes it so a little more
+# than the data say (0.3, by judgment, and a knob): the record's own spread is unchanged,
+# a build's average record is unchanged, and only the pairing of a lucky line with a lucky
+# record is.
+WINS_LINE_LINK = 0.3
+
 OUTPUTS = {
-    "attempts": OutputSpec("logit", 100.0, ATTEMPTS_CAP, LINE_NOISE, "qb_line"),
+    "attempts": OutputSpec("logit", 100.0, ATTEMPTS_CAP, LINE_NOISE, "qb_line",
+                           trim=(("supporting_cast", CAST_ATTEMPTS_SHARE),)),
     "comp_pct": OutputSpec("logit", 0.45, 0.80, LINE_NOISE, "qb_line"),
-    "ypa": OutputSpec("identity", 4.0, 11.5, LINE_NOISE, "qb_line"),
-    "td_rate": OutputSpec("log", 0.0, 0.12, LINE_NOISE, "qb_line"),
+    "ypa": OutputSpec("identity", 4.0, 11.5, LINE_NOISE, "qb_line",
+                      trim=(("arm_talent", ARM_TALENT_SHARE), ("build", 1.0),
+                            ("supporting_cast", CAST_LINE_SHARE))),
+    "td_rate": OutputSpec("log", 0.0, 0.12, LINE_NOISE, "qb_line",
+                          trim=(("arm_talent", ARM_TALENT_SHARE), ("build", 1.0),
+                                ("supporting_cast", CAST_LINE_SHARE))),
     "int_rate": OutputSpec("log", 0.0, 0.08, LINE_NOISE, "qb_line"),
-    "rush_yards": OutputSpec("identity", 0.0, 1500.0, LINE_NOISE, "qb_line"),
-    "rush_td": OutputSpec("identity", 0.0, 20.0, LINE_NOISE, "qb_line"),
+    "rush_yards": OutputSpec("identity", 0.0, 1500.0, LINE_NOISE, "qb_line",
+                             trim=(("mobility", MOBILITY_RUSH_SHARE),)),
+    "rush_td": OutputSpec("identity", 0.0, 20.0, LINE_NOISE, "qb_line",
+                          trim=(("mobility", MOBILITY_RUSH_SHARE),)),
     "wins": OutputSpec("logit", 0.0, float(SEASON_GAMES), TEAM_NOISE, "team",
                        ridge=WINS_RIDGE, ridge_slots=QB_SLOTS,
-                       trim=(("supporting_cast", CAST_WINS_TRIM),)),
+                       trim=(("supporting_cast", CAST_WINS_TRIM), ("arm_talent", ARM_TALENT_SHARE),
+                             ("build", BUILD_WINS_SHARE))),
 }
 
 # The score: how a season is ranked against the real ones. Weights are relative
 # (they need not sum to 1); the three components are mixed as percentiles.
-SCORE_WEIGHTS = {"stat_line": 50.0, "team_success": 30.0, "awards": 20.0}
+#
+# It was 50 / 30 / 20. The same build then scored about 10 points apart run to run (the
+# standard deviation over seeds, for a well-drafted one), and most of that was not the stat
+# line: per point of weight a component's own variance is about 0.003 for the stat line,
+# 0.04 for team success (wins and the playoff bracket) and 0.08 for awards, which are a step
+# (a Pro Bowl alone ranks above 3 real seasons in 4, worth 15 of the 20 points). Moving 5
+# points from awards to the stat line takes that to about 8. Real award rates, the playoff
+# ladder and the noise are untouched, and the mean score moves up a couple of points, which
+# SCORE_CURVE gives back at the top.
+SCORE_WEIGHTS = {"stat_line": 55.0, "team_success": 30.0, "awards": 15.0}
+
+# A soft ceiling on the finished score: below the start it is unchanged, above it the score
+# is start + (100 - start) * ((score - start) / (100 - start)) ** exponent, so 0 and 100 stay
+# put. Ranking a season against the real ones only leaves a drafted build no room: a player
+# stacking 80s and 90s is better than nearly every real season on the stat line, so the top
+# of the score is decided by whether the awards and the bracket come off. Balancing the six
+# values (above) made that worse, lifting every above-average build about 1.5 points and the
+# share of well-drafted runs at 90+ from 14% to 18%. Trimming the strong values instead does
+# nothing (redistributing credit leaves the sum of a stacked build's effects where it was),
+# and tightening award thresholds costs real rates (an All-Pro cutoff of 0.6 gives 1.0% MVPs
+# against 2.3% real). A start of 70 with exponent 1.5 takes 90+ from a well-drafted run (a
+# skilled drafter who respins) from 14% before the balancing to 11%, and leaves the ladder of
+# drafters where it was: random 47, greedy 72, skilled 78 (45, 70, 77 before). A raw 90 reads
+# as 86 and a raw 80 as 75 (1.5: 86 and 76); 0 and 100 stay put. The record's link to the line (WINS_LINE_LINK)
+# and the cast's effect on the line (CAST_LINE_SHARE) put well-drafted runs back up to 12.5-13.7%
+# at 90+ (a lucky line and a lucky record now come together); an exponent of 1.6 takes that to
+# about 11.7% (1.7 gives 10.9%, 1.9 gives 9.4%) at a cost of about half a point of mean score.
+SCORE_CURVE = (70.0, 1.6)
 
 # Each is a weighted sum of z-scored metrics. Interceptions count against.
 #
@@ -126,7 +216,7 @@ AWARD_POINTS = {"mvp": 5.0, "opoy": 3.0, "all_pro": 3.0, "sb_mvp": 3.0, "pro_bow
 AWARD_TERMS = {
     "mvp": {"wins": 0.50, "pass_td": 0.15, "pass_yards": 0.10, "rating": 0.15, "rush_yards": 0.10},
     "opoy": {"pass_yards": 0.30, "pass_td": 0.30, "rating": 0.30, "rush_yards": 0.10},
-    "all_pro": {"rating": 0.35, "pass_td": 0.25, "pass_yards": 0.20, "rush_yards": 0.10, "interceptions": -0.10},
+    "all_pro": {"wins": 0.35, "rating": 0.25, "pass_td": 0.15, "pass_yards": 0.15, "rush_yards": 0.05, "interceptions": -0.05},
     "pro_bowl": {"rating": 0.30, "pass_yards": 0.30, "pass_td": 0.25, "wins": 0.15},
     "sb_mvp": {"rating": 0.30, "pass_td": 0.20, "pass_yards": 0.20, "wins": 0.30},
 }
@@ -142,15 +232,69 @@ AWARD_TERMS = {
 # real build with the noise on: MVP 2.0%, Offensive Player of the Year 1.0%, All-Pro 2.9%,
 # Pro Bowl 22.8% and Super Bowl MVP 1.7% of seasons, against 2.3, 1.0, 2.6, 23.7 and 1.7 real.
 # A sparse award (8 real Offensive Players of the Year) is sensitive: 0.4 gave 2.2%, 0.6 gave 0.4%.
-AWARD_QUANTILE = {"mvp": 0.05, "opoy": 0.45, "all_pro": 0.45, "pro_bowl": 0.3, "sb_mvp": 0.25}
+#
+# All-Pro moved from 0.45 to 0.5 and Pro Bowl from 0.3 to 0.33 once the values were balanced:
+# replaying the real builds then gave All-Pro 3.3% and Pro Bowl 24.6% of seasons against 2.6%
+# and 23.7% real. Now 2.8% and 23.7%, MVP 2.2% against 2.3%. (That was before All-Pro took
+# wins into account: see below.)
+AWARD_QUANTILE = {"mvp": 0.05, "opoy": 0.50, "all_pro": 0.64, "pro_bowl": 0.33, "sb_mvp": 0.25}
+# The last retune (All-Pro 0.55, OPOY 0.45) was fitted with the record independent of the
+# line and the cast worth nothing to a stat line. Linking them (WINS_LINE_LINK) and giving the
+# cast its effect (CAST_LINE_SHARE) put more seasons with both a big line and a big record in the
+# same place, and replaying the real builds gave MVP 2.6-2.9%, All-Pro 2.9-3.3% and Offensive
+# Player of the Year 1.3-1.5% against 2.3, 2.6 and 1.0 real. Now, averaged over six sets of seeds
+# (a single set moves MVP by 0.2): MVP 2.4%, All-Pro 2.5%, OPOY 1.0%, Pro Bowl 24.0% (23.7 real),
+# Super Bowl MVP 1.8% (1.7). All-Pro is sharp here: 0.60 gives 2.9%, 0.65 gives 2.3%.
 # Noise near the edge, as a share of the real winners' own spread.
-AWARD_NOISE_SCALE = {award: 0.5 for award in AWARDS}
+AWARD_NOISE_SCALE = {award: 0.5 for award in AWARDS} | {"all_pro": 1.25}
+# All-Pro is judged on wins as well as the stat line, and its gate is wide. An MVP must be an
+# All-Pro (AWARD_REQUIRES) and All-Pro used to ignore the record, so a real MVP like Brady's 2017
+# (13-3, 4,863 yards, 34 TDs, 102.8) had no chance at all: 6 of the 18 real MVPs (Manning 2008 and
+# 2009, Newton 2015, Brady 2017, Jackson 2023, Allen 2024) were impossible, and the odds of the rest
+# were a step where the real odds are a slope (of the real seasons that score 1.3 to 1.5 on the MVP
+# formula 29% won it, 1.1 to 1.3 5%, 1.7 to 2.0 57%). The wins term (0.35), the 0.55 quantile and the
+# wider noise were fitted to the 20 real years by the likelihood of the real winners, and hold up
+# fitted on one decade and tested on the other, in both directions. Scored on the real seasons:
+# All-Pro 20.1 seasons against 20 real, MVP 17.8 against 18; 1 real MVP is now impossible (Manning
+# 2008), 2 are under 5% (that and Allen 2024, 3%) and Brady 2017 is 18%. The kind of season with
+# 12.5+ wins, 4,300+ yards and 33+ TDs is now 41% to win it (8 of the 28 real ones did, 29%): there is
+# no field to beat, so it runs generous, and a runner with a light passing line still gets little
+# (Jackson 2023, 6%).
 # Awards nest, as they did in 2006-2025: of 18 quarterback MVPs, 17 were first-team All-Pro
 # and all 18 went to the Pro Bowl; all 20 All-Pros did too; all but 2 of 8 Offensive Players
 # of the Year were All-Pro. Judged on their own scores, 46% of generated MVPs were not
 # even All-Pro (6% in real life) and a season could take the MVP and miss the Pro Bowl.
 # (Super Bowl MVP is not tied: 5 of 13 real ones were not Pro Bowlers.)
 AWARD_REQUIRES = {"mvp": "all_pro", "opoy": "pro_bowl", "all_pro": "pro_bowl"}
+
+# How hard the game is. The formulas are fitted on real seasons, and a player who drafts well is
+# stacking values a real quarterback rarely has all at once, so a strong build ran further ahead
+# of the real league than the game wanted: a skilled drafter who respins won MVP 8.0% of the time
+# (2.3% of real seasons), scored 90+ in 11.8% of runs and had a rating of 100+ in 47%.
+# The values a season is built from are counted in full up to VALUE_PIVOT and above it only
+# VALUE_SLOPE of each point counts, so a 90 plays like an 87 and a 99 like a 94 (the six values
+# are all treated the same, the Supporting Cast too). It leaves the floor alone, which is why it
+# beats an across-the-board handicap: a poor start is no poorer (the worst drafter's score
+# 22.8 to 22.6) and it is the strong builds that come down.
+# Replayed on the same drafted builds, at a slope of 0.9 / 0.8 / 0.7, a skilled drafter who
+# respins goes: MVP 8.0% to 5.8 / 3.9 / 2.4, 90+ 11.8% to 8.8 / 6.0 / 4.0, a rating of 100+ 47%
+# to 41 / 35 / 29, playoffs 74.8% to 73.0 / 71.1 / 68.9, a conference final or better
+# 26.7% to 25.0 / 23.5 / 22.0 and the title 6.6% to 6.0 / 5.4 / 5.0. Replaying the real builds
+# no longer gives the real league on the strong end (that is the point): MVP 2.2% to 1.5 / 1.0 / 0.5.
+# 1 turns it off; lower is harder.
+# 0.85 is the setting, as measured in the database (0.9 and 0.8 above are the same replay before the
+# curve existed in SQL): a skilled drafter who respins wins MVP 4.9% (8.0), scores 90+ 7.3% (11.8),
+# has a rating of 100+ 38.7% (47.0), makes the playoffs 72.1% (74.8), reaches a conference final
+# or better 24.2% (26.7) and wins the title 5.6% (6.6), and the mean score is 74.8 (77.1). Random
+# 45.8 (47.2), the worst 22.4 (22.8). The six values' swings come down together, so their balance
+# holds (biggest over smallest 2.17; Arm Talent's 14.4, a little under the 15 it was held to), and
+# score luck goes from 8.2 to 8.6 points, 49.7% of the variance (47.3). Replaying the real builds:
+# MVP 1.2% (2.3 real), All-Pro 1.3% (2.6), Pro Bowl 21.9% (23.7), the title 2.4% (2.7), wins 8.0 (8.1).
+# The award thresholds were calibrated to real rates and are not retuned for this: an award for a
+# strong build is meant to be harder.
+VALUE_PIVOT = 70.0
+VALUE_SLOPE = 0.85
+VALUE_CURVE = (VALUE_PIVOT, VALUE_SLOPE)
 
 # Where the playoff ladder is sharper than a logistic in wins can be: (never at or below,
 # always at or above), in wins per 17 games. Of the real 2006-2025 teams, none of the 105
@@ -179,6 +323,9 @@ DEFAULT_CONFIG = Config(
     award_noise_scale=AWARD_NOISE_SCALE,
     award_requires=AWARD_REQUIRES,
     ladder_guarantees=LADDER_GUARANTEES,
+    score_curve=SCORE_CURVE,
+    wins_link=WINS_LINE_LINK,
+    value_curve=VALUE_CURVE,
     distribution_points=101,
 )
 

@@ -267,7 +267,7 @@ def run_guards(model, rated, teams, awards, seasons, config):
 
     # A fitted formula, not a lookup: a top-of-scale build beats every real season
     # and a bottom-of-scale one loses to nearly all of them.
-    top = expected_metrics(model.outputs, (99,) * 6)
+    top = expected_metrics(model.outputs, (99,) * 6, curve=config.value_curve)
     top["playoff_depth"] = expected_depth(model.ladder, top["wins"])
     real_stat = [composite(model, "stat_line", season_metrics(s, config)) for s in seasons]
     top_stat = composite(model, "stat_line", top)
@@ -277,7 +277,7 @@ def run_guards(model, rated, teams, awards, seasons, config):
           f"(at most {TOP_BUILD_MAX_BEATEN}; the best is {max(real_stat):.2f}); the fit is not allowed to extrapolate")
     check(percentile_of(model.distributions["stat_line"], top_stat) >= TOP_BUILD_MIN_PERCENTILE,
           "a top-of-scale stat line does not score at the top of the real distribution")
-    bottom = expected_metrics(model.outputs, (25,) * 6)
+    bottom = expected_metrics(model.outputs, (25,) * 6, curve=config.value_curve)
     bottom_stat = composite(model, "stat_line", bottom)
     check(bottom_stat < sorted(real_stat)[len(real_stat) // 10],
           f"a bottom-of-scale build's stat line ({bottom_stat:.2f}) is not in the worst real decile")
@@ -285,7 +285,7 @@ def run_guards(model, rated, teams, awards, seasons, config):
     # The team side can beat any real season too: wins cannot pass 17, so the
     # expectation may not, but a top-of-scale build with the best of its luck (the
     # top of its real spread on wins) and the title is above every real season.
-    lucky = expected_metrics(model.outputs, (99,) * 6, {"wins": 1.0})
+    lucky = expected_metrics(model.outputs, (99,) * 6, {"wins": 1.0}, config.value_curve)
     lucky["playoff_depth"] = 5.0
     best_team = max(composite(model, "team_success", season_metrics(s, config)) for s in seasons)
     check(composite(model, "team_success", lucky) > best_team,
@@ -293,7 +293,7 @@ def run_guards(model, rated, teams, awards, seasons, config):
 
     # Awards: reachable at the top of the scale, not handed to an average build,
     # and not so cheap that any good real season would have taken them.
-    avg = expected_metrics(model.outputs, AVERAGE_BUILD)
+    avg = expected_metrics(model.outputs, AVERAGE_BUILD, curve=config.value_curve)
     for a in AWARDS:
         check(earns(model, a, top), f"a top-of-scale build does not earn {a}")
     for a in ("mvp", "opoy", "all_pro"):
@@ -435,7 +435,7 @@ def print_summary(model, seasons, config):
     builds = [("all 99", (99,) * 6), ("all 75", (75,) * 6), ("average", AVERAGE_BUILD),
               ("all 40", (40,) * 6), ("all 25", (25,) * 6)]
     for name, values in builds:
-        m = expected_metrics(model.outputs, values)
+        m = expected_metrics(model.outputs, values, curve=config.value_curve)
         m["playoff_depth"] = expected_depth(model.ladder, m["wins"])
         print(f"  {name:26} {m['pass_yards']:6,.0f} {m['pass_td']:4.0f} {m['interceptions']:4.0f} "
               f"{m['rating']:6.1f} {m['rush_yards']:5.0f} {m['wins']:5.1f} {m['playoff_depth']:6.2f} "
