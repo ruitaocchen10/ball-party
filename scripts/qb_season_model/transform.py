@@ -63,6 +63,17 @@ class OutputSpec(NamedTuple):
     `noise_scale` multiplies this output's residual spread when noise is drawn
     for it: near 1 for team outcomes, small for the quarterback's own line.
     `group` is `team` or `qb_line`, for whoever applies the noise.
+    `ridge` penalises the formula's slopes (0 is ordinary least squares), in units
+    of the standardised values: the six are not independent (Accuracy and IQ
+    correlate at 0.8), and plain least squares hands the credit for what they
+    share to whichever it happens to weigh a hair more. A ridge splits it.
+    `ridge_slots` names the values the penalty applies to (empty means all six):
+    penalising a value that is not tangled with anything, like the Supporting
+    Cast, only shrinks a well-measured effect.
+    `trim` is pairs of (value, factor): that value's coefficient is held at
+    `factor` times what a full fit gives it, and the other values are refit
+    around it, so they pick up what the trimmed one was claiming. For an effect
+    the data overstate (a value partly built from the outcome it predicts).
     """
 
     link: str
@@ -70,6 +81,9 @@ class OutputSpec(NamedTuple):
     high: float
     noise_scale: float
     group: str
+    ridge: float = 0.0
+    ridge_slots: tuple = ()
+    trim: tuple = ()
 
 
 class Config(NamedTuple):
@@ -107,6 +121,10 @@ class Config(NamedTuple):
     award_noise_scale: Mapping[str, float]
     # How many points the score distribution tables have (>= 2).
     distribution_points: int
+    # award -> the award it requires: a season that misses the required one cannot
+    # take this one, however good its own score. Real awards nest this way (an MVP
+    # is nearly always an All-Pro), and judged alone they do not. Optional.
+    award_requires: Mapping[str, str] = None
 
 
 # ------------------------------------------------------------------- inputs --
@@ -443,14 +461,44 @@ def _solve(matrix, rhs):
     return x
 
 
-def _least_squares(rows, ys):
-    """Ordinary least squares of ys on rows, with an intercept first."""
+def _least_squares(rows, ys, ridge=0.0, penalised=None):
+    """Least squares of ys on rows, with an intercept first.
+
+    With `ridge` > 0 the slopes are penalised: the columns are standardised, the
+    penalty `ridge * n` is added to each slope's diagonal, and the result is
+    converted back to the raw values, so the coefficients read the same way and
+    the intercept is unpenalised. Values that move together then share credit
+    instead of one taking it all. `penalised` is the column indexes it applies to
+    (None: all). `ridge` 0 is exactly ordinary least squares.
+    """
+    if ridge > 0:
+        return _ridge_least_squares(rows, ys, ridge, penalised)
     design = [[1.0] + [float(v) for v in row] for row in rows]
     k = len(design[0])
     xtx = [[sum(r[i] * r[j] for r in design) for j in range(k)] for i in range(k)]
     xty = [sum(r[i] * y for r, y in zip(design, ys)) for i in range(k)]
     beta = _solve(xtx, xty)
     residuals = [y - sum(b * x for b, x in zip(beta, r)) for r, y in zip(design, ys)]
+    return beta, residuals
+
+
+def _ridge_least_squares(rows, ys, ridge, penalised=None):
+    n, k = len(rows), len(rows[0])
+    penalised = set(range(k)) if penalised is None else set(penalised)
+    means = [sum(float(r[j]) for r in rows) / n for j in range(k)]
+    sds = [_population_sd([float(r[j]) for r in rows]) for j in range(k)]
+    if any(sd < 1e-12 for sd in sds):
+        raise ValueError("a value never varies, so a ridge cannot standardise it")
+    z = [[(float(r[j]) - means[j]) / sds[j] for j in range(k)] for r in rows]
+    y_mean = sum(ys) / n
+    ztz = [[sum(r[i] * r[j] for r in z) + (ridge * n if i == j and i in penalised else 0.0) for j in range(k)]
+           for i in range(k)]
+    zty = [sum(r[i] * (y - y_mean) for r, y in zip(z, ys)) for i in range(k)]
+    slopes = [b / sd for b, sd in zip(_solve(ztz, zty), sds)]
+    intercept = y_mean - sum(b * m for b, m in zip(slopes, means))
+    beta = [intercept] + slopes
+    residuals = [y - intercept - sum(b * float(v) for b, v in zip(slopes, r))
+                 for r, y in zip(rows, ys)]
     return beta, residuals
 
 
@@ -522,6 +570,7 @@ class AwardThreshold(NamedTuple):
     spread: float       # sd of the real winners' scores; noise near the edge scales by it
     noise_scale: float
     winners: int        # how many real seasons the threshold was calibrated on
+    requires: str = ""  # the award a season must also earn ("" for none)
 
 
 class SeasonModel(NamedTuple):
@@ -550,9 +599,27 @@ def values_of(s):
 # ------------------------------------------------------------ the formulas --
 
 
+def _trimmed_fit(rows, ys, full, spec, penalised):
+    """Hold each trimmed value at its factor of the full fit and refit the rest."""
+    held = {SLOTS.index(slot): full[1 + SLOTS.index(slot)] * factor for slot, factor in spec.trim}
+    kept = [i for i in range(len(SLOTS)) if i not in held]
+    adjusted = [y - sum(c * float(row[i]) for i, c in held.items()) for y, row in zip(ys, rows)]
+    inner = None if penalised is None else [kept.index(i) for i in penalised if i in kept]
+    beta_kept, _ = _least_squares([[row[i] for i in kept] for row in rows], adjusted, spec.ridge, inner)
+    beta = [beta_kept[0]] + [held[i] if i in held else beta_kept[1 + kept.index(i)]
+                             for i in range(len(SLOTS))]
+    residuals = [y - beta[0] - sum(b * float(v) for b, v in zip(beta[1:], row))
+                 for y, row in zip(ys, rows)]
+    return beta, residuals
+
+
 def _fit_output(name, spec, seasons, config):
     ys = [_to_link(spec, season_line(s, config)[name], config) for s in seasons]
-    beta, residuals = _least_squares([values_of(s) for s in seasons], ys)
+    penalised = [SLOTS.index(slot) for slot in spec.ridge_slots] if spec.ridge_slots else None
+    rows = [values_of(s) for s in seasons]
+    beta, residuals = _least_squares(rows, ys, spec.ridge, penalised)
+    if spec.trim:
+        beta, residuals = _trimmed_fit(rows, ys, beta, spec, penalised)
     n, k = len(seasons), len(beta)
     sd = math.sqrt(sum(r * r for r in residuals) / (n - k)) if n > k else 0.0
     ordered = sorted(residuals)
@@ -795,6 +862,10 @@ def fit_awards(seasons, norms, config):
     """
     seasons = _sorted(seasons)
     shell = SeasonModel((), (), tuple(norms), fit_formulas(config), (), {}, ())
+    requires = dict(config.award_requires or {})
+    for award, needed in requires.items():
+        if award not in AWARDS or needed not in AWARDS or award == needed:
+            raise ValueError(f"award_requires: {award!r} -> {needed!r} is not a pair of different awards")
     out = []
     for award in AWARDS:
         if award not in config.award_quantile or award not in config.award_noise_scale:
@@ -806,14 +877,17 @@ def fit_awards(seasons, norms, config):
         mean = sum(scores) / len(scores)
         spread = math.sqrt(sum((x - mean) ** 2 for x in scores) / len(scores))
         out.append(AwardThreshold(award, quantile(scores, config.award_quantile[award]),
-                                  spread, config.award_noise_scale[award], len(scores)))
+                                  spread, config.award_noise_scale[award], len(scores),
+                                  requires.get(award, "")))
     return tuple(out)
 
 
 def earns(model, award, metrics):
-    """Whether a season's metrics clear the award's threshold (before any noise)."""
-    (threshold,) = [a.threshold for a in model.awards if a.award == award]
-    return composite(model, f"award_{award}", metrics) >= threshold
+    """Whether a season's metrics earn the award (before any noise): they clear its
+    threshold and, if it requires another award, earn that one too."""
+    (found,) = [a for a in model.awards if a.award == award]
+    return (composite(model, f"award_{award}", metrics) >= found.threshold
+            and (not found.requires or earns(model, found.requires, metrics)))
 
 
 # ------------------------------------------------------------- nearest season --

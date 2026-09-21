@@ -23,11 +23,46 @@ SEASON_GAMES = 17
 # a football game allows.
 #
 # `noise_scale` multiplies the real residual spread. Team outcomes take all of
-# it and the quarterback's own line takes little, so a dominant quarterback can
-# still lose in the playoffs but his stat line stays close to what his six
-# values say ("mostly team outcomes, lightly the stat line", issue #72).
+# it and the quarterback's own line takes less, so a dominant quarterback can
+# still lose in the playoffs but his stat line stays near what his six values say
+# ("mostly team outcomes, lightly the stat line", issue #72).
+#
+# How much less is a judgment. Replaying all 777 real builds 20 times each, the real season
+# landed inside the generated middle 80% of yards, touchdowns, interceptions and rush yards:
+#   noise 0.3  about 30% of the time (the same build gave nearly the same line every run;
+#              interceptions varied half as much as real life)
+#   noise 0.5  about 45-50%
+#   noise 0.6  about 55%, but a top build broke the passing-yards record in 1 run of 20
+#   noise 1.0  about 75% (the real spread, and the six values then decide little of a line)
+# 0.5 lets a line move enough to feel like a season and still be its build's. More line noise
+# also makes rare awards more common (they sit in the tail of the stat line), so the award
+# quantiles below were set with it in place: replaying the real builds gives the real rates.
 TEAM_NOISE = 1.0
-LINE_NOISE = 0.3
+LINE_NOISE = 0.5
+
+# The five quarterback values are read off overlapping stats (CPOE, EPA and air yards feed
+# Accuracy, Arm Talent and IQ; playing time feeds Build and IQ), and Accuracy and IQ
+# correlate at 0.83. Plain least squares gives the whole of a shared effect on wins to
+# whichever of them it weighs a hair more, so IQ got nearly everything and Accuracy none,
+# an accident of the fit and not football: alone, Accuracy is worth 6.9 wins from 25 to 99
+# and IQ 8.0. A ridge on the five makes them share it. The Supporting Cast is left out of
+# the penalty: it is not tangled with them, and a penalty there only shrinks the best
+# measured effect in the model. Swept from 0.1 to 2 on the real fit: Accuracy's share
+# peaks around 0.3-0.6 and falls after, and at 0.6 Accuracy and Build come out level. It
+# costs nothing in fit (R2 0.62 either way).
+WINS_RIDGE = 0.6
+QB_SLOTS = ("accuracy", "arm_talent", "mobility", "iq", "build")
+
+# The Supporting Cast's effect on wins is held at this share of what the data give it, and
+# the quarterback values are refit around it. The cast is partly built from Approximate
+# Value, which is itself derived from how well the team did, so its link to wins is
+# overstated: 0.78 with AV in the blend, 0.52 in 2019 where the cast is Madden alone. A
+# judgment, not a measurement, so it is a knob. Swept 1.0 to 0.6 on the real fit: down to
+# 0.8 it costs nothing in fit (R2 0.612 against 0.614) and the quarterback values absorb the
+# difference; at 0.7 the fit starts to suffer. At 0.8 a value is worth this many wins from
+# 25 to 99 (others average): cast about 8.4, IQ 1.9, Accuracy 1.1, Build 1.0, Arm Talent
+# 0.7, Mobility 0.4.
+CAST_WINS_TRIM = 0.8
 
 # `attempts` is linear, not log: a multiplicative link doubled the volume of a
 # build that is elite in every trait (all 99 gave 794 attempts and 6,663 yards, a
@@ -41,7 +76,9 @@ OUTPUTS = {
     "int_rate": OutputSpec("log", 0.0, 0.08, LINE_NOISE, "qb_line"),
     "rush_yards": OutputSpec("identity", 0.0, 1500.0, LINE_NOISE, "qb_line"),
     "rush_td": OutputSpec("identity", 0.0, 20.0, LINE_NOISE, "qb_line"),
-    "wins": OutputSpec("logit", 0.0, float(SEASON_GAMES), TEAM_NOISE, "team"),
+    "wins": OutputSpec("logit", 0.0, float(SEASON_GAMES), TEAM_NOISE, "team",
+                       ridge=WINS_RIDGE, ridge_slots=QB_SLOTS,
+                       trim=(("supporting_cast", CAST_WINS_TRIM),)),
 }
 
 # The score: how a season is ranked against the real ones. Weights are relative
@@ -49,9 +86,19 @@ OUTPUTS = {
 SCORE_WEIGHTS = {"stat_line": 50.0, "team_success": 30.0, "awards": 20.0}
 
 # Each is a weighted sum of z-scored metrics. Interceptions count against.
+#
+# Rushing is a fifth of the stat line, and its touchdowns a tenth. It was a tenth, with no
+# touchdowns, and a quarterback's Mobility then moved a season's score by 10 points from 25
+# to 99 (Accuracy 29, IQ 34) because rushing was the only thing it changed: a runner and a
+# pocket passer were not comparable (a 25-Mobility pocket passer scored 79, a 99-Mobility
+# runner with no arm 22). Mobility is now worth about 19 and Build, whose volume carries
+# passing yards but whose interceptions and passer rating cut the other way, about 14.
+# Interceptions count for less (a count, so they charge volume as much as carelessness).
+# Arm Talent stays small on purpose: given Accuracy and IQ, the data give it the least of
+# any value, and a bigger score weight would be an effect the 20 seasons do not show.
 STAT_LINE_WEIGHTS = {
-    "pass_yards": 0.25, "pass_td": 0.25, "rating": 0.30,
-    "interceptions": -0.10, "rush_yards": 0.10,
+    "pass_yards": 0.25, "pass_td": 0.20, "rating": 0.20,
+    "interceptions": -0.05, "rush_yards": 0.20, "rush_td": 0.10,
 }
 TEAM_SUCCESS_WEIGHTS = {"wins": 0.6, "playoff_depth": 0.4}
 
@@ -64,23 +111,33 @@ AWARD_POINTS = {"mvp": 5.0, "opoy": 3.0, "all_pro": 3.0, "sb_mvp": 3.0, "pro_bow
 # MVP leans on the record; the rest on the stat line. Calibrated against the
 # real winners' seasons, so these say what to look at, not how much it takes.
 AWARD_TERMS = {
-    "mvp": {"wins": 0.35, "pass_td": 0.25, "pass_yards": 0.20, "rating": 0.20},
+    "mvp": {"wins": 0.50, "pass_td": 0.15, "pass_yards": 0.10, "rating": 0.15, "rush_yards": 0.10},
     "opoy": {"pass_yards": 0.30, "pass_td": 0.30, "rating": 0.30, "rush_yards": 0.10},
-    "all_pro": {"rating": 0.40, "pass_td": 0.25, "pass_yards": 0.25, "interceptions": -0.10},
+    "all_pro": {"rating": 0.35, "pass_td": 0.25, "pass_yards": 0.20, "rush_yards": 0.10, "interceptions": -0.10},
     "pro_bowl": {"rating": 0.30, "pass_yards": 0.30, "pass_td": 0.25, "wins": 0.15},
     "sb_mvp": {"rating": 0.30, "pass_td": 0.20, "pass_yards": 0.20, "wins": 0.30},
 }
 
 # Where each threshold sits among the real winners' scores: 0 lets in a season as
 # good as the weakest real winner, 1 asks for the best. Set where about as many real
-# seasons clear the threshold as real winners there were (MVP: 19 clear it, 18
-# won it), so an award is as rare as it was, without a field to compete against. A
-# lower quantile hands it to any good season (at 0.25, 62 seasons cleared All-Pro
-# for 20 winners). AWARD_SHARE_BOUNDS stops a build that gets this wrong. Super Bowl
-# MVP only ever applies to a champion, so it sits lower.
-AWARD_QUANTILE = {"mvp": 0.4, "opoy": 0.4, "all_pro": 0.4, "pro_bowl": 0.3, "sb_mvp": 0.25}
+# seasons clear the threshold as real winners there were (MVP: 18 clear it, 18 won it, once
+# it also has to be an All-Pro: see AWARD_REQUIRES), so an award is as rare as it was,
+# without a field to compete against. A lower quantile hands it to any good season (at
+# 0.25, 62 seasons cleared All-Pro for 20 winners). AWARD_SHARE_BOUNDS stops a build that
+# gets this wrong. Super Bowl MVP only ever applies to a champion, so it sits lower. The
+# quantiles are then checked the way the game uses them, by generating 20 seasons from each
+# real build with the noise on: MVP 2.0%, Offensive Player of the Year 1.0%, All-Pro 2.9%,
+# Pro Bowl 22.8% and Super Bowl MVP 1.7% of seasons, against 2.3, 1.0, 2.6, 23.7 and 1.7 real.
+# A sparse award (8 real Offensive Players of the Year) is sensitive: 0.4 gave 2.2%, 0.6 gave 0.4%.
+AWARD_QUANTILE = {"mvp": 0.05, "opoy": 0.45, "all_pro": 0.45, "pro_bowl": 0.3, "sb_mvp": 0.25}
 # Noise near the edge, as a share of the real winners' own spread.
 AWARD_NOISE_SCALE = {award: 0.5 for award in AWARDS}
+# Awards nest, as they did in 2006-2025: of 18 quarterback MVPs, 17 were first-team All-Pro
+# and all 18 went to the Pro Bowl; all 20 All-Pros did too; all but 2 of 8 Offensive Players
+# of the Year were All-Pro. Judged on their own scores, 46% of generated MVPs were not
+# even All-Pro (6% in real life) and a season could take the MVP and miss the Pro Bowl.
+# (Super Bowl MVP is not tied: 5 of 13 real ones were not Pro Bowlers.)
+AWARD_REQUIRES = {"mvp": "all_pro", "opoy": "pro_bowl", "all_pro": "pro_bowl"}
 
 DEFAULT_CONFIG = Config(
     season_games=SEASON_GAMES,
@@ -98,6 +155,7 @@ DEFAULT_CONFIG = Config(
     award_terms=AWARD_TERMS,
     award_quantile=AWARD_QUANTILE,
     award_noise_scale=AWARD_NOISE_SCALE,
+    award_requires=AWARD_REQUIRES,
     distribution_points=101,
 )
 
@@ -108,6 +166,19 @@ AWARD_SHARE_BOUNDS = {"mvp": 0.04, "opoy": 0.03, "all_pro": 0.05, "pro_bowl": 0.
 
 
 # ------------------------------------------------------------ build-time guards --
+
+# How many real seasons may still beat a top-of-scale build's *expected* stat line, and the
+# lowest percentile of the real stat-line distribution it may score. A fitted formula
+# regresses toward the mean, so a perfect build's expected line lands near the record, not
+# far above it; the noise on top is what carries it past. The strict "beats every real
+# season" form was met by 0.13 before the IQ retune to passing EPA and missed by 0.012
+# after; a tolerance of 0.05 below the best season then held until rushing became a third
+# of the stat line, when the best real season became a single outlier (Lamar Jackson 2019,
+# 1,281 rushing yards, 5.9 sd; 2.30 against the perfect build's 2.02). That build still
+# beats every real season but two (both his), and the real 99th percentile (1.64) by a wide
+# margin. More than that many above it is a formula that cannot extrapolate.
+TOP_BUILD_MAX_BEATEN = 2
+TOP_BUILD_MIN_PERCENTILE = 0.99
 
 # What a build of about league-average values is: the mean of each of the six across
 # the real seasons, rounded (revisit it after a ratings retune). It must not earn a

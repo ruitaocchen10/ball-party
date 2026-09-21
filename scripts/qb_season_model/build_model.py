@@ -42,6 +42,7 @@ from pathlib import Path
 
 from config import (
     AVERAGE_BUILD, AWARD_SHARE_BOUNDS, DEFAULT_CONFIG, EXPECTATIONS, MIN_R_SQUARED,
+    TOP_BUILD_MAX_BEATEN, TOP_BUILD_MIN_PERCENTILE,
 )
 from transform import (
     AWARDS, SLOTS, Award, RatedSeason, composite, earns, expected_depth,
@@ -252,11 +253,12 @@ def run_guards(model, rated, teams, awards, seasons, config):
     top["playoff_depth"] = expected_depth(model.ladder, top["wins"])
     real_stat = [composite(model, "stat_line", season_metrics(s, config)) for s in seasons]
     top_stat = composite(model, "stat_line", top)
-    check(top_stat > max(real_stat),
-          f"a top-of-scale build's stat line ({top_stat:.2f}) does not beat every real season "
-          f"({max(real_stat):.2f}); the fit is not allowed to extrapolate")
-    check(percentile_of(model.distributions["stat_line"], top_stat) == 1.0,
-          "a top-of-scale stat line does not score off the top of the real distribution")
+    beaten_by = sum(1 for x in real_stat if x > top_stat)
+    check(beaten_by <= TOP_BUILD_MAX_BEATEN,
+          f"a top-of-scale build's stat line ({top_stat:.2f}) is beaten by {beaten_by} real seasons "
+          f"(at most {TOP_BUILD_MAX_BEATEN}; the best is {max(real_stat):.2f}); the fit is not allowed to extrapolate")
+    check(percentile_of(model.distributions["stat_line"], top_stat) >= TOP_BUILD_MIN_PERCENTILE,
+          "a top-of-scale stat line does not score at the top of the real distribution")
     bottom = expected_metrics(model.outputs, (25,) * 6)
     bottom_stat = composite(model, "stat_line", bottom)
     check(bottom_stat < sorted(real_stat)[len(real_stat) // 10],
@@ -379,7 +381,7 @@ def emit_sql(model, awards):
     _insert(out, "season_model_formulas", ("formula", "term", "weight"),
             [tuple(f) for f in model.formulas])
     _insert(out, "season_model_awards",
-            ("award", "threshold", "spread", "noise_scale", "winners"),
+            ("award", "threshold", "spread", "noise_scale", "winners", "requires"),
             [tuple(a) for a in model.awards])
     _insert(out, "season_model_distributions", ("component", "p", "value"),
             [(c, p, v) for c, table in sorted(model.distributions.items()) for p, v in table])

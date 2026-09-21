@@ -231,27 +231,32 @@ complete except in the cases below.
   all, so Mobility for season 2012 can use speed and agility only. Madden NFL 12
   (file 2011) lacks throw power on 4 of its 73 rated QBs. Madden NFL 10 (file
   2009) has essentially no attributes.
-- **Not checked:** non-quarterback coverage. The Supporting Cast blend in #72
-  also wants Madden inputs for receivers, linemen and defenders. This document
-  covers quarterbacks only, as the issue asked. The pipeline ticket must check
-  the other positions before relying on them.
+- **Not checked here:** non-quarterback coverage. The Supporting Cast blend in
+  #72 also wants Madden inputs for receivers, linemen and defenders; this
+  document covers quarterbacks only, as the issue asked. The pipeline (#75)
+  measured it: 92.5% of the roster spots the Supporting Cast counts (each
+  team-season's top players at WR, TE, RB, OL, DL, LB, CB and S) resolve to an
+  observed rating in the edition after or the pre-season one, and the build
+  fails below 85%.
 
 ## 4. Configuration defaults on go
 
 These are the recorded defaults for the blend weights (Madden / stats), as in
-#72, and the only place they are written down until the pipeline ticket adds the
-real configuration file:
+#72. The pipeline ticket (#75) carries them as `WEIGHTS` in
+`scripts/qb_ratings/config.py`, with `STAT_ONLY` as this table's no-go column
+(every Madden weight 0):
 
 | Trait | Madden | Stats |
 | --- | --- | --- |
 | Mobility | 70 | 30 |
-| Arm Talent | 70 | 30 |
+| Arm Talent | 80 | 20 |
 | Build | 50 | 50 |
 | Accuracy | 50 | 50 |
 | IQ | 60 | 40 |
 | Supporting Cast | 50 | 50 |
 
-**Recommendation for the pipeline ticket (not yet decided by the owner):** for a
+**Recommendation for the pipeline ticket (implemented in #75, not yet confirmed
+by the owner):** for a
 quarterback-season with no observed rating (the 28 above), use Madden weight 0
 and stats weight 100 for that row, with the hand overrides table covering any
 that come out clearly wrong. Do not fill those rows from the dataset's imputed
@@ -268,7 +273,7 @@ If the Madden column goes to 0 for every trait:
   Accuracy, air yards and deep-ball rate for Arm Talent, and so on). No schema,
   API or game rule changes.
 - The weakness is that stats measure usage rather than talent, which is exactly
-  why #72 leaned on Madden for Mobility and Arm Talent (70%). Two mitigations,
+  why #72 leaned on Madden for Mobility (70%) and Arm Talent (80%, raised from 70% after review). Two mitigations,
   both offline: pool a quarterback's rates across all of his seasons to estimate
   the stable talent component before ranking, and use the hand overrides table
   for the known outliers (a rushing quarterback in a low-rushing offense, a

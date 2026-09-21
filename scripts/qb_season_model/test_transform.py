@@ -22,7 +22,7 @@ from transform import (
     fit_awards, fit_distributions, fit_formulas, fit_ladder, fit_norms, fit_outputs,
     nearest_real_seasons, passer_rating, percentile_of, predict,
     qb_lines_from_weeks, quantile, real_seasons, score, season_metrics,
-    team_seasons_from_games,
+    team_seasons_from_games, values_of,
 )
 
 # ------------------------------------------------------------ source helpers --
@@ -316,6 +316,87 @@ class FitOutputsTest(unittest.TestCase):
             self.assertAlmostEqual(coefficient, want[slot], places=6, msg=slot)
         self.assertAlmostEqual(out.residual_sd, 0.0, places=6)
         self.assertAlmostEqual(out.r_squared, 1.0, places=6)
+
+    def correlated(self, n=80):
+        """Accuracy and IQ move together (IQ is Accuracy plus a small wobble); only
+        Accuracy actually drives the outcome."""
+        out = []
+        for i in range(n):
+            acc = 25 + (i * 7) % 70
+            wobble = (i % 5) - 2
+            v = (acc, 25 + (i * 11) % 70, 25 + (i * 13) % 70, min(99, acc + wobble),
+                 25 + (i * 17) % 70, 25 + (i * 19) % 70)
+            out.append(season(i, v, ypa=4.0 + 0.05 * acc))
+        return out
+
+    def test_a_ridge_of_zero_is_ordinary_least_squares(self):
+        seasons = self.correlated()
+        (plain,) = fit_outputs(seasons, ypa_only())
+        (zero,) = fit_outputs(seasons, cfg(outputs={"ypa": OutputSpec("identity", 0.0, 20.0, 0.3, "qb_line", 0.0)}))
+        self.assertEqual(plain.coefficients, zero.coefficients)
+
+    def test_a_ridge_shares_credit_between_values_that_move_together(self):
+        seasons = self.correlated()
+        (plain,) = fit_outputs(seasons, ypa_only())
+        (ridged,) = fit_outputs(seasons, cfg(outputs={"ypa": OutputSpec("identity", 0.0, 20.0, 0.3, "qb_line", 0.05)}))
+        acc, iq = SLOTS.index("accuracy"), SLOTS.index("iq")
+        # Least squares finds the true one (Accuracy) and gives IQ nothing; a ridge
+        # gives IQ a real share and Accuracy less than all of it.
+        self.assertAlmostEqual(plain.coefficients[iq], 0.0, places=4)
+        self.assertAlmostEqual(plain.coefficients[acc], 0.05, places=4)
+        self.assertGreater(ridged.coefficients[iq], 0.01)
+        self.assertLess(ridged.coefficients[acc], 0.04)
+        # ...and together they still carry about what the one carried alone.
+        self.assertAlmostEqual(ridged.coefficients[acc] + ridged.coefficients[iq], 0.05, delta=0.005)
+
+    def shared(self, n=90):
+        """Supporting Cast rises with Accuracy, and both drive the outcome."""
+        out = []
+        for i in range(n):
+            acc = 25 + (i * 7) % 70
+            cast = min(99, max(25, acc + ((i * 5) % 31) - 15))
+            v = (acc, 25 + (i * 11) % 70, 25 + (i * 13) % 70, 25 + (i * 17) % 70,
+                 25 + (i * 19) % 70, cast)
+            out.append(season(i, v, ypa=4.0 + 0.03 * acc + 0.03 * cast))
+        return out
+
+    def trimmed(self, factor):
+        spec = OutputSpec("identity", 0.0, 20.0, 0.3, "qb_line", trim=(("supporting_cast", factor),))
+        (out,) = fit_outputs(self.shared(), cfg(outputs={"ypa": spec}))
+        return out
+
+    def test_a_trim_of_one_changes_nothing(self):
+        (plain,) = fit_outputs(self.shared(), ypa_only())
+        one = self.trimmed(1.0)
+        for a, b in zip(plain.coefficients, one.coefficients):
+            self.assertAlmostEqual(a, b, places=9)
+
+    def test_a_trim_holds_the_value_at_its_factor_and_the_others_pick_up_the_rest(self):
+        (plain,) = fit_outputs(self.shared(), ypa_only())
+        half = self.trimmed(0.5)
+        cast, acc = SLOTS.index("supporting_cast"), SLOTS.index("accuracy")
+        self.assertAlmostEqual(half.coefficients[cast], plain.coefficients[cast] * 0.5, places=9)
+        # Accuracy moves with the cast, so it absorbs part of what was trimmed.
+        self.assertGreater(half.coefficients[acc], plain.coefficients[acc] + 0.005)
+
+    def test_a_trimmed_fit_still_passes_through_the_mean_of_the_data(self):
+        seasons = self.shared()
+        out = self.trimmed(0.6)
+        n = len(seasons)
+        mean_values = [sum(values_of(s)[j] for s in seasons) / n for j in range(6)]
+        mean_y = sum(s.pass_yards / s.attempts for s in seasons) / n
+        got = out.intercept + sum(c * m for c, m in zip(out.coefficients, mean_values))
+        self.assertAlmostEqual(got, mean_y, places=6)
+
+    def test_a_ridge_leaves_the_intercept_unpenalised(self):
+        # The fit still passes through the mean of the data.
+        seasons = self.correlated()
+        (out,) = fit_outputs(seasons, cfg(outputs={"ypa": OutputSpec("identity", 0.0, 20.0, 0.3, "qb_line", 0.2)}))
+        n = len(seasons)
+        mean_values = [sum(values_of(s)[j] for s in seasons) / n for j in range(6)]
+        mean_y = sum(s.pass_yards / s.attempts for s in seasons) / n
+        got = out.intercept + sum(c * m for c, m in zip(out.coefficients, mean_values))
+        self.assertAlmostEqual(got, mean_y, places=6)
 
     def test_r_squared_says_how_much_of_the_spread_the_formula_explains(self):
         rng = random.Random(3)
@@ -718,6 +799,42 @@ class AwardTest(unittest.TestCase):
         weakest_winner = season_metrics(seasons[1], cfg())
         self.assertTrue(earns(model, "mvp", weakest_winner))
         self.assertFalse(earns(model, "mvp", season_metrics(seasons[0], cfg())))
+
+    def test_the_threshold_records_the_award_it_requires(self):
+        seasons, norms, config = self.setup(0.0)
+        config = config._replace(award_requires={"mvp": "all_pro", "opoy": "pro_bowl"})
+        found = {a.award: a.requires for a in fit_awards(seasons, norms, config)}
+        self.assertEqual(found, {"mvp": "all_pro", "opoy": "pro_bowl", "all_pro": "",
+                                 "pro_bowl": "", "sb_mvp": ""})
+
+    def test_without_a_requirement_no_award_requires_another(self):
+        seasons, norms, config = self.setup(0.0)
+        self.assertEqual({a.requires for a in fit_awards(seasons, norms, config)}, {""})
+
+    def test_a_season_that_misses_the_required_award_cannot_take_the_one_that_needs_it(self):
+        seasons, norms, config = self.setup(0.0)
+        strong = season_metrics(seasons[3], cfg())
+        free = bare_model(norms=norms, awards=fit_awards(seasons, norms, config),
+                          formulas=fit_formulas(config))
+        self.assertTrue(earns(free, "mvp", strong))
+        needy = fit_awards(seasons, norms, config._replace(award_requires={"mvp": "pro_bowl"}))
+        # The season clears MVP's own threshold; it only misses the Pro Bowl's, moved out of reach.
+        needy = tuple(a._replace(threshold=1e9) if a.award == "pro_bowl" else a for a in needy)
+        model = bare_model(norms=norms, awards=needy, formulas=fit_formulas(config))
+        self.assertTrue(earns(model, "pro_bowl", strong) is False)
+        self.assertFalse(earns(model, "mvp", strong))
+
+    def test_a_requirement_the_season_meets_changes_nothing(self):
+        seasons, norms, config = self.setup(0.0)
+        needy = fit_awards(seasons, norms, config._replace(award_requires={"mvp": "pro_bowl"}))
+        model = bare_model(norms=norms, awards=needy, formulas=fit_formulas(config))
+        self.assertTrue(earns(model, "mvp", season_metrics(seasons[3], cfg())))
+
+    def test_a_requirement_naming_no_award_or_itself_is_an_error(self):
+        seasons, norms, config = self.setup(0.25)
+        for bad in ({"mvp": "heisman"}, {"mvp": "mvp"}, {"heisman": "mvp"}):
+            with self.assertRaisesRegex(ValueError, "award_requires"):
+                fit_awards(seasons, norms, config._replace(award_requires=bad))
 
 
 # -------------------------------------------------------- nearest real season --
