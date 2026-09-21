@@ -26,9 +26,9 @@ rates are not. That makes a 16-game 2007 and a 17-game 2023 comparable.
 | | |
 | --- | --- |
 | **Formulas** | Eight outputs, each linear in the six values on a link scale: `attempts`, `comp_pct`, `ypa`, `td_rate`, `int_rate`, `rush_yards`, `rush_td`, `wins`. Yards, touchdowns, interceptions and rating are derived from them, so a generated line agrees with itself. |
-| **Extrapolation** | The formulas are fitted, not looked up, so six values above anything real give a season above anything real. The links stop a rate leaving what a game allows (`logit` for completion % and wins, `log` for touchdown and interception rates), and each output has bounds beyond every real season. |
+| **Extrapolation** | The formulas are fitted, not looked up, so six values above anything real give a season above anything real. The links stop a rate leaving what a game allows (`logit` for completion %, attempts and wins, `log` for touchdown and interception rates), and each output has bounds beyond every real season. |
 | **Residuals** | For each output, the real residual as a table of quantiles (p = 0 to 1 by 0.05). Noise is drawn by interpolating it, so it is bounded by what really happened. Each output has a `noise_scale`: 1 for `wins` (the team outcome), 0.5 for the quarterback's own line (`LINE_NOISE`; the real season lands in the generated middle 80% of a stat about 45-50% of the time at 0.5, against 30% at 0.3 and 75% at 1.0). |
-| **Playoff ladder** | Five rungs (make the playoffs, reach the divisional round, the conference game, the Super Bowl, win it), each the chance of clearing it given the last as a logistic in wins, fitted on every team-season. More wins is never a worse chance, so a slope the data gives the wrong sign is held flat (the Super Bowl rung is a coin flip). |
+| **Playoff ladder** | Five rungs (make the playoffs, reach the divisional round, the conference game, the Super Bowl, win it), each the chance of clearing it given the last as a logistic in wins, fitted on every team-season. The first rung is sharper than a logistic can be: 12 or more wins always makes it and 5 or fewer never does (`LADDER_GUARANTEES`; no real team broke either, and the fit refuses a guarantee one did), so a 13-4 team cannot miss the playoffs. More wins is never a worse chance, so a slope the data gives the wrong sign is held flat (the Super Bowl rung is a coin flip). |
 | **Awards** | MVP, Offensive Player of the Year, First-Team All-Pro, Pro Bowl and Super Bowl MVP. Each has a score (a weighted sum of z-scored stat-line and record metrics) and a threshold at a configured quantile of the **real winners'** scores. Awards nest as they did (`AWARD_REQUIRES`): an MVP must also be All-Pro, and an All-Pro or Offensive Player of the Year a Pro Bowler, or 46% of generated MVPs were not All-Pro against 6% of real ones. Real winners' `spread` is recorded so noise near the edge scales with it. |
 | **Score** | How the real seasons spread on stat line, team success and awards, as quantile tables. A generated season is ranked on each as the share of real seasons it is strictly better than (a tie is not better, so a season with no awards, like most real ones, gets nothing on that component); the score is the weighted mix (50 / 30 / 20). A season better than every real one reads 100 on that component. |
 
@@ -45,10 +45,13 @@ the real winners. Retune by editing it and generating a new migration.
 
 Three choices are worth knowing about:
 
-- **`attempts` is linear, not log.** A multiplicative link doubled the volume of a
-  build that is elite in every trait: all 99 gave 794 attempts and 6,663 yards, a
-  record by 20%. Linear gives 5,754 yards and 53 touchdowns, a record by a margin a
-  fan could believe.
+- **`attempts` saturates: logit, capped at 670.** A multiplicative (log) link doubled the
+  volume of a build that is elite in every trait: all 99 gave 794 attempts and 6,663 yards, a
+  record by 20%. A straight line was better but kept climbing past where the real data go flat
+  (real seasons in the top build buckets throw 540-560 passes), so well-drafted runs threw
+  680+ passes 4.2% of the time (0.6% of real seasons) and 5,500+ yards 2.5% of the time. The
+  capped logit gives 0.0% and 0.15%, keeps a record-level passer reachable and costs nothing
+  in fit. The cap is `ATTEMPTS_CAP` in `config.py`, which records the sweep.
 - **Rushing is a fifth of the stat line (and its touchdowns a tenth).** At a tenth, with
   no touchdowns, Mobility moved a season's score by 10 points from 25 to 99 while IQ
   moved it 34. Now the six values move it by, in order, IQ 32, Accuracy 27, Supporting
