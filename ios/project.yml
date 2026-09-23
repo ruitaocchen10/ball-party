@@ -10,7 +10,7 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
 configFiles:
   Debug: Secrets.xcconfig
-  Release: Secrets.xcconfig
+  Release: Secrets.release.xcconfig
 packages:
   Supabase:
     url: https://github.com/supabase/supabase-swift

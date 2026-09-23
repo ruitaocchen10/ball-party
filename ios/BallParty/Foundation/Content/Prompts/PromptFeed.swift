@@ -144,6 +144,17 @@ enum PromptFeed {
             }
     }
 
+    /// The viewer's own top-level takes across every post, newest first — the
+    /// Profile tab's "Your takes", mirroring the web's `takeHistory` join of
+    /// `prompt_comments` (`parent_comment_id is null`) against the feed. A
+    /// reply doesn't count: walking only `post.comments`, never a comment's
+    /// `replies`, is what keeps a reply out, the same way the web's query does.
+    static func myTakes(in posts: [PromptPost]) -> [ProfileTake] {
+        posts
+            .flatMap { post in post.comments.filter(\.isViewer).map { ProfileTake(post: post, comment: $0) } }
+            .sorted { $0.comment.createdAt > $1.comment.createdAt }
+    }
+
     /// Comments come back flat; this nests each reply under its take. A reply
     /// whose parent has gone missing (a stale read mid-request) stands as a
     /// take of its own rather than being silently dropped — the same call the

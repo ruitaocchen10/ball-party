@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 
 import { type RoomSummary } from "@/components/home/CurrentRoom";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
+import { HuddleFeed } from "@/components/home/HuddleFeed";
 import { QuickActions } from "@/components/home/QuickActions";
-import { SocialFeed } from "@/components/home/SocialFeed";
+import { SearchQueryProvider } from "@/components/home/search-context";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
@@ -54,28 +55,25 @@ export default async function Home(props: PageProps<"/">) {
 
   const { error, q } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
-  const query = typeof q === "string" ? q.trim().toLocaleLowerCase() : "";
+  const query = typeof q === "string" ? q : "";
   // Home stays focused on weekly participation: winner picks and the weekly
   // Power Rankings ritual. Other composer-only templates remain out of this
   // dashboard stream while their player experiences are refined.
   const pickPosts = posts.filter(isHomePrompt);
-  const visiblePosts = query
-    ? pickPosts.filter((post) => `${post.promptText} ${post.caption} ${post.author}`.toLocaleLowerCase().includes(query))
-    : pickPosts;
 
   return (
-    <>
+    <SearchQueryProvider initialQuery={query}>
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
       <main data-home-main className="app-page flex-1">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
         <div data-home-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
-          <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><SocialFeed posts={visiblePosts} canAnswer={canAnswerPrompt(claims)} gameContexts={gameContexts} /></div>
+          <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><HuddleFeed posts={pickPosts} canAnswer={canAnswerPrompt(claims)} gameContexts={gameContexts} /></div>
           <div data-quick-actions className="hidden xl:block"><QuickActions room={room} /></div>
         </div>
       </main>
-    </>
+    </SearchQueryProvider>
   );
 }
 

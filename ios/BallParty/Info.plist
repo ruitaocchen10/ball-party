@@ -9,11 +9,14 @@
 			<string>com.ballparty.app.oauth-callback</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<!-- Keep in sync with SupabaseConfig.oauthCallbackScheme. -->
 				<string>com.ballparty.app</string>
 			</array>
 		</dict>
 	</array>
+	<key>SUPABASE_ANON_KEY</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SUPABASE_URL</key>
+	<string>$(SUPABASE_URL)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>BebasNeue-Regular.ttf</string>
@@ -24,12 +27,5 @@
 		<string>JetBrainsMono-Regular.ttf</string>
 		<string>JetBrainsMono-Bold.ttf</string>
 	</array>
-	<!-- Dark only, like the web app: there is no light theme to fall back to. -->
-	<key>UIUserInterfaceStyle</key>
-	<string>Dark</string>
-	<key>SUPABASE_URL</key>
-	<string>$(SUPABASE_URL)</string>
-	<key>SUPABASE_ANON_KEY</key>
-	<string>$(SUPABASE_ANON_KEY)</string>
 </dict>
 </plist>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { coverOptions, isPromptOpenForAnswers, needsCoverChoice } from "./logic";
+import { coverOptions, isPromptOpenForAnswers, matchesSearchQuery, needsCoverChoice } from "./logic";
 import type { Option } from "./types";
 
 const pool = (count: number, placed: Record<number, number> = {}): Option[] =>
@@ -54,5 +54,24 @@ describe("isPromptOpenForAnswers", () => {
     expect(isPromptOpenForAnswers({ status: "locked", lockAt }, deadline - 1)).toBe(false);
     expect(isPromptOpenForAnswers({ status: "resolved", lockAt }, deadline - 1)).toBe(false);
     expect(isPromptOpenForAnswers({ status: "open", lockAt: "not-a-date" }, deadline - 1)).toBe(false);
+  });
+});
+
+describe("matchesSearchQuery", () => {
+  const post = { promptText: "Who wins Jets vs Bills?", caption: "Week 4 lock", author: "cam" };
+
+  it("matches everything for a blank or whitespace-only query", () => {
+    expect(matchesSearchQuery(post, "")).toBe(true);
+    expect(matchesSearchQuery(post, "   ")).toBe(true);
+  });
+
+  it("matches a substring anywhere in prompt text, caption, or author, case-insensitively", () => {
+    expect(matchesSearchQuery(post, "jets")).toBe(true);
+    expect(matchesSearchQuery(post, "WEEK 4")).toBe(true);
+    expect(matchesSearchQuery(post, "Cam")).toBe(true);
+  });
+
+  it("rejects a query none of the three fields contain", () => {
+    expect(matchesSearchQuery(post, "eagles")).toBe(false);
   });
 });
