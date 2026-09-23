@@ -14,6 +14,7 @@ import type { Board } from "@/lib/games/higher-or-lower/board";
 import { QbSeasonBuilderResult } from "@/components/games/qb-season-builder/QbSeasonBuilderResult";
 import { boardFromRow } from "@/lib/games/qb-season-builder/board";
 import { fetchPersonalBest, fetchResult } from "@/lib/games/qb-season-builder/read";
+import { playSolo } from "@/lib/platform/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
 import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 
@@ -261,6 +262,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
               personalBest={personalBest}
               isGuest={isGuestViewer(claims)}
               staged
+              startNewSeason={playSolo}
             />
           </SoloMatchShell>
         );
@@ -269,7 +271,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
 
     return (
       <SoloMatchShell displayName={displayName} email={email} avatarUrl={avatarUrl}>
-        <QbSeasonBuilderMatch matchId={id} initial={board} isGuest={isGuestViewer(claims)} />
+        <QbSeasonBuilderMatch matchId={id} initial={board} isGuest={isGuestViewer(claims)} startNewSeason={playSolo} />
       </SoloMatchShell>
     );
   }

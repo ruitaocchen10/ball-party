@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPersonalBest, fetchResult } from "@/lib/games/qb-season-builder/read";
 import { shareCardFromResult } from "@/lib/games/qb-season-builder/share-card";
+import { playSolo } from "@/lib/platform/lobbies/actions";
 import { SITE_NAME } from "@/lib/seo/site";
 import { createClient } from "@/lib/supabase/server";
 
@@ -69,6 +70,7 @@ export default async function QbSeasonResultPage(props: PageProps<"/solo/qb-seas
         personalBest={personalBest}
         isGuest={isGuestViewer(claims)}
         staged={false}
+        startNewSeason={playSolo}
       />
     </>
   );

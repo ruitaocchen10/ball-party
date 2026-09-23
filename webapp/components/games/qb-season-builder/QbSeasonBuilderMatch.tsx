@@ -1,11 +1,12 @@
 "use client";
 
+import { Brain, Footprints, Shield, Target, Users, Zap, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
-import { Button, ButtonLink } from "@/components/foundation/ui-kit/Button";
+import { Button } from "@/components/foundation/ui-kit/Button";
 import { Concealed } from "@/components/foundation/ui-kit/Concealed";
 import { DashboardRail } from "@/components/foundation/ui-kit/DashboardRail";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
@@ -36,6 +37,16 @@ type Move = "pick" | "respin";
 /** Long enough to read the reel, short enough not to interrupt each pick. */
 const SPIN_REVEAL_MS = 2_000;
 
+/** Which icon stands in for each trait row — see OptionRow. */
+const SLOT_ICONS: Record<Slot, LucideIcon> = {
+  accuracy: Target,
+  arm_talent: Zap,
+  mobility: Footprints,
+  iq: Brain,
+  build: Shield,
+  supporting_cast: Users,
+};
+
 /**
  * The pick screen of a QB Season Builder run: this round's spin, what it
  * offers, and the six slots being filled.
@@ -53,10 +64,19 @@ export function QbSeasonBuilderMatch({
   matchId,
   initial,
   isGuest,
+  startNewSeason,
 }: {
   matchId: string;
   initial: Board;
   isGuest: boolean;
+  /**
+   * Deals a fresh solo run and redirects to it — `playSolo`
+   * (`lib/platform/lobbies/actions`), handed down from the page rather than
+   * imported here: a game may never import platform directly (see
+   * docs/architecture/architecture.md), so the one call this screen needs
+   * into it arrives as a prop instead.
+   */
+  startNewSeason: (formData: FormData) => void;
 }) {
   const router = useRouter();
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
@@ -164,7 +184,7 @@ export function QbSeasonBuilderMatch({
             />
           )}
         </div>
-        <RunControlRail board={board} pending={pending} onRespin={() => play("respin")} />
+        <RunControlRail board={board} pending={pending} onRespin={() => play("respin")} startNewSeason={startNewSeason} />
       </div>
     </main>
   );
@@ -229,11 +249,10 @@ function SpinPanel({
         </div>
       )}
 
-      {revealed ? (
-        <>
-          <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-            <div className="flex flex-col gap-4">
-              {spin.quarterbacks.map((quarterback) => (
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="flex flex-col gap-4">
+          {revealed ? (
+            spin.quarterbacks.map((quarterback) => (
               <fieldset key={quarterback.playerId} className="border border-line bg-surface-raised p-4">
                 <legend className="flex items-center gap-2 px-1 font-slab text-xl uppercase">
                   <span aria-hidden="true">
@@ -245,8 +264,10 @@ function SpinPanel({
                   {QUALITIES.map((quality) => (
                     <OptionRow
                       key={quality}
+                      icon={SLOT_ICONS[quality]}
                       label={SLOT_LABELS[quality]}
                       rating={quarterback.values?.[quality] ?? null}
+                      taken={taken(quality)}
                       disabled={taken(quality) || pending}
                       checked={choice?.slot === quality && choice.playerId === quarterback.playerId}
                       onChoose={() => onChoose({ slot: quality, playerId: quarterback.playerId })}
@@ -255,34 +276,37 @@ function SpinPanel({
                 </div>
                 <div className="mt-4 border-t border-line pt-4">
                   <OptionRow
+                    icon={SLOT_ICONS.supporting_cast}
                     label={SLOT_LABELS.supporting_cast}
                     rating={spin.supportingCast}
                     name={`supporting-cast-${quarterback.playerId}`}
+                    taken={taken("supporting_cast")}
                     disabled={taken("supporting_cast") || pending}
                     checked={choice?.slot === "supporting_cast"}
                     onChoose={() => onChoose({ slot: "supporting_cast", playerId: null })}
                   />
                 </div>
               </fieldset>
-              ))}
-            </div>
-            <BuildCard board={board} isGuest={isGuest} />
-          </div>
+            ))
+          ) : (
+            <p role="status" className="text-sm text-fg-muted">Finding this team&apos;s quarterback options…</p>
+          )}
+        </div>
+        <BuildCard board={board} isGuest={isGuest} />
+      </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-            <p role="status" className="min-h-5 text-sm leading-5 text-fg-muted">
-              {choice ? `Taking ${SLOT_LABELS[choice.slot]} from ${chosenFrom}` : "Choose one thing from this spin."}
-            </p>
-            <div className="flex gap-2">
-              <Button type="button" fullWidth={false} disabled={!choice || pending} onClick={() => onPlay("pick")}>
-                Lock in pick
-              </Button>
-            </div>
+      {revealed ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+          <p role="status" className="min-h-5 text-sm leading-5 text-fg-muted">
+            {choice ? `Taking ${SLOT_LABELS[choice.slot]} from ${chosenFrom}` : "Choose one thing from this spin."}
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" fullWidth={false} disabled={!choice || pending} onClick={() => onPlay("pick")}>
+              Lock in pick
+            </Button>
           </div>
-        </>
-      ) : (
-        <p role="status" className="text-sm text-fg-muted">Finding this team&apos;s quarterback options…</p>
-      )}
+        </div>
+      ) : null}
       <AnimatedMessage role="alert" className="text-sm text-hidden-text">
         {error}
       </AnimatedMessage>
@@ -303,29 +327,62 @@ function TeamSpinIdentity({ code, name, season }: { code: string; name: string; 
   );
 }
 
-/** One thing a spin offers. A native radio so the group behaves as one choice. */
+/**
+ * One thing a spin offers. A native radio (visually hidden, but still what a
+ * screen reader and `taken()`'s `checked` state hang off of) inside a
+ * `<label>`, so the whole row — not just the old dot — is the click target
+ * and clicking anywhere on it selects the trait.
+ *
+ * The trait's icon stands in for the dot. At rest it's a quiet outline;
+ * picking the row fills the whole thing with the same cream tone `<Button>`
+ * uses for its one primary action, so "this is my pick" reads at a glance
+ * against the board rather than only up close. Explored as three variants in
+ * a throwaway prototype (`app/prototype/qb-trait-rows`) before this one won.
+ *
+ * `taken` is its own prop rather than folded into `disabled`: a slot already
+ * filled from an earlier spin reads differently from one merely waiting on a
+ * pending request, so it gets its own greyed-out look and its own "why" —
+ * the same rule AuctionClock follows, that a disabled control always says why
+ * rather than leaving "already picked" indistinguishable from "broken".
+ */
 function OptionRow({
+  icon: Icon,
   label,
   rating,
   name = "option",
+  taken = false,
   disabled,
   checked,
   onChoose,
 }: {
+  icon: LucideIcon;
   label: string;
   rating: number | null;
   name?: string;
+  taken?: boolean;
   disabled: boolean;
   checked: boolean;
   onChoose: () => void;
 }) {
+  const active = checked && !taken;
   return (
-    <label className="flex items-center justify-between gap-3 border border-line px-2.5 py-2">
-      <span className="flex items-center gap-2">
-        <input type="radio" name={name} checked={checked} disabled={disabled} onChange={onChoose} />
+    <label
+      className={`flex items-center justify-between gap-3 border px-2.5 py-2.5 transition-colors ${
+        taken
+          ? "cursor-not-allowed border-line bg-surface opacity-50"
+          : active
+            ? "cursor-pointer border-panel bg-panel text-panel-fg"
+            : "cursor-pointer border-line hover:border-fg-muted"
+      }`}
+    >
+      <span className="flex items-center gap-2.5">
+        <input type="radio" name={name} className="sr-only" checked={checked} disabled={disabled} onChange={onChoose} />
+        <Icon aria-hidden className={`h-4 w-4 ${active ? "text-panel-fg" : "text-fg-muted"}`} strokeWidth={active ? 2.25 : 1.5} />
         <span className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase">{label}</span>
       </span>
-      {rating === null ? (
+      {taken ? (
+        <span className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Already picked</span>
+      ) : rating === null ? (
         <Concealed label="Rating hidden" className="h-4 w-9" />
       ) : (
         <span className="font-slab text-xl leading-none tabular-nums">{rating}</span>
@@ -396,9 +453,17 @@ function BuildCard({ board, isGuest }: { board: Board; isGuest: boolean }) {
   );
 }
 
-function RunControlRail({ board, pending, onRespin }: { board: Board; pending: boolean; onRespin: () => void }) {
-  const [confirmingNewSeason, setConfirmingNewSeason] = useState(false);
-
+function RunControlRail({
+  board,
+  pending,
+  onRespin,
+  startNewSeason,
+}: {
+  board: Board;
+  pending: boolean;
+  onRespin: () => void;
+  startNewSeason: (formData: FormData) => void;
+}) {
   return (
     <DashboardRail headingId="qb-run-control-heading" eyebrow="Run control" title="Current run">
       <p className="mt-4 font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{board.currentRound} / {board.roundCount} rounds · mode: {board.mode}</p>
@@ -411,15 +476,14 @@ function RunControlRail({ board, pending, onRespin }: { board: Board; pending: b
         </div>
       ) : null}
       <div className="mt-4 border-t border-line pt-3">
-        {confirmingNewSeason ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-[12px] leading-4 text-fg-muted">Leave this run and choose a new season?</p>
-            <ButtonLink href="/solo" variant="ghost">Choose new season</ButtonLink>
-            <Button type="button" variant="ghost" onClick={() => setConfirmingNewSeason(false)}>Keep this run</Button>
-          </div>
-        ) : (
-          <Button type="button" variant="ghost" onClick={() => setConfirmingNewSeason(true)}>New season</Button>
-        )}
+        {/* One click, no confirmation: abandons this run and deals a fresh
+         *  one immediately, in the same ratings mode this run is playing in. */}
+        <form action={startNewSeason}>
+          <input type="hidden" name="game" value="qb_season_builder" />
+          <input type="hidden" name="mode" value={board.mode} />
+          <Button type="submit" variant="ghost">New season</Button>
+        </form>
+        <p className="mt-2 text-[12px] leading-4 text-fg-muted">Starts over immediately — this run is left behind.</p>
       </div>
     </DashboardRail>
   );

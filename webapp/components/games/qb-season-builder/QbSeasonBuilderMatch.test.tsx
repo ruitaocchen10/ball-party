@@ -13,6 +13,11 @@ vi.mock("@/lib/foundation/ui-kit/useTimedReveal", () => ({
   useTimedReveal: () => ({ revealed: timedReveal.revealed }),
 }));
 
+// The screen never imports `playSolo` itself — a game may not import
+// platform directly (docs/architecture/architecture.md) — so the page hands
+// it down as `startNewSeason`. A plain fn stands in for it here.
+const playSolo = vi.fn();
+
 import { QbSeasonBuilderMatch } from "@/components/games/qb-season-builder/QbSeasonBuilderMatch";
 import { boardFromRow, type Board, type BoardRow } from "@/lib/games/qb-season-builder/board";
 import { supabaseMock } from "@/test/factories";
@@ -77,7 +82,7 @@ function boardOf(over: Parameters<typeof row>[0] = {}): Board {
 function renderScreen(initial: Board, { isGuest = false } = {}) {
   const supabase = supabaseMock();
   globalThis.__supabaseMock = supabase;
-  const view = render(<QbSeasonBuilderMatch matchId={MATCH} initial={initial} isGuest={isGuest} />);
+  const view = render(<QbSeasonBuilderMatch matchId={MATCH} initial={initial} isGuest={isGuest} startNewSeason={playSolo} />);
   return { ...view, supabase };
 }
 
@@ -162,7 +167,7 @@ describe("QbSeasonBuilderMatch — picking", () => {
     expect(supabase.rpc).toHaveBeenCalledWith("pick", { p_match_id: MATCH, p_slot: "supporting_cast" });
   });
 
-  it("does not offer a slot that is already filled", () => {
+  it("does not offer a slot that is already filled, and says so rather than leaving it a plain disabled radio", () => {
     renderScreen(boardOf({
       current_round: 2,
       picks: [{ round: 1, slot: "accuracy", franchise_code: "kan", season: 2018, ...MAHOMES, value: 90 }],
@@ -170,19 +175,27 @@ describe("QbSeasonBuilderMatch — picking", () => {
 
     expect(screen.getByRole("radio", { name: /accuracy/i })).toBeDisabled();
     expect(screen.getByRole("radio", { name: /arm talent/i })).toBeEnabled();
+
+    const accuracyRow = screen.getByRole("radio", { name: /accuracy/i }).closest("label")!;
+    expect(within(accuracyRow).getByText(/already picked/i)).toBeInTheDocument();
+    const armTalentRow = screen.getByRole("radio", { name: /arm talent/i }).closest("label")!;
+    expect(within(armTalentRow).queryByText(/already picked/i)).not.toBeInTheDocument();
   });
 });
 
 describe("QbSeasonBuilderMatch — the respin", () => {
-  it("keeps run controls in the sidebar and confirms before leaving for a new season", async () => {
+  it("keeps run controls in the sidebar, and starts a new season in one click, no confirmation", async () => {
     const user = userEvent.setup();
     renderScreen(boardOf());
 
     const controls = screen.getByRole("complementary", { name: /current run/i });
     expect(within(controls).getByRole("button", { name: /respin team/i })).toBeEnabled();
     await user.click(within(controls).getByRole("button", { name: /new season/i }));
-    expect(within(controls).getByRole("link", { name: /choose new season/i })).toHaveAttribute("href", "/solo");
-    expect(within(controls).getByRole("button", { name: /keep this run/i })).toBeInTheDocument();
+
+    expect(playSolo).toHaveBeenCalledTimes(1);
+    const [formData] = playSolo.mock.calls[0] as [FormData];
+    expect(formData.get("game")).toBe("qb_season_builder");
+    expect(formData.get("mode")).toBe("visible");
   });
 
   it("rerolls the whole spin through the game API and shows the respin as spent", async () => {
@@ -384,7 +397,7 @@ describe("QbSeasonBuilderMatch — all six slots filled", () => {
 });
 
 describe("QbSeasonBuilderMatch — the spin", () => {
-  it("keeps quarterback options hidden until the team spinner finishes", () => {
+  it("keeps quarterback options hidden until the team spinner finishes, but keeps the build card up throughout", () => {
     timedReveal.revealed = false;
     const initial = boardOf();
     const { container, rerender } = renderScreen(initial);
@@ -393,12 +406,16 @@ describe("QbSeasonBuilderMatch — the spin", () => {
     expect(container.querySelector(".animate-reel-spin")).toHaveStyle({ animationDuration: "2000ms" });
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /lock in/i })).not.toBeInTheDocument();
+    // "Your build" never disappears while the team spins — only the player
+    // cards wait on the reveal.
+    expect(screen.getByRole("list", { name: "Your build" })).toBeInTheDocument();
 
     timedReveal.revealed = true;
-    rerender(<QbSeasonBuilderMatch matchId={MATCH} initial={initial} isGuest={false} />);
+    rerender(<QbSeasonBuilderMatch matchId={MATCH} initial={initial} isGuest={false} startNewSeason={playSolo} />);
 
     expect(screen.getByText("Denver Broncos")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /accuracy/i })).toBeEnabled();
+    expect(screen.getByRole("list", { name: "Your build" })).toBeInTheDocument();
   });
 
   it("shows the round, the spun team-season and its qualifying quarterbacks", async () => {

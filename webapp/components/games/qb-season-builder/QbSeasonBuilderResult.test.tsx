@@ -22,6 +22,7 @@ import { resultFromJson, type SeasonResult } from "@/lib/games/qb-season-builder
  */
 
 const MATCH = "22222222-2222-2222-2222-222222222222";
+const startNewSeason = vi.fn();
 
 const PEYTON = { player_id: "00-0010346", display_name: "Peyton Manning" };
 const MAHOMES = { player_id: "00-0033873", display_name: "Patrick Mahomes" };
@@ -108,6 +109,7 @@ function renderResult(props: Props = {}) {
       personalBest={null}
       isGuest={false}
       staged={false}
+      startNewSeason={startNewSeason}
       {...props}
     />,
   );
@@ -115,7 +117,10 @@ function renderResult(props: Props = {}) {
 
 const stages = () => screen.queryAllByRole("region").map((region) => region.getAttribute("aria-label"));
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  startNewSeason.mockClear();
+});
 
 describe("QbSeasonBuilderResult — the staged reveal", () => {
   beforeEach(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] }));
@@ -126,25 +131,25 @@ describe("QbSeasonBuilderResult — the staged reveal", () => {
 
   const step = () => act(() => vi.advanceTimersByTime(REVEAL_STEP_MS));
 
-  it("plays stat line, record, playoffs, awards, then the score, one step at a time", () => {
+  it("reveals the finished screen from top to bottom", () => {
     renderResult({ staged: true });
 
-    expect(stages()).toEqual(["Stat line"]);
+    expect(stages()).toEqual(["Player build"]);
+    expect(within(screen.getByRole("region", { name: "Player build" })).getByText("88.4")).toBeInTheDocument();
+    expect(screen.queryByText("5,104")).not.toBeInTheDocument();
     step();
-    expect(stages()).toEqual(["Stat line", "Record"]);
+    expect(screen.getByText("5,104")).toBeInTheDocument();
     step();
-    expect(stages()).toEqual(["Stat line", "Record", "Playoffs"]);
+    expect(screen.getByRole("list", { name: "Awards" })).toBeInTheDocument();
     step();
-    expect(stages()).toEqual(["Stat line", "Record", "Playoffs", "Awards"]);
-    expect(screen.queryByRole("region", { name: "Score" })).not.toBeInTheDocument();
+    expect(stages()).toEqual(["Player build", "Team success"]);
+    expect(within(screen.getByRole("region", { name: "Team success" })).getByText("13–4")).toBeInTheDocument();
     step();
-    // The score is the payoff, so it lands on its own beat: what explains it
-    // comes after.
-    expect(stages()).toEqual(["Stat line", "Record", "Playoffs", "Awards", "Score"]);
+    expect(within(screen.getByRole("region", { name: "Team success" })).getByText("Lost the Super Bowl")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: /breakdown/i })).not.toBeInTheDocument();
     step();
     expect(stages()).toEqual([
-      "Stat line", "Record", "Playoffs", "Awards", "Score", "Score breakdown", "Your six picks",
+      "Player build", "Team success", "Score breakdown",
     ]);
   });
 
@@ -152,10 +157,10 @@ describe("QbSeasonBuilderResult — the staged reveal", () => {
     renderResult({ staged: true });
     step(); step(); step(); step(); step();
 
-    expect(within(screen.getByRole("region", { name: "Stat line" })).getByText("5,104")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Record" })).getByText("13–4")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Playoffs" })).getByText("Lost the Super Bowl")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Score" })).getByText("88.4")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Player build" })).getByText("5,104")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Team success" })).getByText("13–4")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Team success" })).getByText("Lost the Super Bowl")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Player build" })).getByText("88.4")).toBeInTheDocument();
   });
 
   it("stops offering to skip once the reveal has played through", () => {
@@ -173,7 +178,7 @@ describe("QbSeasonBuilderResult — the staged reveal", () => {
     renderResult({ staged: true });
 
     // Straight to the final state: no first stage waiting on a timer.
-    expect(stages()).toContain("Your six picks");
+    expect(stages()).toContain("Score breakdown");
     expect(screen.queryByRole("button", { name: /skip/i })).not.toBeInTheDocument();
   });
 
@@ -184,7 +189,7 @@ describe("QbSeasonBuilderResult — the staged reveal", () => {
 
     renderResult({ staged: true });
 
-    expect(stages()).toEqual(["Stat line"]);
+    expect(stages()).toEqual(["Player build"]);
   });
 
   it("remembers one run's reveal without spoiling another's", () => {
@@ -194,7 +199,7 @@ describe("QbSeasonBuilderResult — the staged reveal", () => {
 
     renderResult({ staged: true, result: resultOf({ match_id: "33333333-3333-3333-3333-333333333333" }) });
 
-    expect(stages()).toEqual(["Stat line"]);
+    expect(stages()).toEqual(["Player build"]);
   });
 
   it("plays again rather than failing when the browser will not remember", () => {
@@ -202,12 +207,12 @@ describe("QbSeasonBuilderResult — the staged reveal", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
     const first = renderResult({ staged: true });
     step(); step(); step(); step(); step();
-    expect(stages()).toContain("Your six picks");
+    expect(stages()).toContain("Score breakdown");
     first.unmount();
 
     renderResult({ staged: true });
 
-    expect(stages()).toEqual(["Stat line"]);
+    expect(stages()).toEqual(["Player build"]);
   });
 });
 
@@ -219,7 +224,7 @@ describe("QbSeasonBuilderResult — skipping", () => {
     await user.click(screen.getByRole("button", { name: /skip/i }));
 
     expect(stages()).toEqual([
-      "Stat line", "Record", "Playoffs", "Awards", "Score", "Score breakdown", "Your six picks",
+      "Player build", "Team success", "Score breakdown",
     ]);
     // Nothing left to skip.
     expect(screen.queryByRole("button", { name: /skip/i })).not.toBeInTheDocument();
@@ -233,15 +238,15 @@ describe("QbSeasonBuilderResult — skipping", () => {
 
     renderResult({ staged: true });
 
-    expect(stages()).toContain("Your six picks");
+    expect(stages()).toContain("Score breakdown");
   });
 });
 
 describe("QbSeasonBuilderResult — awards", () => {
-  it("lists the awards the season won, and only those", () => {
+  it("shows text badges for awards that were won", () => {
     renderResult();
 
-    const awards = within(screen.getByRole("region", { name: "Awards" }));
+    const awards = within(screen.getByRole("list", { name: "Awards" }));
     expect(awards.getByText("MVP")).toBeInTheDocument();
     expect(awards.getByText("First-Team All-Pro")).toBeInTheDocument();
     expect(awards.getByText("Pro Bowl")).toBeInTheDocument();
@@ -249,12 +254,12 @@ describe("QbSeasonBuilderResult — awards", () => {
     expect(awards.queryByText("Super Bowl MVP")).not.toBeInTheDocument();
   });
 
-  it("says so when the season won nothing", () => {
+  it("says when the season won no awards", () => {
     renderResult({
       result: resultOf({ awards: { mvp: false, opoy: false, all_pro: false, pro_bowl: false, sb_mvp: false } }),
     });
 
-    expect(within(screen.getByRole("region", { name: "Awards" })).getByText(/no awards/i)).toBeInTheDocument();
+    expect(screen.getByText("No awards this season.")).toBeInTheDocument();
   });
 });
 
@@ -270,21 +275,6 @@ describe("QbSeasonBuilderResult — the final state", () => {
     expect(breakdown.getByText(/better than 90% of real seasons/i)).toBeInTheDocument();
   });
 
-  it("recaps which real season each of the six values came from", () => {
-    renderResult();
-
-    const picks = within(screen.getByRole("list", { name: "Your six picks" })).getAllByRole("listitem");
-    expect(picks).toHaveLength(6);
-    expect(picks[0]).toHaveTextContent(/accuracy/i);
-    expect(picks[0]).toHaveTextContent("Peyton Manning");
-    expect(picks[0]).toHaveTextContent("2013 Denver Broncos");
-    expect(picks[0]).toHaveTextContent("91");
-    // The Supporting Cast comes from a team, not a quarterback.
-    expect(picks[5]).toHaveTextContent(/supporting cast/i);
-    expect(picks[5]).toHaveTextContent("New England Patriots");
-    expect(picks[5]).toHaveTextContent("93");
-  });
-
   it("never says where the ratings came from", () => {
     const { container } = renderResult({ shown: shownOf(), result: resultOf({ mode: "hidden" }) });
 
@@ -293,49 +283,28 @@ describe("QbSeasonBuilderResult — the final state", () => {
 });
 
 describe("QbSeasonBuilderResult — hidden mode", () => {
-  it("reveals the values of every option seen, including the ones passed on", () => {
-    renderResult({ result: resultOf({ mode: "hidden" }), shown: shownOf() });
+  it("keeps every dealt player available, mutes respins and passed-over players, and exposes their ratings on hover", async () => {
+    const user = userEvent.setup();
+    const shown = shownOf();
+    // Peyton's accuracy is the kept round-one pick. Mahomes was dealt beside
+    // him but was not selected, so the roster should visually distinguish it.
+    shown[1].quarterbacks.push({ playerId: MAHOMES.player_id, displayName: MAHOMES.display_name, headshotUrl: null, values: qualities(60) });
+    renderResult({ result: resultOf({ mode: "hidden" }), shown });
 
-    const seen = within(screen.getByRole("region", { name: "Every option you saw" }));
-    // Peyton's arm talent was on the spin and passed on: 80 + 2.
-    const peyton = within(seen.getByRole("group", { name: /peyton manning/i }));
-    expect(peyton.getByText("Arm Talent").closest("li")).toHaveTextContent("82");
-    expect(peyton.getByText("Mobility").closest("li")).toHaveTextContent("83");
-    // The team's cast on that spin, taken by nobody.
-    const spin = within(seen.getByText("Round 1 · 2013 Denver Broncos").closest("li")!);
-    expect(spin.getByText("Supporting Cast").closest("li")).toHaveTextContent("71");
-  });
+    const dealt = screen.getByRole("list", { name: "Players dealt" });
+    expect(within(dealt).getAllByRole("button")).toHaveLength(4);
+    const respun = within(dealt).getByRole("button", { name: /matt hasselbeck.*respun/i });
+    expect(respun.querySelector(".grayscale")).toBeInTheDocument();
+    const passedOver = within(dealt).getByRole("button", { name: /patrick mahomes.*not picked/i });
+    expect(passedOver.querySelector(".grayscale")).toBeInTheDocument();
 
-  it("includes a spin the respin threw away, and says so", () => {
-    renderResult({ result: resultOf({ mode: "hidden" }), shown: shownOf() });
-
-    const seen = within(screen.getByRole("region", { name: "Every option you saw" }));
-    expect(seen.getByText(/2010 Seattle Seahawks/)).toBeInTheDocument();
-    expect(seen.getByRole("group", { name: /matt hasselbeck/i })).toBeInTheDocument();
-    expect(seen.getAllByText(/respun/i)).toHaveLength(1);
-  });
-
-  it("marks the options that were taken", () => {
-    renderResult({ result: resultOf({ mode: "hidden" }), shown: shownOf() });
-
-    const seen = within(screen.getByRole("region", { name: "Every option you saw" }));
-    const peyton = within(seen.getByRole("group", { name: /peyton manning/i }));
-    expect(peyton.getByText("Accuracy").closest("li")).toHaveTextContent(/taken/i);
-    expect(peyton.getByText("Arm Talent").closest("li")).not.toHaveTextContent(/taken/i);
-  });
-
-  it("is not shown for a visible run, whose values were on screen all along", () => {
-    renderResult({ result: resultOf({ mode: "visible" }), shown: shownOf() });
-
-    expect(screen.queryByRole("region", { name: "Every option you saw" })).not.toBeInTheDocument();
-  });
-
-  it("is not shown where the passed-on options are not known, as on a public result", () => {
-    renderResult({ result: resultOf({ mode: "hidden" }), shown: null });
-
-    expect(screen.queryByRole("region", { name: "Every option you saw" })).not.toBeInTheDocument();
-    // The season itself is all there.
-    expect(screen.getByRole("region", { name: "Score" })).toBeInTheDocument();
+    const peyton = within(dealt).getByRole("button", { name: "Peyton Manning" });
+    await user.hover(peyton);
+    expect(within(peyton).getByText("81")).toHaveClass("bg-panel-fg");
+    expect(within(peyton).getByText("Arm Talent")).toBeInTheDocument();
+    expect(within(peyton).getByText("82")).toBeInTheDocument();
+    expect(within(peyton).getByText("Supporting Cast")).toBeInTheDocument();
+    expect(within(peyton).getByText("71")).toBeInTheDocument();
   });
 
   it("says which mode the run was in", () => {
@@ -346,19 +315,33 @@ describe("QbSeasonBuilderResult — hidden mode", () => {
 });
 
 describe("QbSeasonBuilderResult — read-only", () => {
-  it("renders the whole result at once, with nothing to skip, for someone who did not play it", () => {
+  it("renders the whole result at once, without a skip control, for someone who did not play it", () => {
     renderResult({ staged: false });
 
     expect(stages()).toEqual([
-      "Stat line", "Record", "Playoffs", "Awards", "Score", "Score breakdown", "Your six picks",
+      "Player build", "Team success", "Score breakdown",
     ]);
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /skip/i })).not.toBeInTheDocument();
   });
 
-  it("offers a way in to play their own", () => {
+  it("keeps new-season and solo-games navigation in the right panel", () => {
     renderResult({ staged: false });
 
-    expect(screen.getByRole("link", { name: /build your own/i })).toHaveAttribute("href", "/solo");
+    const panel = screen.getByRole("complementary", { name: /next play/i });
+    expect(within(panel).getByRole("button", { name: /new season/i })).toBeInTheDocument();
+    expect(within(panel).getByRole("link", { name: /back to solo games/i })).toHaveAttribute("href", "/solo");
+  });
+
+  it("starts a new season in the result's ratings mode", async () => {
+    const user = userEvent.setup();
+    renderResult({ result: resultOf({ mode: "hidden" }) });
+
+    await user.click(screen.getByRole("button", { name: /new season/i }));
+
+    expect(startNewSeason).toHaveBeenCalledTimes(1);
+    const [formData] = startNewSeason.mock.calls[0] as [FormData];
+    expect(formData.get("game")).toBe("qb_season_builder");
+    expect(formData.get("mode")).toBe("hidden");
   });
 
   it("points the player at the read-only page they can share, once the season is out", async () => {
@@ -379,8 +362,9 @@ describe("QbSeasonBuilderResult — who is looking", () => {
   it("shows a signed-in player their personal best for the run's mode", () => {
     renderResult({ result: resultOf({ mode: "hidden" }), personalBest: 91.5 });
 
-    expect(screen.getByText(/personal best/i)).toHaveTextContent(/hidden/i);
-    expect(screen.getByText(/personal best/i)).toHaveTextContent("91.5");
+    const panel = screen.getByRole("complementary", { name: /next play/i });
+    expect(within(panel).getByText(/personal best/i)).toHaveTextContent(/hidden/i);
+    expect(within(panel).getByText("91.5")).toBeInTheDocument();
   });
 
   it("shows no personal best to someone who has none", () => {

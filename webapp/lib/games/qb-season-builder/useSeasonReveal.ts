@@ -3,10 +3,9 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 /**
- * The staged reveal of a finished season: stat line, record, playoffs, awards,
- * then the score, and only then the details that explain it — the breakdown
- * and per-pick recap. The score gets a beat of its
- * own, because it is the payoff the four steps before it build to.
+ * The staged reveal of a finished season follows its visual order: score,
+ * stat line, awards, record, playoffs, then the supporting details. This
+ * prevents a later reveal from inserting above content already on screen.
  *
  * Like sabotage draft's `useTurnReveal` and the auction's `useLotReveal`, this
  * hook decides nothing about the season and hides no data the caller doesn't
@@ -15,11 +14,11 @@ import { useEffect, useState, useSyncExternalStore } from "react";
  * `prefers-reduced-motion` viewer or a test, where no animation ever runs.
  */
 export const REVEAL_STAGES = [
+  "score",
   "stat_line",
+  "awards",
   "record",
   "playoffs",
-  "awards",
-  "score",
   "details",
 ] as const;
 export type RevealStage = (typeof REVEAL_STAGES)[number];
