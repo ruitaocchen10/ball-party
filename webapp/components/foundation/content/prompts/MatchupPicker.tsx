@@ -48,15 +48,15 @@ export function MatchupPicker({ slot, variant, mode, response = [], onChange, co
         <div className="relative">
           {activeId === away.id ? <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-1/2" style={surface(away, true)} /> : null}
           {activeId === home.id ? <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-1/2" style={surface(home, true)} /> : null}
-          <div className="relative z-10 px-3 pt-3 sm:px-5 sm:pt-4"><PosterHeader context={context} activeOptionId={activeId} away={away} home={home} /></div>
-          <div aria-hidden className="absolute top-7 bottom-0 left-1/2 z-10 w-px bg-fg/20" />
+          {context?.primetime ? <div className="relative z-10 flex justify-center px-3 pt-2 sm:px-5 sm:pt-3"><PrimetimeChip /></div> : null}
+          <div aria-hidden className={`absolute bottom-0 left-1/2 z-10 w-px bg-fg/20 ${context?.primetime ? "top-9 sm:top-10" : "top-0"}`} />
           <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-2 px-3 py-2 sm:gap-5 sm:px-5 sm:py-3">
             <FeaturedSide option={away} selected={selectedId === away.id} active={activeId === away.id} interactive={mode === "picker"} sideProps={sideProps(away)} />
             <span aria-hidden className="flex h-9 w-9 self-center items-center justify-center rounded-full border border-fg/30 bg-transparent text-xs font-bold text-fg shadow-[0_4px_12px_rgb(0_0_0/0.25)] sm:h-11 sm:w-11 sm:text-sm">@</span>
             <FeaturedSide option={home} selected={selectedId === home.id} active={activeId === home.id} interactive={mode === "picker"} sideProps={sideProps(home)} />
           </div>
         </div>
-        <div className="relative mx-3 flex justify-center border-t border-fg/20 pt-2.5 pb-3 font-mono text-[9px] tracking-[0.14em] text-fg/70 uppercase sm:mx-5 sm:pb-4">{formatGameTime(context?.kickoff)}</div>
+        <div className="relative mx-3 flex flex-col items-center gap-1 border-t border-fg/20 pt-2.5 pb-3 font-mono text-[9px] tracking-[0.14em] text-fg/70 uppercase sm:mx-5 sm:pb-4"><span>{formatGameTime(context?.kickoff)}</span><span className="max-w-full truncate text-fg/50">{context?.stadium || "Venue TBD"}</span></div>
       </PromptTicket>
     </section>
   );
@@ -73,8 +73,8 @@ export function MatchupPicker({ slot, variant, mode, response = [], onChange, co
   );
 }
 
-function PosterHeader({ context, activeOptionId, away, home }: { context?: MatchupGameContext; activeOptionId: string | null; away: Option; home: Option }) {
-  return <div className="relative flex items-center justify-between font-mono text-[9px] font-semibold tracking-[0.16em] text-fg/70 uppercase"><span className={activeOptionId === away.id ? "max-w-[28%] truncate text-panel/80" : "max-w-[28%] truncate"}>{context?.stadium || "Venue TBD"}</span><span className={activeOptionId === home.id ? "max-w-[28%] truncate text-right text-panel/80" : "max-w-[28%] truncate text-right"}>Pick the winner</span>{context?.primetime ? <span aria-label="Primetime game" style={{ clipPath: "polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%)" }} className="absolute top-[-5px] left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 border border-fg/60 bg-fg px-3 py-1 font-mono text-[9px] font-bold tracking-[0.16em] text-surface shadow-[0_4px_10px_rgb(0_0_0/0.32)]"><MoonStar aria-hidden className="h-3 w-3" strokeWidth={2.2} /> Primetime</span> : null}</div>;
+function PrimetimeChip() {
+  return <span aria-label="Primetime game" style={{ clipPath: "polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%)" }} className="inline-flex items-center gap-1.5 border border-fg/60 bg-fg px-3 py-1 font-mono text-[9px] font-bold tracking-[0.16em] text-surface uppercase shadow-[0_4px_10px_rgb(0_0_0/0.32)]"><MoonStar aria-hidden className="h-3 w-3" strokeWidth={2.2} /> Primetime</span>;
 }
 
 function surface(option: Option, active: boolean) {
