@@ -124,6 +124,16 @@ struct PromptComment: Identifiable, Equatable, Sendable {
     let replies: [PromptComment]
 }
 
+/// One of the viewer's own takes, paired with the post it was left on — what
+/// `PromptFeed.myTakes` hands the Profile tab, mirroring the web profile's
+/// `{ post, comment }` pairing of `takeHistory`.
+struct ProfileTake: Identifiable, Equatable, Sendable {
+    let post: PromptPost
+    let comment: PromptComment
+
+    var id: UUID { comment.id }
+}
+
 struct PromptPost: Identifiable, Equatable, Sendable {
     let id: UUID
     let templateKind: String

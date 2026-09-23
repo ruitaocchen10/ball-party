@@ -220,6 +220,33 @@ final class HuddleViewModelTests: XCTestCase {
         XCTAssertEqual(try onlyPost().comments.map(\.body), ["Orphaned"])
     }
 
+    // MARK: - The Profile tab's take history
+
+    func test_myTakes_isTheViewersOwnTopLevelTakesAcrossEveryPost_newestFirst() async throws {
+        let sam = client.addProfile(named: "Sam")
+        let older = client.addPost("Older prompt", status: "locked", age: 7200, locksIn: -60)
+        let newer = client.addPost("Newer prompt", status: "locked", age: 60, locksIn: -60)
+        client.anotherPlayerPosts("On the older one", on: older, by: viewerId)
+        client.anotherPlayerPosts("Not mine", on: older, by: sam)
+        client.anotherPlayerPosts("On the newer one", on: newer, by: viewerId)
+
+        await viewModel.load()
+
+        let mine = PromptFeed.myTakes(in: viewModel.posts)
+        XCTAssertEqual(mine.map(\.comment.body), ["On the newer one", "On the older one"])
+        XCTAssertEqual(mine.map(\.post.promptText), ["Newer prompt", "Older prompt"])
+    }
+
+    func test_myTakes_excludesReplies() async throws {
+        let post = client.addPost("Chat", status: "locked", locksIn: -60)
+        let take = client.anotherPlayerPosts("A take", on: post, by: viewerId)
+        client.anotherPlayerPosts("A reply", on: post, by: viewerId, withPick: false, replyingTo: take)
+
+        await viewModel.load()
+
+        XCTAssertEqual(PromptFeed.myTakes(in: viewModel.posts).map(\.comment.body), ["A take"])
+    }
+
     // MARK: - Other players' tickets
 
     func test_tickets_showBesideATake_onceThePostHasLocked() async throws {

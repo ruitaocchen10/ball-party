@@ -137,9 +137,9 @@ extension PromptSlot {
 
 // MARK: - Featured poster
 
-/// One game as a poster: venue and call to action along the top, the two teams
-/// either side of an "@", the kickoff underneath. The side a player picks
-/// floods with its team's colour.
+/// One game as a poster: the two teams either side of an "@", the kickoff and
+/// venue underneath, a Primetime tag along the top when it is one. The side a
+/// player picks floods with its team's colour.
 struct MatchupPoster: View {
     let away: PromptOption
     let home: PromptOption
@@ -160,9 +160,9 @@ struct MatchupPoster: View {
                         tint(for: home)
                     }
                     VStack(spacing: 0) {
-                        header
-                            .padding(.horizontal, 14)
-                            .padding(.top, 12)
+                        if game?.primetime == true {
+                            PrimetimeChip().padding(.top, 8)
+                        }
                         ZStack {
                             HStack(spacing: 0) {
                                 side(away)
@@ -183,8 +183,8 @@ struct MatchupPoster: View {
         "\(away.label) at \(home.label). \(MatchupText.kickoff(game?.kickoff))"
     }
 
-    // The colour of a side once picked, thrown across the header as well as the
-    // side itself.
+    // The colour of a side once picked, thrown across the top of the poster as
+    // well as the side itself.
     @ViewBuilder
     private func tint(for option: PromptOption) -> some View {
         if selected == option.id, let color = option.teamCode.flatMap(NFLTeams.primaryColor(for:)) {
@@ -192,31 +192,6 @@ struct MatchupPoster: View {
         } else {
             Color.clear
         }
-    }
-
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(MatchupText.venue(game))
-                .monoLabel(9, weight: .semibold, tracking: 0.1, color: headerInk(for: away))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            // Room for the Primetime chip that sits on the join between them:
-            // the chip itself, unseen, so the room is exactly its width.
-            if game?.primetime == true { PrimetimeChip().hidden().accessibilityHidden(true) }
-            Text("Pick the winner")
-                .monoLabel(9, weight: .semibold, tracking: 0.1, color: headerInk(for: home))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-        }
-        .overlay(alignment: .top) {
-            if game?.primetime == true { PrimetimeChip().offset(y: -5) }
-        }
-    }
-
-    private func headerInk(for option: PromptOption) -> Color {
-        selected == option.id ? Theme.panel.opacity(0.8) : Theme.fg.opacity(0.7)
     }
 
     private var atMark: some View {
@@ -230,13 +205,19 @@ struct MatchupPoster: View {
     }
 
     private var footer: some View {
-        Text(MatchupText.kickoff(game?.kickoff))
-            .monoLabel(9, tracking: 0.14, color: Theme.fg.opacity(0.7))
-            .frame(maxWidth: .infinity)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
-            .overlay(alignment: .top) { Theme.fg.opacity(0.2).frame(height: 1) }
-            .padding(.horizontal, 14)
+        VStack(spacing: 4) {
+            Text(MatchupText.kickoff(game?.kickoff))
+                .monoLabel(9, tracking: 0.14, color: Theme.fg.opacity(0.7))
+            Text(MatchupText.venue(game))
+                .monoLabel(9, tracking: 0.14, color: Theme.fg.opacity(0.5))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .overlay(alignment: .top) { Theme.fg.opacity(0.2).frame(height: 1) }
+        .padding(.horizontal, 14)
     }
 
     @ViewBuilder

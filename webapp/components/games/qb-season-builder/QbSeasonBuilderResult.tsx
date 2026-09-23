@@ -4,7 +4,10 @@ import Link from "next/link";
 import { type ReactNode } from "react";
 
 import { GuestNudge } from "@/components/games/qb-season-builder/GuestNudge";
+import { Button, ButtonLink } from "@/components/foundation/ui-kit/Button";
+import { DashboardRail } from "@/components/foundation/ui-kit/DashboardRail";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
+import { PlayerPortrait } from "@/components/foundation/content/prompts/PlayerPortrait";
 import { franchiseName } from "@/lib/foundation/content/nfl/franchises";
 import {
   QUALITIES,
@@ -12,6 +15,7 @@ import {
   type DraftPick,
   type Quarterback,
   type ShownSpin,
+  type Slot,
 } from "@/lib/games/qb-season-builder/board";
 import { useSeasonReveal } from "@/lib/games/qb-season-builder/useSeasonReveal";
 import {
@@ -53,50 +57,63 @@ export function QbSeasonBuilderResult({
   personalBest,
   isGuest,
   staged,
+  startNewSeason,
 }: {
   result: SeasonResult;
   shown: ShownSpin[] | null;
   personalBest: number | null;
   isGuest: boolean;
   staged: boolean;
+  /** Supplied by the page; game UI does not reach into platform orchestration. */
+  startNewSeason: (formData: FormData) => void;
 }) {
   const reveal = useSeasonReveal(result.matchId, staged);
 
   return (
     <main className="app-page flex-1">
-      <div className="mx-auto w-full max-w-[1080px]">
-        <PageHeader
-          eyebrow="Solo challenge"
-          title="QB Season Builder"
-          description={`Ratings ${result.mode}`}
-        />
+      <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
+        <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
+          <PageHeader
+            eyebrow="Solo challenge"
+            title="QB Season Builder"
+            description={`Ratings ${result.mode}`}
+          />
 
-        <div aria-live="polite" className="mt-5 flex w-full max-w-[760px] flex-col gap-4">
-          {reveal.shows("stat_line") ? <StatLine result={result} /> : null}
-          {reveal.shows("record") ? <Record result={result} /> : null}
-          {reveal.shows("playoffs") ? <Playoffs result={result} /> : null}
-          {reveal.shows("awards") ? <Awards result={result} /> : null}
-          {reveal.shows("score") ? <Score result={result} /> : null}
-        </div>
+          <div className="mt-5 w-full max-w-[760px]">
+            <div aria-live="polite" className="flex w-full flex-col gap-4">
+              {reveal.shows("score") ? (
+                <PlayerBuild
+                  result={result}
+                  shown={shown}
+                  picks={result.picks}
+                  showStats={reveal.shows("stat_line")}
+                  showAwards={reveal.shows("awards")}
+                  showScore={reveal.shows("score")}
+                  showDealtPlayers={reveal.shows("awards")}
+                />
+              ) : null}
+              {reveal.shows("record") ? <TeamSuccess result={result} showPlayoffs={reveal.shows("playoffs")} /> : null}
+            </div>
 
-        {reveal.playing ? (
-          <button
-            type="button"
-            onClick={reveal.skip}
-            className="mt-4 text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
-          >
-            Skip to result
-          </button>
-        ) : null}
+            {reveal.playing ? (
+              <button
+                type="button"
+                onClick={reveal.skip}
+                className="mt-4 text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
+              >
+                Skip to result
+              </button>
+            ) : null}
 
-        {reveal.shows("details") ? (
-          <div className="mt-4 flex w-full max-w-[760px] flex-col gap-4">
-            <Breakdown result={result} />
-            <Recap picks={result.picks} />
-            {result.mode === "hidden" && shown ? <EverythingSeen shown={shown} picks={result.picks} /> : null}
-            <ResultFooter result={result} personalBest={personalBest} isGuest={isGuest} staged={staged} />
+            {reveal.shows("details") ? (
+              <div className="mt-4 flex w-full flex-col gap-4">
+                <Breakdown result={result} />
+                <ResultFooter result={result} staged={staged} />
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
+        <ResultRail result={result} personalBest={personalBest} isGuest={isGuest} startNewSeason={startNewSeason} />
       </div>
     </main>
   );
@@ -106,12 +123,29 @@ function Panel({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section aria-label={label} className="border border-line bg-surface-raised p-4">
       <h2 className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">{label}</h2>
-      {children}
+      <div className="mt-2">{children}</div>
     </section>
   );
 }
 
-function StatLine({ result }: { result: SeasonResult }) {
+/** The QB assembled from the run — its deal history, production, score and honours. */
+function PlayerBuild({
+  result,
+  shown,
+  picks,
+  showStats,
+  showAwards,
+  showScore,
+  showDealtPlayers,
+}: {
+  result: SeasonResult;
+  shown: ShownSpin[] | null;
+  picks: DraftPick[];
+  showStats: boolean;
+  showAwards: boolean;
+  showScore: boolean;
+  showDealtPlayers: boolean;
+}) {
   const { statLine } = result;
   const lines: [string, string][] = [
     ["Comp / Att", `${thousands(statLine.completions)} / ${thousands(statLine.attempts)}`],
@@ -123,45 +157,61 @@ function StatLine({ result }: { result: SeasonResult }) {
     ["Rush TDs", thousands(statLine.rushTds)],
   ];
   return (
-    <Panel label="Stat line">
-      <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
-        {lines.map(([name, value]) => (
-          <div key={name}>
-            <dt className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{name}</dt>
-            <dd className="font-slab text-2xl leading-none tabular-nums">{value}</dd>
+    <Panel label="Player build">
+      {showScore ? (
+        <div>
+          <p className="flex items-baseline gap-2">
+            <span className="font-slab text-[64px] leading-none tabular-nums">{oneDecimal(result.score)}</span>
+            <span className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">out of 100</span>
+          </p>
+        </div>
+      ) : null}
+      {showStats ? (
+        <dl className={`${showScore ? "mt-4 border-t border-line pt-4" : ""} grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4`}>
+          {lines.map(([name, value]) => (
+            <div key={name}>
+              <dt className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{name}</dt>
+              <dd className="font-slab text-2xl leading-none tabular-nums">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {showAwards ? <AwardIcons awards={result.awards} /> : null}
+      {showDealtPlayers && shown ? <div className="mt-4 border-t border-line pt-4"><DealtPlayers shown={shown} picks={picks} /></div> : null}
+    </Panel>
+  );
+}
+
+/** Team outcomes are kept distinct from the player build that produced them. */
+function TeamSuccess({ result, showPlayoffs }: { result: SeasonResult; showPlayoffs: boolean }) {
+  return (
+    <Panel label="Team success">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Record</p>
+          <p className="mt-1 font-slab text-[40px] leading-none tabular-nums">{result.record.wins}–{result.record.losses}</p>
+        </div>
+        {showPlayoffs ? (
+          <div className="border-t border-line pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
+            <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Playoffs</p>
+            <p className="mt-1 font-slab text-[27px] leading-none uppercase">{PLAYOFF_LABELS[result.playoffs.result]}</p>
           </div>
-        ))}
-      </dl>
+        ) : null}
+      </div>
     </Panel>
   );
 }
 
-function Record({ result }: { result: SeasonResult }) {
-  return (
-    <Panel label="Record">
-      <p className="mt-2 font-slab text-[40px] leading-none tabular-nums">
-        {result.record.wins}–{result.record.losses}
-      </p>
-    </Panel>
-  );
-}
+function AwardIcons({ awards }: { awards: SeasonResult["awards"] }) {
+  const won = AWARDS.filter((award) => awards[award]);
 
-function Playoffs({ result }: { result: SeasonResult }) {
   return (
-    <Panel label="Playoffs">
-      <p className="mt-2 font-slab text-[27px] leading-none uppercase">{PLAYOFF_LABELS[result.playoffs.result]}</p>
-    </Panel>
-  );
-}
-
-function Awards({ result }: { result: SeasonResult }) {
-  const won = AWARDS.filter((award) => result.awards[award]);
-  return (
-    <Panel label="Awards">
+    <div className="mt-4 border-t border-line pt-4">
+      <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Awards</p>
       {won.length === 0 ? (
         <p className="mt-2 text-sm text-fg-muted">No awards this season.</p>
       ) : (
-        <ul className="mt-2 flex flex-wrap gap-2">
+        <ul aria-label="Awards" className="mt-2 flex flex-wrap gap-2">
           {won.map((award) => (
             <li key={award} className="border border-line px-2.5 py-1 font-slab text-lg uppercase">
               {AWARD_LABELS[award]}
@@ -169,18 +219,90 @@ function Awards({ result }: { result: SeasonResult }) {
           ))}
         </ul>
       )}
-    </Panel>
+    </div>
   );
 }
 
-function Score({ result }: { result: SeasonResult }) {
+function DealtPlayers({ shown, picks }: { shown: ShownSpin[]; picks: DraftPick[] }) {
+  const finalAttempt = new Map<number, number>();
+  for (const spin of shown) finalAttempt.set(spin.round, Math.max(finalAttempt.get(spin.round) ?? 0, spin.attempt));
+
   return (
-    <Panel label="Score">
-      <p className="mt-2 flex items-baseline gap-2">
-        <span className="font-slab text-[64px] leading-none tabular-nums">{oneDecimal(result.score)}</span>
-        <span className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">out of 100</span>
-      </p>
-    </Panel>
+    <div>
+      <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Players dealt</p>
+      <ul aria-label="Players dealt" className="mt-2 flex flex-wrap gap-2">
+        {shown.flatMap((spin) => {
+          const respun = spin.attempt < (finalAttempt.get(spin.round) ?? spin.attempt);
+          const finalSpin = spin.attempt === finalAttempt.get(spin.round);
+          const picked = finalSpin ? picks.find((pick) => pick.round === spin.round) : undefined;
+          return [
+            ...spin.quarterbacks.map((quarterback) => (
+              <li key={`${spin.round}-${spin.attempt}-${quarterback.playerId}`}>
+                <DealtPlayer
+                  quarterback={quarterback}
+                  season={spin.season}
+                  franchiseCode={spin.franchiseCode}
+                  supportingCast={spin.supportingCast}
+                  respun={respun}
+                  pickedSlot={
+                    picked?.playerId === quarterback.playerId || picked?.slot === "supporting_cast"
+                      ? picked.slot
+                      : null
+                  }
+                />
+              </li>
+            )),
+          ];
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function DealtPlayer({
+  quarterback,
+  season,
+  franchiseCode,
+  supportingCast,
+  respun,
+  pickedSlot,
+}: {
+  quarterback: Quarterback;
+  season: number;
+  franchiseCode: string;
+  supportingCast: number | null;
+  respun: boolean;
+  pickedSlot: Slot | null;
+}) {
+  const status = respun ? " · Respun" : pickedSlot ? "" : " · Not picked";
+  const muted = respun || !pickedSlot;
+  const values = quarterback.values;
+  return (
+    <button type="button" className="group relative block rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel" aria-label={`${quarterback.displayName}${status}`}>
+      <PlayerPortrait
+        name={quarterback.displayName}
+        headshotUrl={quarterback.headshotUrl}
+        className={`h-12 w-12 text-[12px] ring-1 ring-line ${muted ? "grayscale opacity-40" : ""}`}
+      />
+      <span className="pointer-events-none absolute top-full left-1/2 z-20 mt-2 w-56 -translate-x-1/2 bg-panel p-3 text-left text-panel-fg opacity-0 shadow-card transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+        <span className="block font-slab text-base uppercase">{quarterback.displayName}</span>
+        <span className="mt-0.5 block font-mono text-[10px] tracking-[0.1em] text-panel-muted uppercase">{season} {franchiseName(franchiseCode)}{status}</span>
+        {values ? (
+          <span className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-panel-muted pt-2">
+            {QUALITIES.map((quality) => (
+              <span key={quality} className="flex items-baseline justify-between gap-2 font-mono text-[10px] tracking-[0.08em] uppercase">
+                {SLOT_LABELS[quality]} <strong className={`font-slab text-base leading-none tabular-nums ${pickedSlot === quality ? "bg-panel-fg px-1 text-panel" : ""}`}>{values[quality]}</strong>
+              </span>
+            ))}
+            {supportingCast !== null ? (
+              <span className="flex items-baseline justify-between gap-2 font-mono text-[10px] tracking-[0.08em] uppercase">
+                Supporting Cast <strong className={`font-slab text-base leading-none tabular-nums ${pickedSlot === "supporting_cast" ? "bg-panel-fg px-1 text-panel" : ""}`}>{supportingCast}</strong>
+              </span>
+            ) : null}
+          </span>
+        ) : null}
+      </span>
+    </button>
   );
 }
 
@@ -188,7 +310,7 @@ function Breakdown({ result }: { result: SeasonResult }) {
   const totalWeight = result.breakdown.reduce((sum, part) => sum + part.weight, 0);
   return (
     <Panel label="Score breakdown">
-      <ul className="mt-2 divide-y divide-line">
+      <ul className="divide-y divide-line">
         {result.breakdown.map((part) => (
           <li key={part.component} className="flex items-baseline justify-between gap-3 py-2">
             <span className="flex flex-col">
@@ -208,136 +330,46 @@ function Breakdown({ result }: { result: SeasonResult }) {
   );
 }
 
-/** Which real season a pick came from: "2013 Denver Broncos". */
-const seasonOf = (pick: { season: number; franchiseCode: string }) =>
-  `${pick.season} ${franchiseName(pick.franchiseCode)}`;
-
-function Recap({ picks }: { picks: DraftPick[] }) {
-  return (
-    <Panel label="Your six picks">
-      <ol aria-label="Your six picks" className="mt-2 divide-y divide-line">
-        {picks.map((pick) => (
-          <li key={pick.slot} className="flex items-baseline justify-between gap-3 py-2">
-            <span className="flex flex-col">
-              <span className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase">{SLOT_LABELS[pick.slot]}</span>
-              <span className="text-[13px] leading-5 text-fg-muted">
-                {pick.displayName ? `${pick.displayName} · ${seasonOf(pick)}` : seasonOf(pick)}
-              </span>
-            </span>
-            {pick.value !== null ? <span className="font-slab text-xl tabular-nums">{pick.value}</span> : null}
-          </li>
-        ))}
-      </ol>
-    </Panel>
-  );
-}
-
-/**
- * A hidden run's reveal: every spin the player was dealt and what each option
- * was worth, the ones passed on included, so they can see how good their reads
- * were. A spin thrown away by the respin is here too — they saw it.
- */
-function EverythingSeen({ shown, picks }: { shown: ShownSpin[]; picks: DraftPick[] }) {
-  // The attempt a round ended on. Anything before it is a spin the respin threw
-  // away, and only the kept one can hold that round's pick — which is what
-  // decides where "Taken" goes, rather than the team-season, since the same one
-  // may be spun again in a later round.
-  const keptAttempt = new Map<number, number>();
-  for (const spin of shown) {
-    keptAttempt.set(spin.round, Math.max(keptAttempt.get(spin.round) ?? 0, spin.attempt));
-  }
-  const takenFrom = (spin: ShownSpin) =>
-    spin.attempt === keptAttempt.get(spin.round)
-      ? picks.find((pick) => pick.round === spin.round)
-      : undefined;
-
-  return (
-    <Panel label="Every option you saw">
-      <ul className="mt-2 flex flex-col gap-4">
-        {shown.map((spin) => {
-          const taken = takenFrom(spin);
-          return (
-            <li key={`${spin.round}-${spin.attempt}`}>
-              <p className="flex flex-wrap items-baseline gap-2">
-                <span className="font-slab text-lg uppercase">{`Round ${spin.round} · ${seasonOf(spin)}`}</span>
-                {spin.attempt < (keptAttempt.get(spin.round) ?? spin.attempt) ? (
-                  <span className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Respun away</span>
-                ) : null}
-              </p>
-              <div className="mt-2 grid gap-3 md:grid-cols-2">
-                {spin.quarterbacks.map((quarterback) => (
-                  <QuarterbackValues key={quarterback.playerId} quarterback={quarterback} taken={taken} />
-                ))}
-                <fieldset className="border border-line p-3">
-                  <legend className="px-1 font-slab text-base uppercase">The team</legend>
-                  <ul>
-                    <ValueRow
-                      label={SLOT_LABELS.supporting_cast}
-                      value={spin.supportingCast}
-                      taken={taken?.slot === "supporting_cast"}
-                    />
-                  </ul>
-                </fieldset>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </Panel>
-  );
-}
-
-function QuarterbackValues({ quarterback, taken }: { quarterback: Quarterback; taken: DraftPick | undefined }) {
-  return (
-    <fieldset className="border border-line p-3">
-      <legend className="px-1 font-slab text-base uppercase">{quarterback.displayName}</legend>
-      <ul>
-        {QUALITIES.map((quality) => (
-          <ValueRow
-            key={quality}
-            label={SLOT_LABELS[quality]}
-            value={quarterback.values?.[quality] ?? null}
-            taken={taken?.playerId === quarterback.playerId && taken.slot === quality}
-          />
-        ))}
-      </ul>
-    </fieldset>
-  );
-}
-
-function ValueRow({ label, value, taken }: { label: string; value: number | null; taken: boolean }) {
-  return (
-    <li className="flex items-baseline justify-between gap-3 py-1">
-      <span className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase">{label}</span>
-      <span className="flex items-baseline gap-2">
-        {taken ? <span className="font-mono text-[10px] tracking-[0.13em] text-hidden-text uppercase">Taken</span> : null}
-        {value !== null ? <span className="font-slab text-lg tabular-nums">{value}</span> : null}
-      </span>
-    </li>
-  );
-}
-
-/** Below the season: what is particular to whoever is looking, and where to go next. */
-function ResultFooter({
-  result,
-  personalBest,
-  isGuest,
-  staged,
-}: {
+/** The result's persistent next-step and viewer-specific summary. */
+function ResultRail({ result, personalBest, isGuest, startNewSeason }: {
   result: SeasonResult;
   personalBest: number | null;
   isGuest: boolean;
+  startNewSeason: (formData: FormData) => void;
+}) {
+  return (
+    <DashboardRail headingId="qb-result-control-heading" eyebrow="Your run" title="Next play">
+      {!isGuest && personalBest !== null ? (
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="font-mono text-[10px] font-semibold tracking-[0.13em] text-fg-muted uppercase">
+            Personal best · {result.mode}
+          </p>
+          <p className="mt-1 font-slab text-[40px] leading-none tabular-nums">{oneDecimal(personalBest)}</p>
+        </div>
+      ) : null}
+      {isGuest ? <div className="mt-4 border-t border-line pt-3"><GuestNudge /></div> : null}
+      <div className="mt-4 flex flex-col gap-2 border-t border-line pt-3">
+        <form action={startNewSeason}>
+          <input type="hidden" name="game" value="qb_season_builder" />
+          <input type="hidden" name="mode" value={result.mode} />
+          <Button type="submit">New season</Button>
+        </form>
+        <ButtonLink href="/solo" variant="ghost">Back to solo games</ButtonLink>
+      </div>
+    </DashboardRail>
+  );
+}
+
+/** Below the season: the share link that only makes sense after its reveal. */
+function ResultFooter({
+  result,
+  staged,
+}: {
+  result: SeasonResult;
   staged: boolean;
 }) {
   return (
     <div className="flex flex-col gap-3 border-t border-line pt-4 text-sm leading-6 text-fg-muted">
-      {!isGuest && personalBest !== null ? (
-        <p>
-          Your personal best in {result.mode} mode:{" "}
-          <span className="font-slab text-lg text-fg tabular-nums">{oneDecimal(personalBest)}</span>
-        </p>
-      ) : null}
-      {isGuest ? <GuestNudge /> : null}
       {staged ? (
         <p>
           <Link
@@ -349,12 +381,6 @@ function ResultFooter({
           — anyone with the link can see this season.
         </p>
       ) : null}
-      <Link
-        href="/solo"
-        className="text-fg underline decoration-line underline-offset-4 hover:decoration-fg"
-      >
-        {staged ? "Back to solo games" : "Build your own season"}
-      </Link>
     </div>
   );
 }

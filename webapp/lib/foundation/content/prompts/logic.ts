@@ -51,6 +51,18 @@ export function isPicksPost(post: Pick<Post, "templateKind">): boolean {
 }
 
 /**
+ * The Huddle search bar's match rule: a case-insensitive substring over a
+ * post's prompt text, caption, and author. Shared between the server's
+ * `?q=` render (no-JS and crawlers) and the client's live filter as the
+ * viewer types, so the two never drift apart.
+ */
+export function matchesSearchQuery(post: Pick<Post, "promptText" | "caption" | "author">, query: string): boolean {
+  const normalized = query.trim().toLocaleLowerCase();
+  if (!normalized) return true;
+  return `${post.promptText} ${post.caption} ${post.author}`.toLocaleLowerCase().includes(normalized);
+}
+
+/**
  * The client-side counterpart to `prompts.submit_response`'s authoritative
  * lock check. A post can remain stored as `open` after its deadline passes,
  * so the status alone must never decide whether to offer a pick form.

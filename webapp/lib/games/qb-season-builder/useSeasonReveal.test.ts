@@ -31,29 +31,29 @@ beforeEach(() => localStorage.clear());
 afterEach(() => vi.restoreAllMocks());
 
 describe("a staged reveal", () => {
-  it("shows the stat line first and nothing else", async () => {
+  it("shows the score first and nothing else", async () => {
     await withFakeTimers(async () => {
       const { result } = renderHook(() => useSeasonReveal(MATCH, true));
 
-      expect(result.current.shows("stat_line")).toBe(true);
+      expect(result.current.shows("score")).toBe(true);
+      expect(result.current.shows("stat_line")).toBe(false);
       expect(result.current.shows("record")).toBe(false);
       expect(result.current.playing).toBe(true);
     });
   });
 
-  it("advances stat line, record, playoffs, awards, then the score", async () => {
+  it("advances in the result's top-to-bottom order", async () => {
     await withFakeTimers(async () => {
       const { result } = renderHook(() => useSeasonReveal(MATCH, true));
 
       await step();
+      expect(result.current.shows("stat_line")).toBe(true);
+      await step();
+      expect(result.current.shows("awards")).toBe(true);
+      await step();
       expect(result.current.shows("record")).toBe(true);
       await step();
       expect(result.current.shows("playoffs")).toBe(true);
-      await step();
-      expect(result.current.shows("awards")).toBe(true);
-      expect(result.current.shows("score")).toBe(false);
-      await step();
-      expect(result.current.shows("score")).toBe(true);
     });
   });
 

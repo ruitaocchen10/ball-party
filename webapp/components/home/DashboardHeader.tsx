@@ -1,8 +1,9 @@
-import { Bell, Plus, Search } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { AccountMenu } from "@/components/foundation/ui-kit/AccountMenu";
 import { BrandMark } from "@/components/foundation/ui-kit/BrandMark";
+import { HuddleSearchField } from "@/components/home/HuddleSearchField";
 
 /**
  * Desktop-only utility bar for Home. Navigation and identity deliberately
@@ -24,22 +25,7 @@ export function DashboardHeader({
         <Link href="/" aria-label="Ball Party home" className="flex w-[var(--sidebar-w)] shrink-0 items-center text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
           <BrandMark className="h-8 w-8 shrink-0" />
         </Link>
-        <form action="/" className="mx-auto w-full max-w-xl" role="search">
-          <label className="sr-only" htmlFor="dashboard-search">
-            Search social posts
-          </label>
-          <div className="flex h-10 items-center gap-2.5 bg-surface-raised px-3 ring-1 ring-line ring-inset transition-colors focus-within:ring-fg-muted">
-            <Search aria-hidden className="h-4 w-4 shrink-0 text-fg-muted" strokeWidth={1.8} />
-            <input
-              id="dashboard-search"
-              name="q"
-              type="search"
-              placeholder="Search social posts"
-              className="min-w-0 flex-1 bg-transparent font-mono text-xs tracking-[0.02em] text-fg outline-none placeholder:text-fg-muted"
-            />
-            <kbd className="hidden border border-line px-1.5 py-0.5 font-mono text-[9px] text-fg-muted lg:block">↵</kbd>
-          </div>
-        </form>
+        <HuddleSearchField />
 
         <div className="flex shrink-0 items-center gap-1.5">
           <Link
