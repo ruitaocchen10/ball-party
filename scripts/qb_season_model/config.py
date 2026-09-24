@@ -45,8 +45,8 @@ SEASON_GAMES = 17
 # 0.8, so wins are now a little tighter than real life; playoffs (34.9% against 35.1% real) and
 # the title (2.6% against 2.7%) still match. Lower costs more: in the fit's own replay 0.65 gave
 # a title rate of 2.1% and 0.5 gave 1.9%.
-TEAM_NOISE = 0.8
-LINE_NOISE = 0.5
+TEAM_NOISE = 0.5
+LINE_NOISE = 0.3
 
 # The five quarterback values are read off overlapping stats (CPOE, EPA and air yards feed
 # Accuracy, Arm Talent and IQ; playing time feeds Build and IQ), and Accuracy and IQ
@@ -293,7 +293,7 @@ AWARD_REQUIRES = {"mvp": "all_pro", "opoy": "pro_bowl", "all_pro": "pro_bowl"}
 # The award thresholds were calibrated to real rates and are not retuned for this: an award for a
 # strong build is meant to be harder.
 VALUE_PIVOT = 70.0
-VALUE_SLOPE = 0.85
+VALUE_SLOPE = 0.81
 VALUE_CURVE = (VALUE_PIVOT, VALUE_SLOPE)
 
 # Where the playoff ladder is sharper than a logistic in wins can be: (never at or below,

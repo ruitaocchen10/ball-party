@@ -79,20 +79,22 @@ struct Lobby: Equatable, Sendable, Decodable {
     }
 }
 
-/// One active row of `public.lobby_members`, with the display name the roster
-/// shows joined in from `profiles`.
+/// One active row of `public.lobby_members`, with the profile identity the
+/// roster shows joined in from `profiles`.
 struct LobbyMember: Equatable, Sendable, Decodable, Identifiable {
     let userId: UUID
     let displayName: String
+    let avatarURL: URL?
     /// A returning player keeps their original `joined_at` (`join_lobby` is an
     /// upsert), so this is a stable seat order rather than "most recent first".
     let joinedAt: Date
 
     var id: UUID { userId }
 
-    init(userId: UUID, displayName: String, joinedAt: Date) {
+    init(userId: UUID, displayName: String, avatarURL: URL? = nil, joinedAt: Date) {
         self.userId = userId
         self.displayName = displayName
+        self.avatarURL = avatarURL
         self.joinedAt = joinedAt
     }
 
@@ -102,16 +104,23 @@ struct LobbyMember: Equatable, Sendable, Decodable, Identifiable {
         case profiles
     }
 
-    private struct Profile: Decodable { let displayName: String?
-        enum CodingKeys: String, CodingKey { case displayName = "display_name" }
+    private struct Profile: Decodable {
+        let displayName: String?
+        let avatarURL: String?
+
+        enum CodingKeys: String, CodingKey {
+            case displayName = "display_name"
+            case avatarURL = "avatar_url"
+        }
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         userId = try container.decode(UUID.self, forKey: .userId)
         joinedAt = try PostgresTimestamp.parse(try container.decode(String.self, forKey: .joinedAt))
-        displayName = try container.decodeIfPresent(Profile.self, forKey: .profiles)?.displayName
-            ?? "Unknown player"
+        let profile = try container.decodeIfPresent(Profile.self, forKey: .profiles)
+        displayName = profile?.displayName ?? "Unknown player"
+        avatarURL = profile?.avatarURL.flatMap(URL.init(string:))
     }
 }
 

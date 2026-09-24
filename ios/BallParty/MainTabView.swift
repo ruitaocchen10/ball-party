@@ -30,7 +30,6 @@ struct MainTabView: View {
                 // placeholder until it is.
                 NavigationStack {
                     ComingSoonView(
-                        eyebrow: "Two to four players",
                         title: "Party",
                         message: "Playing with friends on mobile is on the way. In the meantime, play Games on your own."
                     )
@@ -50,27 +49,26 @@ struct MainTabView: View {
 private struct GamesScreen: View {
     let viewerId: UUID
 
+    @State private var qbMode: QbRatingMode = .visible
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                PageHeader(
-                    eyebrow: "Solo",
-                    title: "Games",
-                    description: "Play on your own. Bring friends in from the Party tab."
-                )
-
-                NavigationLink {
+            VStack(alignment: .leading, spacing: 12) {
+                SoloGameCard(
+                    name: ["Higher", "or lower"],
+                    tagline: "Call the next card. Make the streak last."
+                ) {
                     SoloRunScreen(viewerId: viewerId)
-                } label: {
-                    GameTile(
-                        kind: "Solo",
-                        title: "Higher or Lower",
-                        blurb: "Call the next card. Make the streak last.",
-                        footnote: "1 player",
-                        action: "Play"
-                    )
                 }
-                .buttonStyle(.plain)
+
+                SoloGameCard(
+                    name: ["QB season", "builder"],
+                    tagline: "Spin a team-season six times and build one quarterback from the best trait on offer."
+                ) {
+                    RatingsChoice(selection: $qbMode)
+                } destination: {
+                    QbSeasonBuilderScreen(viewerId: viewerId, mode: qbMode)
+                }
             }
             .padding(16)
         }
@@ -80,46 +78,119 @@ private struct GamesScreen: View {
     }
 }
 
-/// One way into a game from the Games tab: a cream card with the red edge
-/// (the answer to "how did the room do" is always behind it), the game's name,
-/// and one control.
-private struct GameTile: View {
-    let kind: String
-    let title: String
-    let blurb: String
-    let footnote: String
-    let action: String
+/// One game a lone player can start, read as a small games shelf card the way
+/// the web's `SoloCard` does: icon and a "1 player" tag, the name, the pitch,
+/// then Play solo. The card itself isn't the control — only the button at the
+/// bottom is — so a choice the run is locked to (`options`) can be made on it.
+private struct SoloGameCard<Options: View, Destination: View>: View {
+    let name: [String]
+    let tagline: String
+    @ViewBuilder var options: Options
+    @ViewBuilder var destination: Destination
 
     var body: some View {
-        PanelCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(kind).monoLabel(10, tracking: 0.16, color: Theme.hiddenInk)
-                Text(title)
-                    .slabTitle(34, color: Theme.panelFg)
-                    .lineSpacing(0)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(blurb)
-                    .font(.sans(15))
-                    .foregroundStyle(Theme.panelBody)
-                    .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
+                Image(systemName: "gamecontroller")
+                    .font(.system(size: 18, weight: .light))
+                    .foregroundStyle(Theme.fgMuted)
+                    .frame(width: 36, height: 36)
+                    .background(Theme.surface)
+                    .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+                    .accessibilityHidden(true)
+                Spacer()
+                Text("1 player")
+                    .monoLabel(9, weight: .semibold, tracking: 0.1)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Theme.surface)
+                    .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+            }
 
-                DashedRule().padding(.top, 4)
-
-                HStack {
-                    Text(footnote).monoLabel(10, tracking: 0.11, color: Theme.panelMuted)
-                    Spacer()
-                    Text(action)
-                        .font(.slab(16, relativeTo: .body))
-                        .tracking(0.64)
-                        .textCase(.uppercase)
-                        .foregroundStyle(Theme.panel)
-                        .padding(.horizontal, 14)
-                        .frame(height: 36)
-                        .background(Theme.panelFg)
+            VStack(alignment: .leading, spacing: -4) {
+                ForEach(name, id: \.self) { line in
+                    Text(line)
                 }
             }
-            .padding(16)
+            .slabTitle(28)
+            .lineSpacing(0)
+            .padding(.top, 16)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+
+            Text(tagline)
+                .font(.sans(15))
+                .foregroundStyle(Theme.fgMuted)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
+
+            VStack(alignment: .leading, spacing: 12) {
+                options
+                NavigationLink {
+                    destination
+                } label: {
+                    Text("Play solo")
+                }
+                .buttonStyle(.solid)
+            }
+            .padding(.top, 12)
+            .overlay(alignment: .top) { LineRule() }
+            .padding(.top, 16)
         }
-        .accessibilityElement(children: .combine)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surfaceRaised)
+        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+    }
+}
+
+extension SoloGameCard where Options == EmptyView {
+    init(name: [String], tagline: String, @ViewBuilder destination: () -> Destination) {
+        self.init(name: name, tagline: tagline, options: { EmptyView() }, destination: destination)
+    }
+}
+
+/// A choice the run is locked to once it starts, made on the card because there
+/// is no screen before the run to make it on. The first mode is the default.
+private struct RatingsChoice: View {
+    @Binding var selection: QbRatingMode
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Ratings").monoLabel(9, weight: .semibold, tracking: 0.1)
+                .padding(.bottom, 2)
+            ForEach(QbRatingMode.allCases) { mode in
+                let isSelected = mode == selection
+                Button {
+                    selection = mode
+                } label: {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+                            .font(.system(size: 15))
+                            .foregroundStyle(isSelected ? Theme.fg : Theme.fgMuted)
+                            .padding(.top, 1)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(mode.label).monoLabel(11, weight: .bold, tracking: 0.1, color: Theme.fg)
+                            Text(mode.summary)
+                                .font(.sans(13))
+                                .foregroundStyle(Theme.fgMuted)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(isSelected ? Theme.surface : .clear)
+                    .overlay(Rectangle().strokeBorder(isSelected ? Theme.fg : Theme.line, lineWidth: 1))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Ratings")
     }
 }

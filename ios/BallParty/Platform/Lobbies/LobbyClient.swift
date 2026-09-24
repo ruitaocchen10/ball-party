@@ -84,7 +84,7 @@ struct SupabaseLobbyClient: LobbyClient {
                 .single()
                 .execute().value
             async let members: [LobbyMember] = client.from("lobby_members")
-                .select("user_id, joined_at, profiles(display_name)")
+                .select("user_id, joined_at, profiles(display_name, avatar_url)")
                 .eq("lobby_id", value: lobbyId)
                 .is("left_at", value: nil)
                 .order("joined_at")

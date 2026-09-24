@@ -32,6 +32,17 @@ final class LobbyViewModelTests: XCTestCase {
 
     private var memberNames: [String] { viewModel.members.map(\.displayName) }
 
+    func test_lobbyMember_decodesTheProfileAvatarURL() throws {
+        let member = try JSONDecoder().decode(LobbyMember.self, from: Data("""
+        {"user_id": "1B2F1C0E-0000-4000-8000-000000000001",
+         "joined_at": "2026-09-24T12:00:00+00:00",
+         "profiles": {"display_name": "Avery", "avatar_url": "https://example.com/avery.png"}}
+        """.utf8))
+
+        XCTAssertEqual(member.displayName, "Avery")
+        XCTAssertEqual(member.avatarURL, URL(string: "https://example.com/avery.png"))
+    }
+
     // MARK: - Getting into a room
 
     func test_hosting_showsTheCodeToShareAndSeatsTheHost() async {

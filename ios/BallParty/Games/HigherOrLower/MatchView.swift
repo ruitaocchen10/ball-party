@@ -81,8 +81,7 @@ private struct MatchPlayView: View {
                 }
 
                 if let anchor = viewModel.anchor, let challenger = viewModel.challenger {
-                    LadderCardView(label: "Anchor", card: anchor)
-                    LadderCardView(label: "Challenger", card: challenger)
+                    LadderCardsView(anchor: anchor, challenger: challenger)
                 } else {
                     Text("Waiting for the next card…")
                         .monoLabel(11, tracking: 0.13)
@@ -161,6 +160,12 @@ private struct StandingsRail: View {
                         .font(.mono(12, weight: .bold))
                         .foregroundStyle(standing.rank == 1 ? Theme.hiddenText : Theme.fgMuted)
                         .frame(width: 34, alignment: .leading)
+                    Avatar(
+                        name: player.name,
+                        url: player.avatarURL,
+                        size: 28,
+                        isMine: player.userId == viewModel.viewerId
+                    )
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 4) {
                             Text(player.name).slabTitle(18).lineLimit(1)

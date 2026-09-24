@@ -100,15 +100,17 @@ private struct PostCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
+            // The badge gets its own row, above the title, instead of
+            // sharing one with it — a long title otherwise loses its width
+            // to whatever the badge needs that day.
+            VStack(alignment: .leading, spacing: 8) {
+                PostCardStatusBadge(post: post)
                 Text(post.promptText)
                     .slabTitle(28)
                     .lineSpacing(0)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                PostCardStatusBadge(post: post)
-                    .padding(.top, 2)
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
@@ -118,7 +120,7 @@ private struct PostCard: View {
                     .font(.sans(14))
                     .foregroundStyle(Theme.fgMuted)
                     .padding(.horizontal, 16)
-                    .padding(.top, 4)
+                    .padding(.top, 0)
             }
             if post.status == .void, let reason = post.voidReason {
                 Text(reason)
@@ -176,8 +178,8 @@ private struct PostCard: View {
     }
 }
 
-/// The feed's top-right marker is about this reader first: a submitted ticket
-/// is complete even after results arrive. Otherwise it makes the prompt's
+/// The feed's top marker is about this reader first: a submitted ticket is
+/// complete even after results arrive. Otherwise it makes the prompt's
 /// terminal lifecycle immediately scannable without repeating the timestamp.
 private struct PostCardStatusBadge: View {
     let post: PromptPost
@@ -207,7 +209,7 @@ private struct PostCardStatusBadge: View {
         } else {
             PostStatusLabel(post: post)
                 .monoLabel(10, tracking: 0.14)
-                .multilineTextAlignment(.trailing)
+                .multilineTextAlignment(.leading)
         }
     }
 }

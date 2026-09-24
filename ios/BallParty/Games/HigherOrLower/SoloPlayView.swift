@@ -14,8 +14,7 @@ struct SoloPlayView: View {
                 }
 
                 if let anchor = viewModel.anchor, let challenger = viewModel.challenger {
-                    LadderCardView(label: "Anchor", card: anchor)
-                    LadderCardView(label: "Challenger", card: challenger)
+                    LadderCardsView(anchor: anchor, challenger: challenger)
                 } else {
                     Text("Waiting for the next card…")
                         .monoLabel(11, tracking: 0.13)
@@ -99,6 +98,21 @@ struct SoloPlayView: View {
     }
 }
 
+/// The two sides of a question belong together: the player compares them at a
+/// glance, rather than reading one card and then scrolling to the other.
+struct LadderCardsView: View {
+    let anchor: LadderCard
+    let challenger: LadderCard
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            LadderCardView(label: "Anchor", card: anchor)
+            LadderCardView(label: "Challenger", card: challenger)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+}
+
 struct RunStat: View {
     let label: String
     let value: Int
@@ -126,27 +140,30 @@ struct LadderCardView: View {
     let card: LadderCard
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(label).monoLabel(11, tracking: 0.13)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).monoLabel(10, tracking: 0.13)
                 .accessibilityHidden(true)
 
             VStack(spacing: 0) {
                 ZStack(alignment: .top) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text(card.position).slabTitle(24)
+                        Text(card.position).slabTitle(18)
                         Spacer()
-                        Text(card.team).monoLabel(11, weight: .bold, tracking: 0.12)
+                        TeamLogo(code: card.team, size: 24)
                     }
-                    VStack(spacing: 8) {
-                        Portrait(name: card.displayName, url: card.headshotUrl.flatMap(URL.init(string:)))
+                    VStack(spacing: 6) {
+                        Portrait(name: card.displayName, url: card.headshotUrl.flatMap(URL.init(string:)), size: 56)
                         Text(card.displayName)
-                            .slabTitle(32)
+                            .slabTitle(22)
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
-                        Text(card.identityLine).monoLabel(10, tracking: 0.12)
+                        Text(card.identityLine)
+                            .monoLabel(9, tracking: 0.08)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
                 }
-                .padding(12)
+                .padding(10)
 
                 pointsPanel
             }
@@ -163,20 +180,20 @@ struct LadderCardView: View {
             // server has not written this card's points yet.
             Concealed(label: "Fantasy points, hidden until this question reveals") {
                 VStack(spacing: 4) {
-                    Text("Fantasy points").monoLabel(12, weight: .bold, tracking: 0.15, color: Theme.panel)
-                    Text("? ? ?").slabTitle(40, color: Theme.panel)
+                    Text("Fantasy points").monoLabel(10, weight: .bold, tracking: 0.12, color: Theme.panel)
+                    Text("? ? ?").slabTitle(32, color: Theme.panel)
                 }
-                .padding(.vertical, 16)
+                .padding(.vertical, 12)
             }
         } content: {
             VStack(spacing: 4) {
-                Text("Fantasy points").monoLabel(12, weight: .bold, tracking: 0.15, color: Theme.panelMuted)
+                Text("Fantasy points").monoLabel(10, weight: .bold, tracking: 0.12, color: Theme.panelMuted)
                 Text(card.points.map(Self.formatPoints) ?? "")
-                    .slabTitle(40, color: Theme.panelFg)
+                    .slabTitle(32, color: Theme.panelFg)
                     .monospacedDigit()
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 12)
             .background(Theme.panel)
         }
     }
