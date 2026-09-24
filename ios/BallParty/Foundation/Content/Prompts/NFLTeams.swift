@@ -46,4 +46,12 @@ enum NFLTeams {
         guard let code = logoCode(for: team), let storageBase else { return nil }
         return storageBase.appendingPathComponent("storage/v1/object/public/team-logos/\(code).png")
     }
+
+    /// The same file for a franchise named by its Pro Football Reference code
+    /// (`crd`, `rav`, …) — what QB Season Builder's spins store — which is what
+    /// the bucket is keyed on already.
+    static func logoURL(pfrCode: String, storageBase: URL?) -> URL? {
+        guard let storageBase else { return nil }
+        return storageBase.appendingPathComponent("storage/v1/object/public/team-logos/\(pfrCode).png")
+    }
 }

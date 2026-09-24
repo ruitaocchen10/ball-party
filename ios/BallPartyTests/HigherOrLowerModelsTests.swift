@@ -156,6 +156,17 @@ final class HigherOrLowerModelsTests: XCTestCase {
         XCTAssertEqual(player.correctCount, 5)
     }
 
+    func test_player_decodesTheProfileAvatarURL() throws {
+        let player = try decode(LadderPlayer.self, """
+        {"user_id": "1B2F1C0E-0000-4000-8000-000000000001", "seat": 0,
+         "current_streak": 2, "best_streak": 5, "correct_count": 5,
+         "profiles": {"display_name": "Avery", "avatar_url": "https://example.com/avery.png"}}
+        """)
+
+        XCTAssertEqual(player.displayName, "Avery")
+        XCTAssertEqual(player.avatarURL, URL(string: "https://example.com/avery.png"))
+    }
+
     func test_call_aTimedOutQuestionHasNoDirection() throws {
         let call = try decode(LadderCall.self, """
         {"match_id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "question": 4,

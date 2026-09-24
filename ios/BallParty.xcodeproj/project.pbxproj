@@ -91,6 +91,14 @@
 		F5C2D7A0B1078AA1CD5F274E /* Barlow-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 363E51962E6F169C7E3949F1 /* Barlow-Bold.ttf */; };
 		FAD9687F1C07662E5877E74D /* AppleSignInNonce.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F929BCCFB1BB06349501A51 /* AppleSignInNonce.swift */; };
 		FEFEB3810EA48B5213A7CD68 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A865AEEE5F77E725C7C0A7B /* ThemeTests.swift */; };
+		FEEDE815CD385ED730F79D34 /* QbSeasonBuilderClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 041D8BEABE7186812BFA28E7 /* QbSeasonBuilderClient.swift */; };
+		049039634109B21268632190 /* QbSeasonBuilderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4009D6CBF6F7B19C037FACB /* QbSeasonBuilderModels.swift */; };
+		28D99DA5000463ACD8D1567B /* QbSeasonBuilderResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC3EDDCBF5E1CA78A3E425F /* QbSeasonBuilderResultView.swift */; };
+		9E15AFC0A523D03D45FEDF50 /* QbSeasonBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD72D72AA73FBDAE66723D0 /* QbSeasonBuilderView.swift */; };
+		7B5218E514D1DD9BF2F20B0C /* QbSeasonBuilderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FCA926760CBA12B82F27E93 /* QbSeasonBuilderViewModel.swift */; };
+		A8C6560097F09CB1B74BF69B /* FakeQbSeasonBuilderClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F14CA6A4049A095659FEFE /* FakeQbSeasonBuilderClient.swift */; };
+		9E20A42E7556F994025D5FF9 /* QbSeasonBuilderModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90C8A4302CFCA2351E5A6EC8 /* QbSeasonBuilderModelsTests.swift */; };
+		B95459C3113ADA24ADDDA590 /* QbSeasonBuilderViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD9CB3F2559907FABE59D7D /* QbSeasonBuilderViewModelTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -193,6 +201,14 @@
 		F06ED444F3FC870054ED36B7 /* AuthViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModelTests.swift; sourceTree = "<group>"; };
 		F502B722BC00DD48CB5B6564 /* HigherOrLowerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HigherOrLowerClient.swift; sourceTree = "<group>"; };
 		FFC8A96142A0621FD8ABEA33 /* IdentityConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityConstants.swift; sourceTree = "<group>"; };
+		041D8BEABE7186812BFA28E7 /* QbSeasonBuilderClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderClient.swift; sourceTree = "<group>"; };
+		E4009D6CBF6F7B19C037FACB /* QbSeasonBuilderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderModels.swift; sourceTree = "<group>"; };
+		BFC3EDDCBF5E1CA78A3E425F /* QbSeasonBuilderResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderResultView.swift; sourceTree = "<group>"; };
+		6FD72D72AA73FBDAE66723D0 /* QbSeasonBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderView.swift; sourceTree = "<group>"; };
+		5FCA926760CBA12B82F27E93 /* QbSeasonBuilderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderViewModel.swift; sourceTree = "<group>"; };
+		A7F14CA6A4049A095659FEFE /* FakeQbSeasonBuilderClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeQbSeasonBuilderClient.swift; sourceTree = "<group>"; };
+		90C8A4302CFCA2351E5A6EC8 /* QbSeasonBuilderModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderModelsTests.swift; sourceTree = "<group>"; };
+		9BD9CB3F2559907FABE59D7D /* QbSeasonBuilderViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderViewModelTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -244,6 +260,7 @@
 			isa = PBXGroup;
 			children = (
 				D58D4DE0FDC90F00CE1A9BC7 /* HigherOrLower */,
+				A5FF96803CB5A63E7FB08499 /* QbSeasonBuilder */,
 			);
 			path = Games;
 			sourceTree = "<group>";
@@ -260,6 +277,9 @@
 				8810FD20EE533EA2EB24E459 /* FakeAuthBackend.swift */,
 				B5D8B8B6428330FD95153F92 /* FakeHigherOrLowerClient.swift */,
 				E06CC9E8D135A5F6BDCAC5D9 /* HigherOrLowerModelsTests.swift */,
+				A7F14CA6A4049A095659FEFE /* FakeQbSeasonBuilderClient.swift */,
+				90C8A4302CFCA2351E5A6EC8 /* QbSeasonBuilderModelsTests.swift */,
+				9BD9CB3F2559907FABE59D7D /* QbSeasonBuilderViewModelTests.swift */,
 				B57366732C868289247B5FC0 /* IdentityConstantsTests.swift */,
 				5A865AEEE5F77E725C7C0A7B /* ThemeTests.swift */,
 				EDCC5165583848E439A00359 /* MatchClockDriverTests.swift */,
@@ -454,6 +474,18 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		A5FF96803CB5A63E7FB08499 /* QbSeasonBuilder */ = {
+			isa = PBXGroup;
+			children = (
+				041D8BEABE7186812BFA28E7 /* QbSeasonBuilderClient.swift */,
+				E4009D6CBF6F7B19C037FACB /* QbSeasonBuilderModels.swift */,
+				BFC3EDDCBF5E1CA78A3E425F /* QbSeasonBuilderResultView.swift */,
+				6FD72D72AA73FBDAE66723D0 /* QbSeasonBuilderView.swift */,
+				5FCA926760CBA12B82F27E93 /* QbSeasonBuilderViewModel.swift */,
+			);
+			path = QbSeasonBuilder;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -568,6 +600,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A8C6560097F09CB1B74BF69B /* FakeQbSeasonBuilderClient.swift in Sources */,
+				9E20A42E7556F994025D5FF9 /* QbSeasonBuilderModelsTests.swift in Sources */,
+				B95459C3113ADA24ADDDA590 /* QbSeasonBuilderViewModelTests.swift in Sources */,
 				FEFEB3810EA48B5213A7CD68 /* ThemeTests.swift in Sources */,
 				42DE8959220F24CB5701F525 /* MatchViewModelTests.swift in Sources */,
 				DE165F7E7550F0498C813C64 /* LadderStandingsTests.swift in Sources */,
@@ -597,6 +632,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FEEDE815CD385ED730F79D34 /* QbSeasonBuilderClient.swift in Sources */,
+				049039634109B21268632190 /* QbSeasonBuilderModels.swift in Sources */,
+				28D99DA5000463ACD8D1567B /* QbSeasonBuilderResultView.swift in Sources */,
+				9E15AFC0A523D03D45FEDF50 /* QbSeasonBuilderView.swift in Sources */,
+				7B5218E514D1DD9BF2F20B0C /* QbSeasonBuilderViewModel.swift in Sources */,
 				4FB9FA662D4DE41707B4F431 /* Theme.swift in Sources */,
 				8C2749D21E0B84AB7184FB15 /* Surfaces.swift in Sources */,
 				42190A7B576995422CD3395D /* Controls.swift in Sources */,

@@ -224,8 +224,8 @@ struct LadderCard: Equatable, Sendable, Decodable, Identifiable {
     }
 }
 
-/// One row of `higher_or_lower_players` — a seat's tallies, with the display
-/// name the standings rail shows joined in from `profiles`.
+/// One row of `higher_or_lower_players` — a seat's tallies, with the profile
+/// identity the standings rail shows joined in from `profiles`.
 struct LadderPlayer: Equatable, Sendable, Decodable, Identifiable {
     let userId: UUID
     /// Turn order as `start_run` froze it — random, and the last tiebreak in
@@ -235,6 +235,9 @@ struct LadderPlayer: Equatable, Sendable, Decodable, Identifiable {
     /// bare row and no embed — has none. `nil` means "this payload didn't say",
     /// not "this player is nameless"; see `named(like:)`.
     let displayName: String?
+    /// Like `displayName`, absent from a bare Realtime payload and retained
+    /// from the last complete snapshot by `named(like:)`.
+    let avatarURL: URL?
     let currentStreak: Int
     let bestStreak: Int
     let correctCount: Int
@@ -260,7 +263,7 @@ struct LadderPlayer: Equatable, Sendable, Decodable, Identifiable {
     func named(like previous: LadderPlayer?) -> LadderPlayer {
         guard displayName == nil, let previous, previous.userId == userId else { return self }
         return LadderPlayer(
-            userId: userId, seat: seat, displayName: previous.displayName,
+            userId: userId, seat: seat, displayName: previous.displayName, avatarURL: previous.avatarURL,
             currentStreak: currentStreak, bestStreak: bestStreak, correctCount: correctCount,
             absent: absent, suddenDeath: suddenDeath, eliminatedAt: eliminatedAt
         )
@@ -281,6 +284,7 @@ struct LadderPlayer: Equatable, Sendable, Decodable, Identifiable {
         userId: UUID,
         seat: Int = 0,
         displayName: String? = nil,
+        avatarURL: URL? = nil,
         currentStreak: Int,
         bestStreak: Int,
         correctCount: Int,
@@ -291,6 +295,7 @@ struct LadderPlayer: Equatable, Sendable, Decodable, Identifiable {
         self.userId = userId
         self.seat = seat
         self.displayName = displayName
+        self.avatarURL = avatarURL
         self.currentStreak = currentStreak
         self.bestStreak = bestStreak
         self.correctCount = correctCount
@@ -311,8 +316,14 @@ struct LadderPlayer: Equatable, Sendable, Decodable, Identifiable {
         case profiles
     }
 
-    private struct Profile: Decodable { let displayName: String?
-        enum CodingKeys: String, CodingKey { case displayName = "display_name" }
+    private struct Profile: Decodable {
+        let displayName: String?
+        let avatarURL: String?
+
+        enum CodingKeys: String, CodingKey {
+            case displayName = "display_name"
+            case avatarURL = "avatar_url"
+        }
     }
 
     init(from decoder: Decoder) throws {
@@ -325,7 +336,9 @@ struct LadderPlayer: Equatable, Sendable, Decodable, Identifiable {
         absent = try container.decodeIfPresent(Bool.self, forKey: .absent) ?? false
         suddenDeath = try container.decodeIfPresent(Bool.self, forKey: .suddenDeath) ?? false
         eliminatedAt = try container.decodeIfPresent(Int.self, forKey: .eliminatedAt)
-        displayName = try container.decodeIfPresent(Profile.self, forKey: .profiles)?.displayName
+        let profile = try container.decodeIfPresent(Profile.self, forKey: .profiles)
+        displayName = profile?.displayName
+        avatarURL = profile?.avatarURL.flatMap(URL.init(string:))
     }
 }
 

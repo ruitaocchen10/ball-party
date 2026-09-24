@@ -144,7 +144,7 @@ struct SupabaseHigherOrLowerClient: HigherOrLowerClient {
             // alongside this table's direct one, so an unqualified embed is
             // ambiguous (PGRST201) — name the direct one.
             async let players: [LadderPlayer] = client.from("higher_or_lower_players")
-                .select("*, profiles!higher_or_lower_players_user_id_fkey(display_name)")
+                .select("*, profiles!higher_or_lower_players_user_id_fkey(display_name, avatar_url)")
                 .eq("match_id", value: matchId).order("seat").execute().value
             async let calls: [LadderCall] = client.from("higher_or_lower_calls")
                 .select().eq("match_id", value: matchId).order("created_at").execute().value

@@ -127,7 +127,7 @@ final class ProfileViewModelTests: XCTestCase {
 
         await viewModel.load()
 
-        XCTAssertEqual(viewModel.gamerHighlight, GamerHighlight(gamesPlayed: 2, wins: 1, winRate: 50))
+        XCTAssertEqual(viewModel.gamerHighlight, GamerHighlight(gamesPlayed: 2, wins: 1, winRate: 50, currentStreak: 1))
     }
 
     func test_matchHistory_rowsWithAnUnknownGameOrMode_areLeftOutOfTheGamerHighlight() async {
@@ -139,6 +139,6 @@ final class ProfileViewModelTests: XCTestCase {
 
         await viewModel.load()
 
-        XCTAssertEqual(viewModel.gamerHighlight, GamerHighlight(gamesPlayed: 1, wins: 1, winRate: 100))
+        XCTAssertEqual(viewModel.gamerHighlight, GamerHighlight(gamesPlayed: 1, wins: 1, winRate: 100, currentStreak: 1))
     }
 }

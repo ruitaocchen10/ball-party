@@ -55,7 +55,7 @@ DEFAULT_CONFIG = Config(
         "mobility": {"rush_ypc": 0.50, "rush_epa_per_game": 0.50},
         "iq": {"epa_per_dropback": 0.60, "sack_rate": 0.15, "int_rate": 0.15,
                "fumble_rate": 0.10},
-        "build": {"height": 0.30, "weight": 0.30, "durability": 0.40},
+        "build": {"height": 0.40, "weight": 0.40, "durability": 0.20},
     },
     # Prior sample sizes: a 150-attempt season counts about as much as the
     # league rate; a full season barely moves.

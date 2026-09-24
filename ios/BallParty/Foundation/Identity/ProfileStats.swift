@@ -67,11 +67,16 @@ struct KnowerHighlight: Equatable, Sendable {
 /// Multiplayer results. The web only ever shows the lifetime window for this
 /// half of the card, so unlike `KnowerHighlight` there is no per-range table.
 struct GamerHighlight: Equatable, Sendable {
-    static let empty = GamerHighlight(gamesPlayed: 0, wins: 0, winRate: 0)
+    static let empty = GamerHighlight(gamesPlayed: 0, wins: 0, winRate: 0, currentStreak: 0)
 
     let gamesPlayed: Int
     let wins: Int
     let winRate: Int
+    /// Consecutive wins counting back from the most recent multiplayer game —
+    /// `0` once a non-win breaks the run. `matches` arrives newest-first
+    /// (`my_match_history`'s `order by ended_at desc`), so this reads
+    /// straight off the front of the already-fetched history; no extra RPC.
+    let currentStreak: Int
 }
 
 /// Pure summary math, kept apart from any network read so it is exercised the
@@ -91,7 +96,8 @@ enum ProfileStats {
         let played = Self.matches(matches, in: range, now: now).filter { $0.mode != .solo }
         let wins = played.filter { $0.placement == 1 }.count
         let winRate = played.isEmpty ? 0 : Int((Double(wins) / Double(played.count) * 100).rounded())
-        return GamerHighlight(gamesPlayed: played.count, wins: wins, winRate: winRate)
+        let currentStreak = played.prefix { $0.placement == 1 }.count
+        return GamerHighlight(gamesPlayed: played.count, wins: wins, winRate: winRate, currentStreak: currentStreak)
     }
 }
 

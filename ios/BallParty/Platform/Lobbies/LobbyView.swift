@@ -225,7 +225,7 @@ private struct LobbyRoomView: View {
             SectionTitle(text: "At the table", trailing: "\(viewModel.members.count) of 4 seats")
             ForEach(viewModel.members) { member in
                 HStack(spacing: 12) {
-                    Avatar(name: member.displayName, size: 32, isMine: member.userId == viewModel.viewerId)
+                    Avatar(name: member.displayName, url: member.avatarURL, size: 32, isMine: member.userId == viewModel.viewerId)
                     Text(member.displayName).slabTitle(20).lineLimit(1)
                     if member.userId == viewModel.lobby?.hostId {
                         Text("Host").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
