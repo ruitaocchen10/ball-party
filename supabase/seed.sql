@@ -16,11 +16,19 @@ grant update on table public.profiles to authenticated;
 
 -- Social prompt gallery -------------------------------------------------------
 --
--- A local-only gallery for exercising every prompt-card template and lifecycle
--- treatment at /social. Sign in as `demo@ballparty.local` with password
--- `ball-party-demo` after `supabase db reset`. The demo reader has responses
--- on the cards where a personal result is meaningful; the second respondent
--- makes the aggregate bars non-trivial.
+-- A local-only gallery for exercising the prompt-card templates and lifecycle
+-- treatments at /social. Sign in as `demo@ballparty.local` with password
+-- `ball-party-demo` after `npm --prefix webapp run db:reset`.
+--
+--   open, unanswered   single game pick · Week 2 full slate (16 games) ·
+--                      Power Rankings
+--   closed, answered   single game pick (resolved) · Week 1 full slate (16
+--                      games, resolved) · two Power Rankings (locked — an
+--                      opinion post is never resolvable, so locked is as
+--                      closed as it gets)
+--
+-- Open posts lock a month out so the gallery stays usable without a reseed.
+-- The other respondents make the aggregate bars non-trivial.
 --
 -- These fixed ids make the rows easy to inspect in Studio. Keep the gallery
 -- atomic: a schema mismatch must never leave a partially seeded local stack.
@@ -38,27 +46,94 @@ values
 
 insert into public.prompt_posts (
   id, template_kind, template_name, author_id, caption, prompt_text,
-  resolution_criteria, lock_at, status, void_reason, created_at, resolved_at
+  resolution_criteria, lock_at, status, void_reason, created_at, resolved_at,
+  is_opinion, cover_team_codes
 )
 values
   -- Open + unanswered: the CTA and dedicated single-game pick screen.
-  ('00000000-0000-0000-0000-00000000a001', 'picks', 'Single game picks', '00000000-0000-0000-0000-00000000d002', 'Sunday night, no hedging.', 'Who wins Chiefs @ Bills?', 'The winner is the team with more points at final whistle.', now() + interval '3 days', 'open', null, now() - interval '20 minutes', null),
+  ('00000000-0000-0000-0000-00000000a001', 'picks', 'Single game picks', '00000000-0000-0000-0000-00000000d002', 'Sunday night, no hedging.', 'Who wins Chiefs @ Bills?', 'The winner is the team with more points at final whistle.', now() + interval '30 days', 'open', null, now() - interval '20 minutes', null, false, null),
   -- Open + unanswered: the full 2026 Week 2 ticket for the demo account.
-  ('00000000-0000-0000-0000-00000000a002', 'weekly_picks', '2026 Week 2 · Full slate', '00000000-0000-0000-0000-00000000d002', 'Sixteen games. One ticket. No hedging.', 'Pick every 2026 Week 2 winner', 'Each game resolves from its final score.', now() + interval '6 days', 'open', null, now() - interval '45 minutes', null),
-  -- Open + answered: generic card result mode before the answer is known.
-  ('00000000-0000-0000-0000-00000000a003', 'stat_leader', 'Stat leader', '00000000-0000-0000-0000-00000000d002', 'Settle the Sunday argument early.', 'Who leads the league in rushing yards?', 'Official regular-season rushing-yard total after Week 18.', now() + interval '10 days', 'open', null, now() - interval '3 hours', null),
-  -- Locked + unanswered: the deadline passed before the demo reader made a call.
-  ('00000000-0000-0000-0000-00000000a008', 'picks', 'Single game picks', '00000000-0000-0000-0000-00000000d002', 'The voting window is closed.', 'Who wins Packers @ Bears?', 'The winner is the team with more points at final whistle.', now() - interval '2 hours', 'locked', null, now() - interval '2 days', null),
-  -- Resolved + unanswered: results are in, but the demo reader did not participate.
-  ('00000000-0000-0000-0000-00000000a009', 'picks', 'Single game picks', '00000000-0000-0000-0000-00000000d002', 'The final whistle has blown.', 'Who won Cowboys @ Eagles?', 'The winner is the team with more points at final whistle.', now() - interval '3 days', 'resolved', null, now() - interval '5 days', now() - interval '2 days'),
-  -- Resolved rank: partial-credit order, correct/wrong rows, and scoremark.
-  ('00000000-0000-0000-0000-00000000a004', 'ranking', 'Top-three ranking', '00000000-0000-0000-0000-00000000d002', 'Rank the three offenses you trust most.', 'Rank these offenses', 'The editorial panel publishes its Week 1 power ranking.', now() - interval '5 days', 'resolved', null, now() - interval '8 days', now() - interval '4 days'),
-  -- Resolved custom multi: pick, pick-set and cross-slot result faces.
-  ('00000000-0000-0000-0000-00000000a005', 'custom_multi', 'Preseason calls', '00000000-0000-0000-0000-00000000d002', 'A division winner and two wild cards — no duplicates.', 'Build your AFC playoff picture', 'The post resolves against the final AFC playoff field.', now() - interval '12 days', 'resolved', null, now() - interval '20 days', now() - interval '11 days'),
-  -- Resolved: a finished Monday-night game with picks, takes, and replies.
-  ('00000000-0000-0000-0000-00000000a006', 'game_pick', 'Monday Night Football · Week 1', '00000000-0000-0000-0000-00000000d002', 'Arrowhead under the lights. Who had it?', 'Broncos @ Chiefs', 'Kansas City won 24–10 on Monday Night Football.', now() - interval '2 days', 'resolved', null, now() - interval '5 days', now() - interval '1 day'),
-  -- Resolved: an eight-game weekly ticket with a partially correct demo call.
-  ('00000000-0000-0000-0000-00000000a007', 'weekly_picks', '2026 Week 1 · Sunday sampler', '00000000-0000-0000-0000-00000000d002', 'Eight Week 1 calls, with just enough chaos.', 'How did you see Week 1 playing out?', 'Each game resolves from its final score.', now() - interval '3 days', 'resolved', null, now() - interval '6 days', now() - interval '2 days');
+  ('00000000-0000-0000-0000-00000000a002', 'weekly_picks', '2026 Week 2 · Full slate', '00000000-0000-0000-0000-00000000d002', 'Sixteen games. One ticket. No hedging.', 'Pick every 2026 Week 2 winner', 'Each game resolves from its final score.', now() + interval '30 days', 'open', null, now() - interval '45 minutes', null, false, null),
+  -- Resolved + answered: a finished Monday-night game with picks, takes, and replies.
+  ('00000000-0000-0000-0000-00000000a006', 'picks', 'Single game picks', '00000000-0000-0000-0000-00000000d002', 'Arrowhead under the lights. Who had it?', 'Who won Broncos @ Chiefs?', 'The winner is the team with more points at final whistle.', now() - interval '5 days', 'resolved', null, now() - interval '8 days', now() - interval '4 days', false, null),
+  -- Resolved + answered: a sixteen-game weekly ticket with a partially correct demo call.
+  ('00000000-0000-0000-0000-00000000a007', 'weekly_picks', '2026 Week 1 · Full slate', '00000000-0000-0000-0000-00000000d002', 'Sixteen Week 1 calls, with just enough chaos.', 'How did you see Week 1 playing out?', 'Each game resolves from its final score.', now() - interval '6 days', 'resolved', null, now() - interval '9 days', now() - interval '5 days', false, null),
+  -- Power Rankings are opinion-only, so "closed" means locked, never resolved.
+  ('00000000-0000-0000-0000-00000000a010', 'power_rankings', 'Power Rankings · Week 1', '00000000-0000-0000-0000-00000000d002', 'Where does everyone stand after opening weekend?', 'Rank the NFL after Week 1', 'Opinion prompt — there is no correct answer.', now() - interval '14 days', 'locked', null, now() - interval '17 days', null, true, array['BAL', 'GB', 'TB', 'KC', 'PHI', 'BUF']),
+  ('00000000-0000-0000-0000-00000000a011', 'power_rankings', 'Power Rankings · Week 2', '00000000-0000-0000-0000-00000000d002', 'One week of tape. Who moved?', 'Rank the NFL after Week 2', 'Opinion prompt — there is no correct answer.', now() - interval '7 days', 'locked', null, now() - interval '10 days', null, true, array['DET', 'BUF', 'KC', 'SF', 'PHI', 'BAL']),
+  ('00000000-0000-0000-0000-00000000a012', 'power_rankings', 'Power Rankings · Week 3', '00000000-0000-0000-0000-00000000d002', 'Sort the league your way.', 'Rank the NFL after Week 3', 'Opinion prompt — there is no correct answer.', now() + interval '30 days', 'open', null, now() - interval '1 hour', null, true, array['KC', 'BUF', 'DET', 'PHI', 'BAL', 'SF']);
+
+-- Schedule details for the matchup covers (0119). The `seed_` ids keep these
+-- apart from the real nflverse rows the poll loads, so the gallery reads the
+-- same with or without the network. Kickoffs are relative so the open posts'
+-- games stay in the future however old this database gets.
+insert into public.nfl_games (id, season, week, kickoff, away_team, home_team, stadium, primetime)
+values
+  ('seed_2026_02_KC_BUF',  2026, 2, now() + interval '30 days' + interval '2 hours', 'KC',  'BUF', 'Highmark Stadium',            true),
+  ('seed_2026_02_DET_BUF', 2026, 2, now() + interval '30 days',                      'DET', 'BUF', 'Highmark Stadium',            false),
+  ('seed_2026_02_CAR_ATL', 2026, 2, now() + interval '30 days',                      'CAR', 'ATL', 'Mercedes-Benz Stadium',       false),
+  ('seed_2026_02_NO_BAL',  2026, 2, now() + interval '31 days' + interval '3 hours', 'NO',  'BAL', 'M&T Bank Stadium',            true),
+  ('seed_2026_02_MIN_CHI', 2026, 2, now() + interval '30 days' + interval '3 hours', 'MIN', 'CHI', 'Soldier Field',               false),
+  ('seed_2026_01_DEN_KC',  2026, 1, now() - interval '5 days',                       'DEN', 'KC',  'GEHA Field at Arrowhead Stadium', true),
+  ('seed_2026_01_NE_SEA',  2026, 1, now() - interval '6 days',                       'NE',  'SEA', 'Lumen Field',                 true),
+  ('seed_2026_01_SF_LA',   2026, 1, now() - interval '6 days' + interval '1 day',    'SF',  'LA',  'SoFi Stadium',                false)
+on conflict (id) do nothing;
+
+-- Week 1 board. winner / demo / tasha are 'A' (away) or 'H' (home). One table
+-- drives the slots, options, answers and responses so the four can't drift.
+-- Option ids follow the slot index: away = c7(2i+1), home = c7(2i+2).
+create temp table wk1_games (
+  idx int, away_name text, away_code text, home_name text, home_code text,
+  winner char(1), demo char(1), tasha char(1), source_game_id text,
+  slot_id uuid, away_option uuid, home_option uuid
+) on commit drop;
+
+insert into wk1_games (idx, away_name, away_code, home_name, home_code, winner, demo, tasha, source_game_id)
+values
+  (0,  'Patriots',   'NE',  'Seahawks',  'SEA', 'H', 'H', 'A', 'seed_2026_01_NE_SEA'),
+  (1,  '49ers',      'SF',  'Rams',      'LAR', 'A', 'H', 'A', 'seed_2026_01_SF_LA'),
+  (2,  'Bears',      'CHI', 'Panthers',  'CAR', 'A', 'A', 'H', null),
+  (3,  'Buccaneers', 'TB',  'Bengals',   'CIN', 'H', 'A', 'H', null),
+  (4,  'Ravens',     'BAL', 'Colts',     'IND', 'A', 'A', 'A', null),
+  (5,  'Saints',     'NO',  'Lions',     'DET', 'H', 'H', 'A', null),
+  (6,  'Falcons',    'ATL', 'Steelers',  'PIT', 'H', 'H', 'A', null),
+  (7,  'Broncos',    'DEN', 'Chiefs',    'KC',  'H', 'H', 'H', 'seed_2026_01_DEN_KC'),
+  (8,  'Cowboys',    'DAL', 'Eagles',    'PHI', 'H', 'H', 'H', null),
+  (9,  'Commanders', 'WAS', 'Giants',    'NYG', 'A', 'H', 'A', null),
+  (10, 'Vikings',    'MIN', 'Packers',   'GB',  'H', 'H', 'A', null),
+  (11, 'Dolphins',   'MIA', 'Bills',     'BUF', 'H', 'H', 'H', null),
+  (12, 'Texans',     'HOU', 'Jaguars',   'JAX', 'A', 'A', 'H', null),
+  (13, 'Titans',     'TEN', 'Browns',    'CLE', 'H', 'A', 'A', null),
+  (14, 'Raiders',    'LV',  'Chargers',  'LAC', 'H', 'H', 'A', null),
+  (15, 'Jets',       'NYJ', 'Cardinals', 'ARI', 'H', 'A', 'H', null);
+
+update wk1_games
+   set slot_id     = ('00000000-0000-0000-0000-00000000b7' || lpad((idx + 1)::text, 2, '0'))::uuid,
+       away_option = ('00000000-0000-0000-0000-00000000c7' || lpad((2 * idx + 1)::text, 2, '0'))::uuid,
+       home_option = ('00000000-0000-0000-0000-00000000c7' || lpad((2 * idx + 2)::text, 2, '0'))::uuid;
+
+-- Power Rankings pool: every post ranks the same 32 teams. Option ids encode
+-- the post number and the team's alphabetical position.
+create temp table power_teams (code text, name text, sort int) on commit drop;
+insert into power_teams (code, name, sort)
+select code, name, row_number() over (order by code) - 1
+from (values
+  ('ARI', 'Cardinals'), ('ATL', 'Falcons'), ('BAL', 'Ravens'), ('BUF', 'Bills'),
+  ('CAR', 'Panthers'), ('CHI', 'Bears'), ('CIN', 'Bengals'), ('CLE', 'Browns'),
+  ('DAL', 'Cowboys'), ('DEN', 'Broncos'), ('DET', 'Lions'), ('GB', 'Packers'),
+  ('HOU', 'Texans'), ('IND', 'Colts'), ('JAX', 'Jaguars'), ('KC', 'Chiefs'),
+  ('LAC', 'Chargers'), ('LAR', 'Rams'), ('LV', 'Raiders'), ('MIA', 'Dolphins'),
+  ('MIN', 'Vikings'), ('NE', 'Patriots'), ('NO', 'Saints'), ('NYG', 'Giants'),
+  ('NYJ', 'Jets'), ('PHI', 'Eagles'), ('PIT', 'Steelers'), ('SEA', 'Seahawks'),
+  ('SF', '49ers'), ('TB', 'Buccaneers'), ('TEN', 'Titans'), ('WAS', 'Commanders')
+) as t(code, name);
+
+create temp table power_posts (n int, post_id uuid, slot_id uuid) on commit drop;
+insert into power_posts (n, post_id, slot_id)
+values
+  (1, '00000000-0000-0000-0000-00000000a010', '00000000-0000-0000-0000-00000000b010'),
+  (2, '00000000-0000-0000-0000-00000000a011', '00000000-0000-0000-0000-00000000b011'),
+  (3, '00000000-0000-0000-0000-00000000a012', '00000000-0000-0000-0000-00000000b012');
 
 insert into public.prompt_slots (id, post_id, label, shape, pick_count, points, sort_order, correct_option_ids)
 values
@@ -79,37 +154,16 @@ values
   ('00000000-0000-0000-0000-00000000b214', '00000000-0000-0000-0000-00000000a002', 'Dolphins @ 49ers', 'pick', null, 10, 13, null),
   ('00000000-0000-0000-0000-00000000b215', '00000000-0000-0000-0000-00000000a002', 'Colts @ Chiefs', 'pick', null, 10, 14, null),
   ('00000000-0000-0000-0000-00000000b216', '00000000-0000-0000-0000-00000000a002', 'Giants @ Rams', 'pick', null, 10, 15, null),
-  ('00000000-0000-0000-0000-00000000b301', '00000000-0000-0000-0000-00000000a003', 'Rushing leader', 'pick', null, 15, 0, null),
-  ('00000000-0000-0000-0000-00000000b801', '00000000-0000-0000-0000-00000000a008', 'Packers @ Bears', 'pick', null, 10, 0, null),
-  ('00000000-0000-0000-0000-00000000b901', '00000000-0000-0000-0000-00000000a009', 'Cowboys @ Eagles', 'pick', null, 10, 0, array['00000000-0000-0000-0000-00000000c902'::uuid]),
-  ('00000000-0000-0000-0000-00000000b401', '00000000-0000-0000-0000-00000000a004', 'Your top three', 'rank', 3, 18, 0, array['00000000-0000-0000-0000-00000000c402'::uuid, '00000000-0000-0000-0000-00000000c401'::uuid, '00000000-0000-0000-0000-00000000c403'::uuid]),
-  ('00000000-0000-0000-0000-00000000b501', '00000000-0000-0000-0000-00000000a005', 'AFC East winner', 'pick', null, 12, 0, array['00000000-0000-0000-0000-00000000c501'::uuid]),
-  ('00000000-0000-0000-0000-00000000b502', '00000000-0000-0000-0000-00000000a005', 'Two AFC wild cards', 'pick_set', 2, 12, 1, array['00000000-0000-0000-0000-00000000c504'::uuid, '00000000-0000-0000-0000-00000000c505'::uuid]),
-  ('00000000-0000-0000-0000-00000000b601', '00000000-0000-0000-0000-00000000a006', 'Broncos @ Chiefs', 'pick', null, 10, 0, array['00000000-0000-0000-0000-00000000c602'::uuid]),
-  ('00000000-0000-0000-0000-00000000b701', '00000000-0000-0000-0000-00000000a007', 'Patriots @ Seahawks', 'pick', null, 10, 0, array['00000000-0000-0000-0000-00000000c702'::uuid]),
-  ('00000000-0000-0000-0000-00000000b702', '00000000-0000-0000-0000-00000000a007', '49ers @ Rams', 'pick', null, 10, 1, array['00000000-0000-0000-0000-00000000c703'::uuid]),
-  ('00000000-0000-0000-0000-00000000b703', '00000000-0000-0000-0000-00000000a007', 'Bears @ Panthers', 'pick', null, 10, 2, array['00000000-0000-0000-0000-00000000c705'::uuid]),
-  ('00000000-0000-0000-0000-00000000b704', '00000000-0000-0000-0000-00000000a007', 'Buccaneers @ Bengals', 'pick', null, 10, 3, array['00000000-0000-0000-0000-00000000c708'::uuid]),
-  ('00000000-0000-0000-0000-00000000b705', '00000000-0000-0000-0000-00000000a007', 'Ravens @ Colts', 'pick', null, 10, 4, array['00000000-0000-0000-0000-00000000c709'::uuid]),
-  ('00000000-0000-0000-0000-00000000b706', '00000000-0000-0000-0000-00000000a007', 'Saints @ Lions', 'pick', null, 10, 5, array['00000000-0000-0000-0000-00000000c712'::uuid]),
-  ('00000000-0000-0000-0000-00000000b707', '00000000-0000-0000-0000-00000000a007', 'Falcons @ Steelers', 'pick', null, 10, 6, array['00000000-0000-0000-0000-00000000c714'::uuid]),
-  ('00000000-0000-0000-0000-00000000b708', '00000000-0000-0000-0000-00000000a007', 'Broncos @ Chiefs', 'pick', null, 10, 7, array['00000000-0000-0000-0000-00000000c716'::uuid]);
+  ('00000000-0000-0000-0000-00000000b601', '00000000-0000-0000-0000-00000000a006', 'Broncos @ Chiefs', 'pick', null, 10, 0, array['00000000-0000-0000-0000-00000000c602'::uuid]);
 
--- Schedule details for the matchup covers (0119). The `seed_` ids keep these
--- apart from the real nflverse rows the poll loads, so the gallery reads the
--- same with or without the network. Kickoffs are relative so the open posts'
--- games stay in the future however old this database gets.
-insert into public.nfl_games (id, season, week, kickoff, away_team, home_team, stadium, primetime)
-values
-  ('seed_2026_02_KC_BUF',  2026, 2, now() + interval '3 days' + interval '2 hours',  'KC',  'BUF', 'Highmark Stadium',            true),
-  ('seed_2026_02_DET_BUF', 2026, 2, now() + interval '6 days',                       'DET', 'BUF', 'Highmark Stadium',            false),
-  ('seed_2026_02_CAR_ATL', 2026, 2, now() + interval '6 days',                       'CAR', 'ATL', 'Mercedes-Benz Stadium',       false),
-  ('seed_2026_02_NO_BAL',  2026, 2, now() + interval '7 days' + interval '3 hours',  'NO',  'BAL', 'M&T Bank Stadium',            true),
-  ('seed_2026_02_MIN_CHI', 2026, 2, now() + interval '6 days' + interval '3 hours',  'MIN', 'CHI', 'Soldier Field',               false),
-  ('seed_2026_01_DEN_KC',  2026, 1, now() - interval '5 days',                       'DEN', 'KC',  'GEHA Field at Arrowhead Stadium', true),
-  ('seed_2026_01_NE_SEA',  2026, 1, now() - interval '6 days',                       'NE',  'SEA', 'Lumen Field',                 true),
-  ('seed_2026_01_SF_LA',   2026, 1, now() - interval '6 days' + interval '1 day',    'SF',  'LA',  'SoFi Stadium',                false)
-on conflict (id) do nothing;
+insert into public.prompt_slots (id, post_id, label, shape, pick_count, points, sort_order, correct_option_ids)
+select slot_id, '00000000-0000-0000-0000-00000000a007', away_name || ' @ ' || home_name, 'pick', null, 10, idx,
+       array[case winner when 'A' then away_option else home_option end]
+  from wk1_games;
+
+insert into public.prompt_slots (id, post_id, label, shape, pick_count, points, sort_order, correct_option_ids)
+select slot_id, post_id, 'Your power rankings', 'rank', 32, 10, 0, null
+  from power_posts;
 
 update public.prompt_slots as s
    set source_game_id = g.game_id
@@ -119,11 +173,14 @@ update public.prompt_slots as s
     ('00000000-0000-0000-0000-00000000b202'::uuid, 'seed_2026_02_CAR_ATL'),
     ('00000000-0000-0000-0000-00000000b203'::uuid, 'seed_2026_02_NO_BAL'),
     ('00000000-0000-0000-0000-00000000b204'::uuid, 'seed_2026_02_MIN_CHI'),
-    ('00000000-0000-0000-0000-00000000b601'::uuid, 'seed_2026_01_DEN_KC'),
-    ('00000000-0000-0000-0000-00000000b701'::uuid, 'seed_2026_01_NE_SEA'),
-    ('00000000-0000-0000-0000-00000000b702'::uuid, 'seed_2026_01_SF_LA')
+    ('00000000-0000-0000-0000-00000000b601'::uuid, 'seed_2026_01_DEN_KC')
   ) as g(slot_id, game_id)
  where s.id = g.slot_id;
+
+update public.prompt_slots as s
+   set source_game_id = g.source_game_id
+  from wk1_games g
+ where s.id = g.slot_id and g.source_game_id is not null;
 
 insert into public.prompt_slot_options (id, slot_id, label, sublabel, team_code, sort_order)
 values
@@ -144,77 +201,77 @@ values
   ('00000000-0000-0000-0000-00000000c227', '00000000-0000-0000-0000-00000000b214', 'Dolphins', 'Away', 'MIA', 0), ('00000000-0000-0000-0000-00000000c228', '00000000-0000-0000-0000-00000000b214', '49ers', 'Home', 'SF', 1),
   ('00000000-0000-0000-0000-00000000c229', '00000000-0000-0000-0000-00000000b215', 'Colts', 'Away', 'IND', 0), ('00000000-0000-0000-0000-00000000c230', '00000000-0000-0000-0000-00000000b215', 'Chiefs', 'Home', 'KC', 1),
   ('00000000-0000-0000-0000-00000000c231', '00000000-0000-0000-0000-00000000b216', 'Giants', 'Away', 'NYG', 0), ('00000000-0000-0000-0000-00000000c232', '00000000-0000-0000-0000-00000000b216', 'Rams', 'Home', 'LAR', 1),
-  ('00000000-0000-0000-0000-00000000c301', '00000000-0000-0000-0000-00000000b301', 'Bijan Robinson', 'ATL · RB', null, 0), ('00000000-0000-0000-0000-00000000c302', '00000000-0000-0000-0000-00000000b301', 'Jahmyr Gibbs', 'DET · RB', null, 1), ('00000000-0000-0000-0000-00000000c303', '00000000-0000-0000-0000-00000000b301', 'Saquon Barkley', 'PHI · RB', null, 2), ('00000000-0000-0000-0000-00000000c304', '00000000-0000-0000-0000-00000000b301', 'Derrick Henry', 'BAL · RB', null, 3),
-  ('00000000-0000-0000-0000-00000000c801', '00000000-0000-0000-0000-00000000b801', 'Packers', 'Away', 'GB', 0), ('00000000-0000-0000-0000-00000000c802', '00000000-0000-0000-0000-00000000b801', 'Bears', 'Home', 'CHI', 1),
-  ('00000000-0000-0000-0000-00000000c901', '00000000-0000-0000-0000-00000000b901', 'Cowboys', 'Away', 'DAL', 0), ('00000000-0000-0000-0000-00000000c902', '00000000-0000-0000-0000-00000000b901', 'Eagles', 'Home', 'PHI', 1),
-  ('00000000-0000-0000-0000-00000000c401', '00000000-0000-0000-0000-00000000b401', 'Bills', null, 'BUF', 0), ('00000000-0000-0000-0000-00000000c402', '00000000-0000-0000-0000-00000000b401', 'Chiefs', null, 'KC', 1), ('00000000-0000-0000-0000-00000000c403', '00000000-0000-0000-0000-00000000b401', 'Eagles', null, 'PHI', 2), ('00000000-0000-0000-0000-00000000c404', '00000000-0000-0000-0000-00000000b401', 'Ravens', null, 'BAL', 3),
-  ('00000000-0000-0000-0000-00000000c501', '00000000-0000-0000-0000-00000000b501', 'Bills', null, 'BUF', 0), ('00000000-0000-0000-0000-00000000c502', '00000000-0000-0000-0000-00000000b501', 'Dolphins', null, 'MIA', 1), ('00000000-0000-0000-0000-00000000c503', '00000000-0000-0000-0000-00000000b501', 'Jets', null, 'NYJ', 2),
-  ('00000000-0000-0000-0000-00000000c504', '00000000-0000-0000-0000-00000000b502', 'Ravens', null, 'BAL', 0), ('00000000-0000-0000-0000-00000000c505', '00000000-0000-0000-0000-00000000b502', 'Chargers', null, 'LAC', 1), ('00000000-0000-0000-0000-00000000c506', '00000000-0000-0000-0000-00000000b502', 'Bengals', null, 'CIN', 2),
-  ('00000000-0000-0000-0000-00000000c601', '00000000-0000-0000-0000-00000000b601', 'Broncos', 'Away', 'DEN', 0), ('00000000-0000-0000-0000-00000000c602', '00000000-0000-0000-0000-00000000b601', 'Chiefs', 'Home', 'KC', 1),
-  ('00000000-0000-0000-0000-00000000c701', '00000000-0000-0000-0000-00000000b701', 'Patriots', 'Away', 'NE', 0), ('00000000-0000-0000-0000-00000000c702', '00000000-0000-0000-0000-00000000b701', 'Seahawks', 'Home', 'SEA', 1),
-  ('00000000-0000-0000-0000-00000000c703', '00000000-0000-0000-0000-00000000b702', '49ers', 'Away', 'SF', 0), ('00000000-0000-0000-0000-00000000c704', '00000000-0000-0000-0000-00000000b702', 'Rams', 'Home', 'LAR', 1),
-  ('00000000-0000-0000-0000-00000000c705', '00000000-0000-0000-0000-00000000b703', 'Bears', 'Away', 'CHI', 0), ('00000000-0000-0000-0000-00000000c706', '00000000-0000-0000-0000-00000000b703', 'Panthers', 'Home', 'CAR', 1),
-  ('00000000-0000-0000-0000-00000000c707', '00000000-0000-0000-0000-00000000b704', 'Buccaneers', 'Away', 'TB', 0), ('00000000-0000-0000-0000-00000000c708', '00000000-0000-0000-0000-00000000b704', 'Bengals', 'Home', 'CIN', 1),
-  ('00000000-0000-0000-0000-00000000c709', '00000000-0000-0000-0000-00000000b705', 'Ravens', 'Away', 'BAL', 0), ('00000000-0000-0000-0000-00000000c710', '00000000-0000-0000-0000-00000000b705', 'Colts', 'Home', 'IND', 1),
-  ('00000000-0000-0000-0000-00000000c711', '00000000-0000-0000-0000-00000000b706', 'Saints', 'Away', 'NO', 0), ('00000000-0000-0000-0000-00000000c712', '00000000-0000-0000-0000-00000000b706', 'Lions', 'Home', 'DET', 1),
-  ('00000000-0000-0000-0000-00000000c713', '00000000-0000-0000-0000-00000000b707', 'Falcons', 'Away', 'ATL', 0), ('00000000-0000-0000-0000-00000000c714', '00000000-0000-0000-0000-00000000b707', 'Steelers', 'Home', 'PIT', 1),
-  ('00000000-0000-0000-0000-00000000c715', '00000000-0000-0000-0000-00000000b708', 'Broncos', 'Away', 'DEN', 0), ('00000000-0000-0000-0000-00000000c716', '00000000-0000-0000-0000-00000000b708', 'Chiefs', 'Home', 'KC', 1);
+  ('00000000-0000-0000-0000-00000000c601', '00000000-0000-0000-0000-00000000b601', 'Broncos', 'Away', 'DEN', 0), ('00000000-0000-0000-0000-00000000c602', '00000000-0000-0000-0000-00000000b601', 'Chiefs', 'Home', 'KC', 1);
 
-insert into public.prompt_slot_exclusions (slot_id, excluded_slot_id)
-values ('00000000-0000-0000-0000-00000000b502', '00000000-0000-0000-0000-00000000b501');
+insert into public.prompt_slot_options (id, slot_id, label, sublabel, team_code, sort_order)
+select away_option, slot_id, away_name, 'Away', away_code, 0 from wk1_games
+union all
+select home_option, slot_id, home_name, 'Home', home_code, 1 from wk1_games;
 
--- Demo Reader's calls show the personal-result treatments; the Week 2 slate
--- intentionally has no responses, so demo@ballparty.local can fill it in.
+insert into public.prompt_slot_options (id, slot_id, label, sublabel, team_code, sort_order)
+select ('00000000-0000-0000-000' || p.n || '-0000000000' || lpad(t.sort::text, 2, '0'))::uuid,
+       p.slot_id, t.name, null, t.code, t.sort
+  from power_posts p
+  cross join power_teams t;
+
+-- Demo Reader's calls show the personal-result treatments; the open posts
+-- intentionally have no demo responses, so demo@ballparty.local can fill them in.
 insert into public.prompt_responses (post_id, slot_id, profile_id, chosen_option_ids, points_earned)
 values
-  ('00000000-0000-0000-0000-00000000a003', '00000000-0000-0000-0000-00000000b301', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c302'::uuid], null),
-  ('00000000-0000-0000-0000-00000000a004', '00000000-0000-0000-0000-00000000b401', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c401'::uuid, '00000000-0000-0000-0000-00000000c402'::uuid, '00000000-0000-0000-0000-00000000c403'::uuid], 6),
-  ('00000000-0000-0000-0000-00000000a005', '00000000-0000-0000-0000-00000000b501', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c501'::uuid], 12),
-  ('00000000-0000-0000-0000-00000000a005', '00000000-0000-0000-0000-00000000b502', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c504'::uuid, '00000000-0000-0000-0000-00000000c506'::uuid], 6),
-  ('00000000-0000-0000-0000-00000000a003', '00000000-0000-0000-0000-00000000b301', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c301'::uuid], null),
   ('00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000b601', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c602'::uuid], 10),
   ('00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000b601', '00000000-0000-0000-0000-00000000d002', array['00000000-0000-0000-0000-00000000c602'::uuid], 10),
-  ('00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000b601', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c601'::uuid], 0),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b701', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c702'::uuid], 10),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b702', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c704'::uuid], 0),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b703', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c705'::uuid], 10),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b704', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c707'::uuid], 0),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b705', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c709'::uuid], 10),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b706', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c712'::uuid], 10),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b707', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c714'::uuid], 10),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b708', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c716'::uuid], 10),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b701', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c701'::uuid], 0),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b702', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c703'::uuid], 10),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b703', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c706'::uuid], 0),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b704', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c708'::uuid], 10),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b705', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c709'::uuid], 10),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b706', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c711'::uuid], 0),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b707', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c713'::uuid], 0),
-  ('00000000-0000-0000-0000-00000000a007', '00000000-0000-0000-0000-00000000b708', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c716'::uuid], 10);
+  ('00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000b601', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c601'::uuid], 0);
+
+insert into public.prompt_responses (post_id, slot_id, profile_id, chosen_option_ids, points_earned)
+select '00000000-0000-0000-0000-00000000a007', g.slot_id, p.profile_id,
+       array[case p.side when 'A' then g.away_option else g.home_option end],
+       case when p.side = g.winner then 10 else 0 end
+  from wk1_games g
+  cross join lateral (values
+    ('00000000-0000-0000-0000-00000000d001'::uuid, g.demo),
+    ('00000000-0000-0000-0000-00000000d003'::uuid, g.tasha)
+  ) as p(profile_id, side);
+
+-- Power Rankings ballots list team codes best-first. A respondent chooses how
+-- many teams to rank (5, 10, or all 32); Week 2 reshuffles the demo ballot so
+-- the movement arrows have something to show. Opinion posts earn no points.
+create temp table power_ballots (n int, profile_id uuid, codes text[]) on commit drop;
+insert into power_ballots (n, profile_id, codes)
+values
+  (1, '00000000-0000-0000-0000-00000000d001', array['KC', 'BUF', 'PHI', 'BAL', 'DET', 'SF', 'GB', 'HOU', 'CIN', 'LAR']),
+  (1, '00000000-0000-0000-0000-00000000d003', array['BUF', 'KC', 'BAL', 'PHI', 'DET']),
+  (1, '00000000-0000-0000-0000-00000000d002', array['KC', 'PHI', 'BUF', 'DET', 'BAL', 'SF', 'LAR', 'GB', 'HOU', 'MIN']),
+  (2, '00000000-0000-0000-0000-00000000d001', array['BUF', 'KC', 'DET', 'PHI', 'BAL', 'GB', 'SF', 'HOU', 'LAR', 'MIN']),
+  (2, '00000000-0000-0000-0000-00000000d003', array['KC', 'DET', 'BUF', 'PHI', 'SF']),
+  (2, '00000000-0000-0000-0000-00000000d002', array['DET', 'KC', 'BUF', 'BAL', 'PHI']);
+
+insert into public.prompt_responses (post_id, slot_id, profile_id, chosen_option_ids, points_earned)
+select p.post_id, p.slot_id, b.profile_id,
+       array(
+         select o.id
+           from unnest(b.codes) with ordinality as t(code, ord)
+           join public.prompt_slot_options o on o.slot_id = p.slot_id and o.team_code = t.code
+          order by t.ord
+       ),
+       null
+  from power_ballots b
+  join power_posts p on p.n = b.n;
 
 insert into private.prompt_slot_answers (slot_id, correct_option_ids)
-values
-  ('00000000-0000-0000-0000-00000000b401', array['00000000-0000-0000-0000-00000000c402'::uuid, '00000000-0000-0000-0000-00000000c401'::uuid, '00000000-0000-0000-0000-00000000c403'::uuid]),
-  ('00000000-0000-0000-0000-00000000b501', array['00000000-0000-0000-0000-00000000c501'::uuid]),
-  ('00000000-0000-0000-0000-00000000b502', array['00000000-0000-0000-0000-00000000c504'::uuid, '00000000-0000-0000-0000-00000000c505'::uuid]),
-  ('00000000-0000-0000-0000-00000000b601', array['00000000-0000-0000-0000-00000000c602'::uuid]),
-  ('00000000-0000-0000-0000-00000000b701', array['00000000-0000-0000-0000-00000000c702'::uuid]),
-  ('00000000-0000-0000-0000-00000000b702', array['00000000-0000-0000-0000-00000000c703'::uuid]),
-  ('00000000-0000-0000-0000-00000000b703', array['00000000-0000-0000-0000-00000000c705'::uuid]),
-  ('00000000-0000-0000-0000-00000000b704', array['00000000-0000-0000-0000-00000000c708'::uuid]),
-  ('00000000-0000-0000-0000-00000000b705', array['00000000-0000-0000-0000-00000000c709'::uuid]),
-  ('00000000-0000-0000-0000-00000000b706', array['00000000-0000-0000-0000-00000000c712'::uuid]),
-  ('00000000-0000-0000-0000-00000000b707', array['00000000-0000-0000-0000-00000000c714'::uuid]),
-  ('00000000-0000-0000-0000-00000000b708', array['00000000-0000-0000-0000-00000000c716'::uuid]);
+values ('00000000-0000-0000-0000-00000000b601', array['00000000-0000-0000-0000-00000000c602'::uuid]);
+
+insert into private.prompt_slot_answers (slot_id, correct_option_ids)
+select slot_id, array[case winner when 'A' then away_option else home_option end]
+  from wk1_games;
 
 insert into public.prompt_comments (id, post_id, author_id, body, posted_with_pick, parent_comment_id, created_at)
 values
-  ('00000000-0000-0000-0000-00000000e201', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d001', 'Kansas City at home in Week 1 was too much to pass up. The fourth quarter sealed it.', true, null, now() - interval '22 hours'),
-  ('00000000-0000-0000-0000-00000000e202', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d003', 'I thought Denver would carry last season’s momentum into Arrowhead. Wrong side, but it was a fun sweat.', true, null, now() - interval '1 day'),
-  ('00000000-0000-0000-0000-00000000e203', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d002', 'Mahomes looked composed after halftime. Chiefs was my easiest call of the opener.', true, null, now() - interval '20 hours'),
-  ('00000000-0000-0000-0000-00000000e204', '00000000-0000-0000-0000-00000000a004', '00000000-0000-0000-0000-00000000d003', 'I had the Bills one spot too high.', false, null, now() - interval '3 days'),
-  ('00000000-0000-0000-0000-00000000e205', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d002', 'Denver’s defense kept it close early. The last 15 minutes changed the whole feel of it.', false, '00000000-0000-0000-0000-00000000e202', now() - interval '18 hours'),
-  ('00000000-0000-0000-0000-00000000e206', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d001', 'Exactly. I was relieved to see that one turn into a comfortable finish.', false, '00000000-0000-0000-0000-00000000e203', now() - interval '16 hours'),
-  ('00000000-0000-0000-0000-00000000e207', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d003', 'Fair. I am taking Denver again when they get the rematch at home.', false, '00000000-0000-0000-0000-00000000e202', now() - interval '12 hours');
+  ('00000000-0000-0000-0000-00000000e201', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d001', 'Kansas City at home in Week 1 was too much to pass up. The fourth quarter sealed it.', true, null, now() - interval '5 days 2 hours'),
+  ('00000000-0000-0000-0000-00000000e202', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d003', 'I thought Denver would carry last season’s momentum into Arrowhead. Wrong side, but it was a fun sweat.', true, null, now() - interval '5 days 8 hours'),
+  ('00000000-0000-0000-0000-00000000e203', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d002', 'Mahomes looked composed after halftime. Chiefs was my easiest call of the opener.', true, null, now() - interval '5 days 4 hours'),
+  ('00000000-0000-0000-0000-00000000e204', '00000000-0000-0000-0000-00000000a010', '00000000-0000-0000-0000-00000000d003', 'I had the Bills one spot too high.', false, null, now() - interval '13 days'),
+  ('00000000-0000-0000-0000-00000000e205', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d002', 'Denver’s defense kept it close early. The last 15 minutes changed the whole feel of it.', false, '00000000-0000-0000-0000-00000000e202', now() - interval '4 days 20 hours'),
+  ('00000000-0000-0000-0000-00000000e206', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d001', 'Exactly. I was relieved to see that one turn into a comfortable finish.', false, '00000000-0000-0000-0000-00000000e203', now() - interval '4 days 18 hours'),
+  ('00000000-0000-0000-0000-00000000e207', '00000000-0000-0000-0000-00000000a006', '00000000-0000-0000-0000-00000000d003', 'Fair. I am taking Denver again when they get the rematch at home.', false, '00000000-0000-0000-0000-00000000e202', now() - interval '4 days 12 hours');
 
 commit;

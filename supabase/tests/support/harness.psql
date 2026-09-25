@@ -619,13 +619,14 @@ begin
     ('phi', 2017, 'FolsNi00', 'Nick Foles',      78, 74, 45, 80, 68);
 end $$;
 
--- A player's own QB Season Builder run, started and dealt, in the given mode.
--- Leaves the session acting as that player. The same two public calls a client
--- makes, in the same order.
+-- A player's own QB Season Builder run, started and dealt, in the given mode
+-- and era. Leaves the session acting as that player. The same two public calls
+-- a client makes, in the same order.
 create function tests.qsb_start(
   p_user uuid,
   p_mode text default 'visible',
   p_guest boolean default false,
+  p_era text default 'all',
   out match_id uuid
 )
 returns uuid
@@ -637,7 +638,7 @@ begin
     perform tests.act_as(p_user);
   end if;
   select id into match_id from public.start_solo_run('qb_season_builder');
-  perform qb_season_builder.start(match_id, p_mode);
+  perform qb_season_builder.start(match_id, p_mode, p_era);
 end $$;
 
 -- Put a round's current spin on a chosen team-season, the way tests.open_question

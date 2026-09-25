@@ -47,6 +47,9 @@ final class HuddleViewModel: ObservableObject {
 
     /// `{post → {slot → chosen options}}` — picks not yet locked in.
     @Published private(set) var pickDrafts: [UUID: [UUID: [UUID]]] = [:]
+    /// `{post → how many teams}` — the depth a Power Rankings ballot is being
+    /// composed to (5, 10 or 32). Absent means the shallowest.
+    @Published private(set) var rankDepths: [UUID: Int] = [:]
     /// `{post → take}` — the optional take that goes with the picks.
     @Published private(set) var takeDrafts: [UUID: String] = [:]
     /// `{take → reply}`.
@@ -138,20 +141,60 @@ final class HuddleViewModel: ObservableObject {
         pickDrafts[postId]?[slotId] ?? []
     }
 
+    /// How many teams a Power Rankings ballot is being composed to.
+    func rankDepth(for postId: UUID) -> Int {
+        rankDepths[postId] ?? PromptPost.powerRankingDepths[0]
+    }
+
+    /// Chooses how deep a Power Rankings ballot goes. Going shallower drops the
+    /// teams that no longer fit, lowest-ranked first, like the web's board.
+    func setRankDepth(_ depth: Int, for postId: UUID) {
+        guard canAnswer(postId), let post = post(postId), post.isPowerRankings,
+              PromptPost.powerRankingDepths.contains(depth)
+        else { return }
+        rankDepths[postId] = depth
+        for slot in post.slots {
+            if let chosen = pickDrafts[postId]?[slot.id], chosen.count > depth {
+                pickDrafts[postId]?[slot.id] = Array(chosen.prefix(depth))
+            }
+        }
+    }
+
+    /// How many options a complete answer to `slot` holds. A Power Rankings
+    /// ballot's is the depth the player chose; every other slot's is the
+    /// composer's.
+    func requiredCount(for slot: PromptSlot, in post: PromptPost) -> Int {
+        post.isPowerRankings ? rankDepth(for: post.id) : slot.requiredCount
+    }
+
     /// One tap on an option. A `pick` slot holds one option, and a second tap
     /// elsewhere replaces it; a set or a ranking fills up to its count, in the
     /// order tapped (which is the ranking), and a tap on a chosen option
     /// removes it.
     func toggle(_ optionId: UUID, in slotId: UUID, of postId: UUID) {
-        guard canAnswer(postId), let slot = post(postId)?.slots.first(where: { $0.id == slotId }) else { return }
+        guard canAnswer(postId), let post = post(postId),
+              let slot = post.slots.first(where: { $0.id == slotId })
+        else { return }
         var chosen = selection(in: slotId, of: postId)
         if let index = chosen.firstIndex(of: optionId) {
             chosen.remove(at: index)
         } else if slot.shape == .pick {
             chosen = [optionId]
-        } else if chosen.count < slot.requiredCount {
+        } else if chosen.count < requiredCount(for: slot, in: post) {
             chosen.append(optionId)
         }
+        pickDrafts[postId, default: [:]][slotId] = chosen
+    }
+
+    /// Moves one ranked option to a new place in a ranking, the way a drag on
+    /// the board does. `destination` is the place it ends up in, not the gap it
+    /// is dropped into. Only the order of what is already chosen changes.
+    func moveRanked(from source: Int, to destination: Int, in slotId: UUID, of postId: UUID) {
+        guard canAnswer(postId) else { return }
+        var chosen = selection(in: slotId, of: postId)
+        guard chosen.indices.contains(source), chosen.indices.contains(destination), source != destination
+        else { return }
+        chosen.insert(chosen.remove(at: source), at: destination)
         pickDrafts[postId, default: [:]][slotId] = chosen
     }
 
@@ -164,7 +207,7 @@ final class HuddleViewModel: ObservableObject {
     /// Whether every slot has a complete answer.
     func canSubmit(_ postId: UUID) -> Bool {
         guard canAnswer(postId), let post = post(postId) else { return false }
-        return post.slots.allSatisfy { selection(in: $0.id, of: postId).count == $0.requiredCount }
+        return post.slots.allSatisfy { selection(in: $0.id, of: postId).count == requiredCount(for: $0, in: post) }
     }
 
     /// Locks in the picks — and the take, in the same call — then re-reads,
@@ -187,6 +230,7 @@ final class HuddleViewModel: ObservableObject {
             return
         }
         pickDrafts[postId] = nil
+        rankDepths[postId] = nil
         takeDrafts[postId] = nil
         await load()
     }

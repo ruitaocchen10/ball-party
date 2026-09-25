@@ -73,9 +73,13 @@ export type DraftPick = {
  */
 export type ShownSpin = Spin & { round: number; attempt: number };
 
+export type Era = "all" | "classic" | "modern";
+
 export type Board = {
   matchId: string;
   mode: "visible" | "hidden";
+  /** The pool this run deals from, chosen at start and locked. See migration 0153. */
+  era: Era;
   /** `picking` while a round is open; `ready_to_finish` once all six slots are filled. */
   phase: "picking" | "ready_to_finish" | "complete";
   roundCount: number;
@@ -98,6 +102,7 @@ export function boardFromRow(row: Partial<BoardRow> | null | undefined): Board |
     return null;
   }
   if (row.mode !== "visible" && row.mode !== "hidden") return null;
+  if (row.era !== "all" && row.era !== "classic" && row.era !== "modern") return null;
   if (row.phase !== "picking" && row.phase !== "ready_to_finish" && row.phase !== "complete") return null;
 
   const picks = picksFromJson(row.picks);
@@ -116,6 +121,7 @@ export function boardFromRow(row: Partial<BoardRow> | null | undefined): Board |
   return {
     matchId: row.match_id,
     mode: row.mode,
+    era: row.era,
     phase: row.phase,
     roundCount: row.round_count,
     currentRound: row.current_round,

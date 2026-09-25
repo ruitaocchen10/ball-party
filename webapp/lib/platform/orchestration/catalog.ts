@@ -59,6 +59,14 @@ export type Game = {
    */
   soloModes?: readonly SoloMode[];
   /**
+   * A second, independent choice a solo run makes at start, sent as `era`.
+   * Same shape and same rule as `soloModes` — first is the default, absent
+   * when a game has nothing to choose — just a second axis rather than a
+   * combined one, since the two vary independently (QB Season Builder's era
+   * narrows the pool a spin draws from; it does not touch what a spin reveals).
+   */
+  soloEras?: readonly SoloMode[];
+  /**
    * The one game the home grid gives a double-width tile to. Exactly one live
    * game should carry it — the grid places it explicitly and lets the rest
    * flow around it, so two would collide.
@@ -154,6 +162,11 @@ export const GAMES: readonly Game[] = [
     soloModes: [
       { value: "visible", label: "Visible", description: "Ratings show while you pick." },
       { value: "hidden", label: "Hidden", description: "No ratings until the run is over. Pick on what you know." },
+    ],
+    soloEras: [
+      { value: "all", label: "All Years", description: "Every team-season, 2006-2025." },
+      { value: "classic", label: "Classic", description: "2006-2015." },
+      { value: "modern", label: "Modern", description: "2016-2025." },
     ],
     featured: false,
   },

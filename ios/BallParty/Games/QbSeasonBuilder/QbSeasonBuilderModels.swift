@@ -30,6 +30,35 @@ enum QbRatingMode: String, Codable, Sendable, CaseIterable, Identifiable {
     }
 }
 
+/// The pool of team-seasons a run deals from. Chosen when the run starts and
+/// locked for its whole length, like `QbRatingMode`. Three fixed presets a
+/// client hardcodes rather than a free range — see migration `0153`'s header
+/// for why — so there is nothing to read from the server about them beyond
+/// which one a run picked.
+enum QbEra: String, Codable, Sendable, CaseIterable, Identifiable {
+    case all
+    case classic
+    case modern
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .all: "All Years"
+        case .classic: "Classic"
+        case .modern: "Modern"
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .all: "Every team-season, 2006-2025."
+        case .classic: "2006-2015."
+        case .modern: "2016-2025."
+        }
+    }
+}
+
 /// The six things a season is built from: five qualities of a quarterback, and
 /// the team around him.
 enum QbSlot: String, Codable, Sendable, CaseIterable, Identifiable {
@@ -260,10 +289,16 @@ struct QbBoard: Equatable, Sendable, Decodable {
     let picks: [QbPick]
     /// Every spin the player saw, values revealed; nil until the run is complete.
     let shown: [QbShownSpin]?
+    /// The pool this run deals from. Absent on a run dealt before migration
+    /// `0153` fell out of any fixture that predates it — `.all` is what every
+    /// one of those was, so it is the truth here too, not a default standing in
+    /// for one.
+    let era: QbEra
 
     init(
         matchId: UUID, mode: QbRatingMode, phase: QbPhase, roundCount: Int = 6, currentRound: Int,
-        respinUsed: Bool = false, deal: QbDeal? = nil, picks: [QbPick] = [], shown: [QbShownSpin]? = nil
+        respinUsed: Bool = false, deal: QbDeal? = nil, picks: [QbPick] = [], shown: [QbShownSpin]? = nil,
+        era: QbEra = .all
     ) {
         self.matchId = matchId
         self.mode = mode
@@ -274,10 +309,11 @@ struct QbBoard: Equatable, Sendable, Decodable {
         self.deal = deal
         self.picks = picks
         self.shown = shown
+        self.era = era
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, phase, season, options, picks, shown
+        case mode, phase, season, options, picks, shown, era
         case matchId = "match_id", roundCount = "round_count", currentRound = "current_round"
         case respinUsed = "respin_used", franchiseCode = "franchise_code"
     }
@@ -292,6 +328,7 @@ struct QbBoard: Equatable, Sendable, Decodable {
         respinUsed = try container.decode(Bool.self, forKey: .respinUsed)
         picks = try container.decodeIfPresent([QbPick].self, forKey: .picks) ?? []
         shown = try container.decodeIfPresent([QbShownSpin].self, forKey: .shown)
+        era = try container.decodeIfPresent(QbEra.self, forKey: .era) ?? .all
 
         if let franchiseCode = try container.decodeIfPresent(String.self, forKey: .franchiseCode),
            let season = try container.decodeIfPresent(Int.self, forKey: .season),
@@ -474,5 +511,24 @@ enum QbFranchises {
     /// Falls back to the raw code so an unmapped future entry never disappears.
     static func name(for code: String) -> String {
         names[code] ?? code
+    }
+
+    /// Every known code, sorted so the order is stable across runs — a
+    /// `Dictionary`'s own iteration order is not.
+    static let allCodes: [String] = names.keys.sorted()
+
+    /// A stable run of decoy codes for a spin reel, picked deterministically
+    /// from `key` rather than randomly. Mirrors the web's `stableReelDecoys`
+    /// (`webapp/lib/foundation/ui-kit/reel.ts`) so a reel's decoys don't
+    /// jitter if this view is ever asked to render the same key twice.
+    static func reelDecoys(excluding code: String, key: String, count: Int) -> [String] {
+        let pool = allCodes.filter { $0 != code }
+        guard count > 0, !pool.isEmpty else { return [] }
+
+        var hash: UInt32 = 0
+        for scalar in key.unicodeScalars { hash = hash &* 31 &+ scalar.value }
+        let start = Int(hash % UInt32(pool.count))
+        let length = min(count, pool.count)
+        return (0..<length).map { pool[(start + $0) % pool.count] }
     }
 }

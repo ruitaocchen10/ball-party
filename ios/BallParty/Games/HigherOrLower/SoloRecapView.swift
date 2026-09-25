@@ -29,11 +29,9 @@ struct SoloRecapView: View {
                         .buttonStyle(.solid)
                         .disabled(viewModel.isBusy)
 
-                        Button("Change format") { viewModel.returnToSetup() }
-                            .buttonStyle(.ghost)
-                            .disabled(viewModel.isBusy)
+                        // The format is chosen on the Games tab's card.
                         Button("Back to games") { dismiss() }
-                            .buttonStyle(.quiet)
+                            .buttonStyle(.ghost)
                     }
                     .frame(maxWidth: .infinity)
                 }

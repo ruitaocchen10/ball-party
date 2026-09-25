@@ -185,8 +185,8 @@ function submittedSoloGame(value: FormDataEntryValue | null): MatchGame | null {
  * The platform and per-game halves of `startRun` above, without the room in
  * between: `start_solo_run` freezes a one-person roster with no lobby to lock,
  * and the game's own setup RPC deals into it exactly as it would for a group.
- * No format picker yet — solo takes the same defaults a host's unconfigured
- * game would.
+ * The format is whatever the card's settings sent, if anything; a start with
+ * none takes the same defaults a host's unconfigured game would.
  */
 export async function playSolo(formData: FormData) {
   const game = submittedSoloGame(formData.get("game"));
@@ -208,17 +208,27 @@ export async function playSolo(formData: FormData) {
   const { data: match, error } = await supabase.rpc("start_solo_run", { p_game: game });
   if (error) redirect(withError("/solo", error));
 
-  // QB Season Builder's mode is chosen here and locked for the run. Sent as
-  // submitted, and only when one was: the Sidebar's one-tap entry sends none
-  // and gets the game's own default, and a value that is not a mode is the
-  // game's to refuse (`invalid_mode`), not this action's to second-guess.
+  // QB Season Builder's mode and era, and Higher or Lower's scoring and seasons,
+  // are chosen here and locked for the run. Sent as submitted, and only when
+  // one was: the Sidebar's one-tap entry sends none and gets the game's own
+  // defaults, and a value that is not one the game recognizes is its to refuse
+  // (`invalid_mode`, `invalid_era`, `invalid_season_range`), not this action's
+  // to second-guess.
   const mode = String(formData.get("mode") ?? "");
+  const era = String(formData.get("era") ?? "");
+  const scoringMode = String(formData.get("scoring_mode") ?? "");
+  const seasons = auctionSeasonRange(formData);
   const { error: dealError } = game === "qb_season_builder"
     ? await supabase.schema("qb_season_builder").rpc("start", {
       p_match_id: match.id,
       ...(mode ? { p_mode: mode } : {}),
+      ...(era ? { p_era: era } : {}),
     })
-    : await supabase.schema("higher_or_lower").rpc("start", { p_match_id: match.id });
+    : await supabase.schema("higher_or_lower").rpc("start", {
+      p_match_id: match.id,
+      ...(scoringMode ? { p_scoring_mode: scoringMode } : {}),
+      ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
+    });
   if (dealError) redirect(withError("/solo", dealError));
 
   revalidatePath("/", "layout");

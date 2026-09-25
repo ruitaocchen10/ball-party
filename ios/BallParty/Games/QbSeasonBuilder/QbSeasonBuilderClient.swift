@@ -38,7 +38,7 @@ struct QbSeasonBuilderServerError: Error, Equatable, Sendable {
 protocol QbSeasonBuilderClient: Sendable {
     /// `start_solo_run` then `qb_season_builder.start`: a new one-player run,
     /// dealt its first spin. Starting again is a new game.
-    func startRun(mode: QbRatingMode) async throws -> QbBoard
+    func startRun(mode: QbRatingMode, era: QbEra) async throws -> QbBoard
 
     /// `qb_season_builder.state` — a full re-read of the run.
     func state(matchId: UUID) async throws -> QbBoard
@@ -67,14 +67,15 @@ struct SupabaseQbSeasonBuilderClient: QbSeasonBuilderClient {
 
     private var game: PostgrestClient { client.schema("qb_season_builder") }
 
-    func startRun(mode: QbRatingMode) async throws -> QbBoard {
+    func startRun(mode: QbRatingMode, era: QbEra) async throws -> QbBoard {
         struct StartSoloRun: Encodable, Sendable { let p_game = "qb_season_builder" }
         struct Match: Decodable { let id: UUID }
-        struct Start: Encodable, Sendable { let p_match_id: UUID; let p_mode: String }
+        struct Start: Encodable, Sendable { let p_match_id: UUID; let p_mode: String; let p_era: String }
         return try await wrapped {
             let match: Match = try await client.rpc("start_solo_run", params: StartSoloRun()).execute().value
-            return try await game.rpc("start", params: Start(p_match_id: match.id, p_mode: mode.rawValue))
-                .execute().value
+            return try await game.rpc(
+                "start", params: Start(p_match_id: match.id, p_mode: mode.rawValue, p_era: era.rawValue)
+            ).execute().value
         }
     }
 

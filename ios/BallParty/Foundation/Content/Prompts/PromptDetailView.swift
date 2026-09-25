@@ -39,7 +39,7 @@ struct PromptDetailView: View {
     }
 
     private func header(_ post: PromptPost) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             PostStatusLabel(post: post)
                 .eyebrow()
             Text(post.promptText)
@@ -49,9 +49,6 @@ struct PromptDetailView: View {
                 .accessibilityAddTraits(.isHeader)
             if !post.caption.isEmpty {
                 Text(post.caption).font(.sans(16)).foregroundStyle(Theme.fgMuted)
-            }
-            if !post.resolutionCriteria.isEmpty {
-                Text(post.resolutionCriteria).font(.sans(14)).foregroundStyle(Theme.fgMuted)
             }
             if post.status == .void, let reason = post.voidReason {
                 Text(reason).monoLabel(11, tracking: 0.08, color: Theme.fg)
@@ -65,66 +62,137 @@ struct PromptDetailView: View {
     // MARK: - After the picks
 
     /// Shown whenever picks can no longer be made — the viewer answered, or the
-    /// prompt closed on them.
+    /// prompt closed on them. As on the web, what the viewer picked (and said,
+    /// and scored) is one card; what the crowd did sits with it or below it.
     @ViewBuilder
     private func results(_ post: PromptPost) -> some View {
-        if !post.viewerAnswered {
+        if post.viewerAnswered {
+            YourCard(viewModel: viewModel, post: post, take: viewModel.yourTake(on: post.id))
+        } else {
             Text("You did not make picks for this prompt.")
                 .monoLabel(11, tracking: 0.1)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
                 .overlay(Rectangle().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
-        }
-        if let points = post.viewerPointsAwarded {
-            // Points are a revealed thing, so a win is cream.
-            if points > 0 {
-                PanelCard(edge: false) {
-                    Text("+\(points) points")
-                        .slabTitle(32, color: Theme.panelFg)
-                        .padding(14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            if post.isMatchupPost {
+                SectionTitle(text: "The games")
+                MatchupCalls(post: post)
+            } else if !post.isPowerRankings {
+                ForEach(post.slots) { slot in
+                    SlotResultsView(post: post, slot: slot)
                 }
-            } else {
-                Text("+\(points) points").monoLabel(12, weight: .bold, tracking: 0.1)
             }
         }
-        if post.isMatchupPost {
-            SectionTitle(text: post.viewerAnswered ? "Your calls" : "The games")
-        }
-        ForEach(post.slots) { slot in
-            SlotResultsView(post: post, slot: slot)
+        if post.isPowerRankings {
+            PowerRankingsResults(post: post)
         }
     }
 
     // MARK: - Takes
 
+    /// Everybody else's takes. The viewer's own is in their card.
     @ViewBuilder
     private func takes(_ post: PromptPost) -> some View {
-        if post.viewerAnswered {
-            if let mine = viewModel.yourTake(on: post.id) {
-                VStack(alignment: .leading, spacing: 8) {
-                    SectionTitle(text: "Your take")
-                    NavigationLink {
-                        TakeThreadView(viewModel: viewModel, postId: post.id, takeId: mine.id)
-                    } label: {
-                        TakeCardView(post: post, comment: mine, showsReplyCount: true)
-                    }
-                    .buttonStyle(.plain)
+        let others = viewModel.otherTakes(on: post.id)
+        if !others.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionTitle(text: "Other takes")
+                ForEach(others) { take in
+                    TakeCardView(
+                        post: post, comment: take, showsReplyCount: true,
+                        collapsesPicks: post.isMatchupPost || post.isPowerRankings,
+                        threadDestination: { AnyView(TakeThreadView(viewModel: viewModel, postId: post.id, takeId: take.id)) }
+                    )
                 }
             }
-            let others = viewModel.otherTakes(on: post.id)
-            if !others.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    SectionTitle(text: "Other takes")
-                    ForEach(others) { take in
-                        NavigationLink {
-                            TakeThreadView(viewModel: viewModel, postId: post.id, takeId: take.id)
-                        } label: {
-                            TakeCardView(post: post, comment: take, showsReplyCount: true)
-                        }
-                        .buttonStyle(.plain)
-                    }
+        }
+    }
+}
+
+// MARK: - The viewer's card
+
+/// What the viewer locked in: their take, their picks — each game marked right
+/// or wrong once it is graded, a ballot with how each team moved — and the
+/// points it earned. The card the web's thread opens with.
+private struct YourCard: View {
+    @ObservedObject var viewModel: HuddleViewModel
+    let post: PromptPost
+    /// Their take, when they left one with their picks.
+    let take: PromptComment?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                if let take {
+                    Text(take.author).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
                 }
+                Text("You").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
+                Spacer()
+                if let take {
+                    Text(take.createdAt, style: .relative).font(.mono(10)).foregroundStyle(Theme.fgMuted)
+                }
+            }
+            if let take, !take.body.isEmpty {
+                Text(take.body).font(.sans(16)).foregroundStyle(Theme.fg)
+            }
+            picks
+            HStack(spacing: 12) {
+                Label("Picks locked in", systemImage: "lock.fill").monoLabel(10, tracking: 0.08)
+                if let points = post.viewerPointsAwarded {
+                    ResultBadge(text: "+\(points)", tone: points > 0 ? .good : .bad)
+                }
+                Spacer(minLength: 0)
+                if let take { replyLink(take) }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .well()
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var picks: some View {
+        if post.isPowerRankings {
+            PowerRankingsBoard(post: post)
+        } else if post.isMatchupPost {
+            MatchupCalls(post: post)
+        } else {
+            ForEach(post.slots) { slot in
+                SlotResultsView(post: post, slot: slot)
+            }
+        }
+    }
+
+    private func replyLink(_ take: PromptComment) -> some View {
+        NavigationLink {
+            TakeThreadView(viewModel: viewModel, postId: post.id, takeId: take.id)
+        } label: {
+            Label(
+                take.replies.isEmpty ? "Reply" : "\(take.replies.count) \(take.replies.count == 1 ? "reply" : "replies")",
+                systemImage: "bubble.left"
+            )
+            .monoLabel(10, weight: .semibold, tracking: 0.1)
+            .frame(minHeight: 32)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// A post made only of games, as the web's "Your calls": the compact strips two
+/// to a row — one, for one game — each with the viewer's call on it and, once
+/// they have answered and so may see it, how the crowd split.
+private struct MatchupCalls: View {
+    let post: PromptPost
+
+    var body: some View {
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: min(2, post.slots.count)),
+            spacing: 10
+        ) {
+            ForEach(post.slots) { slot in
+                SlotResultsView(post: post, slot: slot)
             }
         }
     }
@@ -139,7 +207,9 @@ private struct AnswerForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            if post.isMatchupPost {
+            if post.isPowerRankings {
+                PowerRankingsPicker(viewModel: viewModel, post: post)
+            } else if post.isMatchupPost {
                 MatchupPicks(viewModel: viewModel, post: post)
             } else {
                 ForEach(post.slots) { slot in
@@ -302,9 +372,9 @@ private struct SlotResultsView: View {
         if let away = split?[matchup.away.id], let home = split?[matchup.home.id] {
             VStack(spacing: 6) {
                 HStack {
-                    Text("\(matchup.away.label) \(Int(away.rounded()))%")
+                    Text("\(matchup.away.teamCode ?? matchup.away.label) \(Int(away.rounded()))%")
                     Spacer()
-                    Text("\(Int(home.rounded()))% \(matchup.home.label)")
+                    Text("\(Int(home.rounded()))% \(matchup.home.teamCode ?? matchup.home.label)")
                 }
                 .monoLabel(10, tracking: 0.08)
                 MeterBar(fraction: min(max(away, 0), 100) / 100, fill: Theme.fgMuted)

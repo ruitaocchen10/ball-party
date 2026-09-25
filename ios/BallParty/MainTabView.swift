@@ -49,7 +49,11 @@ struct MainTabView: View {
 private struct GamesScreen: View {
     let viewerId: UUID
 
+    @StateObject private var higherOrLowerFormat = SoloRunFormat(
+        client: SupabaseHigherOrLowerClient(client: SupabaseConfig.client)
+    )
     @State private var qbMode: QbRatingMode = .visible
+    @State private var qbEra: QbEra = .all
 
     var body: some View {
         ScrollView {
@@ -58,16 +62,38 @@ private struct GamesScreen: View {
                     name: ["Higher", "or lower"],
                     tagline: "Call the next card. Make the streak last."
                 ) {
-                    SoloRunScreen(viewerId: viewerId)
+                    StackedChoice(
+                        legend: "Scoring",
+                        options: ScoringMode.allCases,
+                        selection: $higherOrLowerFormat.scoringMode,
+                        label: \.label,
+                        summary: \.summary
+                    )
+                    if !higherOrLowerFormat.seasonChoices.isEmpty {
+                        SeasonRangeChoice(format: higherOrLowerFormat)
+                    }
+                } destination: {
+                    SoloRunScreen(
+                        viewerId: viewerId,
+                        scoringMode: higherOrLowerFormat.scoringMode,
+                        era: higherOrLowerFormat.era
+                    )
                 }
 
                 SoloGameCard(
                     name: ["QB season", "builder"],
                     tagline: "Spin a team-season six times and build one quarterback from the best trait on offer."
                 ) {
-                    RatingsChoice(selection: $qbMode)
+                    StackedChoice(
+                        legend: "Ratings",
+                        options: QbRatingMode.allCases,
+                        selection: $qbMode,
+                        label: \.label,
+                        summary: \.summary
+                    )
+                    EraChoice(selection: $qbEra)
                 } destination: {
-                    QbSeasonBuilderScreen(viewerId: viewerId, mode: qbMode)
+                    QbSeasonBuilderScreen(viewerId: viewerId, mode: qbMode, era: qbEra)
                 }
             }
             .padding(16)
@@ -75,6 +101,7 @@ private struct GamesScreen: View {
         .screenBackground()
         .navigationTitle("Games")
         .navigationBarTitleDisplayMode(.inline)
+        .task { await higherOrLowerFormat.loadBounds() }
     }
 }
 
@@ -85,8 +112,38 @@ private struct GamesScreen: View {
 private struct SoloGameCard<Options: View, Destination: View>: View {
     let name: [String]
     let tagline: String
+    private let hasOptions: Bool
     @ViewBuilder var options: Options
     @ViewBuilder var destination: Destination
+
+    /// Collapsed by default, like the web card's Settings section, so a card
+    /// with choices doesn't tower over one without. The choices live in the
+    /// parent's state, so shutting this keeps what was picked and the run
+    /// still starts with it.
+    @State private var settingsOpen = false
+
+    fileprivate init(
+        name: [String],
+        tagline: String,
+        hasOptions: Bool,
+        @ViewBuilder options: () -> Options,
+        @ViewBuilder destination: () -> Destination
+    ) {
+        self.name = name
+        self.tagline = tagline
+        self.hasOptions = hasOptions
+        self.options = options()
+        self.destination = destination()
+    }
+
+    init(
+        name: [String],
+        tagline: String,
+        @ViewBuilder options: () -> Options,
+        @ViewBuilder destination: () -> Destination
+    ) {
+        self.init(name: name, tagline: tagline, hasOptions: true, options: options, destination: destination)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -125,7 +182,9 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
                 .padding(.top, 8)
 
             VStack(alignment: .leading, spacing: 12) {
-                options
+                if hasOptions {
+                    settingsDisclosure
+                }
                 NavigationLink {
                     destination
                 } label: {
@@ -144,25 +203,58 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
     }
 }
 
+extension SoloGameCard {
+    /// The Settings row and, when open, the card's choices.
+    @ViewBuilder fileprivate var settingsDisclosure: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { settingsOpen.toggle() }
+            } label: {
+                HStack {
+                    Text("Settings").monoLabel(9, weight: .semibold, tracking: 0.1)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundStyle(Theme.fgMuted)
+                        .rotationEffect(.degrees(settingsOpen ? 180 : 0))
+                        .accessibilityHidden(true)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(settingsOpen ? "Expanded" : "Collapsed")
+
+            if settingsOpen {
+                options
+            }
+        }
+    }
+}
+
 extension SoloGameCard where Options == EmptyView {
     init(name: [String], tagline: String, @ViewBuilder destination: () -> Destination) {
-        self.init(name: name, tagline: tagline, options: { EmptyView() }, destination: destination)
+        self.init(name: name, tagline: tagline, hasOptions: false, options: { EmptyView() }, destination: destination)
     }
 }
 
 /// A choice the run is locked to once it starts, made on the card because there
-/// is no screen before the run to make it on. The first mode is the default.
-private struct RatingsChoice: View {
-    @Binding var selection: QbRatingMode
+/// is no screen before the run to make it on. One stacked card per option, a
+/// label and a sentence each; the first option is the default.
+private struct StackedChoice<Option: Identifiable & Hashable>: View {
+    let legend: String
+    let options: [Option]
+    @Binding var selection: Option
+    let label: KeyPath<Option, String>
+    let summary: KeyPath<Option, String>
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Ratings").monoLabel(9, weight: .semibold, tracking: 0.1)
+            Text(legend).monoLabel(9, weight: .semibold, tracking: 0.1)
                 .padding(.bottom, 2)
-            ForEach(QbRatingMode.allCases) { mode in
-                let isSelected = mode == selection
+            ForEach(options) { option in
+                let isSelected = option == selection
                 Button {
-                    selection = mode
+                    selection = option
                 } label: {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
@@ -170,8 +262,8 @@ private struct RatingsChoice: View {
                             .foregroundStyle(isSelected ? Theme.fg : Theme.fgMuted)
                             .padding(.top, 1)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(mode.label).monoLabel(11, weight: .bold, tracking: 0.1, color: Theme.fg)
-                            Text(mode.summary)
+                            Text(option[keyPath: label]).monoLabel(11, weight: .bold, tracking: 0.1, color: Theme.fg)
+                            Text(option[keyPath: summary])
                                 .font(.sans(13))
                                 .foregroundStyle(Theme.fgMuted)
                                 .multilineTextAlignment(.leading)
@@ -191,6 +283,63 @@ private struct RatingsChoice: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Ratings")
+        .accessibilityLabel(legend)
+    }
+}
+
+/// A choice the run is locked to once it starts, same as `StackedChoice`
+/// alongside it — one segmented row rather than `StackedChoice`'s stacked
+/// cards, since three short labels (as opposed to two with a sentence each)
+/// read fine in a line and the card is already asking for one choice above
+/// this one.
+private struct EraChoice: View {
+    @Binding var selection: QbEra
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Era").monoLabel(9, weight: .semibold, tracking: 0.1)
+                .padding(.bottom, 2)
+            HStack(spacing: 6) {
+                ForEach(QbEra.allCases) { era in
+                    let isSelected = era == selection
+                    Button {
+                        selection = era
+                    } label: {
+                        Text(era.label)
+                            .monoLabel(10, weight: .bold, tracking: 0.08, color: isSelected ? Theme.fg : Theme.fgMuted)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(isSelected ? Theme.surface : .clear)
+                            .overlay(Rectangle().strokeBorder(isSelected ? Theme.fg : Theme.line, lineWidth: 1))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                    .accessibilityLabel("\(era.label): \(era.summary)")
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Era")
+    }
+}
+
+/// Higher or Lower's era: the first and last season the ladder is dealt from.
+/// Only offered once the pool's limits have loaded; until then (or if they
+/// never do) a run takes the whole pool.
+private struct SeasonRangeChoice: View {
+    @ObservedObject var format: SoloRunFormat
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Era").monoLabel(9, weight: .semibold, tracking: 0.1)
+                .padding(.bottom, 2)
+            HStack(spacing: 12) {
+                SeasonMenu(title: "From", selection: $format.seasonFrom, choices: format.seasonChoices)
+                SeasonMenu(title: "To", selection: $format.seasonTo, choices: format.seasonChoices)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Era")
     }
 }

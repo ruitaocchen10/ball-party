@@ -10,15 +10,16 @@ Implemented in migrations `0120`–`0122` and `0127`, tested in
 `supabase/tests/0120`–`0122` and `0127_qb_season_builder_*.test.sql`. Exposed through
 PostgREST as `supabase.schema("qb_season_builder").rpc(...)`; the schema must
 also be listed under Exposed schemas on the hosted project (see
-`supabase/README.md`).
+`supabase/README.md`). The three era presets are migration `0153`, tested in
+`supabase/tests/0153_qb_season_builder_era_presets.test.sql`.
 
 ## Rules the API enforces
 
 - Six rounds, one per slot: `accuracy`, `arm_talent`, `mobility`, `iq`,
   `build`, `supporting_cast`. Each slot is filled exactly once.
-- Each round deals a stored spin: a random team-season from 2006–2025 that has
-  at least one qualifying quarterback. A team-season can be shown only once per
-  run, including one replaced by a respin. A round's spin is dealt when the
+- Each round deals a stored spin: a random team-season from the run's era that
+  has at least one qualifying quarterback. A team-season can be shown only once
+  per run, including one replaced by a respin. A round's spin is dealt when the
   round **opens**; a future round's spin does not exist to be read.
 - A pick names one open slot and one source on the current spin. For a
   quarterback quality the slot is the quality and the source is the
@@ -31,6 +32,13 @@ also be listed under Exposed schemas on the hosted project (see
   hidden run no quarterback-quality or Supporting Cast value is returned until
   the match is `complete` (which is what `finish` does); visible runs always
   return them.
+- Era is `all` (2006–2025, default), `classic` (2006–2015) or `modern`
+  (2016–2025), chosen at start and locked the same way as mode — three fixed
+  presets a client hardcodes rather than a free range, see migration `0153`'s
+  header for why. It narrows every deal (the opening one, a pick's next round,
+  a respin's reroll) to that window; nothing else about the rules changes,
+  since the season model scores the six picked values, never the year they
+  came from.
 - Identity is `auth.uid()`, never an argument. Guests may play. Nothing sweeps
   an unfinished run and there is no "continue" entry point: `state` on the
   run's match id is how a run is reopened.
@@ -45,14 +53,16 @@ matches the **message**.
 ```ts
 const { data: match } = await supabase.rpc("start_solo_run", { p_game: "qb_season_builder" })
 const { data: board } = await supabase.schema("qb_season_builder")
-  .rpc("start", { p_match_id: match.id, p_mode: "hidden" }) // p_mode optional, default "visible"
+  .rpc("start", { p_match_id: match.id, p_mode: "hidden", p_era: "classic" })
+  // p_mode optional, default "visible"; p_era optional, default "all"
 ```
 
 `start_solo_run` always creates a new run, so starting again is a new game.
 `start` rejects: no session → `not_authenticated` (42501); mode not
-`visible`/`hidden` → `invalid_mode` (22023); unknown match → `match_not_found`
-(P0002); another game's match → `wrong_game`; caller not in the run →
-`not_a_participant` (42501); match not in setup → `match_not_setup`.
+`visible`/`hidden` → `invalid_mode` (22023); era not `all`/`classic`/`modern` →
+`invalid_era` (22023); unknown match → `match_not_found` (P0002); another
+game's match → `wrong_game`; caller not in the run → `not_a_participant`
+(42501); match not in setup → `match_not_setup`.
 
 ### `state(p_match_id uuid) returns board`
 
@@ -61,7 +71,8 @@ Rejects: caller not in the run → `not_a_participant`; run not dealt yet →
 
 ```
 board {
-  match_id, mode, phase ('picking' | 'ready_to_finish' | 'complete'),
+  match_id, mode, era ('all' | 'classic' | 'modern'),
+  phase ('picking' | 'ready_to_finish' | 'complete'),
   round_count (6), current_round, respin_used,
   franchise_code, season,   -- the current spin; null when ready_to_finish or complete
   options jsonb,            -- null when ready_to_finish or complete

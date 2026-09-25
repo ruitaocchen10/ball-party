@@ -57,6 +57,7 @@ function row(over: Partial<BoardRow> & { revealed?: boolean } = {}): BoardRow {
   return {
     match_id: MATCH,
     mode: revealed ? "visible" : "hidden",
+    era: "all",
     phase: "picking",
     round_count: 6,
     current_round: 1,
@@ -79,9 +80,14 @@ function boardOf(over: Parameters<typeof row>[0] = {}): Board {
   return parsed;
 }
 
-function renderScreen(initial: Board, { isGuest = false } = {}) {
+/** `before` runs ahead of the first render, for a screen that calls the server on mount. */
+function renderScreen(
+  initial: Board,
+  { isGuest = false, before }: { isGuest?: boolean; before?: (supabase: ReturnType<typeof supabaseMock>) => void } = {},
+) {
   const supabase = supabaseMock();
   globalThis.__supabaseMock = supabase;
+  before?.(supabase);
   const view = render(<QbSeasonBuilderMatch matchId={MATCH} initial={initial} isGuest={isGuest} startNewSeason={playSolo} />);
   return { ...view, supabase };
 }
@@ -310,6 +316,10 @@ describe("QbSeasonBuilderMatch — all six slots filled", () => {
     ["build", MAHOMES, 95],
   ] as const;
 
+  const fivePicks = full.map(([slot, who, value], index) => ({
+    round: index + 1, slot, franchise_code: "den", season: 2013, ...who, value,
+  }));
+
   function finished(phase: "ready_to_finish" | "complete") {
     return boardOf({
       phase,
@@ -318,79 +328,109 @@ describe("QbSeasonBuilderMatch — all six slots filled", () => {
       season: null,
       options: null,
       picks: [
-        ...full.map(([slot, who, value], index) => ({
-          round: index + 1, slot, franchise_code: "den", season: 2013, ...who, value,
-        })),
+        ...fivePicks,
         { round: 6, slot: "supporting_cast", franchise_code: "nwe", season: 2007, player_id: null, display_name: null, value: 88 },
       ],
     });
   }
 
-  it("stops offering picks and shows the finished build", () => {
-    renderScreen(finished("ready_to_finish"));
+  /** The run's last round, one slot (Supporting Cast) still open. */
+  function lastRound() {
+    return boardOf({ current_round: 6, picks: [...fivePicks] });
+  }
 
-    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /lock in|respin/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/all six slots are filled/i)).toBeInTheDocument();
-    const slots = within(screen.getByRole("list", { name: "Your build" })).getAllByRole("listitem");
-    expect(slots.every((slot) => within(slot).queryByText("Open") === null)).toBe(true);
-  });
+  /** Answers `pick` with the run's last slot filled and `finish` per `finishReply`. */
+  function answerLastPick(supabase: ReturnType<typeof supabaseMock>, finishReply: { data: unknown; error: { message: string } | null }) {
+    supabase.rpc.mockImplementation(async (fn: unknown) => {
+      if (fn === "pick") return { data: row({ ...finishedRow() }), error: null };
+      if (fn === "finish") return finishReply;
+      return { data: null, error: null };
+    });
+  }
 
-  it("finishes the run through the game API and moves on to the reveal", async () => {
+  function finishedRow(): Partial<BoardRow> {
+    return {
+      phase: "ready_to_finish",
+      current_round: 6,
+      franchise_code: null,
+      season: null,
+      options: null,
+      picks: [
+        ...fivePicks,
+        { round: 6, slot: "supporting_cast", franchise_code: "nwe", season: 2007, player_id: null, display_name: null, value: 88 },
+      ],
+    };
+  }
+
+  it("goes straight to the reveal after the last pick, with no confirmation step", async () => {
     const user = userEvent.setup();
-    const { supabase } = renderScreen(finished("ready_to_finish"));
+    const { supabase } = renderScreen(lastRound());
+    answerLastPick(supabase, { data: null, error: null });
 
-    await user.click(screen.getByRole("button", { name: /reveal my season/i }));
+    await user.click(screen.getByRole("radio", { name: /supporting cast/i }));
+    await user.click(screen.getByRole("button", { name: /lock in/i }));
 
+    await vi.waitFor(() => expect(supabase.rpc).toHaveBeenCalledWith("finish", { p_match_id: MATCH }));
     expect(supabase.schema).toHaveBeenCalledWith("qb_season_builder");
-    expect(supabase.rpc).toHaveBeenCalledWith("finish", { p_match_id: MATCH });
     // The page is server-rendered from the run, which is now complete.
     await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(/all six slots are filled/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /reveal my season/i })).not.toBeInTheDocument();
   });
 
-  it("holds the button while the season is being generated, so it cannot be finished twice", async () => {
-    const user = userEvent.setup();
+  it("finishes a run that is opened with every slot already filled", async () => {
     const { supabase } = renderScreen(finished("ready_to_finish"));
-    supabase.rpc.mockImplementation(() => new Promise(() => {}));
 
-    await user.click(screen.getByRole("button", { name: /reveal my season/i }));
+    await vi.waitFor(() => expect(supabase.rpc).toHaveBeenCalledWith("finish", { p_match_id: MATCH }));
+    expect(supabase.rpc.mock.calls.filter(([fn]) => fn === "finish")).toHaveLength(1);
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /lock in|respin/i })).not.toBeInTheDocument();
+  });
 
-    expect(screen.getByRole("button", { name: /revealing/i })).toBeDisabled();
-    expect(supabase.rpc).toHaveBeenCalledTimes(1);
+  it("shows progress, not a button, while the season is being generated", async () => {
+    renderScreen(finished("ready_to_finish"), {
+      before: (supabase) => supabase.rpc.mockImplementation(() => new Promise(() => {})),
+    });
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/revealing your season/i);
+    expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
   });
 
   it("says why when the season cannot be generated, and lets the player try again", async () => {
     const user = userEvent.setup();
-    const { supabase } = renderScreen(finished("ready_to_finish"));
-    supabase.rpc.mockResolvedValue({ data: null, error: { message: "draft_incomplete" } });
-
-    await user.click(screen.getByRole("button", { name: /reveal my season/i }));
+    const { supabase } = renderScreen(finished("ready_to_finish"), {
+      before: (mock) => mock.rpc.mockResolvedValue({ data: null, error: { message: "draft_incomplete" } }),
+    });
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Fill all six slots first.");
-    expect(screen.getByRole("button", { name: /reveal my season/i })).toBeEnabled();
     expect(refresh).not.toHaveBeenCalled();
+
+    supabase.rpc.mockResolvedValue({ data: null, error: null });
+    await user.click(screen.getByRole("button", { name: /try again/i }));
+
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
   });
 
   it("goes to the reveal anyway when the run turns out to be finished already, as from another tab", async () => {
-    const user = userEvent.setup();
-    const { supabase } = renderScreen(finished("ready_to_finish"));
-    supabase.rpc.mockResolvedValue({ data: null, error: { message: "match_not_playing" } });
-
-    await user.click(screen.getByRole("button", { name: /reveal my season/i }));
+    renderScreen(finished("ready_to_finish"), {
+      before: (supabase) => supabase.rpc.mockResolvedValue({ data: null, error: { message: "match_not_playing" } }),
+    });
 
     await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
     expect(screen.queryByText(/already ended/i)).not.toBeInTheDocument();
   });
 
   it("has nothing to finish while slots are still open", () => {
-    renderScreen(boardOf());
+    const { supabase } = renderScreen(boardOf());
 
+    expect(supabase.rpc).not.toHaveBeenCalledWith("finish", expect.anything());
     expect(screen.queryByRole("button", { name: /reveal my season/i })).not.toBeInTheDocument();
   });
 
   it("opens a finished run read-only from its URL", () => {
-    renderScreen(finished("complete"));
+    const { supabase } = renderScreen(finished("complete"));
 
+    expect(supabase.rpc).not.toHaveBeenCalledWith("finish", expect.anything());
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(screen.getByText(/this run is finished/i)).toBeInTheDocument();
   });

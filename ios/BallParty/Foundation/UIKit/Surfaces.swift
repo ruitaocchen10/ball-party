@@ -102,6 +102,14 @@ struct CardMeta: View {
 /// exists, otherwise the state is invisible rather than merely secret.
 struct Concealed<Content: View>: View {
     let label: String
+    /// For a chip-sized use (a hidden rating inline in a stat tile) rather
+    /// than a card-sized one (a Wavelength target, an auction lot). The
+    /// default's card-scale shadow and 4pt inset hairline are sized for a
+    /// surface with real presence; shrunk onto a chip a few points tall,
+    /// that shadow blooms out past the chip itself and the hairline
+    /// swallows nearly all of it. Compact keeps the same red weave — still
+    /// unambiguously "hidden" — with a shadow and hairline sized to match.
+    var compact = false
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -111,14 +119,19 @@ struct Concealed<Content: View>: View {
             .background {
                 ZStack {
                     Theme.hiddenInk
-                    ConcealedWeave()
+                    ConcealedWeave(band: compact ? 4 : 6, period: compact ? 8 : 12)
                 }
-                .shadow(color: .black.opacity(0.5), radius: 12, x: 0, y: 10)
+                .shadow(
+                    color: .black.opacity(compact ? 0.35 : 0.5),
+                    radius: compact ? 2 : 12,
+                    x: 0,
+                    y: compact ? 1 : 10
+                )
             }
             // The inset hairline that reads the weave as a deliberate surface.
             .overlay {
                 Rectangle()
-                    .inset(by: 4)
+                    .inset(by: compact ? 2 : 4)
                     .stroke(Theme.panel.opacity(0.35), lineWidth: 1)
                     .allowsHitTesting(false)
             }
@@ -127,13 +140,16 @@ struct Concealed<Content: View>: View {
     }
 }
 
-/// The diagonal weave that marks concealed information: 6pt bands, 12pt
-/// apart, running top-left to bottom-right (`.pattern-concealed`).
+/// The diagonal weave that marks concealed information: `band`-wide stripes,
+/// `period` apart, running top-left to bottom-right (`.pattern-concealed`).
+/// The defaults are the card-scale spec; `Concealed`'s `compact` mode tightens
+/// both so more than one stripe shows across a chip-sized surface.
 struct ConcealedWeave: View {
+    var band: CGFloat = 6
+    var period: CGFloat = 12
+
     var body: some View {
         Canvas { context, size in
-            let band: CGFloat = 6
-            let period: CGFloat = 12
             // `period` is measured across the stripes; along a 45° edge the
             // stripes sit `period * √2` apart.
             let step = period * 2.0.squareRoot()

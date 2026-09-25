@@ -1,9 +1,9 @@
 "use client";
 
-import { Brain, Footprints, Shield, Target, Users, Zap, type LucideIcon } from "lucide-react";
+import { Brain, Footprints, RefreshCw, Shield, Sparkles, Target, Users, Zap, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
 import { Button } from "@/components/foundation/ui-kit/Button";
@@ -157,6 +157,17 @@ export function QbSeasonBuilderMatch({
     router.refresh();
   }
 
+  // The last pick goes straight to the reveal — there is nothing to confirm.
+  // Tried once per mount: if it fails, the panel below offers the retry rather
+  // than this effect looping on the error.
+  const autoFinished = useRef(false);
+  useEffect(() => {
+    if (board.phase !== "ready_to_finish" || autoFinished.current) return;
+    autoFinished.current = true;
+    void finish();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- finish is re-made every render; the ref makes this fire once
+  }, [board.phase]);
+
   return (
     <main className="app-page flex-1">
       <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
@@ -164,7 +175,7 @@ export function QbSeasonBuilderMatch({
           <PageHeader
             eyebrow="Solo challenge"
             title="QB Season Builder"
-            description={`Round ${board.currentRound} of ${board.roundCount} · Ratings ${board.mode}`}
+            description={`Round ${board.currentRound} of ${board.roundCount} · Ratings ${board.mode} · Era ${board.era}`}
           />
           {board.spin === null ? (
             <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
@@ -383,7 +394,7 @@ function OptionRow({
       {taken ? (
         <span className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Already picked</span>
       ) : rating === null ? (
-        <Concealed label="Rating hidden" className="h-4 w-9" />
+        <Concealed label="Rating hidden" compact className="h-4 w-9" />
       ) : (
         <span className="font-slab text-xl leading-none tabular-nums">{rating}</span>
       )}
@@ -391,7 +402,11 @@ function OptionRow({
   );
 }
 
-/** No round is open: all six slots are filled, so there is nothing left to pick. */
+/**
+ * No round is open. A `ready_to_finish` run is already on its way to the
+ * reveal (see the effect above), so this only shows progress — and, if that
+ * call failed, the reason and a way to try again.
+ */
 function FinishedPanel({
   board,
   pending,
@@ -405,21 +420,25 @@ function FinishedPanel({
 }) {
   return (
     <section aria-label="Your quarterback" className="mt-5 flex w-full max-w-[760px] flex-col gap-3 border border-line bg-surface-raised p-4">
-      <p className="font-slab text-[27px] leading-none uppercase">
-        {board.phase === "complete" ? "This run is finished." : "All six slots are filled."}
-      </p>
-      {board.phase === "ready_to_finish" ? (
+      {board.phase === "complete" ? (
+        <p className="font-slab text-[27px] leading-none uppercase">This run is finished.</p>
+      ) : (
         <>
-          <div>
-            <Button type="button" fullWidth={false} disabled={pending} onClick={onFinish}>
-              {pending ? "Revealing…" : "Reveal my season"}
-            </Button>
-          </div>
+          <p role="status" className="font-slab text-[27px] leading-none uppercase">
+            {pending || !error ? "Revealing your season…" : "Couldn't reveal your season."}
+          </p>
+          {error && !pending ? (
+            <div>
+              <Button type="button" fullWidth={false} onClick={onFinish}>
+                Try again
+              </Button>
+            </div>
+          ) : null}
           <AnimatedMessage role="alert" className="text-sm text-hidden-text">
             {error}
           </AnimatedMessage>
         </>
-      ) : null}
+      )}
       <Link
         href="/solo"
         className="text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
@@ -466,22 +485,32 @@ function RunControlRail({
 }) {
   return (
     <DashboardRail headingId="qb-run-control-heading" eyebrow="Run control" title="Current run">
-      <p className="mt-4 font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{board.currentRound} / {board.roundCount} rounds · mode: {board.mode}</p>
+      <p className="mt-4 font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{board.currentRound} / {board.roundCount} rounds · mode: {board.mode} · era: {board.era}</p>
       {board.spin !== null ? (
         <div className="mt-4 border-t border-line pt-3">
           <Button type="button" variant="ghost" disabled={board.respinUsed || pending} onClick={onRespin}>
-            {board.respinUsed ? "Respin used" : "Respin team"}
+            <span className="inline-flex items-center justify-center gap-2">
+              <RefreshCw aria-hidden className="h-4 w-4" />
+              {board.respinUsed ? "Respin used" : "Respin team"}
+            </span>
           </Button>
           <p className="mt-2 text-[12px] leading-4 text-fg-muted">One reroll per season.</p>
         </div>
       ) : null}
       <div className="mt-4 border-t border-line pt-3">
         {/* One click, no confirmation: abandons this run and deals a fresh
-         *  one immediately, in the same ratings mode this run is playing in. */}
+         *  one immediately, in the same ratings mode and era this run is
+         *  playing in. */}
         <form action={startNewSeason}>
           <input type="hidden" name="game" value="qb_season_builder" />
           <input type="hidden" name="mode" value={board.mode} />
-          <Button type="submit" variant="ghost">New season</Button>
+          <input type="hidden" name="era" value={board.era} />
+          <Button type="submit" variant="ghost">
+            <span className="inline-flex items-center justify-center gap-2">
+              <Sparkles aria-hidden className="h-4 w-4" />
+              New season
+            </span>
+          </Button>
         </form>
         <p className="mt-2 text-[12px] leading-4 text-fg-muted">Starts over immediately — this run is left behind.</p>
       </div>

@@ -45,10 +45,45 @@ describe("SoloGrid", () => {
     expect(new FormData(qb.querySelector("form")!).get("game")).toBe("qb_season_builder");
   });
 
-  it("offers no mode choice on a game that has none", () => {
+  it("keeps a card's settings collapsed until asked, without dropping them from the form", () => {
     render(<SoloGrid canPlaySolo />);
+    const qb = card("QB season");
+    const settings = qb.querySelector("details")!;
 
-    expect(within(card("Higher")).queryByRole("radio")).not.toBeInTheDocument();
+    expect(within(qb).getByText("Settings")).toBeInTheDocument();
+    expect(settings).not.toHaveAttribute("open");
+    // Shut or not, the defaults still travel with the form.
+    expect(new FormData(qb.querySelector("form")!).get("mode")).toBe("visible");
+    expect(new FormData(qb.querySelector("form")!).get("era")).toBe("all");
+  });
+
+  it("offers Higher or Lower a scoring choice and an era, defaulting to season total over the whole pool", () => {
+    render(<SoloGrid canPlaySolo higherOrLowerEra={{ seasonMin: 2010, seasonMax: 2024 }} />);
+    const hol = card("Higher");
+    const form = () => new FormData(hol.querySelector("form")!);
+
+    expect(within(hol).getByText("Settings")).toBeInTheDocument();
+    expect(form().get("game")).toBe("higher_or_lower");
+    expect(form().get("scoring_mode")).toBe("season_total");
+    expect(form().get("season_from")).toBe("2010");
+    expect(form().get("season_to")).toBe("2024");
+  });
+
+  it("sends Higher or Lower's scoring pick", async () => {
+    const user = userEvent.setup();
+    render(<SoloGrid canPlaySolo higherOrLowerEra={{ seasonMin: 2010, seasonMax: 2024 }} />);
+    const hol = card("Higher");
+
+    await user.click(within(hol).getByRole("radio", { name: /weekly/i }));
+    expect(new FormData(hol.querySelector("form")!).get("scoring_mode")).toBe("weekly");
+  });
+
+  it("still offers scoring, but no era, when the season bounds could not be read", () => {
+    render(<SoloGrid canPlaySolo />);
+    const hol = card("Higher");
+
+    expect(within(hol).getByRole("radio", { name: /weekly/i })).toBeInTheDocument();
+    expect(new FormData(hol.querySelector("form")!).get("season_from")).toBeNull();
   });
 
   it("never says where the ratings come from", () => {

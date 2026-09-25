@@ -1,15 +1,18 @@
 import SwiftUI
 
-/// Entry point for a solo Higher or Lower run: owns the view model and shows
-/// whichever stage it is in — format picker, the ladder, or the recap.
+/// Entry point for a solo Higher or Lower run: owns the view model, deals the
+/// ladder in the format chosen on the card as soon as it appears, and shows
+/// whichever stage it is in — the deal, the ladder, or the recap.
 struct SoloRunScreen: View {
     @StateObject private var viewModel: SoloRunViewModel
 
-    init(viewerId: UUID) {
+    init(viewerId: UUID, scoringMode: ScoringMode = .seasonTotal, era: SeasonRange? = nil) {
         _viewModel = StateObject(
             wrappedValue: SoloRunViewModel(
                 client: SupabaseHigherOrLowerClient(client: SupabaseConfig.client),
-                viewerId: viewerId
+                viewerId: viewerId,
+                scoringMode: scoringMode,
+                era: era
             )
         )
     }
@@ -26,7 +29,7 @@ struct SoloRunView: View {
     var body: some View {
         Group {
             switch viewModel.stage {
-            case .setup: SoloSetupView(viewModel: viewModel)
+            case .starting: SoloStartingView(viewModel: viewModel)
             case .playing: SoloPlayView(viewModel: viewModel)
             case .complete: SoloRecapView(viewModel: viewModel)
             }
@@ -34,9 +37,9 @@ struct SoloRunView: View {
         .screenBackground()
         .navigationTitle("Higher or Lower")
         .navigationBarTitleDisplayMode(.inline)
-        // The ladder is timed; the tab bar comes back for the picker and recap.
+        // The ladder is timed; the tab bar comes back for the deal and recap.
         .toolbar(viewModel.stage == .playing ? .hidden : .automatic, for: .tabBar)
-        .task { await viewModel.loadSetup() }
+        .task { await viewModel.start() }
         // Coming back from the background is when a screen is most likely to be
         // wrong: the countdown may barely have run, and the match may have moved.
         .onChange(of: scenePhase) { _, phase in
@@ -46,67 +49,30 @@ struct SoloRunView: View {
     }
 }
 
-// MARK: - Format picker
+// MARK: - Starting
 
-private struct SoloSetupView: View {
+/// What shows while the ladder is being dealt: the format was chosen on the
+/// Games tab's card, so there is nothing to ask here — just the deal, or the
+/// reason it failed and a way to try again.
+private struct SoloStartingView: View {
     @ObservedObject var viewModel: SoloRunViewModel
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                PageHeader(
-                    eyebrow: "Solo challenge",
-                    title: "Make the streak last.",
-                    description: "Call each hidden card higher or lower. The ladder keeps going until you miss."
-                )
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Scoring").fieldLabel()
-                    SegmentedChoice(
-                        selection: $viewModel.scoringMode,
-                        options: ScoringMode.allCases,
-                        title: { $0.label },
-                        accessibilityName: "Scoring"
-                    )
-                    Text(viewModel.scoringMode.summary)
-                        .font(.sans(14))
-                        .foregroundStyle(Theme.fgMuted)
+        if viewModel.startFailed {
+            ScrollView {
+                EmptyState(
+                    title: "Couldn't start the run",
+                    message: viewModel.errorMessage ?? "Something went wrong."
+                ) {
+                    Button("Try again") { Task { await viewModel.start() } }
+                        .buttonStyle(BPButtonStyle(variant: .ghost, fullWidth: false))
                 }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Era").fieldLabel()
-                    if viewModel.seasonBounds == nil {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                            Text("Loading seasons…").font(.sans(14)).foregroundStyle(Theme.fgMuted)
-                        }
-                    } else {
-                        HStack(spacing: 12) {
-                            SeasonMenu(title: "From", selection: $viewModel.seasonFrom, choices: viewModel.seasonChoices)
-                            SeasonMenu(title: "To", selection: $viewModel.seasonTo, choices: viewModel.seasonChoices)
-                        }
-                        Text("Cards are dealt from \(SeasonRange(from: viewModel.seasonFrom, to: viewModel.seasonTo).label).")
-                            .font(.sans(14))
-                            .foregroundStyle(Theme.fgMuted)
-                    }
-                }
-
-                if let message = viewModel.errorMessage {
-                    ErrorBanner(message: message)
-                }
-
-                Button {
-                    Task { await viewModel.start() }
-                } label: {
-                    HStack(spacing: 8) {
-                        if viewModel.isBusy { ProgressView() }
-                        Text("Start run")
-                    }
-                }
-                .buttonStyle(.solid)
-                .disabled(!viewModel.canStart)
+                .padding(16)
             }
-            .padding(16)
+        } else {
+            ProgressView {
+                Text("Dealing your ladder…").monoLabel(11, tracking: 0.15)
+            }
         }
     }
 }
