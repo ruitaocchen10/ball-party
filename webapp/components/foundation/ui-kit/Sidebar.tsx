@@ -23,12 +23,9 @@ import { GAMES, matchGameName, type Game } from "@/lib/platform/orchestration/ca
 import { playSolo } from "@/lib/platform/lobbies/actions";
 import { drawerBackdrop, drawerPanel } from "@/lib/foundation/ui-kit/motion";
 
-/** The solo-playable games — everything the Solo games section lists. QB
- * Season Builder leads the shortcuts; further live solo games follow in
+/** The solo-playable games — everything the Solo games section lists, in
  * catalog order. */
-const SOLO_GAMES = GAMES.filter((game) => game.solo && game.status === "live").toSorted(
-  (a, b) => Number(b.match === "qb_season_builder") - Number(a.match === "qb_season_builder"),
-);
+const SOLO_GAMES = GAMES.filter((game) => game.solo && game.status === "live");
 
 /**
  * The app's persistent navigation — a fixed left rail below the desktop top

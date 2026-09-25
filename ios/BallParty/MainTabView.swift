@@ -59,6 +59,22 @@ private struct GamesScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 SoloGameCard(
+                    name: ["QB season", "builder"],
+                    tagline: "Spin a team-season six times and build one quarterback from the best trait on offer."
+                ) {
+                    StackedChoice(
+                        legend: "Ratings",
+                        options: QbRatingMode.allCases,
+                        selection: $qbMode,
+                        label: \.label,
+                        summary: \.summary
+                    )
+                    EraChoice(selection: $qbEra)
+                } destination: {
+                    QbSeasonBuilderScreen(viewerId: viewerId, mode: qbMode, era: qbEra)
+                }
+
+                SoloGameCard(
                     name: ["Higher", "or lower"],
                     tagline: "Call the next card. Make the streak last."
                 ) {
@@ -78,22 +94,6 @@ private struct GamesScreen: View {
                         scoringMode: higherOrLowerFormat.scoringMode,
                         era: higherOrLowerFormat.era
                     )
-                }
-
-                SoloGameCard(
-                    name: ["QB season", "builder"],
-                    tagline: "Spin a team-season six times and build one quarterback from the best trait on offer."
-                ) {
-                    StackedChoice(
-                        legend: "Ratings",
-                        options: QbRatingMode.allCases,
-                        selection: $qbMode,
-                        label: \.label,
-                        summary: \.summary
-                    )
-                    EraChoice(selection: $qbEra)
-                } destination: {
-                    QbSeasonBuilderScreen(viewerId: viewerId, mode: qbMode, era: qbEra)
                 }
             }
             .padding(16)
