@@ -9,10 +9,6 @@ export function isObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function numberOrNull(value: unknown): number | null {
-  return typeof value === "number" ? value : null;
-}
-
 /** Every named field of `json` as a number, or null when any is missing. */
 export function numbers<K extends string>(json: unknown, keys: readonly K[]): Record<K, number> | null {
   if (!isObject(json)) return null;

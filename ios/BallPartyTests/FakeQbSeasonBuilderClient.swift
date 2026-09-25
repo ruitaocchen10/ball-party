@@ -64,7 +64,7 @@ final class FakeQbSeasonBuilderClient: QbSeasonBuilderClient, @unchecked Sendabl
             QbPick(
                 round: round, slot: slot, franchiseCode: deal.franchiseCode, season: deal.season,
                 playerId: playerId, displayName: quarterback?.displayName,
-                value: mode == .visible ? 80 : nil
+                grade: mode == .visible ? .b : nil
             )
         )
         round += 1
@@ -123,11 +123,11 @@ final class FakeQbSeasonBuilderClient: QbSeasonBuilderClient, @unchecked Sendabl
         let quarterback = QbQuarterback(
             playerId: "qb-\(round)-\(attempt)",
             displayName: "Quarterback \(round)",
-            values: mode == .visible ? Dictionary(uniqueKeysWithValues: QbSlot.qualities.map { ($0, 80.0) }) : nil
+            grades: mode == .visible ? Dictionary(uniqueKeysWithValues: QbSlot.qualities.map { ($0, QbGrade.b) }) : nil
         )
         return QbDeal(
             franchiseCode: "kan", season: 2009 + round,
-            spin: QbSpin(quarterbacks: [quarterback], supportingCast: mode == .visible ? 75 : nil)
+            spin: QbSpin(quarterbacks: [quarterback], supportingCastGrade: mode == .visible ? .bMinus : nil)
         )
     }
 
@@ -140,8 +140,8 @@ final class FakeQbSeasonBuilderClient: QbSeasonBuilderClient, @unchecked Sendabl
             picks: picks,
             shown: finished ? [QbShownSpin(round: 1, attempt: 1, franchiseCode: "kan", season: 2010,
                                            spin: QbSpin(quarterbacks: [QbQuarterback(playerId: "qb-1-1", displayName: "Quarterback 1",
-                                                                                      values: Dictionary(uniqueKeysWithValues: QbSlot.qualities.map { ($0, 80.0) }))],
-                                                        supportingCast: 75))] : nil,
+                                                                                      grades: Dictionary(uniqueKeysWithValues: QbSlot.qualities.map { ($0, QbGrade.b) }))],
+                                                        supportingCastGrade: .bMinus))] : nil,
             era: era
         )
     }

@@ -56,7 +56,7 @@ export default async function ProfilePage() {
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <main className="app-page flex-1">
         <div data-profile-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
@@ -102,9 +102,7 @@ export default async function ProfilePage() {
 function GuestProfile() {
   return (
     <>
-      {/* A guest has a real session for playing, just not an account — the
-          same floor playSolo itself checks — so the Solo games links work here. */}
-      <Sidebar canPlaySolo />
+      <Sidebar />
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
       <main className="app-page flex-1">
         <section className="max-w-xl">

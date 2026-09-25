@@ -30,9 +30,9 @@ select tests.act_as((select v from tests.fx where k = 'a'));
 select is(
   (select picks from qb_season_builder.pick((select v from tests.fx where k = 'm'), 'accuracy', 'WentCa00')),
   '[{"round": 1, "slot": "accuracy", "franchise_code": "phi", "season": 2017,
-     "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 87,
+     "player_id": "WentCa00", "display_name": "Carson Wentz", "grade": "A-",
      "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"}]'::jsonb,
-  'picking one quality of a quarterback on the spin fills that slot with his value'
+  'picking one quality of a quarterback on the spin fills that slot with his grade'
 );
 select is(
   (select current_round::int from qb_season_builder.state((select v from tests.fx where k = 'm'))),
@@ -107,7 +107,7 @@ select throws_ok(
 select is(
   (select picks -> 1 from qb_season_builder.pick((select v from tests.fx where k = 'm'), 'iq', 'FolsNi00')),
   '{"round": 2, "slot": "iq", "franchise_code": "phi", "season": 2017,
-    "player_id": "FolsNi00", "display_name": "Nick Foles", "value": 80}'::jsonb,
+    "player_id": "FolsNi00", "display_name": "Nick Foles", "grade": "B"}'::jsonb,
   'the player chooses which open slot a spin fills, and from whom'
 );
 
@@ -117,7 +117,7 @@ select tests.act_as((select v from tests.fx where k = 'a'));
 select is(
   (select picks -> 2 from qb_season_builder.pick((select v from tests.fx where k = 'm'), 'supporting_cast')),
   '{"round": 3, "slot": "supporting_cast", "franchise_code": "phi", "season": 2017,
-    "player_id": null, "display_name": null, "value": 69}'::jsonb,
+    "player_id": null, "display_name": null, "grade": "C"}'::jsonb,
   'the team''s Supporting Cast is a source of its own'
 );
 
@@ -143,14 +143,14 @@ select is(
 select is(
   (select picks from qb_season_builder.pick((select v from tests.fx where k = 'm'), 'build', 'WentCa00')),
   '[
-    {"round": 1, "slot": "accuracy",        "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 87, "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"},
-    {"round": 2, "slot": "iq",              "franchise_code": "phi", "season": 2017, "player_id": "FolsNi00", "display_name": "Nick Foles",   "value": 80},
-    {"round": 3, "slot": "supporting_cast", "franchise_code": "phi", "season": 2017, "player_id": null,       "display_name": null,           "value": 69},
-    {"round": 4, "slot": "mobility",        "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 79, "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"},
-    {"round": 5, "slot": "arm_talent",      "franchise_code": "phi", "season": 2017, "player_id": "FolsNi00", "display_name": "Nick Foles",   "value": 74},
-    {"round": 6, "slot": "build",           "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "value": 86, "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"}
+    {"round": 1, "slot": "accuracy",        "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "grade": "A-", "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"},
+    {"round": 2, "slot": "iq",              "franchise_code": "phi", "season": 2017, "player_id": "FolsNi00", "display_name": "Nick Foles",   "grade": "B"},
+    {"round": 3, "slot": "supporting_cast", "franchise_code": "phi", "season": 2017, "player_id": null,       "display_name": null,           "grade": "C"},
+    {"round": 4, "slot": "mobility",        "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "grade": "B", "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"},
+    {"round": 5, "slot": "arm_talent",      "franchise_code": "phi", "season": 2017, "player_id": "FolsNi00", "display_name": "Nick Foles",   "grade": "B-"},
+    {"round": 6, "slot": "build",           "franchise_code": "phi", "season": 2017, "player_id": "WentCa00", "display_name": "Carson Wentz", "grade": "A-", "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"}
   ]'::jsonb,
-  'six picks fill six slots, each with the value of the source it took'
+  'six picks fill six slots, each with the grade of the source it took'
 );
 select is(
   (select phase from qb_season_builder.state((select v from tests.fx where k = 'm'))),
@@ -244,8 +244,8 @@ select tests.act_as_admin();
 select tests.qsb_set_spin((select v from tests.fx where k = 'g'), 1::smallint, 'nwe', 2017::smallint);
 select tests.act_as_guest((select v from tests.fx where k = 'guest'));
 select is(
-  (select picks -> 0 -> 'value' from qb_season_builder.pick((select v from tests.fx where k = 'g'), 'iq', 'BradTo00')),
-  '99'::jsonb,
+  (select picks -> 0 -> 'grade' from qb_season_builder.pick((select v from tests.fx where k = 'g'), 'iq', 'BradTo00')),
+  '"A+"'::jsonb,
   'a guest picks through the same call'
 );
 

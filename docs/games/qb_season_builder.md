@@ -29,9 +29,16 @@ also be listed under Exposed schemas on the hosted project (see
   replaces), is final, and can be used at the start of any round. The replaced
   spin is kept, since the player saw it.
 - Mode is `visible` (default) or `hidden`, chosen at start and locked. In a
-  hidden run no quarterback-quality or Supporting Cast value is returned until
+  hidden run no quarterback-quality or Supporting Cast grade is returned until
   the match is `complete` (which is what `finish` does); visible runs always
   return them.
+- What a client is told is a **letter grade**, A+ to F, never the blended value
+  behind it (migration `0154`). The mapping is `qb_season_builder_private.grade_of`
+  and happens in the two projections every board is built from, so no number is in
+  the payload in either mode. Five points a grade, tuned to the real spread of the
+  data (25 to 99, median 61): A+ 95–99, A 90–94, A- 86–89, B+ 82–85, B 78–81,
+  B- 74–77, C+ 70–73, C 65–69, C- 60–64, D+ 55–59, D 50–54, D- 45–49, F 44 and
+  below. The season model still runs on the values; only what is shown changed.
 - Era is `all` (2006–2025, default), `classic` (2006–2015) or `modern`
   (2016–2025), chosen at start and locked the same way as mode — three fixed
   presets a client hardcodes rather than a free range, see migration `0153`'s
@@ -39,9 +46,13 @@ also be listed under Exposed schemas on the hosted project (see
   a respin's reroll) to that window; nothing else about the rules changes,
   since the season model scores the six picked values, never the year they
   came from.
-- Identity is `auth.uid()`, never an argument. Guests may play. Nothing sweeps
-  an unfinished run and there is no "continue" entry point: `state` on the
-  run's match id is how a run is reopened.
+- Identity is `auth.uid()`, never an argument. Guests may play, and a visitor
+  with no session at all is made one when they start a run (`playSolo` signs
+  them in anonymously first). A guest's runs are swept by the nightly
+  `private.cleanup_guest_accounts` (migration `0155`): a finished run 30 days after
+  it ended, an unfinished one a day after it started. There is no "continue"
+  entry point: `state` on the run's match id is how a run is reopened, while it
+  lasts.
 
 ## Calls
 
@@ -81,21 +92,21 @@ board {
 }
 
 options = { "quarterbacks": [{ "player_id", "display_name",
-                               "values": { "accuracy", "arm_talent", "mobility", "iq", "build" } | null }],
-            "supporting_cast": { "value": n | null } }
+                               "grades": { "accuracy", "arm_talent", "mobility", "iq", "build" } | null }],
+            "supporting_cast": { "grade": g | null } }     -- g is "A+" … "F"
 
 picks   = [{ "round", "slot", "franchise_code", "season",
-             "player_id" | null, "display_name" | null, "value": n | null }]   -- oldest first
+             "player_id" | null, "display_name" | null, "grade": g | null }]   -- oldest first
 ```
 
-Every `values` / `value` is `null` in a hidden run until the match is complete.
+Every `grades` / `grade` is `null` in a hidden run until the match is complete.
 
 ```
 shown = [{ "round", "attempt", "franchise_code", "season", "options" }]   -- oldest first
 ```
 
 `shown` is the reveal: once the run is finished, every spin the player saw with
-every option's values, in either mode. That includes the quarterbacks passed on and
+every option's grades, in either mode. That includes the quarterbacks passed on and
 a spin thrown away by the respin (`attempt` 1 of a round that has an `attempt` 2).
 
 ### `pick(p_match_id uuid, p_slot text, p_player_id text default null) returns board`
@@ -142,13 +153,14 @@ and for a guest's run alike. Rejects `result_not_found` (P0002) for a run with n
   awards { mvp, opoy, all_pro, pro_bowl, sb_mvp },
   score,                                         -- 0..100, one decimal
   breakdown [{ component, weight, percentile, points }],   -- points add up to score
-  picks [{ round, slot, franchise_code, season, player_id, display_name, value }] }
+  picks [{ round, slot, franchise_code, season, player_id, display_name, grade }] }
 ```
 
-Only blended values: never a source rating and never the seed. The result is saved
-as it was generated, so retuning the model later does not change a saved link. The
-values of options that were passed on are not in it; the owner reads them from
-`state` (`shown`).
+Only grades: never a blended value, a source rating or the seed. The result is saved
+as it was generated, so retuning the model later does not change a saved link. A
+result saved before `0154` stored a `value` on each pick; `result` grades it on the
+way out, so an old link reads the same as a new one. The grades of options that were
+passed on are not in it; the owner reads them from `state` (`shown`).
 
 ### The personal best
 
@@ -163,10 +175,10 @@ guest's best is still recorded against their user id.
 Client-readable through RLS, for the run's owner only (guests included):
 `qb_season_builder_matches` (mode, round, respin spent), `qb_season_builder_spins`
 (only rounds up to the current one) and `qb_season_builder_picks` (slot and
-source, never a value). Everything numeric lives in `qb_season_builder_private`
+source, never a value or a grade). Everything numeric lives in `qb_season_builder_private`
 — `qb_seasons`, `team_seasons`, `pick_values`, the season model and
 `season_results` (the saved seasons **and their seeds**) — which no client role can
-reach; a value leaves the database only through `state` / `pick` / `respin` /
+reach; a grade (never a value) leaves the database only through `state` / `pick` / `respin` /
 `finish` / `result`, which decide what to show. The one other client-readable table
 is the personal best, for its owner only.
 
@@ -292,7 +304,7 @@ Three screens, all reading the calls above and deciding nothing themselves.
   cleared storage, or a second device, costs a replay, which is why it is not on
   the run.
   In a hidden run this screen also shows **every option the player saw** with its
-  value, the ones passed on and a respun-away spin included. That is the board's
+  grade, the ones passed on and a respun-away spin included. That is the board's
   `shown`, which only the run's owner can read, so it is not on the public page.
 - **The public result** (`/solo/qb-season-builder/result/[id]`): the same component
   unstaged, from `result` alone. Reachable signed out — the path is in the proxy's

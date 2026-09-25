@@ -11,16 +11,16 @@ final class QbSeasonBuilderModelsTests: XCTestCase {
 
     private let matchId = "3F2504E0-4F89-41D3-9A0C-0305E82C3301"
 
-    func test_aVisibleBoard_carriesEveryRatingOnTheSpin() throws {
+    func test_aVisibleBoard_carriesEveryGradeOnTheSpin() throws {
         let board = try decode(QbBoard.self, """
         {"match_id":"\(matchId)","mode":"visible","phase":"picking","round_count":6,"current_round":2,
          "respin_used":false,"franchise_code":"kan","season":2018,
          "options":{"quarterbacks":[{"player_id":"MahoPa00","display_name":"Patrick Mahomes",
                     "headshot_url":"https://example.com/m.png",
-                    "values":{"accuracy":91,"arm_talent":99,"mobility":85,"iq":93,"build":80}}],
-                    "supporting_cast":{"value":88}},
+                    "grades":{"accuracy":"A","arm_talent":"A+","mobility":"B+","iq":"A","build":"B"}}],
+                    "supporting_cast":{"grade":"A-"}},
          "picks":[{"round":1,"slot":"iq","franchise_code":"nwe","season":2010,"player_id":"BradTo00",
-                   "display_name":"Tom Brady","value":97}],
+                   "display_name":"Tom Brady","grade":"A+"}],
          "shown":null}
         """)
 
@@ -28,30 +28,30 @@ final class QbSeasonBuilderModelsTests: XCTestCase {
         XCTAssertEqual(board.currentRound, 2)
         XCTAssertEqual(board.deal?.franchiseCode, "kan")
         XCTAssertEqual(board.deal?.season, 2018)
-        XCTAssertEqual(board.deal?.spin.supportingCast, 88)
+        XCTAssertEqual(board.deal?.spin.supportingCastGrade, .aMinus)
         let quarterback = try XCTUnwrap(board.deal?.spin.quarterbacks.first)
         XCTAssertEqual(quarterback.displayName, "Patrick Mahomes")
         XCTAssertEqual(quarterback.headshotURL, URL(string: "https://example.com/m.png"))
-        XCTAssertEqual(quarterback.values?[.armTalent], 99)
-        XCTAssertEqual(board.pick(for: .iq)?.value, 97)
+        XCTAssertEqual(quarterback.grades?[.armTalent], .aPlus)
+        XCTAssertEqual(board.pick(for: .iq)?.grade, .aPlus)
         XCTAssertTrue(board.isTaken(.iq))
         XCTAssertFalse(board.isTaken(.accuracy))
         XCTAssertNil(board.shown)
     }
 
-    func test_aHiddenBoard_hasNoValuesAnywhere() throws {
+    func test_aHiddenBoard_hasNoGradesAnywhere() throws {
         let board = try decode(QbBoard.self, """
         {"match_id":"\(matchId)","mode":"hidden","phase":"picking","round_count":6,"current_round":1,
          "respin_used":false,"franchise_code":"crd","season":2015,
-         "options":{"quarterbacks":[{"player_id":"PalmCa00","display_name":"Carson Palmer","values":null}],
-                    "supporting_cast":{"value":null}},
+         "options":{"quarterbacks":[{"player_id":"PalmCa00","display_name":"Carson Palmer","grades":null}],
+                    "supporting_cast":{"grade":null}},
          "picks":[],"shown":null}
         """)
 
         let spin = try XCTUnwrap(board.deal?.spin)
-        XCTAssertNil(spin.quarterbacks[0].values)
+        XCTAssertNil(spin.quarterbacks[0].grades)
         XCTAssertNil(spin.quarterbacks[0].headshotURL)
-        XCTAssertNil(spin.supportingCast)
+        XCTAssertNil(spin.supportingCastGrade)
     }
 
     func test_aBoardWithNoOpenRound_hasNoSpin() throws {
@@ -70,15 +70,15 @@ final class QbSeasonBuilderModelsTests: XCTestCase {
          "respin_used":true,"franchise_code":null,"season":null,"options":null,"picks":[],
          "shown":[{"round":1,"attempt":1,"franchise_code":"oti","season":2011,
                    "options":{"quarterbacks":[{"player_id":"HassMa00","display_name":"Matt Hasselbeck",
-                              "values":{"accuracy":80,"arm_talent":78,"mobility":60,"iq":82,"build":70}}],
-                              "supporting_cast":{"value":66}}}]}
+                              "grades":{"accuracy":"B","arm_talent":"B","mobility":"C-","iq":"B+","build":"C+"}}],
+                              "supporting_cast":{"grade":"C"}}}]}
         """)
 
         let shown = try XCTUnwrap(board.shown?.first)
         XCTAssertEqual(shown.round, 1)
         XCTAssertEqual(shown.attempt, 1)
-        XCTAssertEqual(shown.spin.quarterbacks.first?.values?[.iq], 82)
-        XCTAssertEqual(shown.spin.supportingCast, 66)
+        XCTAssertEqual(shown.spin.quarterbacks.first?.grades?[.iq], .bPlus)
+        XCTAssertEqual(shown.spin.supportingCastGrade, .c)
     }
 
     func test_aSavedSeason_decodesEverySection() throws {
@@ -106,9 +106,26 @@ final class QbSeasonBuilderModelsTests: XCTestCase {
         XCTAssertEqual(result.weightPercent(of: result.breakdown[0]), 55)
     }
 
-    func test_ratingsShowAsWholeNumbersWhenTheyAreOne() {
-        XCTAssertEqual(QbRating.format(88), "88")
-        XCTAssertEqual(QbRating.format(87.5), "87.5")
+    func test_pointsShowAsWholeNumbersWhenTheyAreOne() {
+        XCTAssertEqual(QbPoints.format(88), "88")
+        XCTAssertEqual(QbPoints.format(87.5), "87.5")
+    }
+
+    func test_anUnknownGrade_decodesAsAbsentRatherThanFailingTheBoard() throws {
+        let spin = try decode(QbSpin.self, """
+        {"quarterbacks":[{"player_id":"MahoPa00","display_name":"Patrick Mahomes",
+                          "grades":{"accuracy":"A","arm_talent":"A+","mobility":"B+","iq":"A","build":"Z"}}],
+         "supporting_cast":{"grade":"Q"}}
+        """)
+
+        XCTAssertNil(spin.quarterbacks[0].grades, "all five or none: a run never shows half a quarterback")
+        XCTAssertNil(spin.supportingCastGrade)
+    }
+
+    func test_gradesReadAloudWithPlusAndMinusSpelledOut() {
+        XCTAssertEqual(QbGrade.aMinus.spoken, "A minus")
+        XCTAssertEqual(QbGrade.bPlus.spoken, "B plus")
+        XCTAssertEqual(QbGrade.c.spoken, "C")
     }
 
     func test_franchiseNamesReadAsTheTeamAndFallBackToTheCode() {

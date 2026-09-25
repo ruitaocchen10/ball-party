@@ -13,8 +13,8 @@ function card(name: string): HTMLElement {
 }
 
 describe("SoloGrid", () => {
-  it("offers a one-click Play solo entry for each solo game to any session, guest included", () => {
-    render(<SoloGrid canPlaySolo />);
+  it("offers a one-click Play solo entry for each solo game, with or without an account", () => {
+    render(<SoloGrid />);
 
     expect(within(card("Higher")).getByRole("button", { name: "Play solo" })).toBeInTheDocument();
     expect(within(card("QB season")).getByRole("button", { name: "Play solo" })).toBeInTheDocument();
@@ -23,18 +23,9 @@ describe("SoloGrid", () => {
     expect(screen.queryByText("Auction")).not.toBeInTheDocument();
   });
 
-  it("hides Play solo entirely for a visitor with no session at all", () => {
-    render(<SoloGrid canPlaySolo={false} />);
-
-    expect(screen.queryByRole("button", { name: "Play solo" })).not.toBeInTheDocument();
-    // The games are still named — there is just nothing here yet to act on them.
-    expect(screen.getByText("Higher")).toBeInTheDocument();
-    expect(screen.getByText("QB season")).toBeInTheDocument();
-  });
-
   it("lets a QB Season Builder run start visible by default or hidden, chosen before it starts", async () => {
     const user = userEvent.setup();
-    render(<SoloGrid canPlaySolo />);
+    render(<SoloGrid />);
     const qb = card("QB season");
 
     expect(within(qb).getByRole("radio", { name: /visible/i })).toBeChecked();
@@ -46,7 +37,7 @@ describe("SoloGrid", () => {
   });
 
   it("keeps a card's settings collapsed until asked, without dropping them from the form", () => {
-    render(<SoloGrid canPlaySolo />);
+    render(<SoloGrid />);
     const qb = card("QB season");
     const settings = qb.querySelector("details")!;
 
@@ -58,7 +49,7 @@ describe("SoloGrid", () => {
   });
 
   it("offers Higher or Lower a scoring choice and an era, defaulting to season total over the whole pool", () => {
-    render(<SoloGrid canPlaySolo higherOrLowerEra={{ seasonMin: 2010, seasonMax: 2024 }} />);
+    render(<SoloGrid higherOrLowerEra={{ seasonMin: 2010, seasonMax: 2024 }} />);
     const hol = card("Higher");
     const form = () => new FormData(hol.querySelector("form")!);
 
@@ -71,7 +62,7 @@ describe("SoloGrid", () => {
 
   it("sends Higher or Lower's scoring pick", async () => {
     const user = userEvent.setup();
-    render(<SoloGrid canPlaySolo higherOrLowerEra={{ seasonMin: 2010, seasonMax: 2024 }} />);
+    render(<SoloGrid higherOrLowerEra={{ seasonMin: 2010, seasonMax: 2024 }} />);
     const hol = card("Higher");
 
     await user.click(within(hol).getByRole("radio", { name: /weekly/i }));
@@ -79,7 +70,7 @@ describe("SoloGrid", () => {
   });
 
   it("still offers scoring, but no era, when the season bounds could not be read", () => {
-    render(<SoloGrid canPlaySolo />);
+    render(<SoloGrid />);
     const hol = card("Higher");
 
     expect(within(hol).getByRole("radio", { name: /weekly/i })).toBeInTheDocument();
@@ -87,7 +78,7 @@ describe("SoloGrid", () => {
   });
 
   it("never says where the ratings come from", () => {
-    const { container } = render(<SoloGrid canPlaySolo />);
+    const { container } = render(<SoloGrid />);
 
     expect(container).not.toHaveTextContent(/madden|ea sports/i);
   });

@@ -1,4 +1,4 @@
-import { isObject, numberOrNull } from "@/lib/games/qb-season-builder/json";
+import { isObject } from "@/lib/games/qb-season-builder/json";
 import type { Database } from "@/lib/supabase/database.types";
 
 /**
@@ -7,9 +7,10 @@ import type { Database } from "@/lib/supabase/database.types";
  * `qb_season_builder.state`, `pick` and `respin` all answer with the same
  * `board` row, and this is that row parsed into something the screen can use
  * without re-checking it: the jsonb `options` and `picks` arrive untyped, and
- * every number in them is null in a hidden run until it is finished. Whether a
- * value shows is therefore never decided here or on the screen — a value is
- * shown when the server sent one. See docs/games/qb_season_builder.md.
+ * every grade in them is null in a hidden run until it is finished. Whether a
+ * grade shows is therefore never decided here or on the screen — a grade is
+ * shown when the server sent one. The number behind a grade never leaves the
+ * server. See docs/games/qb_season_builder.md.
  *
  * Deliberately thin, like the other games' board modules: what little logic
  * there is (parsing the row, finding a slot's pick) is asserted through the
@@ -35,21 +36,28 @@ export const SLOT_LABELS: Record<Slot, string> = {
   supporting_cast: "Supporting Cast",
 };
 
+/**
+ * How good a quality or a Supporting Cast is, best first. The server maps the
+ * blended value to one of these (migration 0154) and sends only the letter.
+ */
+export const GRADES = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"] as const;
+export type Grade = (typeof GRADES)[number];
+
 export type Quarterback = {
   playerId: string;
   displayName: string;
   /** Null when no portrait is available for this quarterback. */
   headshotUrl: string | null;
   /** Null when the run is hidden and not yet finished. */
-  values: Record<Quality, number> | null;
+  grades: Record<Quality, Grade> | null;
 };
 
 export type Spin = {
   franchiseCode: string;
   season: number;
   quarterbacks: Quarterback[];
-  /** The team's Supporting Cast value; null when hidden. */
-  supportingCast: number | null;
+  /** The team's Supporting Cast grade; null when hidden. */
+  supportingCastGrade: Grade | null;
 };
 
 export type DraftPick = {
@@ -62,12 +70,12 @@ export type DraftPick = {
   displayName: string | null;
   /** Null for Supporting Cast or when the portrait dataset has no match. */
   headshotUrl: string | null;
-  value: number | null;
+  grade: Grade | null;
 };
 
 /**
  * A spin the player was dealt, kept for the reveal: once a run is finished the
- * server returns every spin it showed, options and values included, whether or
+ * server returns every spin it showed, options and grades included, whether or
  * not the run was hidden. `attempt` 2 of a round means attempt 1 was respun
  * away — the player saw it, so it is here.
  */
@@ -88,7 +96,7 @@ export type Board = {
   /** The current round's spin; null once no round is open. */
   spin: Spin | null;
   picks: DraftPick[];
-  /** Every spin the player saw, values revealed; null until the run is complete. */
+  /** Every spin the player saw, grades revealed; null until the run is complete. */
   shown: ShownSpin[] | null;
 };
 
@@ -136,7 +144,7 @@ export function pickForSlot(board: Board, slot: Slot): DraftPick | null {
   return board.picks.find((pick) => pick.slot === slot) ?? null;
 }
 
-function optionsFromJson(json: unknown): Pick<Spin, "quarterbacks" | "supportingCast"> | null {
+function optionsFromJson(json: unknown): Pick<Spin, "quarterbacks" | "supportingCastGrade"> | null {
   if (!isObject(json) || !Array.isArray(json.quarterbacks) || !isObject(json.supporting_cast)) return null;
 
   const quarterbacks: Quarterback[] = [];
@@ -146,21 +154,25 @@ function optionsFromJson(json: unknown): Pick<Spin, "quarterbacks" | "supporting
       playerId: raw.player_id,
       displayName: raw.display_name,
       headshotUrl: typeof raw.headshot_url === "string" ? raw.headshot_url : null,
-      values: qualityValues(raw.values),
+      grades: qualityGrades(raw.grades),
     });
   }
-  return { quarterbacks, supportingCast: numberOrNull(json.supporting_cast.value) };
+  return { quarterbacks, supportingCastGrade: gradeOrNull(json.supporting_cast.grade) };
 }
 
-function qualityValues(json: unknown): Record<Quality, number> | null {
+function gradeOrNull(json: unknown): Grade | null {
+  return (GRADES as readonly unknown[]).includes(json) ? (json as Grade) : null;
+}
+
+function qualityGrades(json: unknown): Record<Quality, Grade> | null {
   if (!isObject(json)) return null;
-  const values = {} as Record<Quality, number>;
+  const grades = {} as Record<Quality, Grade>;
   for (const quality of QUALITIES) {
-    const value = numberOrNull(json[quality]);
-    if (value === null) return null;
-    values[quality] = value;
+    const grade = gradeOrNull(json[quality]);
+    if (grade === null) return null;
+    grades[quality] = grade;
   }
-  return values;
+  return grades;
 }
 
 function shownFromJson(json: unknown): ShownSpin[] | null {
@@ -195,7 +207,7 @@ export function picksFromJson(json: unknown): DraftPick[] | null {
       playerId: typeof raw.player_id === "string" ? raw.player_id : null,
       displayName: typeof raw.display_name === "string" ? raw.display_name : null,
       headshotUrl: typeof raw.headshot_url === "string" ? raw.headshot_url : null,
-      value: numberOrNull(raw.value),
+      grade: gradeOrNull(raw.grade),
     });
   }
   return picks;

@@ -160,8 +160,8 @@ export const GAMES: readonly Game[] = [
     solo: true,
     group: false,
     soloModes: [
-      { value: "visible", label: "Visible", description: "Ratings show while you pick." },
-      { value: "hidden", label: "Hidden", description: "No ratings until the run is over. Pick on what you know." },
+      { value: "visible", label: "Visible", description: "Letter grades show while you pick." },
+      { value: "hidden", label: "Hidden", description: "No grades until the run is over. Pick on what you know." },
     ],
     soloEras: [
       { value: "all", label: "All Years", description: "Every team-season, 2006-2025." },

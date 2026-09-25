@@ -31,12 +31,12 @@ const HIGHER_OR_LOWER_SCORING: readonly SoloMode[] = [
  * yourself right now."
  *
  * Only a game with `solo: true` and `status: "live"` shows up here. No
- * account-gated fallback the way GameGrid's tiles have one: solo carries none of hosting's account requirement, so a session
- * that can't play solo is a session with nothing here to act on at all, and
- * the card just drops its Play solo control rather than offering one it
- * can't use.
+ * account-gated fallback the way GameGrid's tiles have one: solo carries none
+ * of hosting's account requirement. A visitor with no session at all plays as
+ * a guest — `playSolo` creates the session — so every card carries its Play
+ * solo control.
  */
-export function SoloGrid({ canPlaySolo, higherOrLowerEra = null }: { canPlaySolo: boolean; higherOrLowerEra?: SoloEra | null }) {
+export function SoloGrid({ higherOrLowerEra = null }: { higherOrLowerEra?: SoloEra | null }) {
   const games = GAMES.filter((game) => game.solo && game.status === "live");
 
   if (games.length === 0) return <NoSoloGames />;
@@ -45,7 +45,7 @@ export function SoloGrid({ canPlaySolo, higherOrLowerEra = null }: { canPlaySolo
     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {games.map((game) => (
         <li key={game.slug} className="flex">
-          <SoloCard game={game} canPlaySolo={canPlaySolo} higherOrLowerEra={higherOrLowerEra} />
+          <SoloCard game={game} higherOrLowerEra={higherOrLowerEra} />
         </li>
       ))}
     </ul>
@@ -58,7 +58,7 @@ export function SoloGrid({ canPlaySolo, higherOrLowerEra = null }: { canPlaySolo
  * (`group` sits here, not just on the button) so the whole card reads as
  * live even though only the Play solo button at the bottom actually is.
  */
-function SoloCard({ game, canPlaySolo, higherOrLowerEra }: { game: Game; canPlaySolo: boolean; higherOrLowerEra: SoloEra | null }) {
+function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: SoloEra | null }) {
   return (
     <article className="group flex w-full flex-col border border-line bg-surface-raised p-4 transition-colors hover:border-fg-muted">
       <div className="flex items-start justify-between gap-2">
@@ -79,29 +79,27 @@ function SoloCard({ game, canPlaySolo, higherOrLowerEra }: { game: Game; canPlay
       </h3>
       <p className="mt-2 text-[13px] leading-5 text-fg-muted">{game.tagline}</p>
 
-      {canPlaySolo ? (
-        <form action={playSolo} className="mt-4 border-t border-line pt-3">
-          <input type="hidden" name="game" value={game.match ?? ""} />
-          {game.soloModes || game.soloEras ? (
-            <SoloSettings>
-              {game.soloModes ? <RadioChoice name="mode" legend="Ratings" options={game.soloModes} /> : null}
-              {game.soloEras ? <RadioChoice name="era" legend="Era" options={game.soloEras} /> : null}
-            </SoloSettings>
-          ) : null}
-          {game.match === "higher_or_lower" ? (
-            <SoloSettings>
-              <RadioChoice name="scoring_mode" legend="Scoring" options={HIGHER_OR_LOWER_SCORING} />
-              {higherOrLowerEra ? <SoloSeasonRange era={higherOrLowerEra} /> : null}
-            </SoloSettings>
-          ) : null}
-          <button
-            type="submit"
-            className="inline-flex h-9 w-full cursor-pointer items-center justify-center bg-panel px-3.5 font-mono text-[11px] font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
-          >
-            Play solo
-          </button>
-        </form>
-      ) : null}
+      <form action={playSolo} className="mt-4 border-t border-line pt-3">
+        <input type="hidden" name="game" value={game.match ?? ""} />
+        {game.soloModes || game.soloEras ? (
+          <SoloSettings>
+            {game.soloModes ? <RadioChoice name="mode" legend="Grades" options={game.soloModes} /> : null}
+            {game.soloEras ? <RadioChoice name="era" legend="Era" options={game.soloEras} /> : null}
+          </SoloSettings>
+        ) : null}
+        {game.match === "higher_or_lower" ? (
+          <SoloSettings>
+            <RadioChoice name="scoring_mode" legend="Scoring" options={HIGHER_OR_LOWER_SCORING} />
+            {higherOrLowerEra ? <SoloSeasonRange era={higherOrLowerEra} /> : null}
+          </SoloSettings>
+        ) : null}
+        <button
+          type="submit"
+          className="inline-flex h-9 w-full cursor-pointer items-center justify-center bg-panel px-3.5 font-mono text-[11px] font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        >
+          Play solo
+        </button>
+      </form>
     </article>
   );
 }

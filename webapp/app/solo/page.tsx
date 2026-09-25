@@ -6,10 +6,10 @@ import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
-import { isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 
-// A sign-up destination rather than a landing page (see below), so it stays out
-// of the index until it earns its own content.
+// A place to pick settings rather than a landing page (see below), so it stays
+// out of the index until it earns its own content.
 export const metadata: Metadata = { title: "Solo games", robots: { index: false } };
 
 /**
@@ -20,9 +20,10 @@ export const metadata: Metadata = { title: "Solo games", robots: { index: false 
  *
  * No longer linked from the sidebar's main nav: the rail's own Solo games
  * section (see components/layout/Sidebar.tsx) starts a game in one click, so
- * this grid stopped being the fastest way in. The route stays live as the
- * sign-up destination for a signed-out visitor who clicks a solo game there,
- * and for anyone who lands on it directly.
+ * this grid stopped being the fastest way in. The route stays live as where a
+ * game with start-time settings is set up, and for anyone who lands on it
+ * directly. Signed out is fine: starting a run gives the visitor a guest
+ * session (see `playSolo`).
  */
 export default async function SoloPage(props: PageProps<"/solo">) {
   const supabase = await createClient();
@@ -36,9 +37,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
     ? await supabase.from("profiles").select("display_name, avatar_url").eq("id", claims!.sub).single()
     : { data: null };
 
-  const displayName = profile?.display_name ?? (viewer ? (claims!.email as string) : null);
-  const email = viewer ? ((claims!.email as string | undefined) ?? null) : null;
-  const avatarUrl = profile?.avatar_url ?? null;
+  const { displayName, email, avatarUrl } = chromeIdentity(claims, profile);
 
   // Only a signed-in viewer can play, so only they pay for the bounds behind
   // Higher or Lower's era picker. A failure is not fatal: the picker drops out
@@ -57,7 +56,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
       <main className="app-page flex-1">
@@ -71,7 +70,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
           />
 
           <section className="mt-9" aria-label="Solo games">
-            <SoloGrid canPlaySolo={viewer} higherOrLowerEra={higherOrLowerEra} />
+            <SoloGrid higherOrLowerEra={higherOrLowerEra} />
           </section>
         </div>
       </main>

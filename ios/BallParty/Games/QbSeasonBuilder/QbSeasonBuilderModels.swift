@@ -3,11 +3,12 @@ import Foundation
 // Hand-maintained `Decodable` mirrors of what `qb_season_builder.state`, `pick`,
 // `respin`, `finish` and `result` return — see `docs/games/qb_season_builder.md`.
 // The web's equivalents are `webapp/lib/games/qb-season-builder/board.ts` and
-// `result.ts`. The server decides whether a value is shown at all: every
-// number in a hidden run is `null` until the run is finished, so a `nil` here
-// is an honest rendering of an absent value, never something to fill in.
+// `result.ts`. The server decides whether a grade is shown at all: every
+// grade in a hidden run is `null` until the run is finished, so a `nil` here
+// is an honest rendering of an absent grade, never something to fill in. The
+// number behind a grade never leaves the server (migration `0154`).
 
-/// Whether ratings show while the player picks. Chosen when the run starts and
+/// Whether grades show while the player picks. Chosen when the run starts and
 /// locked for its whole length.
 enum QbRatingMode: String, Codable, Sendable, CaseIterable, Identifiable {
     case visible
@@ -24,8 +25,8 @@ enum QbRatingMode: String, Codable, Sendable, CaseIterable, Identifiable {
 
     var summary: String {
         switch self {
-        case .visible: "Ratings show while you pick."
-        case .hidden: "No ratings until the run is over. Pick on what you know."
+        case .visible: "Letter grades show while you pick."
+        case .hidden: "No grades until the run is over. Pick on what you know."
         }
     }
 }
@@ -116,8 +117,26 @@ enum QbPhase: String, Decodable, Sendable {
     case complete
 }
 
-/// A rating as the server blends it. Drawn as a whole number when it is one.
-enum QbRating {
+/// How good a quality or a Supporting Cast is, best first. The server maps the
+/// blended value to one of these and sends only the letter — `webapp`'s `GRADES`
+/// in `board.ts` is the same list.
+enum QbGrade: String, Codable, Sendable, CaseIterable {
+    case aPlus = "A+", a = "A", aMinus = "A-"
+    case bPlus = "B+", b = "B", bMinus = "B-"
+    case cPlus = "C+", c = "C", cMinus = "C-"
+    case dPlus = "D+", d = "D", dMinus = "D-"
+    case f = "F"
+
+    var label: String { rawValue }
+
+    /// What VoiceOver should say: "A-" is otherwise read as a letter and a dash.
+    var spoken: String {
+        rawValue.replacingOccurrences(of: "+", with: " plus").replacingOccurrences(of: "-", with: " minus")
+    }
+}
+
+/// Score points, drawn as a whole number when they are one.
+enum QbPoints {
     static func format(_ value: Double) -> String {
         value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
     }
@@ -128,19 +147,19 @@ struct QbQuarterback: Equatable, Identifiable, Sendable, Decodable {
     let displayName: String
     let headshotURL: URL?
     /// Nil while the run is hidden and not yet finished.
-    let values: [QbSlot: Double]?
+    let grades: [QbSlot: QbGrade]?
 
     var id: String { playerId }
 
-    init(playerId: String, displayName: String, headshotURL: URL? = nil, values: [QbSlot: Double]? = nil) {
+    init(playerId: String, displayName: String, headshotURL: URL? = nil, grades: [QbSlot: QbGrade]? = nil) {
         self.playerId = playerId
         self.displayName = displayName
         self.headshotURL = headshotURL
-        self.values = values
+        self.grades = grades
     }
 
     private enum CodingKeys: String, CodingKey {
-        case playerId = "player_id", displayName = "display_name", headshotURL = "headshot_url", values
+        case playerId = "player_id", displayName = "display_name", headshotURL = "headshot_url", grades
     }
 
     init(from decoder: Decoder) throws {
@@ -149,15 +168,15 @@ struct QbQuarterback: Equatable, Identifiable, Sendable, Decodable {
         displayName = try container.decode(String.self, forKey: .displayName)
         headshotURL = try container.decodeIfPresent(String.self, forKey: .headshotURL).flatMap(URL.init(string:))
         // All five, or none: a run never shows half a quarterback.
-        if let raw = try container.decodeIfPresent([String: Double?].self, forKey: .values) {
-            var values: [QbSlot: Double] = [:]
+        if let raw = try container.decodeIfPresent([String: String?].self, forKey: .grades) {
+            var grades: [QbSlot: QbGrade] = [:]
             for slot in QbSlot.qualities {
-                guard let value = raw[slot.rawValue] ?? nil else { break }
-                values[slot] = value
+                guard let letter = raw[slot.rawValue] ?? nil, let grade = QbGrade(rawValue: letter) else { break }
+                grades[slot] = grade
             }
-            self.values = values.count == QbSlot.qualities.count ? values : nil
+            self.grades = grades.count == QbSlot.qualities.count ? grades : nil
         } else {
-            values = nil
+            grades = nil
         }
     }
 }
@@ -165,24 +184,24 @@ struct QbQuarterback: Equatable, Identifiable, Sendable, Decodable {
 /// One team-season the player is dealt, with everything it offers.
 struct QbSpin: Equatable, Sendable, Decodable {
     let quarterbacks: [QbQuarterback]
-    /// The team's Supporting Cast value; nil when hidden.
-    let supportingCast: Double?
+    /// The team's Supporting Cast grade; nil when hidden.
+    let supportingCastGrade: QbGrade?
 
-    init(quarterbacks: [QbQuarterback], supportingCast: Double? = nil) {
+    init(quarterbacks: [QbQuarterback], supportingCastGrade: QbGrade? = nil) {
         self.quarterbacks = quarterbacks
-        self.supportingCast = supportingCast
+        self.supportingCastGrade = supportingCastGrade
     }
 
     private enum CodingKeys: String, CodingKey {
         case quarterbacks, supportingCast = "supporting_cast"
     }
 
-    private struct Cast: Decodable { let value: Double? }
+    private struct Cast: Decodable { let grade: String? }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         quarterbacks = try container.decode([QbQuarterback].self, forKey: .quarterbacks)
-        supportingCast = try container.decode(Cast.self, forKey: .supportingCast).value
+        supportingCastGrade = try container.decode(Cast.self, forKey: .supportingCast).grade.flatMap(QbGrade.init(rawValue:))
     }
 }
 
@@ -203,13 +222,13 @@ struct QbPick: Equatable, Identifiable, Sendable, Decodable {
     let playerId: String?
     let displayName: String?
     let headshotURL: URL?
-    let value: Double?
+    let grade: QbGrade?
 
     var id: Int { round }
 
     init(
         round: Int, slot: QbSlot, franchiseCode: String, season: Int,
-        playerId: String? = nil, displayName: String? = nil, headshotURL: URL? = nil, value: Double? = nil
+        playerId: String? = nil, displayName: String? = nil, headshotURL: URL? = nil, grade: QbGrade? = nil
     ) {
         self.round = round
         self.slot = slot
@@ -218,11 +237,11 @@ struct QbPick: Equatable, Identifiable, Sendable, Decodable {
         self.playerId = playerId
         self.displayName = displayName
         self.headshotURL = headshotURL
-        self.value = value
+        self.grade = grade
     }
 
     private enum CodingKeys: String, CodingKey {
-        case round, slot, season, value
+        case round, slot, season, grade
         case franchiseCode = "franchise_code", playerId = "player_id", displayName = "display_name"
         case headshotURL = "headshot_url"
     }
@@ -236,12 +255,12 @@ struct QbPick: Equatable, Identifiable, Sendable, Decodable {
         playerId = try container.decodeIfPresent(String.self, forKey: .playerId)
         displayName = try container.decodeIfPresent(String.self, forKey: .displayName)
         headshotURL = try container.decodeIfPresent(String.self, forKey: .headshotURL).flatMap(URL.init(string:))
-        value = try container.decodeIfPresent(Double.self, forKey: .value)
+        grade = try container.decodeIfPresent(String.self, forKey: .grade).flatMap(QbGrade.init(rawValue:))
     }
 }
 
 /// A spin the player was dealt, kept for the reveal: once a run is finished the
-/// server returns every spin it showed with every value, whichever mode it was.
+/// server returns every spin it showed with every grade, whichever mode it was.
 /// `attempt` 2 of a round means attempt 1 was respun away.
 struct QbShownSpin: Equatable, Identifiable, Sendable, Decodable {
     let round: Int
@@ -287,7 +306,7 @@ struct QbBoard: Equatable, Sendable, Decodable {
     /// The current round's spin; nil once no round is open.
     let deal: QbDeal?
     let picks: [QbPick]
-    /// Every spin the player saw, values revealed; nil until the run is complete.
+    /// Every spin the player saw, grades revealed; nil until the run is complete.
     let shown: [QbShownSpin]?
     /// The pool this run deals from. Absent on a run dealt before migration
     /// `0153` fell out of any fixture that predates it — `.all` is what every

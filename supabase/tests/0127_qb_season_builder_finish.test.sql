@@ -345,17 +345,17 @@ select is(
 );
 select is(
   (select jsonb_path_query_array(
-            shown, '$[*] ? (@.round == 3).options.quarterbacks[*] ? (@.player_id == "MoorMa00").values.accuracy')
+            shown, '$[*] ? (@.round == 3).options.quarterbacks[*] ? (@.player_id == "MoorMa00").grades.accuracy')
      from qb_season_builder.state((select v from tests.fx where k = 'hid'))),
-  '[61]'::jsonb,
-  'with the values of the quarterback who was passed on'
+  '["C-"]'::jsonb,
+  'with the grades of the quarterback who was passed on'
 );
 select is(
   (select count(*)::int
      from qb_season_builder.state((select v from tests.fx where k = 'hid')) b,
           jsonb_array_elements(b.shown) s,
           jsonb_array_elements(s -> 'options' -> 'quarterbacks') q
-    where jsonb_typeof(q -> 'values') <> 'object'),
+    where jsonb_typeof(q -> 'grades') <> 'object'),
   0,
   'and of every other option, none of them still hidden'
 );
@@ -363,15 +363,15 @@ select is(
   (select count(*)::int
      from qb_season_builder.state((select v from tests.fx where k = 'hid')) b,
           jsonb_array_elements(b.shown) s
-    where jsonb_typeof(s -> 'options' -> 'supporting_cast' -> 'value') <> 'number'),
+    where jsonb_typeof(s -> 'options' -> 'supporting_cast' -> 'grade') <> 'string'),
   0,
   'the Supporting Cast of every spin as well'
 );
 select is(
-  (select jsonb_path_query_array(picks, '$[*].value')
+  (select jsonb_path_query_array(picks, '$[*].grade')
      from qb_season_builder.state((select v from tests.fx where k = 'hid'))),
-  '[87, 85, 82, 83, 76, 77]'::jsonb,
-  'and the value of every pick'
+  '["A-", "B+", "B+", "B+", "B-", "B-"]'::jsonb,
+  'and the grade of every pick'
 );
 
 -- -------------------------------------------------------- the public result path --
@@ -405,9 +405,9 @@ select is(
   'and it carries the recap of which real season each pick came from'
 );
 select is(
-  (select jsonb_path_query_array(qb_season_builder.result((select v from tests.fx where k = 'hid')), '$.picks[*].value')),
-  '[87, 85, 82, 83, 76, 77]'::jsonb,
-  'with each value, a hidden run''s included now that it is finished'
+  (select jsonb_path_query_array(qb_season_builder.result((select v from tests.fx where k = 'hid')), '$.picks[*].grade')),
+  '["A-", "B+", "B+", "B+", "B-", "B-"]'::jsonb,
+  'with each grade, a hidden run''s included now that it is finished'
 );
 select throws_ok(
   format($$ select qb_season_builder.result(%L) $$, (select v from tests.fx where k = 'notyet')),
@@ -439,8 +439,8 @@ select is(
 select is(
   (select array_agg(k order by k)
      from jsonb_object_keys(qb_season_builder.result((select v from tests.fx where k = 'r')) -> 'picks' -> 0) k),
-  array['display_name', 'franchise_code', 'headshot_url', 'player_id', 'round', 'season', 'slot', 'value'],
-  'a pick in the recap says what was taken from whom, what it was worth and their headshot, and nothing else'
+  array['display_name', 'franchise_code', 'grade', 'headshot_url', 'player_id', 'round', 'season', 'slot'],
+  'a pick in the recap says what was taken from whom, the grade it earned and their headshot, and nothing else'
 );
 select ok(
   (select qb_season_builder.result((select v from tests.fx where k = 'r'))::text !~* '(seed|madden|source)'),

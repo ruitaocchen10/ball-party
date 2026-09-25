@@ -31,12 +31,12 @@ select tests.act_as((select v from tests.fx where k = 'a'));
 select is(
   (select count(*)::int from qb_season_builder.state((select v from tests.fx where k = 'h')) b,
           jsonb_array_elements(b.options -> 'quarterbacks') q
-    where jsonb_typeof(q -> 'values') = 'null'),
+    where jsonb_typeof(q -> 'grades') = 'null'),
   2,
-  'in hidden mode both quarterbacks are on offer and neither shows a quality value'
+  'in hidden mode both quarterbacks are on offer and neither shows a quality grade'
 );
 select is(
-  (select jsonb_typeof(options -> 'supporting_cast' -> 'value')
+  (select jsonb_typeof(options -> 'supporting_cast' -> 'grade')
      from qb_season_builder.state((select v from tests.fx where k = 'h'))),
   'null',
   'nor does the Supporting Cast'
@@ -50,9 +50,9 @@ select ok(
 select is(
   (select picks from qb_season_builder.pick((select v from tests.fx where k = 'h'), 'accuracy', 'WentCa00')),
   '[{"round": 1, "slot": "accuracy", "franchise_code": "phi", "season": 2017,
-     "player_id": "WentCa00", "display_name": "Carson Wentz", "value": null,
+     "player_id": "WentCa00", "display_name": "Carson Wentz", "grade": null,
      "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66"}]'::jsonb,
-  'a hidden pick records what was taken from whom but not what it was worth'
+  'a hidden pick records what was taken from whom but not the grade it earned'
 );
 
 -- A whole hidden run, all six slots filled: still nothing, until it is complete.
@@ -62,9 +62,9 @@ select tests.qsb_fill((select v from tests.fx where k = 'h6'), 6);
 select is(
   (select count(*)::int from qb_season_builder.state((select v from tests.fx where k = 'h6')) b,
           jsonb_array_elements(b.picks) p
-    where jsonb_typeof(p -> 'value') = 'null'),
+    where jsonb_typeof(p -> 'grade') = 'null'),
   6,
-  'with every slot filled, a hidden run has still revealed none of its six values'
+  'with every slot filled, a hidden run has still revealed none of its six grades'
 );
 
 -- The run completes: the platform marks the match complete, and the values of
@@ -76,19 +76,19 @@ select private.finish_match(
 );
 select tests.act_as((select v from tests.fx where k = 'a'));
 select is(
-  (select jsonb_path_query_array(picks, '$[*].value')
+  (select jsonb_path_query_array(picks, '$[*].grade')
      from qb_season_builder.state((select v from tests.fx where k = 'h6'))),
-  '[87, 90, 79, 83, 86, 69]'::jsonb,
-  'once the run is complete a hidden run''s values are revealed'
+  '["A-", "A", "B", "B+", "A-", "C"]'::jsonb,
+  'once the run is complete a hidden run''s grades are revealed'
 );
 
 insert into tests.fx (k, v)
 select 'hg', tests.qsb_start((select v from tests.fx where k = 'guest'), 'hidden', true);
 select is(
-  (select jsonb_typeof(options -> 'supporting_cast' -> 'value')
+  (select jsonb_typeof(options -> 'supporting_cast' -> 'grade')
      from qb_season_builder.state((select v from tests.fx where k = 'hg'))),
   'null',
-  'a guest''s hidden run hides its values the same way'
+  'a guest''s hidden run hides its grades the same way'
 );
 
 -- ------------------------------------------------------- a client cannot tamper --

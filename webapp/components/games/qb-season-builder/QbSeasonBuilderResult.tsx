@@ -13,6 +13,7 @@ import {
   QUALITIES,
   SLOT_LABELS,
   type DraftPick,
+  type Grade,
   type Quarterback,
   type ShownSpin,
   type Slot,
@@ -43,8 +44,8 @@ const oneDecimal = (value: number) => value.toFixed(1);
  * reveal that has been watched through, or skipped, does not play again on a
  * reload of the same run in this browser.
  *
- * Everything shown is the API's blended values. `shown`, the values of every
- * option the player was dealt, is the player's alone and only meaningful for a
+ * Everything shown is a grade; the API never sends the values behind them.
+ * `shown`, the grades of every option the player was dealt, is the player's alone and only meaningful for a
  * hidden run: a visible run had them on screen all along, and a stranger's
  * link does not carry them. `personalBest` is the viewer's own, for this run's
  * mode; a guest is shown the nudge to make an account instead.
@@ -76,7 +77,7 @@ export function QbSeasonBuilderResult({
           <PageHeader
             eyebrow="Solo challenge"
             title="QB Season Builder"
-            description={`Ratings ${result.mode}`}
+            description={`Grades ${result.mode}`}
           />
 
           <div className="mt-5 w-full max-w-[760px]">
@@ -242,7 +243,7 @@ function DealtPlayers({ shown, picks }: { shown: ShownSpin[]; picks: DraftPick[]
                   quarterback={quarterback}
                   season={spin.season}
                   franchiseCode={spin.franchiseCode}
-                  supportingCast={spin.supportingCast}
+                  supportingCastGrade={spin.supportingCastGrade}
                   respun={respun}
                   pickedSlot={
                     picked?.playerId === quarterback.playerId || picked?.slot === "supporting_cast"
@@ -263,20 +264,20 @@ function DealtPlayer({
   quarterback,
   season,
   franchiseCode,
-  supportingCast,
+  supportingCastGrade,
   respun,
   pickedSlot,
 }: {
   quarterback: Quarterback;
   season: number;
   franchiseCode: string;
-  supportingCast: number | null;
+  supportingCastGrade: Grade | null;
   respun: boolean;
   pickedSlot: Slot | null;
 }) {
   const status = respun ? " · Respun" : pickedSlot ? "" : " · Not picked";
   const muted = respun || !pickedSlot;
-  const values = quarterback.values;
+  const grades = quarterback.grades;
   return (
     <button type="button" className="group relative block rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel" aria-label={`${quarterback.displayName}${status}`}>
       <PlayerPortrait
@@ -287,16 +288,16 @@ function DealtPlayer({
       <span className="pointer-events-none absolute top-full left-1/2 z-20 mt-2 w-56 -translate-x-1/2 bg-panel p-3 text-left text-panel-fg opacity-0 shadow-card transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
         <span className="block font-slab text-base uppercase">{quarterback.displayName}</span>
         <span className="mt-0.5 block font-mono text-[10px] tracking-[0.1em] text-panel-muted uppercase">{season} {franchiseName(franchiseCode)}{status}</span>
-        {values ? (
+        {grades ? (
           <span className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-panel-muted pt-2">
             {QUALITIES.map((quality) => (
               <span key={quality} className="flex items-baseline justify-between gap-2 font-mono text-[10px] tracking-[0.08em] uppercase">
-                {SLOT_LABELS[quality]} <strong className={`font-slab text-base leading-none tabular-nums ${pickedSlot === quality ? "bg-panel-fg px-1 text-panel" : ""}`}>{values[quality]}</strong>
+                {SLOT_LABELS[quality]} <strong className={`font-slab text-base leading-none ${pickedSlot === quality ? "bg-panel-fg px-1 text-panel" : ""}`}>{grades[quality]}</strong>
               </span>
             ))}
-            {supportingCast !== null ? (
+            {supportingCastGrade !== null ? (
               <span className="flex items-baseline justify-between gap-2 font-mono text-[10px] tracking-[0.08em] uppercase">
-                Supporting Cast <strong className={`font-slab text-base leading-none tabular-nums ${pickedSlot === "supporting_cast" ? "bg-panel-fg px-1 text-panel" : ""}`}>{supportingCast}</strong>
+                Supporting Cast <strong className={`font-slab text-base leading-none ${pickedSlot === "supporting_cast" ? "bg-panel-fg px-1 text-panel" : ""}`}>{supportingCastGrade}</strong>
               </span>
             ) : null}
           </span>

@@ -8,7 +8,7 @@ import { SearchQueryProvider } from "@/components/home/search-context";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
-import { canAnswerPrompt, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { canAnswerPrompt, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPromptFeed } from "@/lib/foundation/content/prompts/feed";
 import { fetchGameContexts } from "@/lib/foundation/content/nfl/schedule";
 
@@ -49,9 +49,7 @@ export default async function Home(props: PageProps<"/">) {
     })),
   ]);
 
-  const displayName = profileResult.data?.display_name ?? (viewer ? (claims!.email as string) : null);
-  const email = viewer ? ((claims!.email as string | undefined) ?? null) : null;
-  const avatarUrl = profileResult.data?.avatar_url ?? null;
+  const { displayName, email, avatarUrl } = chromeIdentity(claims, profileResult.data);
 
   const { error, q } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
@@ -63,7 +61,7 @@ export default async function Home(props: PageProps<"/">) {
 
   return (
     <SearchQueryProvider initialQuery={query}>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
       <main data-home-main className="app-page flex-1">

@@ -13,8 +13,8 @@ import { resultFromJson, type SeasonResult } from "@/lib/games/qb-season-builder
  * jsdom on purpose: what is asserted is behaviour the screen decides — which
  * stage is up, what skipping does, what a reload does, what each kind of viewer
  * is shown. How it looks is out of reach here and is not faked with class
- * assertions. The numbers are the API's blended values, passed in as fixtures;
- * nothing here knows how a season is generated.
+ * assertions. The grades are the API's, passed in as fixtures; nothing here
+ * knows how a grade is earned or how a season is generated.
  *
  * That no source rating ever reaches a client is the API's half, asserted in
  * supabase/tests/0127_qb_season_builder_finish.test.sql; the screen's half is
@@ -47,12 +47,12 @@ function resultRow(over: Record<string, unknown> = {}) {
       { component: "awards", weight: 20, percentile: 0.97, points: 19.4 },
     ],
     picks: [
-      { round: 1, slot: "accuracy", franchise_code: "den", season: 2013, ...PEYTON, value: 91 },
-      { round: 2, slot: "arm_talent", franchise_code: "kan", season: 2018, ...MAHOMES, value: 97 },
-      { round: 3, slot: "mobility", franchise_code: "nwe", season: 2007, ...BRADY, value: 41 },
-      { round: 4, slot: "iq", franchise_code: "den", season: 2013, ...PEYTON, value: 96 },
-      { round: 5, slot: "build", franchise_code: "kan", season: 2018, ...MAHOMES, value: 84 },
-      { round: 6, slot: "supporting_cast", franchise_code: "nwe", season: 2007, player_id: null, display_name: null, value: 93 },
+      { round: 1, slot: "accuracy", franchise_code: "den", season: 2013, ...PEYTON, grade: "A" },
+      { round: 2, slot: "arm_talent", franchise_code: "kan", season: 2018, ...MAHOMES, grade: "A+" },
+      { round: 3, slot: "mobility", franchise_code: "nwe", season: 2007, ...BRADY, grade: "F" },
+      { round: 4, slot: "iq", franchise_code: "den", season: 2013, ...PEYTON, grade: "A+" },
+      { round: 5, slot: "build", franchise_code: "kan", season: 2018, ...MAHOMES, grade: "B+" },
+      { round: 6, slot: "supporting_cast", franchise_code: "nwe", season: 2007, player_id: null, display_name: null, grade: "A" },
     ],
     ...over,
   };
@@ -64,10 +64,11 @@ function resultOf(over: Record<string, unknown> = {}): SeasonResult {
   return parsed;
 }
 
-/** The five qualities of a quarterback, revealed. */
-const qualities = (seed: number) => ({
-  accuracy: seed + 1, arm_talent: seed + 2, mobility: seed + 3, iq: seed + 4, build: seed + 5,
-});
+/** The five graded qualities of a quarterback, revealed; every grade distinct so a test can find one. */
+const qualities = (tier: "high" | "low") =>
+  tier === "high"
+    ? ({ accuracy: "B+", arm_talent: "B", mobility: "B-", iq: "C+", build: "C" } as const)
+    : ({ accuracy: "C-", arm_talent: "D+", mobility: "D", iq: "D-", build: "F" } as const);
 
 /**
  * The reveal a hidden run gets back in `state`: every spin the player saw, the
@@ -81,16 +82,16 @@ function shownOf(): ShownSpin[] {
       // Round 1's first spin, thrown away by the respin.
       {
         round: 1, attempt: 1, franchise_code: "sea", season: 2010,
-        options: { quarterbacks: [{ player_id: "00-0000001", display_name: "Matt Hasselbeck", values: qualities(50) }], supporting_cast: { value: 55 } },
+        options: { quarterbacks: [{ player_id: "00-0000001", display_name: "Matt Hasselbeck", grades: qualities("low") }], supporting_cast: { grade: "D+" } },
       },
       // Round 1 as dealt after the respin: Peyton's accuracy was taken, his arm passed on.
       {
         round: 1, attempt: 2, franchise_code: "den", season: 2013,
-        options: { quarterbacks: [{ ...PEYTON, values: qualities(80) }], supporting_cast: { value: 71 } },
+        options: { quarterbacks: [{ ...PEYTON, grades: qualities("high") }], supporting_cast: { grade: "A-" } },
       },
       {
         round: 6, attempt: 1, franchise_code: "nwe", season: 2007,
-        options: { quarterbacks: [{ ...BRADY, values: qualities(60) }], supporting_cast: { value: 93 } },
+        options: { quarterbacks: [{ ...BRADY, grades: qualities("low") }], supporting_cast: { grade: "A" } },
       },
     ],
   };
@@ -283,12 +284,12 @@ describe("QbSeasonBuilderResult — the final state", () => {
 });
 
 describe("QbSeasonBuilderResult — hidden mode", () => {
-  it("keeps every dealt player available, mutes respins and passed-over players, and exposes their ratings on hover", async () => {
+  it("keeps every dealt player available, mutes respins and passed-over players, and exposes their grades on hover", async () => {
     const user = userEvent.setup();
     const shown = shownOf();
     // Peyton's accuracy is the kept round-one pick. Mahomes was dealt beside
     // him but was not selected, so the roster should visually distinguish it.
-    shown[1].quarterbacks.push({ playerId: MAHOMES.player_id, displayName: MAHOMES.display_name, headshotUrl: null, values: qualities(60) });
+    shown[1].quarterbacks.push({ playerId: MAHOMES.player_id, displayName: MAHOMES.display_name, headshotUrl: null, grades: qualities("low") });
     renderResult({ result: resultOf({ mode: "hidden" }), shown });
 
     const dealt = screen.getByRole("list", { name: "Players dealt" });
@@ -300,17 +301,17 @@ describe("QbSeasonBuilderResult — hidden mode", () => {
 
     const peyton = within(dealt).getByRole("button", { name: "Peyton Manning" });
     await user.hover(peyton);
-    expect(within(peyton).getByText("81")).toHaveClass("bg-panel-fg");
+    expect(within(peyton).getByText("B+")).toHaveClass("bg-panel-fg");
     expect(within(peyton).getByText("Arm Talent")).toBeInTheDocument();
-    expect(within(peyton).getByText("82")).toBeInTheDocument();
+    expect(within(peyton).getByText("B")).toBeInTheDocument();
     expect(within(peyton).getByText("Supporting Cast")).toBeInTheDocument();
-    expect(within(peyton).getByText("71")).toBeInTheDocument();
+    expect(within(peyton).getByText("A-")).toBeInTheDocument();
   });
 
   it("says which mode the run was in", () => {
     renderResult({ result: resultOf({ mode: "hidden" }) });
 
-    expect(screen.getByText(/ratings hidden/i)).toBeInTheDocument();
+    expect(screen.getByText(/grades hidden/i)).toBeInTheDocument();
   });
 });
 
@@ -332,7 +333,7 @@ describe("QbSeasonBuilderResult — read-only", () => {
     expect(within(panel).getByRole("link", { name: /back to solo games/i })).toHaveAttribute("href", "/solo");
   });
 
-  it("starts a new season in the result's ratings mode", async () => {
+  it("starts a new season in the result's grades mode", async () => {
     const user = userEvent.setup();
     renderResult({ result: resultOf({ mode: "hidden" }) });
 
@@ -376,7 +377,7 @@ describe("QbSeasonBuilderResult — who is looking", () => {
   it("nudges a guest to make an account, and shows them no personal best", () => {
     renderResult({ isGuest: true, personalBest: 91.5 });
 
-    expect(screen.getByText(/keep your runs/i)).toBeInTheDocument();
+    expect(screen.getByText(/playing as a guest/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /create an account/i })).toHaveAttribute("href", "/settings");
     expect(screen.queryByText(/personal best/i)).not.toBeInTheDocument();
   });
@@ -384,7 +385,7 @@ describe("QbSeasonBuilderResult — who is looking", () => {
   it("does not nudge a signed-in player", () => {
     renderResult({ isGuest: false, personalBest: 70 });
 
-    expect(screen.queryByText(/keep your runs/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/playing as a guest/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /create an account/i })).not.toBeInTheDocument();
   });
 });

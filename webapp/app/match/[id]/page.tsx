@@ -16,7 +16,7 @@ import { boardFromRow } from "@/lib/games/qb-season-builder/board";
 import { fetchPersonalBest, fetchResult } from "@/lib/games/qb-season-builder/read";
 import { playSolo } from "@/lib/platform/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
-import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { chromeIdentity, isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 
 /**
  * The match screen.
@@ -50,9 +50,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     .select("display_name, avatar_url")
     .eq("id", claims.sub)
     .single();
-  const displayName = viewer?.display_name ?? (claims.email as string | undefined) ?? null;
-  const email = (claims.email as string | undefined) ?? null;
-  const avatarUrl = viewer?.avatar_url ?? null;
+  const { displayName, email, avatarUrl } = chromeIdentity(claims, viewer);
 
   // RLS returns nothing for a match you are not in, so "no row" is a normal
   // state here rather than a failure.
@@ -395,10 +393,7 @@ function Shell({
 }) {
   return (
     <>
-      {/* Every Shell call in this file only runs once MatchPage's own
-          isSignedInViewer(claims) guard has passed, so canPlaySolo is always
-          true here — the same viewer floor playSolo itself checks. */}
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-6 py-14">
         {children}
       </main>
@@ -422,7 +417,7 @@ function SoloMatchShell({
 }) {
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
       {children}
     </>

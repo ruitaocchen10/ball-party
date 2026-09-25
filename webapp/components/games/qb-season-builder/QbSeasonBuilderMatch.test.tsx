@@ -41,11 +41,12 @@ const MATCH = "22222222-2222-2222-2222-222222222222";
 const PEYTON = { player_id: "00-0010346", display_name: "Peyton Manning", headshot_url: "https://example.test/peyton.png" };
 const BRADY = { player_id: "00-0019596", display_name: "Tom Brady" };
 
-/** The five qualities of a quarterback, or null the way a hidden run sends them. */
-function values(seed: number, revealed: boolean) {
-  return revealed
-    ? { accuracy: seed + 1, arm_talent: seed + 2, mobility: seed + 3, iq: seed + 4, build: seed + 5 }
-    : null;
+/** The grades of a quarterback's five qualities, or null the way a hidden run sends them. */
+function grades(revealed: boolean, tier: "high" | "low" = "high") {
+  if (!revealed) return null;
+  return tier === "high"
+    ? { accuracy: "B+", arm_talent: "B", mobility: "B-", iq: "C+", build: "C" }
+    : { accuracy: "C", arm_talent: "C-", mobility: "D+", iq: "D", build: "D-" };
 }
 
 /**
@@ -65,8 +66,8 @@ function row(over: Partial<BoardRow> & { revealed?: boolean } = {}): BoardRow {
     franchise_code: "den",
     season: 2013,
     options: {
-      quarterbacks: [{ ...PEYTON, values: values(80, revealed) }],
-      supporting_cast: { value: revealed ? 71 : null },
+      quarterbacks: [{ ...PEYTON, grades: grades(revealed) }],
+      supporting_cast: { grade: revealed ? "C+" : null },
     },
     picks: [],
     shown: null,
@@ -115,11 +116,11 @@ function roundTwo(over: Partial<BoardRow> = {}): BoardRow {
     franchise_code: "kan",
     season: 2018,
     options: {
-      quarterbacks: [{ ...MAHOMES, values: values(90, true) }],
-      supporting_cast: { value: 84 },
+      quarterbacks: [{ ...MAHOMES, grades: grades(true) }],
+      supporting_cast: { grade: "B+" },
     },
     picks: [
-      { round: 1, slot: "accuracy", franchise_code: "den", season: 2013, ...PEYTON, value: 81 },
+      { round: 1, slot: "accuracy", franchise_code: "den", season: 2013, ...PEYTON, grade: "B+" },
     ],
     ...over,
   });
@@ -164,7 +165,7 @@ describe("QbSeasonBuilderMatch — picking", () => {
   it("takes the Supporting Cast with no quarterback named", async () => {
     const user = userEvent.setup();
     const { supabase } = renderScreen(boardOf());
-    answer(supabase, { pick: roundTwo({ picks: [{ round: 1, slot: "supporting_cast", franchise_code: "den", season: 2013, player_id: null, display_name: null, value: 71 }] }) });
+    answer(supabase, { pick: roundTwo({ picks: [{ round: 1, slot: "supporting_cast", franchise_code: "den", season: 2013, player_id: null, display_name: null, grade: "C+" }] }) });
 
     await user.click(screen.getByRole("radio", { name: /supporting cast/i }));
     expect(screen.getByText(/taking supporting cast/i)).toBeInTheDocument();
@@ -176,7 +177,7 @@ describe("QbSeasonBuilderMatch — picking", () => {
   it("does not offer a slot that is already filled, and says so rather than leaving it a plain disabled radio", () => {
     renderScreen(boardOf({
       current_round: 2,
-      picks: [{ round: 1, slot: "accuracy", franchise_code: "kan", season: 2018, ...MAHOMES, value: 90 }],
+      picks: [{ round: 1, slot: "accuracy", franchise_code: "kan", season: 2018, ...MAHOMES, grade: "A" }],
     }));
 
     expect(screen.getByRole("radio", { name: /accuracy/i })).toBeDisabled();
@@ -207,7 +208,7 @@ describe("QbSeasonBuilderMatch — the respin", () => {
   it("rerolls the whole spin through the game API and shows the respin as spent", async () => {
     const user = userEvent.setup();
     const { supabase } = renderScreen(boardOf());
-    answer(supabase, { respin: row({ respin_used: true, franchise_code: "kan", season: 2018, options: { quarterbacks: [{ ...MAHOMES, values: values(90, true) }], supporting_cast: { value: 84 } } }) });
+    answer(supabase, { respin: row({ respin_used: true, franchise_code: "kan", season: 2018, options: { quarterbacks: [{ ...MAHOMES, grades: grades(true) }], supporting_cast: { grade: "B+" } } }) });
 
     const respin = screen.getByRole("button", { name: /respin/i });
     expect(respin).toBeEnabled();
@@ -228,7 +229,7 @@ describe("QbSeasonBuilderMatch — the respin", () => {
   it("clears a chosen option when the spin it belonged to is thrown away", async () => {
     const user = userEvent.setup();
     const { supabase } = renderScreen(boardOf());
-    answer(supabase, { respin: row({ respin_used: true, franchise_code: "kan", season: 2018, options: { quarterbacks: [{ ...MAHOMES, values: values(90, true) }], supporting_cast: { value: 84 } } }) });
+    answer(supabase, { respin: row({ respin_used: true, franchise_code: "kan", season: 2018, options: { quarterbacks: [{ ...MAHOMES, grades: grades(true) }], supporting_cast: { grade: "B+" } } }) });
 
     await user.click(screen.getByRole("radio", { name: /supporting cast/i }));
     await user.click(screen.getByRole("button", { name: /respin/i }));
@@ -295,29 +296,29 @@ describe("QbSeasonBuilderMatch — a guest", () => {
   it("is nudged to make an account to keep their runs", () => {
     renderScreen(boardOf(), { isGuest: true });
 
-    expect(screen.getByText(/keep your runs/i)).toBeInTheDocument();
+    expect(screen.getByText(/playing as a guest/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /create an account/i })).toHaveAttribute("href", "/settings");
   });
 
   it("is not nudged when signed in to an account", () => {
     renderScreen(boardOf(), { isGuest: false });
 
-    expect(screen.queryByText(/keep your runs/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/playing as a guest/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /create an account/i })).not.toBeInTheDocument();
   });
 });
 
 describe("QbSeasonBuilderMatch — all six slots filled", () => {
   const full = [
-    ["accuracy", PEYTON, 81],
-    ["arm_talent", MAHOMES, 92],
-    ["mobility", BRADY, 60],
-    ["iq", PEYTON, 84],
-    ["build", MAHOMES, 95],
+    ["accuracy", PEYTON, "B+"],
+    ["arm_talent", MAHOMES, "A"],
+    ["mobility", BRADY, "C-"],
+    ["iq", PEYTON, "B+"],
+    ["build", MAHOMES, "A+"],
   ] as const;
 
-  const fivePicks = full.map(([slot, who, value], index) => ({
-    round: index + 1, slot, franchise_code: "den", season: 2013, ...who, value,
+  const fivePicks = full.map(([slot, who, grade], index) => ({
+    round: index + 1, slot, franchise_code: "den", season: 2013, ...who, grade,
   }));
 
   function finished(phase: "ready_to_finish" | "complete") {
@@ -329,7 +330,7 @@ describe("QbSeasonBuilderMatch — all six slots filled", () => {
       options: null,
       picks: [
         ...fivePicks,
-        { round: 6, slot: "supporting_cast", franchise_code: "nwe", season: 2007, player_id: null, display_name: null, value: 88 },
+        { round: 6, slot: "supporting_cast", franchise_code: "nwe", season: 2007, player_id: null, display_name: null, grade: "A-" },
       ],
     });
   }
@@ -357,7 +358,7 @@ describe("QbSeasonBuilderMatch — all six slots filled", () => {
       options: null,
       picks: [
         ...fivePicks,
-        { round: 6, slot: "supporting_cast", franchise_code: "nwe", season: 2007, player_id: null, display_name: null, value: 88 },
+        { round: 6, slot: "supporting_cast", franchise_code: "nwe", season: 2007, player_id: null, display_name: null, grade: "A-" },
       ],
     };
   }
@@ -463,10 +464,10 @@ describe("QbSeasonBuilderMatch — the spin", () => {
       current_round: 2,
       options: {
         quarterbacks: [
-          { ...PEYTON, values: values(80, true) },
-          { ...BRADY, values: values(70, true) },
+          { ...PEYTON, grades: grades(true) },
+          { ...BRADY, grades: grades(true, "low") },
         ],
-        supporting_cast: { value: 71 },
+        supporting_cast: { grade: "C+" },
       },
     }));
 
@@ -483,10 +484,10 @@ describe("QbSeasonBuilderMatch — the spin", () => {
     renderScreen(boardOf({
       options: {
         quarterbacks: [
-          { ...PEYTON, values: values(80, true) },
-          { ...BRADY, values: values(70, true) },
+          { ...PEYTON, grades: grades(true) },
+          { ...BRADY, grades: grades(true, "low") },
         ],
-        supporting_cast: { value: 71 },
+        supporting_cast: { grade: "C+" },
       },
     }));
 
@@ -509,8 +510,8 @@ describe("QbSeasonBuilderMatch — the spin", () => {
     renderScreen(boardOf({
       current_round: 3,
       picks: [
-        { round: 1, slot: "accuracy", franchise_code: "kan", season: 2018, player_id: "00-0033873", display_name: "Patrick Mahomes", value: 90 },
-        { round: 2, slot: "supporting_cast", franchise_code: "nwe", season: 2007, player_id: null, display_name: null, value: 88 },
+        { round: 1, slot: "accuracy", franchise_code: "kan", season: 2018, player_id: "00-0033873", display_name: "Patrick Mahomes", grade: "A" },
+        { round: 2, slot: "supporting_cast", franchise_code: "nwe", season: 2007, player_id: null, display_name: null, grade: "A-" },
       ],
     }));
 
@@ -524,7 +525,7 @@ describe("QbSeasonBuilderMatch — the spin", () => {
   it("shows a picked quarterback's portrait beside their build source", () => {
     renderScreen(boardOf({
       current_round: 2,
-      picks: [{ round: 1, slot: "accuracy", franchise_code: "den", season: 2013, ...PEYTON, value: 81 }],
+      picks: [{ round: 1, slot: "accuracy", franchise_code: "den", season: 2013, ...PEYTON, grade: "B+" }],
     }));
 
     const accuracy = within(screen.getByRole("list", { name: "Your build" })).getAllByRole("listitem")[0];
@@ -533,36 +534,43 @@ describe("QbSeasonBuilderMatch — the spin", () => {
 });
 
 describe("QbSeasonBuilderMatch — modes", () => {
-  it("shows 0-99 values beside the options in a visible run", () => {
+  // A standalone letter grade, so "Accuracy" and "Talent" do not count.
+  const GRADE = /(?<![A-Za-z])[A-DF][+-]?(?![A-Za-z])/;
+
+  it("shows a letter grade, never a number, beside the options in a visible run", () => {
     renderScreen(boardOf());
 
-    expect(screen.getByRole("radio", { name: /accuracy/i }).closest("label")).toHaveTextContent("81");
-    expect(screen.getByRole("radio", { name: /supporting cast/i }).closest("label")).toHaveTextContent("71");
-    expect(screen.getByText(/ratings visible/i)).toBeInTheDocument();
-  });
-
-  it("shows no value anywhere on an option in a hidden run", () => {
-    renderScreen(boardOf({ revealed: false }));
-
+    const accuracy = screen.getByRole("radio", { name: /accuracy/i }).closest("label");
+    const cast = screen.getByRole("radio", { name: /supporting cast/i }).closest("label");
+    expect(accuracy).toHaveTextContent("B+");
+    expect(cast).toHaveTextContent("C+");
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.closest("label")).not.toHaveTextContent(/\d/);
     }
-    expect(screen.getByText(/ratings hidden/i)).toBeInTheDocument();
+    expect(screen.getByText(/grades visible/i)).toBeInTheDocument();
   });
 
-  it("gives a hidden run's picks no value either", () => {
+  it("shows no grade anywhere on an option in a hidden run", () => {
+    renderScreen(boardOf({ revealed: false }));
+
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio.closest("label")).not.toHaveTextContent(GRADE);
+    }
+    expect(screen.getByText(/grades hidden/i)).toBeInTheDocument();
+  });
+
+  it("gives a hidden run's picks no grade either", () => {
     renderScreen(boardOf({
       revealed: false,
       current_round: 2,
       picks: [
-        { round: 1, slot: "mobility", franchise_code: "bal", season: 2019, player_id: "00-0034796", display_name: "Lamar Jackson", value: null },
+        { round: 1, slot: "mobility", franchise_code: "bal", season: 2019, player_id: "00-0034796", display_name: "Lamar Jackson", grade: null },
       ],
     }));
 
     const slots = within(screen.getByRole("list", { name: "Your build" })).getAllByRole("listitem");
     expect(within(slots[2]).getByText("Lamar Jackson")).toBeInTheDocument();
-    // A season is four digits and may show; a rating is one or two and may not.
-    expect(slots[2]).not.toHaveTextContent(/(?<!\d)\d{1,2}(?!\d)/);
+    expect(slots[2]).not.toHaveTextContent(GRADE);
   });
 
   it("has no control that changes the mode mid-run", () => {

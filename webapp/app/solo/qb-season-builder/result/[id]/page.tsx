@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { QbSeasonBuilderResult } from "@/components/games/qb-season-builder/QbSeasonBuilderResult";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
-import { isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { chromeIdentity, isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPersonalBest, fetchResult } from "@/lib/games/qb-season-builder/read";
 import { shareCardFromResult } from "@/lib/games/qb-season-builder/share-card";
 import { playSolo } from "@/lib/platform/lobbies/actions";
@@ -56,13 +56,11 @@ export default async function QbSeasonResultPage(props: PageProps<"/solo/qb-seas
       : Promise.resolve({ data: null }),
     fetchPersonalBest(supabase, claims, result.mode),
   ]);
-  const displayName = profileResult.data?.display_name ?? (viewer ? (claims.email as string | undefined) ?? null : null);
-  const email = viewer ? ((claims.email as string | undefined) ?? null) : null;
-  const avatarUrl = profileResult.data?.avatar_url ?? null;
+  const { displayName, email, avatarUrl } = chromeIdentity(claims, profileResult.data);
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <QbSeasonBuilderResult
         result={result}

@@ -58,9 +58,9 @@ select 'real', tests.qsb_start((select v from tests.fx where k = 'a'), 'visible'
 
 select ok(
   (select jsonb_array_length(options -> 'quarterbacks') >= 1
-      and jsonb_typeof(options -> 'supporting_cast' -> 'value') = 'number'
+      and jsonb_typeof(options -> 'supporting_cast' -> 'grade') = 'string'
      from qb_season_builder.state((select v from tests.fx where k = 'real'))),
-  'a run started on the real data is dealt a spin with a quarterback and a cast value'
+  'a run started on the real data is dealt a spin with a quarterback and a cast grade'
 );
 
 do $$
@@ -85,10 +85,10 @@ select is(
   'and can be played through all six rounds on real spins'
 );
 select ok(
-  (select bool_and(jsonb_typeof(p -> 'value') = 'number')
+  (select bool_and(jsonb_typeof(p -> 'grade') = 'string')
      from qb_season_builder.state((select v from tests.fx where k = 'real')) b,
           jsonb_array_elements(b.picks) p),
-  'every pick carries the blended value it was worth'
+  'every pick carries the grade its blended value earned'
 );
 
 -- What a client was told, in either mode, names no source rating.
@@ -230,12 +230,12 @@ select tests.act_as_admin();
 select tests.qsb_set_spin((select v from tests.fx where k = 'over'), 1::smallint, 'phi', 2017::smallint);
 select tests.act_as((select v from tests.fx where k = 'a'));
 select is(
-  (select (q -> 'values' ->> 'mobility')::int
+  (select q -> 'grades' ->> 'mobility'
      from qb_season_builder.state((select v from tests.fx where k = 'over')) b,
           jsonb_array_elements(b.options -> 'quarterbacks') q
     where q ->> 'player_id' = 'FolsNi00'),
-  90,
-  'the game offers the overridden value'
+  'A',
+  'the game offers the overridden value, as a grade'
 );
 select tests.act_as_admin();
 
