@@ -35,7 +35,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <main className="app-page flex-1">
         <div className="mx-auto w-full max-w-[1080px]">
@@ -72,7 +72,7 @@ function SettingsCard({ title, children }: { title: string; children: React.Reac
 function GuestSettings() {
   return (
     <>
-      <Sidebar canPlaySolo />
+      <Sidebar />
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
       <main className="app-page flex-1">
         <section className="max-w-xl">

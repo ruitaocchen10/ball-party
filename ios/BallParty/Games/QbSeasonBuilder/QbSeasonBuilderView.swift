@@ -100,7 +100,7 @@ private struct QbPickView: View {
                     }
                     if revealed {
                         ForEach(deal.spin.quarterbacks) { quarterback in
-                            QbQuarterbackCard(viewModel: viewModel, quarterback: quarterback, supportingCast: deal.spin.supportingCast)
+                            QbQuarterbackCard(viewModel: viewModel, quarterback: quarterback, supportingCastGrade: deal.spin.supportingCastGrade)
                         }
                     } else {
                         Text("Finding this team's quarterback options…")
@@ -132,7 +132,7 @@ private struct QbPickView: View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(viewModel.roundLabel).monoLabel(11, weight: .semibold, tracking: 0.15)
-                Text("Ratings \(viewModel.mode.rawValue)").monoLabel(11, tracking: 0.13)
+                Text("Grades \(viewModel.mode.rawValue)").monoLabel(11, tracking: 0.13)
             }
             Spacer()
             respin
@@ -239,7 +239,7 @@ struct FranchiseLogo: View {
 }
 
 /// The six slots, compacted into a single always-visible strip under the spin
-/// header — short code over value, a dash while a slot is still open. Reading
+/// header — short code over grade, a dash while a slot is still open. Reading
 /// the whole board no longer needs a separate card below the quarterbacks.
 private struct QbBuildTrack: View {
     let board: QbBoard
@@ -250,16 +250,15 @@ private struct QbBuildTrack: View {
                 let pick = board.pick(for: slot)
                 VStack(spacing: 3) {
                     Text(slot.shortLabel).monoLabel(9, weight: .bold, tracking: 0.05)
-                    Text(pick?.value.map(QbRating.format) ?? "–")
+                    Text(pick?.grade?.label ?? "–")
                         .slabTitle(16, color: pick == nil ? Theme.fgMuted : Theme.fg)
-                        .monospacedDigit()
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 7)
                 .background(pick != nil ? Theme.surfaceRaised : .clear)
                 .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(pick?.value.map { "\(slot.label): \(QbRating.format($0))" } ?? "\(slot.label): open")
+                .accessibilityLabel(pick?.grade.map { "\(slot.label): grade \($0.spoken)" } ?? "\(slot.label): open")
             }
         }
     }
@@ -272,7 +271,7 @@ private struct QbBuildTrack: View {
 private struct QbQuarterbackCard: View {
     @ObservedObject var viewModel: QbSeasonBuilderViewModel
     let quarterback: QbQuarterback
-    let supportingCast: Double?
+    let supportingCastGrade: QbGrade?
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 3)
 
@@ -291,7 +290,7 @@ private struct QbQuarterbackCard: View {
                 ForEach(QbSlot.qualities) { quality in
                     QbStatTile(
                         slot: quality,
-                        rating: quarterback.values?[quality],
+                        grade: quarterback.grades?[quality],
                         isTaken: viewModel.isTaken(quality),
                         isChosen: viewModel.isChosen(quality, playerId: quarterback.playerId),
                         isDisabled: viewModel.isBusy
@@ -301,7 +300,7 @@ private struct QbQuarterbackCard: View {
                 }
                 QbStatTile(
                     slot: .supportingCast,
-                    rating: supportingCast,
+                    grade: supportingCastGrade,
                     isTaken: viewModel.isTaken(.supportingCast),
                     isChosen: viewModel.isChosen(.supportingCast, playerId: nil),
                     isDisabled: viewModel.isBusy
@@ -327,7 +326,7 @@ private struct QbQuarterbackCard: View {
 /// waiting on a request, and says why it can't be chosen.
 private struct QbStatTile: View {
     let slot: QbSlot
-    let rating: Double?
+    let grade: QbGrade?
     let isTaken: Bool
     let isChosen: Bool
     let isDisabled: Bool
@@ -363,20 +362,19 @@ private struct QbStatTile: View {
     private var trailing: some View {
         if isTaken {
             Text("Taken").monoLabel(9, tracking: 0.05, color: active ? Theme.panelFg : Theme.fgMuted)
-        } else if let rating {
-            Text(QbRating.format(rating))
+        } else if let grade {
+            Text(grade.label)
                 .slabTitle(20, color: active ? Theme.panelFg : Theme.fg)
-                .monospacedDigit()
         } else {
-            Concealed(label: "Rating hidden", compact: true) { Color.clear }
+            Concealed(label: "Grade hidden", compact: true) { Color.clear }
                 .frame(width: 28, height: 13)
         }
     }
 
     private var accessibilityLabel: String {
         if isTaken { return "\(slot.label), already picked" }
-        guard let rating else { return "\(slot.label), rating hidden" }
-        return "\(slot.label), \(QbRating.format(rating))"
+        guard let grade else { return "\(slot.label), grade hidden" }
+        return "\(slot.label), \(grade.spoken)"
     }
 }
 
@@ -423,8 +421,8 @@ struct QbSlotRow: View {
                     Text(pick.displayName == nil ? String(pick.season) : "\(pick.season) \(QbFranchises.name(for: pick.franchiseCode))")
                         .monoLabel(10, tracking: 0.05)
                         .lineLimit(1)
-                    if let value = pick.value {
-                        Text(QbRating.format(value)).slabTitle(18).monospacedDigit()
+                    if let grade = pick.grade {
+                        Text(grade.label).slabTitle(18)
                     }
                 }
             } else {

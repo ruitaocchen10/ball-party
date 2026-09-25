@@ -23,9 +23,11 @@ import {
   boardFromRow,
   pickForSlot,
   type Board,
+  type Grade,
   type Slot,
   type Spin,
 } from "@/lib/games/qb-season-builder/board";
+import { GuestNudge } from "@/components/games/qb-season-builder/GuestNudge";
 import { qbErrorMessage } from "@/lib/games/qb-season-builder/messages";
 import { createClient } from "@/lib/supabase/client";
 
@@ -175,7 +177,7 @@ export function QbSeasonBuilderMatch({
           <PageHeader
             eyebrow="Solo challenge"
             title="QB Season Builder"
-            description={`Round ${board.currentRound} of ${board.roundCount} · Ratings ${board.mode} · Era ${board.era}`}
+            description={`Round ${board.currentRound} of ${board.roundCount} · Grades ${board.mode} · Era ${board.era}`}
           />
           {board.spin === null ? (
             <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
@@ -277,7 +279,7 @@ function SpinPanel({
                       key={quality}
                       icon={SLOT_ICONS[quality]}
                       label={SLOT_LABELS[quality]}
-                      rating={quarterback.values?.[quality] ?? null}
+                      grade={quarterback.grades?.[quality] ?? null}
                       taken={taken(quality)}
                       disabled={taken(quality) || pending}
                       checked={choice?.slot === quality && choice.playerId === quarterback.playerId}
@@ -289,7 +291,7 @@ function SpinPanel({
                   <OptionRow
                     icon={SLOT_ICONS.supporting_cast}
                     label={SLOT_LABELS.supporting_cast}
-                    rating={spin.supportingCast}
+                    grade={spin.supportingCastGrade}
                     name={`supporting-cast-${quarterback.playerId}`}
                     taken={taken("supporting_cast")}
                     disabled={taken("supporting_cast") || pending}
@@ -359,7 +361,7 @@ function TeamSpinIdentity({ code, name, season }: { code: string; name: string; 
 function OptionRow({
   icon: Icon,
   label,
-  rating,
+  grade,
   name = "option",
   taken = false,
   disabled,
@@ -368,7 +370,7 @@ function OptionRow({
 }: {
   icon: LucideIcon;
   label: string;
-  rating: number | null;
+  grade: Grade | null;
   name?: string;
   taken?: boolean;
   disabled: boolean;
@@ -393,10 +395,10 @@ function OptionRow({
       </span>
       {taken ? (
         <span className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Already picked</span>
-      ) : rating === null ? (
-        <Concealed label="Rating hidden" compact className="h-4 w-9" />
+      ) : grade === null ? (
+        <Concealed label="Grade hidden" compact className="h-4 w-9" />
       ) : (
-        <span className="font-slab text-xl leading-none tabular-nums">{rating}</span>
+        <span className="font-slab text-xl leading-none">{grade}</span>
       )}
     </label>
   );
@@ -460,13 +462,7 @@ function BuildCard({ board, isGuest }: { board: Board; isGuest: boolean }) {
         ))}
       </ol>
       {isGuest ? (
-        <p className="mt-4 border-t border-line pt-3 text-[13px] leading-5 text-fg-muted">
-          Playing as a guest.{" "}
-          <Link href="/settings" className="text-fg underline decoration-line underline-offset-4 hover:decoration-fg">
-            Create an account
-          </Link>{" "}
-          to keep your runs.
-        </p>
+        <GuestNudge className="mt-4 border-t border-line pt-3 text-[13px] leading-5 text-fg-muted" />
       ) : null}
     </section>
   );
@@ -488,10 +484,10 @@ function RunControlRail({
       <p className="mt-4 font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{board.currentRound} / {board.roundCount} rounds · mode: {board.mode} · era: {board.era}</p>
       {board.spin !== null ? (
         <div className="mt-4 border-t border-line pt-3">
-          <Button type="button" variant="ghost" disabled={board.respinUsed || pending} onClick={onRespin}>
+          <Button className="flex items-center justify-center" type="button" variant="ghost" disabled={board.respinUsed || pending} onClick={onRespin}>
             <span className="inline-flex items-center justify-center gap-2">
               <RefreshCw aria-hidden className="h-4 w-4" />
-              {board.respinUsed ? "Respin used" : "Respin team"}
+              <span className="font-slab-optical-center">{board.respinUsed ? "Respin used" : "Respin team"}</span>
             </span>
           </Button>
           <p className="mt-2 text-[12px] leading-4 text-fg-muted">One reroll per season.</p>
@@ -499,16 +495,16 @@ function RunControlRail({
       ) : null}
       <div className="mt-4 border-t border-line pt-3">
         {/* One click, no confirmation: abandons this run and deals a fresh
-         *  one immediately, in the same ratings mode and era this run is
+         *  one immediately, in the same grades mode and era this run is
          *  playing in. */}
         <form action={startNewSeason}>
           <input type="hidden" name="game" value="qb_season_builder" />
           <input type="hidden" name="mode" value={board.mode} />
           <input type="hidden" name="era" value={board.era} />
-          <Button type="submit" variant="ghost">
+          <Button className="flex items-center justify-center" type="submit" variant="ghost">
             <span className="inline-flex items-center justify-center gap-2">
               <Sparkles aria-hidden className="h-4 w-4" />
-              New season
+              <span className="font-slab-optical-center">New season</span>
             </span>
           </Button>
         </form>
@@ -532,7 +528,7 @@ function SlotRow({ slot, board }: { slot: Slot; board: Board }) {
             <span className="font-mono text-[10px] text-fg-muted">
               {pick.displayName ? `${pick.season} ${franchiseName(pick.franchiseCode)}` : pick.season}
             </span>
-            {pick.value !== null ? <span className="font-slab text-lg tabular-nums">{pick.value}</span> : null}
+            {pick.grade !== null ? <span className="font-slab text-lg">{pick.grade}</span> : null}
           </span>
         </span>
       ) : (

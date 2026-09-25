@@ -51,7 +51,7 @@ struct QbResultView: View {
         HStack(alignment: .firstTextBaseline) {
             Text("Season complete").eyebrow()
             Spacer()
-            Text("Ratings \(result.mode.rawValue)").monoLabel(11, tracking: 0.13)
+            Text("Grades \(result.mode.rawValue)").monoLabel(11, tracking: 0.13)
         }
     }
 
@@ -229,7 +229,7 @@ private struct BreakdownPanel: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         Spacer(minLength: 8)
-                        Text(QbRating.format(part.points)).slabTitle(22).monospacedDigit()
+                        Text(QbPoints.format(part.points)).slabTitle(22).monospacedDigit()
                     }
                     .padding(.vertical, 10)
                     .accessibilityElement(children: .combine)
@@ -278,7 +278,7 @@ private struct QbPlayersDealt: View {
                         .opacity(respun || !isPicked ? 0.45 : 1)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(quarterback.displayName).slabTitle(17).lineLimit(1)
-                        valueLine(quarterback: quarterback, cast: spin.spin.supportingCast, picked: isPicked || picked?.slot == .supportingCast ? picked?.slot : nil)
+                        valueLine(quarterback: quarterback, cast: spin.spin.supportingCastGrade, picked: isPicked || picked?.slot == .supportingCast ? picked?.slot : nil)
                     }
                 }
                 .accessibilityElement(children: .combine)
@@ -289,14 +289,14 @@ private struct QbPlayersDealt: View {
         .well()
     }
 
-    /// The values as one wrapping run, the one that was taken marked out.
-    private func valueLine(quarterback: QbQuarterback, cast: Double?, picked: QbSlot?) -> some View {
-        var entries: [(QbSlot, Double)] = QbSlot.qualities.compactMap { slot in
-            quarterback.values?[slot].map { (slot, $0) }
+    /// The grades as one wrapping run, the one that was taken marked out.
+    private func valueLine(quarterback: QbQuarterback, cast: QbGrade?, picked: QbSlot?) -> some View {
+        var entries: [(QbSlot, QbGrade)] = QbSlot.qualities.compactMap { slot in
+            quarterback.grades?[slot].map { (slot, $0) }
         }
         if let cast { entries.append((.supportingCast, cast)) }
-        return FlowText(entries: entries.map { slot, value in
-            FlowText.Entry(label: slot.label, value: QbRating.format(value), marked: picked == slot)
+        return FlowText(entries: entries.map { slot, grade in
+            FlowText.Entry(label: slot.label, value: grade.label, marked: picked == slot)
         })
     }
 }
@@ -314,14 +314,13 @@ private struct FlowText: View {
     let entries: [Entry]
 
     var body: some View {
-        // Two columns keeps every value lined up down the list.
+        // Two columns keeps every grade lined up down the list.
         LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)], spacing: 4) {
             ForEach(entries) { entry in
                 HStack(spacing: 6) {
                     Text(entry.label).monoLabel(9, tracking: 0.06)
                     Text(entry.value)
                         .font(.slab(15, relativeTo: .body))
-                        .monospacedDigit()
                         .foregroundStyle(entry.marked ? Theme.panelFg : Theme.fg)
                         .padding(.horizontal, entry.marked ? 4 : 0)
                         .background(entry.marked ? Theme.panel : .clear)

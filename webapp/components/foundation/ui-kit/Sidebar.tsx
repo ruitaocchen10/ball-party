@@ -21,7 +21,6 @@ import { FeedbackModal } from "@/components/feedback/FeedbackModal";
 import { BrandMark } from "@/components/foundation/ui-kit/BrandMark";
 import { GAMES, matchGameName, type Game } from "@/lib/platform/orchestration/catalog";
 import { playSolo } from "@/lib/platform/lobbies/actions";
-import { SOLO_SIGN_UP_HREF } from "@/lib/platform/lobbies/hosting";
 import { drawerBackdrop, drawerPanel } from "@/lib/foundation/ui-kit/motion";
 
 /** The solo-playable games — everything the Solo games section lists. QB
@@ -49,15 +48,10 @@ export function Sidebar({
   displayName,
   email = null,
   avatarUrl = null,
-  canPlaySolo = false,
 }: {
   displayName?: string | null;
   email?: string | null;
   avatarUrl?: string | null;
-  /** Whether the viewer can start a solo game from this rail right now —
-   *  guests included, the same floor `soloGames()`/`playSolo` use, just
-   *  evaluated per page since Sidebar has no session of its own to read. */
-  canPlaySolo?: boolean;
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -123,7 +117,7 @@ export function Sidebar({
           {SOLO_GAMES.length > 0 ? (
             <>
               <div className="ml-3 mr-8 my-3 border-t border-line" />
-              <SoloGamesNav collapsed={collapsed} canPlaySolo={canPlaySolo} />
+              <SoloGamesNav collapsed={collapsed} />
             </>
           ) : null}
 
@@ -144,7 +138,6 @@ export function Sidebar({
             displayName={displayName}
             email={email}
             avatarUrl={avatarUrl}
-            canPlaySolo={canPlaySolo}
             onClose={() => setDrawerOpen(false)}
             onOpenFeedback={() => {
               setDrawerOpen(false);
@@ -243,7 +236,7 @@ function NavList({ pathname, collapsed }: { pathname: string; collapsed: boolean
  * there. Shared between the desktop rail and the mobile drawer, same as
  * NavList, so the two can't drift.
  */
-function SoloGamesNav({ collapsed, canPlaySolo }: { collapsed: boolean; canPlaySolo: boolean }) {
+function SoloGamesNav({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="px-3 pr-8">
       <Link
@@ -256,7 +249,7 @@ function SoloGamesNav({ collapsed, canPlaySolo }: { collapsed: boolean; canPlayS
       </Link>
       <nav aria-label="Solo games" className="flex flex-col gap-1">
         {SOLO_GAMES.map((game) => (
-          <SoloGameLink key={game.slug} game={game} collapsed={collapsed} canPlaySolo={canPlaySolo} />
+          <SoloGameLink key={game.slug} game={game} collapsed={collapsed} />
         ))}
       </nav>
     </div>
@@ -269,35 +262,18 @@ const NAV_ITEM_CLASSES = (collapsed: boolean) =>
   }`;
 
 /**
- * One solo game's entry: a form that starts a fresh run via `playSolo` when
- * the viewer can play (a signed-in button beats a link nobody can act on
- * twice in a row the same way — each click deals a new match), or a sign-up
- * link when they can't. A game whose run is set up at start (`soloModes`) links
- * to the Solo games page instead, where that choice is made — one tap must not
- * skip it. Styled to match NavList's links exactly, since this reads as a
+ * One solo game's entry: a form that starts a fresh run via `playSolo` (a
+ * button beats a link nobody can act on twice in a row the same way — each
+ * click deals a new match). Anyone can start one: a visitor with no session is
+ * given a guest session by `playSolo` itself. A game whose run is set up at
+ * start (`soloModes`) links to the Solo games page instead, where that choice
+ * is made — one tap must not skip it. Styled to match NavList's links exactly, since this reads as a
  * continuation of the same nav rather than a distinct widget.
  */
-function SoloGameLink({
-  game,
-  collapsed,
-  canPlaySolo,
-}: {
-  game: Game;
-  collapsed: boolean;
-  canPlaySolo: boolean;
-}) {
+function SoloGameLink({ game, collapsed }: { game: Game; collapsed: boolean }) {
   // Card titles intentionally retain their editorial casing and line breaks.
   // Navigation needs a single, fully capitalized accessible label instead.
   const label = game.match ? matchGameName(game.match) : game.name.join(" ");
-
-  if (!canPlaySolo) {
-    return (
-      <Link href={SOLO_SIGN_UP_HREF} className={NAV_ITEM_CLASSES(collapsed)}>
-        <Play className="h-5 w-5 shrink-0" strokeWidth={1.5} />
-        <span className={collapsed ? "sr-only" : ""}>{label}</span>
-      </Link>
-    );
-  }
 
   if (game.soloModes) {
     return (
@@ -406,7 +382,6 @@ function MobileDrawer({
   displayName,
   email,
   avatarUrl,
-  canPlaySolo,
   onClose,
   onOpenFeedback,
 }: {
@@ -414,7 +389,6 @@ function MobileDrawer({
   displayName?: string | null;
   email?: string | null;
   avatarUrl?: string | null;
-  canPlaySolo: boolean;
   onClose: () => void;
   onOpenFeedback: () => void;
 }) {
@@ -475,7 +449,7 @@ function MobileDrawer({
           {SOLO_GAMES.length > 0 ? (
             <>
               <div className="ml-3 mr-8 my-3 border-t border-line" />
-              <SoloGamesNav collapsed={false} canPlaySolo={canPlaySolo} />
+              <SoloGamesNav collapsed={false} />
             </>
           ) : null}
         </div>

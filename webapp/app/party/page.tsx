@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { groupGames } from "@/lib/platform/orchestration/catalog";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
-import { canCreateLobby, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { canCreateLobby, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.
@@ -52,9 +52,7 @@ export default async function PartyPage(props: PageProps<"/party">) {
       ])
     : [{ data: null }, null];
 
-  const displayName = profileResult.data?.display_name ?? (viewer ? (claims!.email as string) : null);
-  const email = viewer ? ((claims!.email as string | undefined) ?? null) : null;
-  const avatarUrl = profileResult.data?.avatar_url ?? null;
+  const { displayName, email, avatarUrl } = chromeIdentity(claims, profileResult.data);
 
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
@@ -63,7 +61,7 @@ export default async function PartyPage(props: PageProps<"/party">) {
 
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
+      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
       <main className="app-page flex-1">

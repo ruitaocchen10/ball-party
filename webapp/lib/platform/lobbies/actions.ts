@@ -187,6 +187,9 @@ function submittedSoloGame(value: FormDataEntryValue | null): MatchGame | null {
  * and the game's own setup RPC deals into it exactly as it would for a group.
  * The format is whatever the card's settings sent, if anything; a start with
  * none takes the same defaults a host's unconfigured game would.
+ *
+ * No account needed: a visitor with no session is signed in anonymously first,
+ * and plays as a guest until the nightly cleanup removes their runs.
  */
 export async function playSolo(formData: FormData) {
   const game = submittedSoloGame(formData.get("game"));
@@ -205,8 +208,38 @@ export async function playSolo(formData: FormData) {
 
   const supabase = await createClient();
 
-  const { data: match, error } = await supabase.rpc("start_solo_run", { p_game: game });
-  if (error) redirect(withError("/solo", error));
+  // Nobody needs an account to play solo. A visitor with no session at all is
+  // given an anonymous one here, so the run has an owner the database can check
+  // (`auth.uid()`) and the same cookie carries them through the match. Only when
+  // there is none, so a click never mints a second guest for someone already in.
+  // A guest and their runs are swept nightly (migration 0155).
+  const startGuestSession = async () => {
+    const { error: guestError } = await supabase.auth.signInAnonymously();
+    if (guestError) {
+      redirect(`/solo?error=${encodeURIComponent("Couldn't start a guest session. Try again, or sign in.")}`);
+    }
+  };
+
+  const { data: session } = await supabase.auth.getClaims();
+  if (!isSignedInViewer(session?.claims)) await startGuestSession();
+
+  const startRun = () => supabase.rpc("start_solo_run", { p_game: game });
+  let started = await startRun();
+
+  // `getClaims()` only checks a token's signature and expiry, so a session whose
+  // user has since been deleted (a guest swept by the nightly cleanup, or a local
+  // database that was reset) still passes for the rest of the token's life and
+  // then fails here, on the run's foreign key to the user. That is never the
+  // player's mistake, and the session is unusable, so drop it and start over as
+  // a new guest — once, so a genuine constraint failure cannot loop.
+  if (started.error?.code === "23503") {
+    await supabase.auth.signOut({ scope: "local" });
+    await startGuestSession();
+    started = await startRun();
+  }
+
+  if (started.error) redirect(withError("/solo", started.error));
+  const match = started.data;
 
   // QB Season Builder's mode and era, and Higher or Lower's scoring and seasons,
   // are chosen here and locked for the run. Sent as submitted, and only when

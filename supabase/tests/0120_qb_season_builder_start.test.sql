@@ -165,11 +165,11 @@ select is(
   '{
     "quarterbacks": [
       {"player_id": "FolsNi00", "display_name": "Nick Foles", "headshot_url": null,
-       "values": {"accuracy": 78, "arm_talent": 74, "mobility": 45, "iq": 80, "build": 68}},
+       "grades": {"accuracy": "B", "arm_talent": "B-", "mobility": "D-", "iq": "B", "build": "C"}},
       {"player_id": "WentCa00", "display_name": "Carson Wentz", "headshot_url": "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/vuolixdvigc8axelug66",
-       "values": {"accuracy": 87, "arm_talent": 90, "mobility": 79, "iq": 83, "build": 86}}
+       "grades": {"accuracy": "A-", "arm_talent": "A", "mobility": "B", "iq": "B+", "build": "A-"}}
     ],
-    "supporting_cast": {"value": 69}
+    "supporting_cast": {"grade": "C"}
   }'::jsonb,
   'a spin offers each qualifying quarterback''s five qualities and the team''s Supporting Cast'
 );

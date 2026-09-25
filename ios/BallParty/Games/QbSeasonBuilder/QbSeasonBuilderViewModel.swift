@@ -103,7 +103,7 @@ final class QbSeasonBuilderViewModel: ObservableObject {
     }
 
     /// The players dealt in a hidden run, once it is over. A visible run had
-    /// every rating on screen all along, so it has nothing to reveal.
+    /// every grade on screen all along, so it has nothing to reveal.
     var dealtSpins: [QbShownSpin] {
         guard mode == .hidden else { return [] }
         return board?.shown ?? []

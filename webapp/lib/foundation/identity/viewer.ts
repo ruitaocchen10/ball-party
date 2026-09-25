@@ -22,6 +22,32 @@ export function canViewProfile(
   return isSignedInViewer(claims) && !isGuestViewer(claims);
 }
 
+/** What the header and sidebar show about the viewer. All null reads as signed out. */
+export type ChromeIdentity = { displayName: string | null; email: string | null; avatarUrl: string | null };
+
+/**
+ * The identity the header and sidebar show, decided in one place.
+ *
+ * Only a credentialed account is shown as someone: a guest has a real session
+ * for playing but no account, and its profile row is a placeholder ("Player")
+ * that lives a month at most. Showing it in the account menu would offer a
+ * profile and settings the guest cannot open, so a guest reads as signed out —
+ * the header's "Sign in" is also how a guest reaches an account. Gameplay is
+ * unaffected: pages keep using `isSignedInViewer` for that.
+ */
+export function chromeIdentity(
+  claims: { sub?: string; is_anonymous?: boolean; email?: unknown } | null | undefined,
+  profile: { display_name?: string | null; avatar_url?: string | null } | null | undefined,
+): ChromeIdentity {
+  if (!canViewProfile(claims)) return { displayName: null, email: null, avatarUrl: null };
+  const email = typeof claims?.email === "string" ? claims.email : null;
+  return {
+    displayName: profile?.display_name ?? email,
+    email,
+    avatarUrl: profile?.avatar_url ?? null,
+  };
+}
+
 /**
  * The Huddle itself is public, but only credentialed accounts may answer or
  * comment. prompts.submit_response and prompts.post_comment enforce the same

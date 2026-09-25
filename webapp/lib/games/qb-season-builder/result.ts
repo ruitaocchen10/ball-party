@@ -5,8 +5,8 @@ import { isObject, numbers } from "@/lib/games/qb-season-builder/json";
  * A finished run's saved season, as `qb_season_builder.result` returns it.
  *
  * The jsonb arrives untyped, so this parses it once into something a screen can
- * draw without re-checking. It is only ever the blended values — the API never
- * returns a source rating or the seed, so there is nothing here to strip. See
+ * draw without re-checking. It is only ever grades — the API never returns a
+ * blended value, a source rating or the seed, so there is nothing here to strip. See
  * docs/games/qb_season_builder.md.
  */
 

@@ -61,8 +61,8 @@ final class QbSeasonBuilderViewModelTests: XCTestCase {
         await viewModel.start()
 
         XCTAssertEqual(client.mode, .hidden)
-        XCTAssertNil(viewModel.deal?.spin.quarterbacks.first?.values)
-        XCTAssertNil(viewModel.deal?.spin.supportingCast)
+        XCTAssertNil(viewModel.deal?.spin.quarterbacks.first?.grades)
+        XCTAssertNil(viewModel.deal?.spin.supportingCastGrade)
     }
 
     func test_start_doesNotDealASecondRunWhenTheScreenReappears() async {
@@ -216,7 +216,7 @@ final class QbSeasonBuilderViewModelTests: XCTestCase {
         await fillAllSlots()
 
         XCTAssertEqual(viewModel.dealtSpins.count, 1)
-        XCTAssertEqual(viewModel.dealtSpins.first?.spin.quarterbacks.first?.values?[.accuracy], 80)
+        XCTAssertEqual(viewModel.dealtSpins.first?.spin.quarterbacks.first?.grades?[.accuracy], .b)
     }
 
     func test_finish_aRunAlreadyFinishedElsewhereLandsOnItsReveal() async {

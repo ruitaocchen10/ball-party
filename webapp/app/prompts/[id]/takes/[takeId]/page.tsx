@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { PostHeroHeader } from "@/components/foundation/content/prompts/PostHeroHeader";
 import { PromptContext } from "@/components/foundation/content/prompts/PromptContext";
 import { TakeThread } from "@/components/foundation/content/prompts/TakeThread";
-import { canAnswerPrompt, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { canAnswerPrompt, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPromptById } from "@/lib/foundation/content/prompts/feed";
 import { fetchPromptMeta } from "@/lib/foundation/content/prompts/meta";
 import { createClient } from "@/lib/supabase/server";
@@ -46,14 +46,17 @@ export default async function TakeDetailPage(props: PageProps<"/prompts/[id]/tak
   const take = post?.comments.find((comment) => comment.id === takeId);
   if (!post || !take) notFound();
 
+  // The thread composes as the viewer, so it keeps the name and avatar a
+  // guest's placeholder profile has; the header and sidebar do not (see
+  // chromeIdentity), because a guest is not shown as an account there.
   const displayName = profileResult.data?.display_name ?? (viewer ? (claims.email as string) : "Player") ?? "Player";
-  const email = viewer ? ((claims.email as string | undefined) ?? null) : null;
   const avatarUrl = profileResult.data?.avatar_url ?? null;
+  const chrome = chromeIdentity(claims, profileResult.data);
 
   return (
     <>
-      <Sidebar displayName={viewer ? displayName : null} email={email} avatarUrl={avatarUrl} canPlaySolo={viewer} />
-      <DashboardHeader displayName={viewer ? displayName : null} email={email} avatarUrl={avatarUrl} />
+      <Sidebar displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
+      <DashboardHeader displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
       <main data-prompt-detail className="app-page flex-1">
         <div data-prompt-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
           <div className="mx-auto w-full max-w-[1080px] xl:mx-0">

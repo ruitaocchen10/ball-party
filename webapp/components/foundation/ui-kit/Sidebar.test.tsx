@@ -12,7 +12,7 @@ function soloNav() {
 
 describe("Sidebar — Solo games", () => {
   it("starts Higher or Lower in one tap but sends a game with a start-time choice to the Solo page", () => {
-    render(<Sidebar displayName="Ava" canPlaySolo />);
+    render(<Sidebar displayName="Ava" />);
 
     // One tap: a form button that deals a fresh run.
     expect(soloNav().getByRole("button", { name: "Higher or Lower" })).toBeInTheDocument();
@@ -24,11 +24,13 @@ describe("Sidebar — Solo games", () => {
     expect(games).toEqual(["QB Season Builder", "Higher or Lower"]);
   });
 
-  it("sends a visitor with no session to sign up for either game", () => {
-    render(<Sidebar canPlaySolo={false} />);
+  it("offers a visitor with no session the same entries, with no detour through sign-up", () => {
+    render(<Sidebar />);
 
-    for (const name of ["Higher or Lower", "QB Season Builder"]) {
-      expect(soloNav().getByRole("link", { name })).toHaveAttribute("href", "/signup?next=%2Fsolo");
+    expect(soloNav().getByRole("button", { name: "Higher or Lower" })).toBeInTheDocument();
+    expect(soloNav().getByRole("link", { name: "QB Season Builder" })).toHaveAttribute("href", "/solo");
+    for (const link of soloNav().queryAllByRole("link")) {
+      expect(link.getAttribute("href")).not.toMatch(/signup/);
     }
   });
 });
