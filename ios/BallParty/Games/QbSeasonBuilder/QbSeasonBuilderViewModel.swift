@@ -102,11 +102,24 @@ final class QbSeasonBuilderViewModel: ObservableObject {
         return "Taking \(choice.slot.label) from \(source)"
     }
 
-    /// The players dealt in a hidden run, once it is over. A visible run had
-    /// every grade on screen all along, so it has nothing to reveal.
-    var dealtSpins: [QbShownSpin] {
-        guard mode == .hidden else { return [] }
-        return board?.shown ?? []
+    /// What the run took, one entry per round, with every grade of theirs the
+    /// run saw. The finished board's spins carry those in either mode; without
+    /// them (a result read on its own) a pick still has the grade it was taken for.
+    var pickedPlayers: [QbPickedPlayer] {
+        let shown = board?.shown ?? []
+        return (result?.picks ?? []).sorted { $0.round < $1.round }.map { pick in
+            let spin = shown.first {
+                $0.round == pick.round && $0.franchiseCode == pick.franchiseCode && $0.season == pick.season
+            }?.spin
+            var grades: [QbSlot: QbGrade] = [:]
+            if let grade = pick.grade { grades[pick.slot] = grade }
+            if let spin, pick.slot != .supportingCast,
+               let quarterback = spin.quarterbacks.first(where: { $0.playerId == pick.playerId }) {
+                grades.merge(quarterback.grades ?? [:]) { _, seen in seen }
+                if let cast = spin.supportingCastGrade { grades[.supportingCast] = cast }
+            }
+            return QbPickedPlayer(pick: pick, grades: grades)
+        }
     }
 
     // MARK: - Moves

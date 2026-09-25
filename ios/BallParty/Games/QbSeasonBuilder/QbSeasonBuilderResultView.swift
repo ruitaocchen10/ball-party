@@ -133,9 +133,10 @@ private struct PlayerBuildPanel: View {
             if viewModel.shows(.awards) {
                 LineRule()
                 awards
-                if !viewModel.dealtSpins.isEmpty {
+                let players = viewModel.pickedPlayers
+                if !players.isEmpty {
                     LineRule()
-                    QbPlayersDealt(spins: viewModel.dealtSpins, picks: result.picks)
+                    QbPlayersPicked(players: players)
                 }
             }
         }
@@ -239,93 +240,90 @@ private struct BreakdownPanel: View {
     }
 }
 
-/// In a hidden run, every option the player saw with its value — the ones passed
-/// on and a respun-away spin included. Only the finished run's owner can read it.
-private struct QbPlayersDealt: View {
-    let spins: [QbShownSpin]
-    let picks: [QbPick]
+/// The players the run took, as faces in a row — the team's logo for the
+/// Supporting Cast. Tapping one opens their card.
+private struct QbPlayersPicked: View {
+    let players: [QbPickedPlayer]
+    @State private var selected: QbPickedPlayer?
+
+    private static let faceSize: CGFloat = 44
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Players dealt").monoLabel(10, tracking: 0.13)
-            ForEach(spins) { spin in
-                spinCard(spin)
-            }
-        }
-    }
-
-    private func spinCard(_ spin: QbShownSpin) -> some View {
-        let finalAttempt = spins.filter { $0.round == spin.round }.map(\.attempt).max() ?? spin.attempt
-        let respun = spin.attempt < finalAttempt
-        let picked = spin.attempt == finalAttempt ? picks.first { $0.round == spin.round } : nil
-
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                FranchiseLogo(code: spin.franchiseCode, size: 24)
-                // `Text("\(spin.season) …")` would run the year through
-                // SwiftUI's default numeric formatting and print "2,013" —
-                // stringifying first keeps it as a plain year.
-                Text("\(String(spin.season)) \(QbFranchises.name(for: spin.franchiseCode))")
-                    .monoLabel(10, weight: .bold, tracking: 0.08, color: Theme.fg)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                if respun { Text("Respun").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText) }
-            }
-            ForEach(spin.spin.quarterbacks) { quarterback in
-                let isPicked = picked?.playerId == quarterback.playerId
-                HStack(alignment: .top, spacing: 10) {
-                    Portrait(name: quarterback.displayName, url: quarterback.headshotURL, size: 32)
-                        .opacity(respun || !isPicked ? 0.45 : 1)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(quarterback.displayName).slabTitle(17).lineLimit(1)
-                        valueLine(quarterback: quarterback, cast: spin.spin.supportingCastGrade, picked: isPicked || picked?.slot == .supportingCast ? picked?.slot : nil)
-                    }
+            Text("Players picked").monoLabel(10, tracking: 0.13)
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: Self.faceSize), spacing: 10, alignment: .leading)],
+                alignment: .leading, spacing: 10
+            ) {
+                ForEach(players) { player in
+                    Button { selected = player } label: { face(player) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(player.title), \(player.pick.slot.label)")
+                        .accessibilityHint("Shows their card")
                 }
-                .accessibilityElement(children: .combine)
             }
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .well()
+        .sheet(item: $selected) { player in
+            QbPickedPlayerCard(player: player)
+                .presentationDetents([.medium])
+        }
     }
 
-    /// The grades as one wrapping run, the one that was taken marked out.
-    private func valueLine(quarterback: QbQuarterback, cast: QbGrade?, picked: QbSlot?) -> some View {
-        var entries: [(QbSlot, QbGrade)] = QbSlot.qualities.compactMap { slot in
-            quarterback.grades?[slot].map { (slot, $0) }
+    @ViewBuilder
+    private func face(_ player: QbPickedPlayer) -> some View {
+        if player.pick.playerId != nil {
+            Portrait(name: player.title, url: player.pick.headshotURL, size: Self.faceSize)
+        } else {
+            FranchiseLogo(code: player.pick.franchiseCode, size: Self.faceSize - 10)
+                .frame(width: Self.faceSize, height: Self.faceSize)
+                .background(Theme.surfaceRaised, in: Circle())
+                .overlay(Circle().strokeBorder(Theme.line, lineWidth: 1))
         }
-        if let cast { entries.append((.supportingCast, cast)) }
-        return FlowText(entries: entries.map { slot, grade in
-            FlowText.Entry(label: slot.label, value: grade.label, marked: picked == slot)
-        })
     }
 }
 
-/// "Accuracy 88 · Arm Talent 91 · …" as wrapping mono captions, with the taken
-/// one on the cream fill a chosen option row uses.
-private struct FlowText: View {
-    struct Entry: Identifiable {
-        let label: String
-        let value: String
-        let marked: Bool
-        var id: String { label }
-    }
-
-    let entries: [Entry]
+/// One pick: who or which team it was, where from, and every grade the run
+/// showed for it with the one taken on the cream fill a chosen option row uses.
+private struct QbPickedPlayerCard: View {
+    let player: QbPickedPlayer
 
     var body: some View {
-        // Two columns keeps every grade lined up down the list.
-        LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)], spacing: 4) {
-            ForEach(entries) { entry in
-                HStack(spacing: 6) {
-                    Text(entry.label).monoLabel(9, tracking: 0.06)
-                    Text(entry.value)
-                        .font(.slab(15, relativeTo: .body))
-                        .foregroundStyle(entry.marked ? Theme.panelFg : Theme.fg)
-                        .padding(.horizontal, entry.marked ? 4 : 0)
-                        .background(entry.marked ? Theme.panel : .clear)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                if player.pick.playerId != nil {
+                    Portrait(name: player.title, url: player.pick.headshotURL, size: 56)
+                } else {
+                    FranchiseLogo(code: player.pick.franchiseCode, size: 56)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(player.title).slabTitle(24).lineLimit(2)
+                    // Stringified so the year is not grouped into "2,013".
+                    Text("\(String(player.pick.season)) \(QbFranchises.name(for: player.pick.franchiseCode))")
+                        .monoLabel(10, weight: .bold, tracking: 0.08, color: Theme.fgMuted)
                 }
             }
+            Text("Picked for \(player.pick.slot.label)").monoLabel(10, tracking: 0.13)
+            VStack(spacing: 0) {
+                ForEach(Array(player.gradeLines.enumerated()), id: \.element.slot) { index, line in
+                    if index > 0 { LineRule() }
+                    HStack {
+                        Text(line.slot.label).monoLabel(11, tracking: 0.1, color: line.isPicked ? Theme.panelFg : Theme.fg)
+                        Spacer(minLength: 8)
+                        Text(line.grade.label)
+                            .slabTitle(22, color: line.isPicked ? Theme.panelFg : Theme.fg)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(line.isPicked ? Theme.panel : .clear)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(line.slot.label) \(line.grade.spoken)\(line.isPicked ? ", picked" : "")")
+                }
+            }
+            .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+            Spacer(minLength: 0)
         }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surfaceRaised.ignoresSafeArea())
     }
 }

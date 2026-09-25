@@ -294,6 +294,26 @@ struct QbShownSpin: Equatable, Identifiable, Sendable, Decodable {
     }
 }
 
+/// A pick with every grade the run showed for where it came from: the taken
+/// slot always, and — when the finished board's spins are to hand — the rest of
+/// that quarterback's grades and his team's Supporting Cast.
+struct QbPickedPlayer: Equatable, Identifiable, Sendable {
+    let pick: QbPick
+    let grades: [QbSlot: QbGrade]
+
+    var id: Int { pick.round }
+
+    /// The grades in card order, the picked slot flagged.
+    var gradeLines: [(slot: QbSlot, grade: QbGrade, isPicked: Bool)] {
+        QbSlot.allCases.compactMap { slot in
+            grades[slot].map { (slot, $0, slot == pick.slot) }
+        }
+    }
+
+    /// The Supporting Cast pick is the team, not a quarterback.
+    var title: String { pick.displayName ?? QbFranchises.name(for: pick.franchiseCode) }
+}
+
 /// A run, as `state`, `pick` and `respin` all hand it over.
 struct QbBoard: Equatable, Sendable, Decodable {
     let matchId: UUID
