@@ -284,28 +284,30 @@ describe("QbSeasonBuilderResult — the final state", () => {
 });
 
 describe("QbSeasonBuilderResult — hidden mode", () => {
-  it("keeps every dealt player available, mutes respins and passed-over players, and exposes their grades on hover", async () => {
+  it("lists only the players picked, and exposes every grade of a picked quarterback on hover", async () => {
     const user = userEvent.setup();
-    const shown = shownOf();
-    // Peyton's accuracy is the kept round-one pick. Mahomes was dealt beside
-    // him but was not selected, so the roster should visually distinguish it.
-    shown[1].quarterbacks.push({ playerId: MAHOMES.player_id, displayName: MAHOMES.display_name, headshotUrl: null, grades: qualities("low") });
-    renderResult({ result: resultOf({ mode: "hidden" }), shown });
+    renderResult({ result: resultOf({ mode: "hidden" }), shown: shownOf() });
 
-    const dealt = screen.getByRole("list", { name: "Players dealt" });
-    expect(within(dealt).getAllByRole("button")).toHaveLength(4);
-    const respun = within(dealt).getByRole("button", { name: /matt hasselbeck.*respun/i });
-    expect(respun.querySelector(".grayscale")).toBeInTheDocument();
-    const passedOver = within(dealt).getByRole("button", { name: /patrick mahomes.*not picked/i });
-    expect(passedOver.querySelector(".grayscale")).toBeInTheDocument();
+    // One face per pick: the respun-away Hasselbeck and anyone passed over are not in it.
+    const picked = screen.getByRole("list", { name: "Players picked" });
+    expect(within(picked).getAllByRole("button")).toHaveLength(6);
+    expect(within(picked).queryByRole("button", { name: /hasselbeck/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/players dealt/i)).not.toBeInTheDocument();
+    expect(within(picked).getByRole("button", { name: /new england patriots/i })).toBeInTheDocument();
 
-    const peyton = within(dealt).getByRole("button", { name: "Peyton Manning" });
+    const peyton = within(picked).getByRole("button", { name: "Peyton Manning, Accuracy" });
     await user.hover(peyton);
     expect(within(peyton).getByText("B+")).toHaveClass("bg-panel-fg");
     expect(within(peyton).getByText("Arm Talent")).toBeInTheDocument();
     expect(within(peyton).getByText("B")).toBeInTheDocument();
     expect(within(peyton).getByText("Supporting Cast")).toBeInTheDocument();
     expect(within(peyton).getByText("A-")).toBeInTheDocument();
+  });
+
+  it("shows the picked players in a visible run too", () => {
+    renderResult({ result: resultOf({ mode: "visible" }), shown: shownOf() });
+
+    expect(within(screen.getByRole("list", { name: "Players picked" })).getAllByRole("button")).toHaveLength(6);
   });
 
   it("says which mode the run was in", () => {
@@ -316,6 +318,14 @@ describe("QbSeasonBuilderResult — hidden mode", () => {
 });
 
 describe("QbSeasonBuilderResult — read-only", () => {
+  it("shows the picked players to someone who did not play, with only the grade each was taken for", () => {
+    renderResult({ staged: false, shown: null });
+
+    const peyton = within(screen.getByRole("list", { name: "Players picked" })).getByRole("button", { name: "Peyton Manning, IQ" });
+    expect(within(peyton).getByText("A+")).toHaveClass("bg-panel-fg");
+    expect(within(peyton).queryByText("Arm Talent")).not.toBeInTheDocument();
+  });
+
   it("renders the whole result at once, without a skip control, for someone who did not play it", () => {
     renderResult({ staged: false });
 

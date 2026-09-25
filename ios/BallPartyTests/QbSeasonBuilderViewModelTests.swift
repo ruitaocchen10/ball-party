@@ -203,20 +203,23 @@ final class QbSeasonBuilderViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
     }
 
-    func test_finish_inAVisibleRunHasNoPlayersDealtToReveal() async {
+    func test_finish_listsOnlyThePlayersPickedWithTheirGrades() async {
         await viewModel.start()
         await fillAllSlots()
 
-        XCTAssertTrue(viewModel.dealtSpins.isEmpty)
+        let players = viewModel.pickedPlayers
+        XCTAssertEqual(players.map(\.pick.round), Array(1...6))
+        XCTAssertEqual(players.first?.gradeLines.first(where: \.isPicked)?.slot, players.first?.pick.slot)
     }
 
-    func test_finish_inAHiddenRunRevealsEveryOptionSeen() async {
+    func test_finish_inAHiddenRunAPickedQuarterbackCarriesEveryGradeSeen() async {
         viewModel = makeViewModel(mode: .hidden)
         await viewModel.start()
         await fillAllSlots()
 
-        XCTAssertEqual(viewModel.dealtSpins.count, 1)
-        XCTAssertEqual(viewModel.dealtSpins.first?.spin.quarterbacks.first?.grades?[.accuracy], .b)
+        let accuracyPick = viewModel.pickedPlayers.first { $0.pick.slot == .accuracy }
+        XCTAssertEqual(accuracyPick?.grades[.accuracy], .b)
+        XCTAssertEqual(accuracyPick?.gradeLines.filter(\.isPicked).count, 1)
     }
 
     func test_finish_aRunAlreadyFinishedElsewhereLandsOnItsReveal() async {
