@@ -33,7 +33,7 @@ final class LobbyViewModel: ObservableObject {
     // MARK: The host's format picker
     //
     // The same two choices, and the same "a picker can never hold an inverted
-    // range" rule, as the solo setup screen — see `SoloRunViewModel`. They are
+    // range" rule, as the solo card — see `SoloRunFormat`. They are
     // written out twice rather than shared, because the two screens hand them
     // to different RPCs and the solo one is a player's own format while this
     // is a decision made on behalf of a room.

@@ -1,17 +1,18 @@
 import SwiftUI
 
 /// Entry point for a solo QB Season Builder run: owns the view model and shows
-/// whichever stage it is in — the spin and its options, the "reveal my season"
-/// step, or the finished season.
+/// whichever stage it is in — the spin and its options, the brief
+/// hand-off to the reveal, or the finished season.
 struct QbSeasonBuilderScreen: View {
     @StateObject private var viewModel: QbSeasonBuilderViewModel
 
-    init(viewerId: UUID, mode: QbRatingMode) {
+    init(viewerId: UUID, mode: QbRatingMode, era: QbEra = .all) {
         _viewModel = StateObject(
             wrappedValue: QbSeasonBuilderViewModel(
                 client: SupabaseQbSeasonBuilderClient(client: SupabaseConfig.client),
                 viewerId: viewerId,
-                mode: mode
+                mode: mode,
+                era: era
             )
         )
     }
@@ -69,51 +70,91 @@ private struct QbStartingView: View {
 
 /// This round's spin, what it offers, and the six slots being filled. The lock-in
 /// bar sits over the bottom edge so it stays in reach however long the options run.
+///
+/// Entering a round is the first look at this spin, so it gets the same reel
+/// suspense a live pick does — there is no "already seen this" case to skip
+/// it for, unlike a viewer reconnecting to a match already in progress.
 private struct QbPickView: View {
     @ObservedObject var viewModel: QbSeasonBuilderViewModel
+    @State private var revealed = false
+
+    /// Changes with every new spin (a pick, a respin), so the reel above
+    /// replays and the reveal delay below restarts.
+    private var spinKey: String {
+        guard let board = viewModel.board, let deal = viewModel.deal else { return "" }
+        return "\(board.currentRound)-\(deal.franchiseCode)-\(deal.season)-\(board.respinUsed)"
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
                 if let deal = viewModel.deal {
-                    QbSpinHeader(deal: deal)
+                    if revealed {
+                        QbSpinHeader(deal: deal)
+                    } else {
+                        QbSpinReel(franchiseCode: deal.franchiseCode, season: deal.season, spinKey: spinKey)
+                    }
                     if let board = viewModel.board {
                         QbBuildTrack(board: board)
                     }
-                    ForEach(deal.spin.quarterbacks) { quarterback in
-                        QbQuarterbackCard(viewModel: viewModel, quarterback: quarterback, supportingCast: deal.spin.supportingCast)
+                    if revealed {
+                        ForEach(deal.spin.quarterbacks) { quarterback in
+                            QbQuarterbackCard(viewModel: viewModel, quarterback: quarterback, supportingCast: deal.spin.supportingCast)
+                        }
+                    } else {
+                        Text("Finding this team's quarterback options…")
+                            .font(.sans(14))
+                            .foregroundStyle(Theme.fgMuted)
                     }
                 }
-                respin
             }
             .padding(16)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { lockInBar }
+        // `.task(id:)` cancels and restarts on every new spin, which is
+        // exactly the web's `useTimedReveal(spinKey, ...)` remount.
+        .task(id: spinKey) {
+            revealed = false
+            try? await Task.sleep(nanoseconds: UInt64(QbSpinReel.revealSeconds * 1_000_000_000))
+            // The sleep above throws on cancellation, but `try?` swallows
+            // that — without this guard, a superseded spin's task would
+            // still flip `revealed` back on after the new spin already
+            // reset it to false.
+            guard !Task.isCancelled else { return }
+            revealed = true
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if revealed { lockInBar }
+        }
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(viewModel.roundLabel).monoLabel(11, weight: .semibold, tracking: 0.15)
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(viewModel.roundLabel).monoLabel(11, weight: .semibold, tracking: 0.15)
+                Text("Ratings \(viewModel.mode.rawValue)").monoLabel(11, tracking: 0.13)
+            }
             Spacer()
-            Text("Ratings \(viewModel.mode.rawValue)").monoLabel(11, tracking: 0.13)
+            respin
         }
     }
 
-    /// One reroll per run: it is final, so it reads as the quiet option.
+    /// One reroll per run: it is final, so it stays a real, tappable button —
+    /// just sized to its own content (`fullWidth: false`, the same ghost
+    /// style the Starting screen's retry button uses) rather than one
+    /// stretching to fill the row.
     private var respin: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button {
-                Task { await viewModel.respin() }
-            } label: {
+        Button {
+            Task { await viewModel.respin() }
+        } label: {
+            Label {
                 Text(viewModel.board?.respinUsed == true ? "Respin used" : "Respin team")
+            } icon: {
+                Image(systemName: "arrow.triangle.2.circlepath")
             }
-            .buttonStyle(.ghost)
-            .disabled(!viewModel.canRespin)
-            Text("One reroll per season.")
-                .font(.sans(13))
-                .foregroundStyle(Theme.fgMuted)
         }
+        .buttonStyle(BPButtonStyle(variant: .ghost, fullWidth: false))
+        .disabled(!viewModel.canRespin)
     }
 
     private var lockInBar: some View {
@@ -145,29 +186,22 @@ private struct QbPickView: View {
     }
 }
 
-/// The team-season on the table: its logo, name and year.
+/// The team-season on the table: its logo, name and year. Shares `QbTeamRow`
+/// with `QbSpinReel` (`QbSpinReel.swift`) — the row this settles into and the
+/// rows spinning past it before landing are the same content, so revealing
+/// reads as a stop rather than a swap to a different layout.
 private struct QbSpinHeader: View {
     let deal: QbDeal
 
     var body: some View {
-        HStack(spacing: 12) {
-            FranchiseLogo(code: deal.franchiseCode, size: 48)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(QbFranchises.name(for: deal.franchiseCode))
-                    .slabTitle(27)
-                    .lineSpacing(0)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(String(deal.season)).monoLabel(11, tracking: 0.15)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surfaceRaised)
-        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
+        QbTeamRow(code: deal.franchiseCode, season: deal.season)
+            .frame(minHeight: QbSpinReel.rowHeight, alignment: .leading)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.surfaceRaised)
+            .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -334,7 +368,7 @@ private struct QbStatTile: View {
                 .slabTitle(20, color: active ? Theme.panelFg : Theme.fg)
                 .monospacedDigit()
         } else {
-            Concealed(label: "Rating hidden") { Color.clear }
+            Concealed(label: "Rating hidden", compact: true) { Color.clear }
                 .frame(width: 28, height: 13)
         }
     }
@@ -404,7 +438,8 @@ struct QbSlotRow: View {
 
 // MARK: - Ready to finish
 
-/// No round is open: all six slots are filled, so there is nothing left to pick.
+/// No round is open. The last pick goes straight to the reveal, so this only
+/// shows progress — and, if finishing failed, the reason and a way to retry.
 private struct QbFinishView: View {
     @ObservedObject var viewModel: QbSeasonBuilderViewModel
 
@@ -412,20 +447,16 @@ private struct QbFinishView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("All six slots are filled.").slabTitle(27).accessibilityAddTraits(.isHeader)
-                    Button {
-                        Task { await viewModel.finish() }
-                    } label: {
-                        HStack(spacing: 8) {
-                            if viewModel.isBusy { ProgressView() }
-                            Text(viewModel.isBusy ? "Revealing…" : "Reveal my season")
-                        }
-                    }
-                    .buttonStyle(.solid)
-                    .disabled(viewModel.isBusy)
-
-                    if let message = viewModel.errorMessage {
+                    if let message = viewModel.errorMessage, !viewModel.isBusy {
+                        Text("Couldn't reveal your season.").slabTitle(27).accessibilityAddTraits(.isHeader)
                         ErrorBanner(message: message)
+                        Button("Try again") { Task { await viewModel.finish() } }
+                            .buttonStyle(.solid)
+                    } else {
+                        HStack(spacing: 12) {
+                            ProgressView()
+                            Text("Revealing your season…").slabTitle(27).accessibilityAddTraits(.isHeader)
+                        }
                     }
                 }
                 .padding(16)

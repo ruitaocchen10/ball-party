@@ -82,11 +82,13 @@ struct ProfileView: View {
         HStack(spacing: 16) {
             Portrait(name: viewModel.displayName, url: viewModel.avatarURL)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(viewModel.displayName)
                     .slabTitle(38)
                     .lineSpacing(0)
                     .fixedSize(horizontal: false, vertical: true)
+                    // Bebas Neue's line box includes generous space below its glyphs.
+                    .padding(.bottom, -6)
                     .accessibilityAddTraits(.isHeader)
                 if let email = viewModel.email, viewModel.displayName != email {
                     Text(email)
@@ -95,6 +97,7 @@ struct ProfileView: View {
                 }
                 if let joined = viewModel.joinedLabel {
                     Text(joined).monoLabel(10, tracking: 0.12)
+                        .padding(.top, 8)
                 }
             }
         }

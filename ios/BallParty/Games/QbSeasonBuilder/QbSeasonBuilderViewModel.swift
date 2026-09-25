@@ -16,7 +16,8 @@ final class QbSeasonBuilderViewModel: ObservableObject {
         case starting
         /// A round is open.
         case picking
-        /// All six slots are filled; the season is not generated yet.
+        /// All six slots are filled; the season is not generated yet. Normally a
+        /// moment on the way to the reveal — it lingers only if finishing failed.
         case readyToFinish
         /// The season is saved and being revealed.
         case complete
@@ -41,6 +42,7 @@ final class QbSeasonBuilderViewModel: ObservableObject {
     static let revealStepSeconds = 1.6
 
     let mode: QbRatingMode
+    let era: QbEra
     let viewerId: UUID
 
     @Published private(set) var board: QbBoard?
@@ -59,10 +61,11 @@ final class QbSeasonBuilderViewModel: ObservableObject {
 
     private let client: QbSeasonBuilderClient
 
-    init(client: QbSeasonBuilderClient, viewerId: UUID, mode: QbRatingMode) {
+    init(client: QbSeasonBuilderClient, viewerId: UUID, mode: QbRatingMode, era: QbEra = .all) {
         self.client = client
         self.viewerId = viewerId
         self.mode = mode
+        self.era = era
     }
 
     // MARK: - Derived state
@@ -117,7 +120,7 @@ final class QbSeasonBuilderViewModel: ObservableObject {
         errorMessage = nil
         defer { isBusy = false }
         do {
-            board = try await client.startRun(mode: mode)
+            board = try await client.startRun(mode: mode, era: era)
         } catch {
             startFailed = true
             errorMessage = QbSeasonBuilderServerError.describe(error)
@@ -132,6 +135,9 @@ final class QbSeasonBuilderViewModel: ObservableObject {
     func lockInPick() async {
         guard let board, let choice, !isBusy else { return }
         await move { try await self.client.pick(matchId: board.matchId, slot: choice.slot, playerId: choice.playerId) }
+        // The last pick goes straight to the reveal — there is nothing to confirm.
+        // If finishing fails, the run stays ready to finish and the screen offers a retry.
+        if self.board?.phase == .readyToFinish { await finish() }
     }
 
     func respin() async {

@@ -1443,6 +1443,7 @@ export type Database = {
         Row: {
           current_round: number
           drafted_at: string | null
+          era: string
           match_id: string
           mode: string
           respin_used: boolean
@@ -1451,6 +1452,7 @@ export type Database = {
         Insert: {
           current_round?: number
           drafted_at?: string | null
+          era?: string
           match_id: string
           mode: string
           respin_used?: boolean
@@ -1459,6 +1461,7 @@ export type Database = {
         Update: {
           current_round?: number
           drafted_at?: string | null
+          era?: string
           match_id?: string
           mode?: string
           respin_used?: boolean
@@ -2415,7 +2418,7 @@ export type Database = {
       }
       result: { Args: { p_match_id: string }; Returns: Json }
       start: {
-        Args: { p_match_id: string; p_mode?: string }
+        Args: { p_era?: string; p_match_id: string; p_mode?: string }
         Returns: Database["qb_season_builder"]["CompositeTypes"]["board"]
         SetofOptions: {
           from: "*"
@@ -2451,6 +2454,7 @@ export type Database = {
         options: Json | null
         picks: Json | null
         shown: Json | null
+        era: string | null
       }
     }
   }

@@ -37,16 +37,19 @@ final class HuddleViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.posts.first?.slots.first?.options.map(\.label), ["Chiefs", "Bills"])
     }
 
-    func test_feed_showsPicksPostsOnly_likeTheWebHome() async throws {
+    func test_feed_showsPicksAndPowerRankingsOnly_likeTheWebHome() async throws {
         client.addPost("A picks post")
         client.addPost("A ranking post", kind: "ranking")
         client.addPost("A stat leader post", kind: "stat_leader")
         client.addPost("A legacy game pick", kind: "game_pick")
         client.addPost("A status from the future", status: "postponed")
+        client.addPowerRankingsPost("A power rankings post", teams: ["KC", "BUF"])
 
         await viewModel.load()
 
-        XCTAssertEqual(Set(viewModel.posts.map(\.promptText)), ["A picks post", "A legacy game pick"])
+        XCTAssertEqual(
+            Set(viewModel.posts.map(\.promptText)), ["A picks post", "A legacy game pick", "A power rankings post"]
+        )
     }
 
     func test_feed_failingToLoadSaysWhy() async throws {
@@ -424,6 +427,170 @@ final class HuddleViewModelTests: XCTestCase {
 
         XCTAssertFalse(viewModel.canAnswer(post.id))
         XCTAssertFalse(viewModel.canSubmit(post.id))
+    }
+
+    // MARK: - Power Rankings
+
+    private let league = ["KC", "BUF", "PHI", "BAL", "DET", "SF"]
+
+    func test_powerRankings_carryTheirCoverTeamsAndAreToldApartFromPicks() async throws {
+        client.addPowerRankingsPost("Rank the NFL", teams: league, cover: ["KC", "BUF", "PHI", "BAL", "DET", "SF"])
+        client.addPost("A picks post", age: 60)
+
+        await viewModel.load()
+
+        let power = try XCTUnwrap(viewModel.posts.first { $0.isPowerRankings })
+        XCTAssertEqual(power.coverTeamCodes, ["KC", "BUF", "PHI", "BAL", "DET", "SF"])
+        XCTAssertTrue(power.isOpinion)
+        XCTAssertFalse(try XCTUnwrap(viewModel.posts.first { !$0.isPowerRankings }).isPowerRankings)
+    }
+
+    func test_powerRankings_aBallotMayHoldFiveTenOrAll32_defaultingToFive() async throws {
+        let post = client.addPowerRankingsPost("Rank the NFL", teams: league)
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.rankDepth(for: post.id), 5)
+        viewModel.setRankDepth(10, for: post.id)
+        XCTAssertEqual(viewModel.rankDepth(for: post.id), 10)
+        viewModel.setRankDepth(7, for: post.id)
+        XCTAssertEqual(viewModel.rankDepth(for: post.id), 10, "only 5, 10 and 32 are ballots the server accepts")
+    }
+
+    func test_powerRankings_theBallotFillsToTheChosenDepthNotTheSlotsCountOf32() async throws {
+        let post = client.addPowerRankingsPost("Rank the NFL", teams: ["A", "B", "C", "D", "E", "F", "G"])
+        await viewModel.load()
+
+        for option in post.options { viewModel.toggle(option, in: post.slotId, of: post.id) }
+
+        XCTAssertEqual(viewModel.selection(in: post.slotId, of: post.id), Array(post.options.prefix(5)))
+        XCTAssertTrue(viewModel.canSubmit(post.id), "five of the default five is a complete ballot")
+    }
+
+    func test_powerRankings_aBallotShortOfItsDepthCannotBeSubmitted() async throws {
+        let post = client.addPowerRankingsPost("Rank the NFL", teams: ["A", "B", "C", "D", "E", "F", "G"])
+        await viewModel.load()
+        for option in post.options.prefix(4) { viewModel.toggle(option, in: post.slotId, of: post.id) }
+        XCTAssertFalse(viewModel.canSubmit(post.id))
+
+        viewModel.toggle(post.options[4], in: post.slotId, of: post.id)
+        XCTAssertTrue(viewModel.canSubmit(post.id))
+        viewModel.setRankDepth(10, for: post.id)
+        XCTAssertFalse(viewModel.canSubmit(post.id), "five teams no longer fill a top-10 ballot")
+    }
+
+    func test_powerRankings_goingShallowerDropsTheLowestRankedTeams() async throws {
+        let post = client.addPowerRankingsPost("Rank the NFL", teams: (1...12).map { "T\($0)" })
+        await viewModel.load()
+        viewModel.setRankDepth(10, for: post.id)
+        for option in post.options.prefix(10) { viewModel.toggle(option, in: post.slotId, of: post.id) }
+
+        viewModel.setRankDepth(5, for: post.id)
+
+        XCTAssertEqual(viewModel.selection(in: post.slotId, of: post.id), Array(post.options.prefix(5)))
+        XCTAssertTrue(viewModel.canSubmit(post.id))
+    }
+
+    func test_powerRankings_draggingARowReordersTheBallot() async throws {
+        let post = client.addPowerRankingsPost("Rank the NFL", teams: ["A", "B", "C", "D", "E"])
+        await viewModel.load()
+        for option in post.options { viewModel.toggle(option, in: post.slotId, of: post.id) }
+        let o = post.options
+
+        viewModel.moveRanked(from: 4, to: 0, in: post.slotId, of: post.id)
+        XCTAssertEqual(viewModel.selection(in: post.slotId, of: post.id), [o[4], o[0], o[1], o[2], o[3]])
+
+        viewModel.moveRanked(from: 0, to: 2, in: post.slotId, of: post.id)
+        XCTAssertEqual(viewModel.selection(in: post.slotId, of: post.id), [o[0], o[1], o[4], o[2], o[3]])
+
+        viewModel.moveRanked(from: 9, to: 0, in: post.slotId, of: post.id)
+        XCTAssertEqual(
+            viewModel.selection(in: post.slotId, of: post.id), [o[0], o[1], o[4], o[2], o[3]], "out of range is ignored"
+        )
+    }
+
+    func test_powerRankings_lockInSendsTheBallotInRankOrder() async throws {
+        let post = client.addPowerRankingsPost("Rank the NFL", teams: ["A", "B", "C", "D", "E", "F"])
+        await viewModel.load()
+        for option in post.options.prefix(5).reversed() { viewModel.toggle(option, in: post.slotId, of: post.id) }
+
+        await viewModel.submitAnswer(post.id)
+
+        XCTAssertEqual(client.submissions.first?.choices, [post.slotId: Array(post.options.prefix(5).reversed())])
+        XCTAssertTrue(try onlyPost().viewerAnswered)
+    }
+
+    func test_powerRankings_aLockedPostCannotBeRanked() async throws {
+        let post = client.addPowerRankingsPost("Rank the NFL", teams: league, status: "locked", locksIn: -60)
+        await viewModel.load()
+
+        viewModel.toggle(post.options[0], in: post.slotId, of: post.id)
+        viewModel.setRankDepth(10, for: post.id)
+
+        XCTAssertTrue(viewModel.selection(in: post.slotId, of: post.id).isEmpty)
+        XCTAssertEqual(viewModel.rankDepth(for: post.id), 5)
+    }
+
+    func test_powerRankings_theConsensusIsAskedForOnlyOnceRevealed() async throws {
+        let open = client.addPowerRankingsPost("Open", teams: league, age: 60)
+        let locked = client.addPowerRankingsPost("Locked", teams: league, status: "locked", age: 120, locksIn: -60)
+        client.setPowerTopFive(for: locked, [
+            PromptPowerTopFiveRow(optionId: locked.options[1], topFiveCount: 3, averageRank: 1.7),
+            PromptPowerTopFiveRow(optionId: locked.options[0], topFiveCount: 2, averageRank: 2.5),
+        ])
+
+        await viewModel.load()
+
+        XCTAssertEqual(client.powerTopFiveRequests, [locked.id], "an open, unanswered post must not leak the crowd's favourites")
+        XCTAssertEqual(viewModel.post(locked.id)?.powerRankingTopFive.map(\.optionId), [locked.options[1], locked.options[0]])
+        XCTAssertEqual(viewModel.post(locked.id)?.powerRankingTopFive.first?.topFiveCount, 3)
+        XCTAssertEqual(viewModel.post(open.id)?.powerRankingTopFive, [])
+    }
+
+    func test_powerRankings_aFailedConsensusReadCostsThePostItsPanelNotTheFeed() async throws {
+        let locked = client.addPowerRankingsPost("Locked", teams: league, status: "locked", locksIn: -60)
+        client.addPost("A picks post", age: 60)
+        client.failures["power_ranking_top_five"] = HuddleServerError(message: "boom")
+
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.phase, .loaded)
+        XCTAssertEqual(viewModel.posts.count, 2)
+        XCTAssertEqual(viewModel.post(locked.id)?.powerRankingTopFive, [])
+    }
+
+    func test_powerRankings_movementIsMeasuredAgainstTheLastEarlierBallot_byTeamCode() async throws {
+        // Option ids differ from week to week, and so does the pool's order:
+        // only the team code can tie one week's ballot to the next.
+        let week1 = client.addPowerRankingsPost("Week 1", teams: league, status: "locked", age: 300, locksIn: -200)
+        let week2 = client.addPowerRankingsPost("Week 2", teams: league.reversed(), status: "locked", age: 200, locksIn: -100)
+        let week3 = client.addPowerRankingsPost("Week 3", teams: league, age: 10)
+        func option(_ team: String, in post: FakeHuddleClient.AddedPost, teams: [String]) -> UUID {
+            post.options[teams.firstIndex(of: team)!]
+        }
+        client.viewerAlreadyAnswered(week1, choosing: [week1.slotId: ["KC", "BUF", "PHI"].map { option($0, in: week1, teams: league) }])
+        client.viewerAlreadyAnswered(week2, choosing: [week2.slotId: ["BUF", "KC", "DET", "PHI", "SF"].map { option($0, in: week2, teams: league.reversed()) }])
+
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.post(week1.id)?.previousRankByTeam, [:], "there is nothing before the first week")
+        XCTAssertEqual(viewModel.post(week2.id)?.previousRankByTeam, ["KC": 1, "BUF": 2, "PHI": 3])
+        XCTAssertEqual(
+            viewModel.post(week3.id)?.previousRankByTeam,
+            ["BUF": 1, "KC": 2, "DET": 3, "PHI": 4, "SF": 5],
+            "the newest week compares against the most recent ballot, not the first"
+        )
+    }
+
+    func test_powerRankings_aWeekTheViewerSkippedLeavesTheOlderBallotInForce() async throws {
+        let week1 = client.addPowerRankingsPost("Week 1", teams: league, status: "locked", age: 300, locksIn: -200)
+        let week2 = client.addPowerRankingsPost("Week 2", teams: league, status: "locked", age: 200, locksIn: -100)
+        let week3 = client.addPowerRankingsPost("Week 3", teams: league, age: 10)
+        client.viewerAlreadyAnswered(week1, choosing: [week1.slotId: [week1.options[2], week1.options[0]]])
+
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.post(week2.id)?.previousRankByTeam, ["PHI": 1, "KC": 2])
+        XCTAssertEqual(viewModel.post(week3.id)?.previousRankByTeam, ["PHI": 1, "KC": 2])
     }
 
     // MARK: - Locking in

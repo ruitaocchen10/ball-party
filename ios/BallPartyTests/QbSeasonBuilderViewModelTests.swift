@@ -28,8 +28,17 @@ final class QbSeasonBuilderViewModelTests: XCTestCase {
         await viewModel.lockInPick()
     }
 
+    /// Every pick, the last of which finishes the run on its own.
     private func fillAllSlots() async {
+        await fillAllButTheLast()
+        await pickSupportingCast()
+    }
+
+    private func fillAllButTheLast() async {
         for slot in QbSlot.qualities { await pickQuality(slot) }
+    }
+
+    private func pickSupportingCast() async {
         viewModel.choose(.supportingCast, from: nil)
         await viewModel.lockInPick()
     }
@@ -156,32 +165,47 @@ final class QbSeasonBuilderViewModelTests: XCTestCase {
 
     // MARK: - Finishing
 
-    func test_sixPicks_leaveTheRunReadyToFinish() async {
-        await viewModel.start()
-        await fillAllSlots()
-
-        XCTAssertEqual(viewModel.stage, .readyToFinish)
-        XCTAssertNil(viewModel.deal)
-        XCTAssertEqual(viewModel.roundLabel, "Round 6 of 6")
-    }
-
-    func test_finish_revealsTheSavedSeasonAndThePersonalBest() async {
+    func test_theLastPick_goesStraightToTheReveal() async {
         client.bestScore = 88.2
         await viewModel.start()
         await fillAllSlots()
-
-        await viewModel.finish()
 
         XCTAssertEqual(viewModel.stage, .complete)
         XCTAssertEqual(viewModel.result?.score, 71.5)
         XCTAssertEqual(viewModel.result?.record.wins, 12)
         XCTAssertEqual(viewModel.personalBest, 88.2)
+        XCTAssertNil(viewModel.errorMessage)
+    }
+
+    func test_earlierPicks_doNotFinishTheRun() async {
+        await viewModel.start()
+        await fillAllButTheLast()
+
+        XCTAssertEqual(viewModel.stage, .picking)
+        XCTAssertNil(viewModel.result)
+    }
+
+    func test_ifFinishingFails_theRunStaysReadyToFinishAndCanBeRetried() async {
+        await viewModel.start()
+        await fillAllButTheLast()
+        client.failNextFinish = "internal_error"
+
+        await pickSupportingCast()
+
+        XCTAssertEqual(viewModel.stage, .readyToFinish)
+        XCTAssertNil(viewModel.deal)
+        XCTAssertEqual(viewModel.roundLabel, "Round 6 of 6")
+        XCTAssertNotNil(viewModel.errorMessage)
+
+        await viewModel.finish()
+
+        XCTAssertEqual(viewModel.stage, .complete)
+        XCTAssertNil(viewModel.errorMessage)
     }
 
     func test_finish_inAVisibleRunHasNoPlayersDealtToReveal() async {
         await viewModel.start()
         await fillAllSlots()
-        await viewModel.finish()
 
         XCTAssertTrue(viewModel.dealtSpins.isEmpty)
     }
@@ -190,7 +214,6 @@ final class QbSeasonBuilderViewModelTests: XCTestCase {
         viewModel = makeViewModel(mode: .hidden)
         await viewModel.start()
         await fillAllSlots()
-        await viewModel.finish()
 
         XCTAssertEqual(viewModel.dealtSpins.count, 1)
         XCTAssertEqual(viewModel.dealtSpins.first?.spin.quarterbacks.first?.values?[.accuracy], 80)
@@ -198,10 +221,10 @@ final class QbSeasonBuilderViewModelTests: XCTestCase {
 
     func test_finish_aRunAlreadyFinishedElsewhereLandsOnItsReveal() async {
         await viewModel.start()
-        await fillAllSlots()
+        await fillAllButTheLast()
         client.finishElsewhere()
 
-        await viewModel.finish()
+        await pickSupportingCast()
 
         XCTAssertEqual(viewModel.stage, .complete)
         XCTAssertEqual(viewModel.result?.score, 71.5)
@@ -222,7 +245,6 @@ final class QbSeasonBuilderViewModelTests: XCTestCase {
         viewModel = makeViewModel(mode: .hidden)
         await viewModel.start()
         await fillAllSlots()
-        await viewModel.finish()
 
         await viewModel.newSeason()
 
@@ -238,7 +260,6 @@ final class QbSeasonBuilderViewModelTests: XCTestCase {
     private func finishedRun() async {
         await viewModel.start()
         await fillAllSlots()
-        await viewModel.finish()
     }
 
     func test_reveal_startsWithOnlyTheScoreAndWalksTheStagesInOrder() async {
@@ -272,7 +293,6 @@ final class QbSeasonBuilderViewModelTests: XCTestCase {
 
         await viewModel.newSeason()
         await fillAllSlots()
-        await viewModel.finish()
 
         XCTAssertTrue(viewModel.isRevealing)
         XCTAssertFalse(viewModel.shows(.statLine))

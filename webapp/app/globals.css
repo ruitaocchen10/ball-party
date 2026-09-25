@@ -90,6 +90,9 @@ html[data-sidebar-collapsed] {
   --shadow-card:
     0 10px 24px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.7);
   --shadow-concealed: 0 10px 24px rgb(0 0 0 / 0.5);
+  /* The card-scale shadow above, sized down for a chip-sized <Concealed
+     compact>: a hint of lift instead of a blur that blooms past the chip. */
+  --shadow-concealed-compact: 0 1px 2px rgb(0 0 0 / 0.35);
 
   /* --surface-raised's own token comment calls it "inset wells" — this is
      what actually makes one read as recessed rather than just a hard-edged
@@ -302,6 +305,16 @@ body {
       45deg,
       rgb(0 0 0 / 0.10) 0 6px,
       transparent 6px 12px
+    );
+  }
+
+  /* Same weave, tightened for a chip-sized <Concealed compact> so more than
+     one stripe actually shows across it. */
+  .pattern-concealed-compact {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgb(0 0 0 / 0.10) 0 4px,
+      transparent 4px 8px
     );
   }
 

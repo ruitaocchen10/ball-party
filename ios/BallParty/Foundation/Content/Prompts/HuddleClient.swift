@@ -58,6 +58,11 @@ protocol HuddleClient: Sendable {
     /// sanctioned way to see other players' picks.
     func aggregates(postId: UUID) async throws -> [PromptAggregateRow]
 
+    /// `prompts.power_ranking_top_five` — the teams most often placed in a
+    /// Power Rankings ballot's top five. Team-level aggregates only, revealed
+    /// under the same conditions as `aggregates`.
+    func powerRankingTopFive(postId: UUID) async throws -> [PromptPowerTopFiveRow]
+
     /// `prompts.revealed_responses` — every ticket on a post. Raises
     /// `picks_not_revealed` until the post is past `lock_at` or resolved.
     func revealedResponses(postId: UUID) async throws -> [PromptRevealedResponseRow]
@@ -78,8 +83,8 @@ struct SupabaseHuddleClient: HuddleClient {
     func feedRows(viewerId: UUID) async throws -> PromptFeedRows {
         try await wrapped {
             let posts: [PromptPostRow] = try await client.from("prompt_posts")
-                .select("id, template_kind, template_name, author_id, caption, prompt_text, resolution_criteria, lock_at, created_at, status, void_reason, is_opinion")
-                .in("template_kind", values: PromptPost.picksKinds)
+                .select("id, template_kind, template_name, author_id, caption, prompt_text, resolution_criteria, lock_at, created_at, status, void_reason, is_opinion, cover_team_codes")
+                .in("template_kind", values: PromptPost.feedKinds)
                 .execute().value
             guard !posts.isEmpty else { return PromptFeedRows() }
             let postIds = posts.map(\.id)
@@ -127,6 +132,12 @@ struct SupabaseHuddleClient: HuddleClient {
     func aggregates(postId: UUID) async throws -> [PromptAggregateRow] {
         try await wrapped {
             try await prompts.rpc("post_aggregates", params: PostParam(p_post_id: postId)).execute().value
+        }
+    }
+
+    func powerRankingTopFive(postId: UUID) async throws -> [PromptPowerTopFiveRow] {
+        try await wrapped {
+            try await prompts.rpc("power_ranking_top_five", params: PostParam(p_post_id: postId)).execute().value
         }
     }
 

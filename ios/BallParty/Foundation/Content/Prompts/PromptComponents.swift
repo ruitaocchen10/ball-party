@@ -72,6 +72,14 @@ struct TakeCardView: View {
     let post: PromptPost
     let comment: PromptComment
     var showsReplyCount = false
+    /// Somebody else's ticket stays folded away until the reader asks for it,
+    /// so a page of takes on a sixteen-game slate can be skimmed.
+    var collapsesPicks = false
+    /// Where the reply row leads. Without it the row is a plain label: a reply,
+    /// or a take already open on its own screen, has nowhere further to go.
+    var threadDestination: (() -> AnyView)?
+
+    @State private var picksShown = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -90,21 +98,49 @@ struct TakeCardView: View {
                     .font(.sans(16))
                     .foregroundStyle(Theme.fg)
             }
-            if let response = comment.response {
-                TicketView(post: post, response: response)
+            if let response = comment.response, !collapsesPicks || picksShown {
+                TicketView(post: post, response: response, collapsible: collapsesPicks)
             }
-            if showsReplyCount {
-                Label(
-                    comment.replies.isEmpty ? "Reply" : "\(comment.replies.count) \(comment.replies.count == 1 ? "reply" : "replies")",
-                    systemImage: "bubble.left"
-                )
-                .monoLabel(10, weight: .semibold, tracking: 0.1)
+            if showsReplyCount || (collapsesPicks && comment.response != nil) {
+                HStack(spacing: 12) {
+                    if showsReplyCount { replyRow }
+                    Spacer(minLength: 0)
+                    if collapsesPicks, comment.response != nil {
+                        Button { picksShown.toggle() } label: {
+                            Text(picksShown ? "Hide take" : "View take")
+                                .monoLabel(10, weight: .semibold, tracking: 0.08)
+                                .frame(minHeight: 32)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(.isButton)
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .well()
-        .accessibilityElement(children: .combine)
+        // A link and a button inside it would fight for the same tap, so the
+        // card is only ever combined into one element when it has neither.
+        .accessibilityElement(children: threadDestination == nil && !collapsesPicks ? .combine : .contain)
+    }
+
+    @ViewBuilder
+    private var replyRow: some View {
+        let label = Label(
+            comment.replies.isEmpty ? "Reply" : "\(comment.replies.count) \(comment.replies.count == 1 ? "reply" : "replies")",
+            systemImage: "bubble.left"
+        )
+        .monoLabel(10, weight: .semibold, tracking: 0.1)
+        if let threadDestination {
+            NavigationLink { threadDestination() } label: {
+                label.frame(minHeight: 32).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        } else {
+            label
+        }
     }
 }
 
@@ -116,19 +152,49 @@ struct TakeCardView: View {
 struct TicketView: View {
     let post: PromptPost
     let response: [UUID: [UUID]]
+    /// A long slate starts at its first few games, with "View all N picks" for
+    /// the rest, as the web's take cards do.
+    var collapsible = false
+
+    @State private var showsAll = false
+
+    /// The games a collapsed slate shows before "View all".
+    private static let collapsedGames = 4
 
     var body: some View {
-        if post.isMatchupPost {
+        if post.isPowerRankings {
+            PowerRankingTicket(post: post, response: response)
+        } else if post.isMatchupPost {
+            matchups
+        } else {
+            list
+        }
+    }
+
+    private var matchups: some View {
+        let folds = collapsible && post.slots.count > Self.collapsedGames
+        let shown = folds && !showsAll ? Array(post.slots.prefix(Self.collapsedGames)) : post.slots
+        return VStack(alignment: .leading, spacing: 8) {
             // Two to a row, like the web's "Your calls" grid — or one, for one game.
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: min(2, post.slots.count)), spacing: 8) {
-                ForEach(post.slots) { slot in
+                ForEach(shown) { slot in
                     if let matchup = slot.matchup {
                         MatchupTile(away: matchup.away, home: matchup.home, selected: response[slot.id]?.first, winner: slot.winnerId)
                     }
                 }
             }
-        } else {
-            list
+            if folds {
+                Button { showsAll.toggle() } label: {
+                    Label(
+                        showsAll ? "Show fewer picks" : "View all \(post.slots.count) picks",
+                        systemImage: showsAll ? "chevron.up" : "chevron.down"
+                    )
+                    .monoLabel(10, tracking: 0.08)
+                    .frame(minHeight: 32)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 

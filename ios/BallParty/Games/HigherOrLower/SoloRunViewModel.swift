@@ -1,6 +1,8 @@
 import Foundation
 
-/// One solo Higher or Lower run, from format picker to recap.
+/// One solo Higher or Lower run, from dealing to recap. The format (scoring
+/// mode and era) is chosen before the run exists — on the Games tab's card, see
+/// `SoloRunFormat` — and arrives here already made.
 ///
 /// The server is authoritative for every rule — dealing, scoring, the endless
 /// ladder, when a run ends. This only decides which RPC to call and what to
@@ -13,8 +15,8 @@ import Foundation
 @MainActor
 final class SoloRunViewModel: ObservableObject {
     enum Stage: Equatable {
-        /// Picking scoring mode and era.
-        case setup
+        /// The ladder is being dealt, or could not be (`startFailed`).
+        case starting
         /// A dealt ladder is in play.
         case playing
         /// The run ended; show the recap.
@@ -61,19 +63,12 @@ final class SoloRunViewModel: ObservableObject {
         let ladder: [RecapEntry]
     }
 
-    // MARK: Format picker
+    // MARK: Format
 
-    @Published var scoringMode: ScoringMode = .seasonTotal
-    /// Moving either end past the other drags the other along, so the picker
-    /// can never hold an inverted range (`invalid_season_range`).
-    @Published var seasonFrom = 0 {
-        didSet { if seasonFrom > seasonTo { seasonTo = seasonFrom } }
-    }
-    @Published var seasonTo = 0 {
-        didSet { if seasonTo < seasonFrom { seasonFrom = seasonTo } }
-    }
-    /// The pool's first and last season, once loaded; the picker's limits.
-    @Published private(set) var seasonBounds: SeasonRange?
+    /// What the run is dealt in. `era == nil` lets the server default to the
+    /// whole pool.
+    let scoringMode: ScoringMode
+    let era: SeasonRange?
 
     // MARK: Run
 
@@ -84,6 +79,9 @@ final class SoloRunViewModel: ObservableObject {
     @Published private(set) var personalBestBeforeRun = 0
     @Published private(set) var isBusy = false
     @Published private(set) var errorMessage: String?
+    /// Set only when the run could not be dealt at all: there is nothing on
+    /// screen to attach the error to, so the screen offers a retry instead.
+    @Published private(set) var startFailed = false
 
     let viewerId: UUID
     private let client: HigherOrLowerClient
@@ -110,16 +108,24 @@ final class SoloRunViewModel: ObservableObject {
     /// failed load must reuse this rather than replay again.
     private var replayedMatchId: UUID?
 
-    init(client: HigherOrLowerClient, viewerId: UUID, now: @escaping () -> Date = Date.init) {
+    init(
+        client: HigherOrLowerClient,
+        viewerId: UUID,
+        scoringMode: ScoringMode = .seasonTotal,
+        era: SeasonRange? = nil,
+        now: @escaping () -> Date = Date.init
+    ) {
         self.client = client
         self.viewerId = viewerId
+        self.scoringMode = scoringMode
+        self.era = era
         self.now = now
     }
 
     // MARK: - Derived state
 
     var stage: Stage {
-        guard let snapshot else { return .setup }
+        guard let snapshot else { return .starting }
         return snapshot.board.phase == .complete ? .complete : .playing
     }
 
@@ -181,47 +187,25 @@ final class SoloRunViewModel: ObservableObject {
         )
     }
 
-    /// The seasons the picker may offer, in order.
-    var seasonChoices: [Int] {
-        guard let seasonBounds else { return [] }
-        return Array(seasonBounds.from...seasonBounds.to)
-    }
-
-    var canStart: Bool {
-        seasonBounds != nil && seasonFrom <= seasonTo && !isBusy
-    }
-
     // MARK: - Intents
 
-    /// Loads the picker's limits and defaults it to the whole pool. Safe to
-    /// call again; it never overwrites a choice the player already made.
-    func loadSetup() async {
-        guard seasonBounds == nil else { return }
-        do {
-            let bounds = try await client.seasonBounds()
-            seasonBounds = bounds
-            seasonFrom = bounds.from
-            seasonTo = bounds.to
-        } catch {
-            errorMessage = HigherOrLowerServerError.describe(error)
-        }
-    }
-
+    /// Deals the ladder in the run's format. Safe to call again: it does
+    /// nothing once a ladder is dealt or while one is being, and after a
+    /// failure it is the retry.
     func start() async {
-        guard canStart else { return }
+        guard snapshot == nil, !isBusy else { return }
         isBusy = true
+        startFailed = false
         errorMessage = nil
         defer { isBusy = false }
         do {
             // Read before dealing: nothing can have moved the stats row yet.
             let best = try await client.personalBest()
-            let board = try await client.startSoloRun(
-                scoringMode: scoringMode,
-                era: SeasonRange(from: seasonFrom, to: seasonTo)
-            )
+            let board = try await client.startSoloRun(scoringMode: scoringMode, era: era)
             personalBestBeforeRun = best
             try await beginRun(matchId: board.matchId)
         } catch {
+            startFailed = true
             errorMessage = HigherOrLowerServerError.describe(error)
         }
     }
@@ -290,18 +274,6 @@ final class SoloRunViewModel: ObservableObject {
         } catch {
             errorMessage = HigherOrLowerServerError.describe(error)
         }
-    }
-
-    /// Back to the format picker, e.g. from the recap.
-    func returnToSetup() {
-        clock.stop()
-        snapshot = nil
-        errorMessage = nil
-        replayedMatchId = nil
-        // Anything still in flight was a read of the run just left. Marking
-        // every issued read as already superseded stops a late one from
-        // re-applying it and dragging the player back to the recap.
-        latestApplied = readsIssued
     }
 
     /// The app returned to the foreground. Hands off to the clock, which
@@ -387,5 +359,53 @@ final class SoloRunViewModel: ObservableObject {
         else { return .timedOut }
         let correct = points > priorPoints ? direction == .higher : direction == .lower
         return correct ? .correct(direction) : .miss(direction)
+    }
+}
+
+/// The format a solo Higher or Lower run will be dealt in, held on the Games
+/// tab's card while the player chooses it — before any run, and so any
+/// `SoloRunViewModel`, exists.
+@MainActor
+final class SoloRunFormat: ObservableObject {
+    @Published var scoringMode: ScoringMode = .seasonTotal
+    /// Moving either end past the other drags the other along, so the picker
+    /// can never hold an inverted range (`invalid_season_range`).
+    @Published var seasonFrom = 0 {
+        didSet { if seasonFrom > seasonTo { seasonTo = seasonFrom } }
+    }
+    @Published var seasonTo = 0 {
+        didSet { if seasonTo < seasonFrom { seasonFrom = seasonTo } }
+    }
+    /// The pool's first and last season, once loaded; the picker's limits.
+    @Published private(set) var seasonBounds: SeasonRange?
+
+    private let client: HigherOrLowerClient
+
+    init(client: HigherOrLowerClient) {
+        self.client = client
+    }
+
+    /// The seasons the picker may offer, in order.
+    var seasonChoices: [Int] {
+        guard let seasonBounds else { return [] }
+        return Array(seasonBounds.from...seasonBounds.to)
+    }
+
+    /// The era to deal from. Nil until the limits have loaded — or if they
+    /// never do — which the server reads as the whole pool.
+    var era: SeasonRange? {
+        seasonBounds == nil ? nil : SeasonRange(from: seasonFrom, to: seasonTo)
+    }
+
+    /// Loads the picker's limits and defaults it to the whole pool. Safe to
+    /// call again; it never overwrites a choice the player already made. A
+    /// failure is not fatal: the era picker stays away and a run starts on the
+    /// whole pool.
+    func loadBounds() async {
+        guard seasonBounds == nil else { return }
+        guard let bounds = try? await client.seasonBounds() else { return }
+        seasonBounds = bounds
+        seasonFrom = bounds.from
+        seasonTo = bounds.to
     }
 }

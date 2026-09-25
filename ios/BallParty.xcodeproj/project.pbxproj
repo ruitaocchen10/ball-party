@@ -41,6 +41,7 @@
 		4E8CBCA8BAB0A4F864B0C5F3 /* HuddleViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D946FF67E31EBD458E5E56AE /* HuddleViewModelTests.swift */; };
 		4FB9FA662D4DE41707B4F431 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1ED474535F9547864F48E5B /* Theme.swift */; };
 		4FDA21D1094F96EBA2E80C55 /* NFLTeams.swift in Sources */ = {isa = PBXBuildFile; fileRef = D14025B7D4BB51302FBC7BD9 /* NFLTeams.swift */; };
+		5E80D2A91B4C37F0A6D9E813 /* PowerRankingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31C7E5B2D9048F6B1E70C24 /* PowerRankingsViews.swift */; };
 		50FDC4C3C92A8FB3DF8BF661 /* Barlow-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DA37180CB843393C0E640C73 /* Barlow-SemiBold.ttf */; };
 		51B4D1C4D8BA219ACD2B91AC /* RealtimeSubscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = A039ECFDA68634F4D03A4BDF /* RealtimeSubscription.swift */; };
 		5287614E79BF16F2EB918984 /* MatchClockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00AEBECD0570CBE0D379EDC /* MatchClockTests.swift */; };
@@ -96,6 +97,7 @@
 		28D99DA5000463ACD8D1567B /* QbSeasonBuilderResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC3EDDCBF5E1CA78A3E425F /* QbSeasonBuilderResultView.swift */; };
 		9E15AFC0A523D03D45FEDF50 /* QbSeasonBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD72D72AA73FBDAE66723D0 /* QbSeasonBuilderView.swift */; };
 		7B5218E514D1DD9BF2F20B0C /* QbSeasonBuilderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FCA926760CBA12B82F27E93 /* QbSeasonBuilderViewModel.swift */; };
+		4838A1C17569AF4F5208604F /* QbSpinReel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A22701664007DAD8CDE878 /* QbSpinReel.swift */; };
 		A8C6560097F09CB1B74BF69B /* FakeQbSeasonBuilderClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F14CA6A4049A095659FEFE /* FakeQbSeasonBuilderClient.swift */; };
 		9E20A42E7556F994025D5FF9 /* QbSeasonBuilderModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90C8A4302CFCA2351E5A6EC8 /* QbSeasonBuilderModelsTests.swift */; };
 		B95459C3113ADA24ADDDA590 /* QbSeasonBuilderViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD9CB3F2559907FABE59D7D /* QbSeasonBuilderViewModelTests.swift */; };
@@ -181,6 +183,7 @@
 		C8216A7CE2D2C62774B54790 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		CE8DEF758DFF7491B1DFC6F8 /* Barlow-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Barlow-Medium.ttf"; sourceTree = "<group>"; };
 		D14025B7D4BB51302FBC7BD9 /* NFLTeams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFLTeams.swift; sourceTree = "<group>"; };
+		A31C7E5B2D9048F6B1E70C24 /* PowerRankingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerRankingsViews.swift; sourceTree = "<group>"; };
 		D3B76FAA6D148A7279E387EB /* HuddleClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuddleClient.swift; sourceTree = "<group>"; };
 		D4FC80D1FAFB82954050F5AB /* Controls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controls.swift; sourceTree = "<group>"; };
 		D847D9122D409870135D24C5 /* HuddleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuddleView.swift; sourceTree = "<group>"; };
@@ -206,6 +209,7 @@
 		BFC3EDDCBF5E1CA78A3E425F /* QbSeasonBuilderResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderResultView.swift; sourceTree = "<group>"; };
 		6FD72D72AA73FBDAE66723D0 /* QbSeasonBuilderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderView.swift; sourceTree = "<group>"; };
 		5FCA926760CBA12B82F27E93 /* QbSeasonBuilderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderViewModel.swift; sourceTree = "<group>"; };
+		73A22701664007DAD8CDE878 /* QbSpinReel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSpinReel.swift; sourceTree = "<group>"; };
 		A7F14CA6A4049A095659FEFE /* FakeQbSeasonBuilderClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeQbSeasonBuilderClient.swift; sourceTree = "<group>"; };
 		90C8A4302CFCA2351E5A6EC8 /* QbSeasonBuilderModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderModelsTests.swift; sourceTree = "<group>"; };
 		9BD9CB3F2559907FABE59D7D /* QbSeasonBuilderViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderViewModelTests.swift; sourceTree = "<group>"; };
@@ -327,6 +331,7 @@
 				E0E13C467022F862423E0B66 /* PromptDetailView.swift */,
 				98EF401B82882F0056E7A29B /* TakeThreadView.swift */,
 				D14025B7D4BB51302FBC7BD9 /* NFLTeams.swift */,
+				A31C7E5B2D9048F6B1E70C24 /* PowerRankingsViews.swift */,
 				6931E401827645B4B12716D2 /* MatchupViews.swift */,
 			);
 			path = Prompts;
@@ -482,6 +487,7 @@
 				BFC3EDDCBF5E1CA78A3E425F /* QbSeasonBuilderResultView.swift */,
 				6FD72D72AA73FBDAE66723D0 /* QbSeasonBuilderView.swift */,
 				5FCA926760CBA12B82F27E93 /* QbSeasonBuilderViewModel.swift */,
+				73A22701664007DAD8CDE878 /* QbSpinReel.swift */,
 			);
 			path = QbSeasonBuilder;
 			sourceTree = "<group>";
@@ -637,6 +643,7 @@
 				28D99DA5000463ACD8D1567B /* QbSeasonBuilderResultView.swift in Sources */,
 				9E15AFC0A523D03D45FEDF50 /* QbSeasonBuilderView.swift in Sources */,
 				7B5218E514D1DD9BF2F20B0C /* QbSeasonBuilderViewModel.swift in Sources */,
+				4838A1C17569AF4F5208604F /* QbSpinReel.swift in Sources */,
 				4FB9FA662D4DE41707B4F431 /* Theme.swift in Sources */,
 				8C2749D21E0B84AB7184FB15 /* Surfaces.swift in Sources */,
 				42190A7B576995422CD3395D /* Controls.swift in Sources */,
@@ -685,6 +692,7 @@
 				DA697A93DFAE4A042F2B8E16 /* PromptDetailView.swift in Sources */,
 				CAC5F136454928795283C382 /* TakeThreadView.swift in Sources */,
 				4FDA21D1094F96EBA2E80C55 /* NFLTeams.swift in Sources */,
+				5E80D2A91B4C37F0A6D9E813 /* PowerRankingsViews.swift in Sources */,
 				2BE052FBAA70990942926F54 /* MatchupViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -11,16 +11,20 @@ final class FakeQbSeasonBuilderClient: QbSeasonBuilderClient, @unchecked Sendabl
 
     // Server-side state.
     private(set) var mode: QbRatingMode = .visible
+    private(set) var era: QbEra = .all
     private var round = 1
     private var attempt = 1
     private var respinUsed = false
     private var picks: [QbPick] = []
     private var finished = false
+    private var finishedElsewhere = false
     private var started = false
 
     // Test controls.
     /// Raised by the next call of any kind, then cleared.
     var failNext: String?
+    /// Fails only the next `finish`, leaving the picks before it alone.
+    var failNextFinish: String?
     var bestScore: Double?
     private(set) var startCount = 0
     private(set) var pickedPlayerIds: [String?] = []
@@ -28,9 +32,10 @@ final class FakeQbSeasonBuilderClient: QbSeasonBuilderClient, @unchecked Sendabl
 
     // MARK: - QbSeasonBuilderClient
 
-    func startRun(mode: QbRatingMode) async throws -> QbBoard {
+    func startRun(mode: QbRatingMode, era: QbEra) async throws -> QbBoard {
         try fail()
         self.mode = mode
+        self.era = era
         matchId = UUID()
         round = 1
         attempt = 1
@@ -76,8 +81,12 @@ final class FakeQbSeasonBuilderClient: QbSeasonBuilderClient, @unchecked Sendabl
     }
 
     func finish(matchId: UUID) async throws -> QbSeasonResult {
+        if let message = failNextFinish {
+            failNextFinish = nil
+            throw QbSeasonBuilderServerError(message: message)
+        }
         try fail()
-        guard !finished else { throw QbSeasonBuilderServerError(message: "match_not_playing") }
+        guard !finished, !finishedElsewhere else { throw QbSeasonBuilderServerError(message: "match_not_playing") }
         guard picks.count == 6 else { throw QbSeasonBuilderServerError(message: "draft_incomplete") }
         finished = true
         return savedResult
@@ -85,7 +94,7 @@ final class FakeQbSeasonBuilderClient: QbSeasonBuilderClient, @unchecked Sendabl
 
     func result(matchId: UUID) async throws -> QbSeasonResult {
         try fail()
-        guard finished else { throw QbSeasonBuilderServerError(message: "result_not_found") }
+        guard finished || finishedElsewhere else { throw QbSeasonBuilderServerError(message: "result_not_found") }
         return savedResult
     }
 
@@ -98,7 +107,7 @@ final class FakeQbSeasonBuilderClient: QbSeasonBuilderClient, @unchecked Sendabl
     /// The run was finished elsewhere — another device, or an earlier tap whose
     /// answer was lost — so this client's next `finish` is refused.
     func finishElsewhere() {
-        finished = true
+        finishedElsewhere = true
     }
 
     // MARK: - Private
@@ -132,7 +141,8 @@ final class FakeQbSeasonBuilderClient: QbSeasonBuilderClient, @unchecked Sendabl
             shown: finished ? [QbShownSpin(round: 1, attempt: 1, franchiseCode: "kan", season: 2010,
                                            spin: QbSpin(quarterbacks: [QbQuarterback(playerId: "qb-1-1", displayName: "Quarterback 1",
                                                                                       values: Dictionary(uniqueKeysWithValues: QbSlot.qualities.map { ($0, 80.0) }))],
-                                                        supportingCast: 75))] : nil
+                                                        supportingCast: 75))] : nil,
+            era: era
         )
     }
 

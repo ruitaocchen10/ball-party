@@ -26,6 +26,46 @@ final class PromptModelsTests: XCTestCase {
         XCTAssertEqual(row.createdAt.timeIntervalSince1970, 1_789_646_400.123, accuracy: 0.001)
     }
 
+    func test_postRow_decodesAPowerRankingsCover() throws {
+        let row = try decode(PromptPostRow.self, """
+        {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "template_kind": "power_rankings", "template_name": "Power Rankings",
+         "author_id": "1A2B3C4D-0000-4000-8000-000000000001", "caption": "", "prompt_text": "Rank the NFL",
+         "resolution_criteria": "Opinion.", "lock_at": "2026-09-20T17:00:00+00:00",
+         "created_at": "2026-09-17T12:00:00+00:00", "status": "open", "void_reason": null, "is_opinion": true,
+         "cover_team_codes": ["KC", "BUF", "PHI", "BAL", "DET", "SF"]}
+        """)
+        let plain = try decode(PromptPostRow.self, """
+        {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "template_kind": "picks", "template_name": "Picks",
+         "author_id": "1A2B3C4D-0000-4000-8000-000000000001", "caption": "", "prompt_text": "Who wins?",
+         "resolution_criteria": "Final.", "lock_at": "2026-09-20T17:00:00+00:00",
+         "created_at": "2026-09-17T12:00:00+00:00", "status": "open", "void_reason": null, "is_opinion": false,
+         "cover_team_codes": null}
+        """)
+
+        XCTAssertEqual(row.coverTeamCodes, ["KC", "BUF", "PHI", "BAL", "DET", "SF"])
+        XCTAssertNil(plain.coverTeamCodes)
+    }
+
+    func test_powerTopFiveRow_takesItsCountsAsNumbersOrStrings() throws {
+        let asNumbers = try decode(PromptPowerTopFiveRow.self, """
+        {"option_id": "2B3C4D5E-0000-4000-8000-000000000002", "top_five_count": 3, "average_rank": 1.7}
+        """)
+        let asStrings = try decode(PromptPowerTopFiveRow.self, """
+        {"option_id": "2B3C4D5E-0000-4000-8000-000000000002", "top_five_count": "3", "average_rank": "1.7"}
+        """)
+
+        XCTAssertEqual(asNumbers.topFiveCount, 3)
+        XCTAssertEqual(asNumbers.averageRank, 1.7)
+        XCTAssertEqual(asStrings, asNumbers)
+    }
+
+    func test_powerRankingMovement_readsPlacesGainedLostOrNew() {
+        XCTAssertEqual(PowerRankingMovement(previous: 5, current: 2), .up(3))
+        XCTAssertEqual(PowerRankingMovement(previous: 2, current: 5), .down(3))
+        XCTAssertEqual(PowerRankingMovement(previous: 4, current: 4), .unchanged)
+        XCTAssertEqual(PowerRankingMovement(previous: nil, current: 1), .new)
+    }
+
     func test_slotRow_decodesACorrectAnswerArrayAndItsAbsence() throws {
         let resolved = try decode(PromptSlotRow.self, """
         {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "post_id": "1A2B3C4D-0000-4000-8000-000000000001",

@@ -26,7 +26,6 @@ final class SoloRunViewModelTests: XCTestCase {
     // MARK: - Helpers
 
     private func startRun() async {
-        await viewModel.loadSetup()
         await viewModel.start()
     }
 
@@ -53,59 +52,67 @@ final class SoloRunViewModelTests: XCTestCase {
 
     // MARK: - Choosing a format
 
-    func test_setup_loadsTheEraLimitsAndDefaultsToTheWholePool() async {
+    func test_format_loadsTheEraLimitsAndDefaultsToTheWholePool() async {
         client.bounds = SeasonRange(from: 2010, to: 2025)
-        await viewModel.loadSetup()
+        let format = SoloRunFormat(client: client)
+        await format.loadBounds()
 
-        XCTAssertEqual(viewModel.stage, .setup)
-        XCTAssertEqual(viewModel.seasonFrom, 2010)
-        XCTAssertEqual(viewModel.seasonTo, 2025)
-        XCTAssertEqual(viewModel.seasonChoices.first, 2010)
-        XCTAssertEqual(viewModel.seasonChoices.last, 2025)
-        XCTAssertEqual(viewModel.scoringMode, .seasonTotal)
+        XCTAssertEqual(format.seasonFrom, 2010)
+        XCTAssertEqual(format.seasonTo, 2025)
+        XCTAssertEqual(format.seasonChoices.first, 2010)
+        XCTAssertEqual(format.seasonChoices.last, 2025)
+        XCTAssertEqual(format.era, SeasonRange(from: 2010, to: 2025))
+        XCTAssertEqual(format.scoringMode, .seasonTotal)
     }
 
-    func test_setup_reloadingDoesNotOverwriteAChoiceThePlayerMade() async {
-        await viewModel.loadSetup()
-        viewModel.seasonFrom = 2020
-        await viewModel.loadSetup()
+    func test_format_reloadingDoesNotOverwriteAChoiceThePlayerMade() async {
+        let format = SoloRunFormat(client: client)
+        await format.loadBounds()
+        format.seasonFrom = 2020
+        await format.loadBounds()
 
-        XCTAssertEqual(viewModel.seasonFrom, 2020)
+        XCTAssertEqual(format.seasonFrom, 2020)
     }
 
-    func test_setup_movingTheFirstSeasonPastTheLastDragsTheLastAlong() async {
-        await viewModel.loadSetup()
-        viewModel.seasonTo = 2015
-        viewModel.seasonFrom = 2020
+    func test_format_movingTheFirstSeasonPastTheLastDragsTheLastAlong() async {
+        let format = SoloRunFormat(client: client)
+        await format.loadBounds()
+        format.seasonTo = 2015
+        format.seasonFrom = 2020
 
-        XCTAssertEqual(viewModel.seasonTo, 2020)
+        XCTAssertEqual(format.seasonTo, 2020)
     }
 
-    func test_setup_movingTheLastSeasonBeforeTheFirstDragsTheFirstAlong() async {
-        await viewModel.loadSetup()
-        viewModel.seasonFrom = 2020
-        viewModel.seasonTo = 2015
+    func test_format_movingTheLastSeasonBeforeTheFirstDragsTheFirstAlong() async {
+        let format = SoloRunFormat(client: client)
+        await format.loadBounds()
+        format.seasonFrom = 2020
+        format.seasonTo = 2015
 
-        XCTAssertEqual(viewModel.seasonFrom, 2015)
+        XCTAssertEqual(format.seasonFrom, 2015)
     }
 
-    func test_setup_cannotStartUntilTheEraLimitsHaveLoaded() {
-        XCTAssertFalse(viewModel.canStart)
+    func test_format_beforeTheLimitsLoadThereIsNoEra() {
+        XCTAssertNil(SoloRunFormat(client: client).era)
     }
 
-    func test_setup_aFailedLimitsLoadShowsAnError() async {
+    func test_format_aFailedLimitsLoadLeavesNoEraPickerAndTheWholePool() async {
         client.failures["season_bounds"] = HigherOrLowerServerError(message: "boom")
-        await viewModel.loadSetup()
+        let format = SoloRunFormat(client: client)
+        await format.loadBounds()
 
-        XCTAssertEqual(viewModel.errorMessage, "boom")
-        XCTAssertFalse(viewModel.canStart)
+        XCTAssertTrue(format.seasonChoices.isEmpty)
+        XCTAssertNil(format.era)
     }
 
-    func test_start_asksForTheChosenScoringModeAndEra() async {
-        await viewModel.loadSetup()
-        viewModel.scoringMode = .weekly
-        viewModel.seasonFrom = 2018
-        viewModel.seasonTo = 2022
+    func test_start_dealsInTheFormatItWasGiven() async {
+        viewModel = SoloRunViewModel(
+            client: client,
+            viewerId: viewerId,
+            scoringMode: .weekly,
+            era: SeasonRange(from: 2018, to: 2022),
+            now: { [unowned self] in localNow }
+        )
         await viewModel.start()
 
         XCTAssertEqual(client.startCalls.count, 1)
@@ -114,13 +121,33 @@ final class SoloRunViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.formatLabel, "Weekly · 2018–2022")
     }
 
-    func test_start_aServerRefusalShowsItsMessageAndStaysOnTheSetupScreen() async {
-        await viewModel.loadSetup()
+    func test_start_withNoEraLetsTheServerDefaultToTheWholePool() async {
+        await viewModel.start()
+
+        XCTAssertNil(client.startCalls.first?.era)
+        XCTAssertEqual(viewModel.stage, .playing)
+    }
+
+    func test_start_aServerRefusalShowsItsMessageAndOffersARetry() async {
         client.failures["start"] = HigherOrLowerServerError(message: "season_out_of_range")
         await viewModel.start()
 
-        XCTAssertEqual(viewModel.stage, .setup)
+        XCTAssertEqual(viewModel.stage, .starting)
+        XCTAssertTrue(viewModel.startFailed)
         XCTAssertEqual(viewModel.errorMessage, "That era is outside the seasons we have data for.")
+
+        client.failures["start"] = nil
+        await viewModel.start()
+
+        XCTAssertEqual(viewModel.stage, .playing)
+        XCTAssertFalse(viewModel.startFailed)
+    }
+
+    func test_start_isANoOpOnceARunIsDealt() async {
+        await viewModel.start()
+        await viewModel.start()
+
+        XCTAssertEqual(client.startCalls.count, 1)
     }
 
     // MARK: - The core call loop
@@ -324,8 +351,12 @@ final class SoloRunViewModelTests: XCTestCase {
     }
 
     func test_playAgain_dealsAFreshLadderInTheSameFormat() async {
-        await viewModel.loadSetup()
-        viewModel.scoringMode = .weekly
+        viewModel = SoloRunViewModel(
+            client: client,
+            viewerId: viewerId,
+            scoringMode: .weekly,
+            now: { [unowned self] in localNow }
+        )
         await viewModel.start()
         let firstMatch = viewModel.board?.matchId
         await callWrongly()
@@ -351,16 +382,6 @@ final class SoloRunViewModelTests: XCTestCase {
         await viewModel.playAgain()
 
         XCTAssertEqual(viewModel.personalBestBeforeRun, 2)
-    }
-
-    func test_changeFormat_returnsToTheSetupScreen() async {
-        await startRun()
-        await callWrongly()
-        await viewModel.continueRun()
-        viewModel.returnToSetup()
-
-        XCTAssertEqual(viewModel.stage, .setup)
-        XCTAssertNil(viewModel.recap)
     }
 
     // MARK: - Races and failures in the middle of a write
@@ -418,24 +439,6 @@ final class SoloRunViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.questionLabel, "Question 1")
     }
 
-    func test_changeFormat_aLateReReadNeverPullsThePlayerBackToTheRecap() async {
-        await startRun()
-        await callWrongly()
-        await viewModel.continueRun()
-        XCTAssertEqual(viewModel.stage, .complete)
-
-        client.holdNextSnapshot = true
-        viewModel.appReturnedToForeground()
-        await eventually { client.hasHeldSnapshot }
-
-        viewModel.returnToSetup()
-        client.releaseHeldSnapshot()
-        for _ in 0..<20 { await Task.yield() }
-
-        XCTAssertEqual(viewModel.stage, .setup)
-        XCTAssertNil(viewModel.recap)
-    }
-
     // MARK: - Backgrounding mid-question (issue #64)
 
     func test_returningToTheForeground_rereadsTheMatchAndShowsWhereItReallyIs() async {
@@ -473,7 +476,7 @@ final class SoloRunViewModelTests: XCTestCase {
         await Task.yield()
 
         XCTAssertEqual(client.snapshotCount, 0)
-        XCTAssertEqual(viewModel.stage, .setup)
+        XCTAssertEqual(viewModel.stage, .starting)
     }
 
     func test_returningToTheForeground_afterTheRunEndedStillShowsTheRecap() async {

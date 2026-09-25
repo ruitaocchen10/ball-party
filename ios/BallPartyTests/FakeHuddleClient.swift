@@ -26,6 +26,7 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
     private let lock = NSLock()
     private var rows = PromptFeedRows()
     private var aggregatesByPost: [UUID: [PromptAggregateRow]] = [:]
+    private var powerTopFiveByPost: [UUID: [PromptPowerTopFiveRow]] = [:]
     private var revealedByPost: [UUID: [PromptRevealedResponseRow]] = [:]
     private var clock = 0
 
@@ -35,6 +36,7 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
     // What the app asked for.
     private var _feedReads = 0
     private var _aggregateRequests: [UUID] = []
+    private var _powerTopFiveRequests: [UUID] = []
     private var _revealedRequests: [UUID] = []
     private var _submissions: [Submission] = []
     private var _comments: [PostedComment] = []
@@ -53,12 +55,14 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
 
     var feedReads: Int { lock.withLock { _feedReads } }
     var aggregateRequests: [UUID] { lock.withLock { _aggregateRequests } }
+    var powerTopFiveRequests: [UUID] { lock.withLock { _powerTopFiveRequests } }
     var revealedRequests: [UUID] { lock.withLock { _revealedRequests } }
     var submissions: [Submission] { lock.withLock { _submissions } }
     var postedComments: [PostedComment] { lock.withLock { _comments } }
 
     /// Scripted failures, keyed by RPC name (`feed_rows`, `submit_response`,
-    /// `post_comment`, `revealed_responses`). Cleared by the test that set it.
+    /// `post_comment`, `revealed_responses`, `power_ranking_top_five`). Cleared
+    /// by the test that set it.
     var failures: [String: Error] {
         get { lock.withLock { _failures } }
         set { lock.withLock { _failures = newValue } }
@@ -123,6 +127,44 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
             }
             return AddedPost(id: postId, slotIds: slotIds, optionIds: optionIds)
         }
+    }
+
+    /// A Power Rankings post: one `rank` slot over the given teams (label and
+    /// team code both the code), best-known order first, with the cover art the
+    /// admin chose. `option(_:)` finds a team's option id.
+    @discardableResult
+    func addPowerRankingsPost(
+        _ promptText: String,
+        teams: [String],
+        cover: [String] = [],
+        status: String = "open",
+        age: TimeInterval = 0,
+        locksIn: TimeInterval = 3600
+    ) -> AddedPost {
+        lock.withLock {
+            let postId = UUID(), slotId = UUID(), authorId = UUID()
+            rows.profiles.append(PromptProfileRow(id: authorId, displayName: "Ball Party"))
+            rows.posts.append(PromptPostRow(
+                id: postId, templateKind: "power_rankings", authorId: authorId, promptText: promptText,
+                lockAt: epoch.addingTimeInterval(locksIn), createdAt: epoch.addingTimeInterval(-age),
+                status: status, isOpinion: true, coverTeamCodes: cover
+            ))
+            rows.slots.append(PromptSlotRow(
+                id: slotId, postId: postId, label: "Your power rankings", shape: "rank", pickCount: 32
+            ))
+            let optionIds = teams.enumerated().map { index, code -> UUID in
+                let optionId = UUID()
+                rows.options.append(PromptOptionRow(
+                    id: optionId, slotId: slotId, label: code, teamCode: code, sortOrder: index
+                ))
+                return optionId
+            }
+            return AddedPost(id: postId, slotIds: [slotId], optionIds: [optionIds])
+        }
+    }
+
+    func setPowerTopFive(for post: AddedPost, _ rowsForPost: [PromptPowerTopFiveRow]) {
+        lock.withLock { powerTopFiveByPost[post.id] = rowsForPost }
     }
 
     /// The server locks the slot in the same way `resolve_post` does: correct
@@ -222,6 +264,14 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
         lock.withLock {
             _aggregateRequests.append(postId)
             return aggregatesByPost[postId] ?? []
+        }
+    }
+
+    func powerRankingTopFive(postId: UUID) async throws -> [PromptPowerTopFiveRow] {
+        try lock.withLock {
+            _powerTopFiveRequests.append(postId)
+            if let failure = _failures["power_ranking_top_five"] { throw failure }
+            return powerTopFiveByPost[postId] ?? []
         }
     }
 

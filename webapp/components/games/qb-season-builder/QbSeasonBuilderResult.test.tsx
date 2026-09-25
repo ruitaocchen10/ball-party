@@ -75,7 +75,7 @@ const qualities = (seed: number) => ({
  */
 function shownOf(): ShownSpin[] {
   const row: BoardRow = {
-    match_id: MATCH, mode: "hidden", phase: "complete", round_count: 6, current_round: 6,
+    match_id: MATCH, mode: "hidden", era: "all", phase: "complete", round_count: 6, current_round: 6,
     respin_used: true, franchise_code: null, season: null, options: null, picks: [],
     shown: [
       // Round 1's first spin, thrown away by the respin.

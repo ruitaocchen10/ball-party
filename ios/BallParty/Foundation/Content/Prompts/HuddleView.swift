@@ -162,11 +162,14 @@ private struct PostCard: View {
         .opacity(post.status == .void ? 0.45 : 1)
     }
 
-    /// One game is a poster, a slate of them a pager of posters, and anything
-    /// that isn't a game — players, a ranking — the faces of what is on offer.
+    /// One game is a poster, a slate of them a pager of posters, Power Rankings
+    /// its cover art, and anything else — players, a ranking — the faces of what
+    /// is on offer.
     @ViewBuilder
     private var teaser: some View {
-        if post.isMatchupPost {
+        if post.isPowerRankings {
+            PowerRankingsCover(teamCodes: post.coverTeamCodes)
+        } else if post.isMatchupPost {
             if post.slots.count == 1, let matchup = post.slots[0].matchup {
                 MatchupPoster(away: matchup.away, home: matchup.home, game: post.slots[0].game)
             } else {

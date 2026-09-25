@@ -19,10 +19,18 @@ enum PromptFeed {
         // picks, not merely `status == 'open'` (`PostStatus.isTakingPicks`).
         // `post_aggregates` is the only sanctioned way to see anyone else's
         // pick, so it is asked for only the posts that actually need it.
-        let aggregates = try await gather(posts.filter { row in
+        let needingAggregate = posts.filter { row in
             answered.contains(row.id) || !(row.postStatus?.isTakingPicks(lockAt: row.lockAt, now: now) ?? false)
-        }) {
+        }
+        let aggregates = try await gather(needingAggregate) {
             try await client.aggregates(postId: $0.id)
+        }
+
+        // A Power Rankings post's "most common top 5", revealed under the same
+        // rule as the aggregates it sits beside. Like the web, a failure here
+        // costs the post its consensus panel, not the player their feed.
+        let powerTopFive = await gatherQuietly(needingAggregate.filter { $0.templateKind == PromptPost.powerRankingsKind }) {
+            try await client.powerRankingTopFive(postId: $0.id)
         }
 
         // Individual calls become social content only after the board closes.
@@ -40,13 +48,16 @@ enum PromptFeed {
             }
         }
 
-        return assemble(rows: rows, aggregates: aggregates, revealed: revealed, viewerId: viewerId)
+        return assemble(
+            rows: rows, aggregates: aggregates, powerTopFive: powerTopFive, revealed: revealed, viewerId: viewerId
+        )
     }
 
-    /// The feed shows Picks posts whose status this app knows. (`assemble` also
-    /// leaves out a post with a slot shape it doesn't know.)
+    /// The feed shows Picks and Power Rankings posts whose status this app
+    /// knows. (`assemble` also leaves out a post with a slot shape it doesn't
+    /// know.)
     private static func isShown(_ row: PromptPostRow) -> Bool {
-        row.postStatus != nil && PromptPost.isPicksKind(row.templateKind)
+        row.postStatus != nil && PromptPost.isFeedKind(row.templateKind)
     }
 
     /// Runs `fetch` for every post at once, keyed by post id.
@@ -61,9 +72,23 @@ enum PromptFeed {
         }
     }
 
+    /// `gather` for reads that may fail without failing the feed: a post whose
+    /// read throws is simply absent from the result.
+    private static func gatherQuietly<Row: Sendable>(
+        _ posts: [PromptPostRow], _ fetch: @escaping @Sendable (PromptPostRow) async throws -> [Row]
+    ) async -> [UUID: [Row]] {
+        await withTaskGroup(of: (UUID, [Row]?).self) { group in
+            for post in posts { group.addTask { (post.id, try? await fetch(post)) } }
+            var results: [UUID: [Row]] = [:]
+            for await (id, rows) in group { if let rows { results[id] = rows } }
+            return results
+        }
+    }
+
     static func assemble(
         rows: PromptFeedRows,
         aggregates: [UUID: [PromptAggregateRow]] = [:],
+        powerTopFive: [UUID: [PromptPowerTopFiveRow]] = [:],
         revealed: [UUID: [PromptRevealedResponseRow]] = [:],
         viewerId: UUID
     ) -> [PromptPost] {
@@ -73,6 +98,7 @@ enum PromptFeed {
         let responsesByPost = Dictionary(grouping: rows.viewerResponses, by: \.postId)
         let nameById = Dictionary(rows.profiles.map { ($0.id, $0.displayName) }, uniquingKeysWith: { first, _ in first })
         let gameById = Dictionary(rows.games.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let previousRanks = previousPowerRanks(rows: rows, responsesByPost: responsesByPost)
 
         return rows.posts
             .sorted { $0.createdAt > $1.createdAt }
@@ -139,9 +165,46 @@ enum PromptFeed {
                     // Summed from what the server wrote, never recomputed from
                     // the scoring rules — those live in `resolve_post`.
                     viewerPointsAwarded: status == .resolved && !mine.isEmpty ? mine.reduce(0) { $0 + ($1.pointsEarned ?? 0) } : nil,
-                    aggregate: aggregate
+                    aggregate: aggregate,
+                    coverTeamCodes: row.coverTeamCodes ?? [],
+                    previousRankByTeam: previousRanks[row.id] ?? [:],
+                    powerRankingTopFive: (powerTopFive[row.id] ?? []).map {
+                        PowerRankingConsensusEntry(
+                            optionId: $0.optionId, topFiveCount: $0.topFiveCount, averageRank: $0.averageRank
+                        )
+                    }
                 )
             }
+    }
+
+    /// For each Power Rankings post, `{team code → place}` from the viewer's
+    /// most recent *earlier* ballot. Option ids are unique to each weekly post,
+    /// so weeks are compared through the NFL team code — from the viewer's own
+    /// rows only, which exposes nobody else's history. A week the viewer sat
+    /// out leaves the older ballot in force, as on the web.
+    private static func previousPowerRanks(
+        rows: PromptFeedRows, responsesByPost: [UUID: [PromptResponseRow]]
+    ) -> [UUID: [String: Int]] {
+        let teamCodeByOption = Dictionary(
+            rows.options.compactMap { option in option.teamCode.map { (option.id, $0) } },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var previousByPost: [UUID: [String: Int]] = [:]
+        var mostRecent: [String: Int] = [:]
+        let powerPosts = rows.posts
+            .filter { $0.templateKind == PromptPost.powerRankingsKind && isShown($0) }
+            .sorted { $0.createdAt < $1.createdAt }
+        for row in powerPosts {
+            previousByPost[row.id] = mostRecent
+            guard let ballot = responsesByPost[row.id]?.first else { continue }
+            mostRecent = Dictionary(
+                ballot.chosenOptionIds.enumerated().compactMap { index, optionId in
+                    teamCodeByOption[optionId].map { ($0, index + 1) }
+                },
+                uniquingKeysWith: { first, _ in first }
+            )
+        }
+        return previousByPost
     }
 
     /// The viewer's own top-level takes across every post, newest first — the

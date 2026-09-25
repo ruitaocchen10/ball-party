@@ -40,6 +40,18 @@ export default async function SoloPage(props: PageProps<"/solo">) {
   const email = viewer ? ((claims!.email as string | undefined) ?? null) : null;
   const avatarUrl = profile?.avatar_url ?? null;
 
+  // Only a signed-in viewer can play, so only they pay for the bounds behind
+  // Higher or Lower's era picker. A failure is not fatal: the picker drops out
+  // and the dealer falls back to the whole pool.
+  const { data: era } = viewer
+    ? await (supabase.schema("higher_or_lower").rpc("season_bounds" as never) as unknown as Promise<{
+      data: { season_min: number; season_max: number } | null;
+    }>)
+    : { data: null };
+  const higherOrLowerEra = era?.season_min != null && era.season_max != null
+    ? { seasonMin: era.season_min, seasonMax: era.season_max }
+    : null;
+
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
 
@@ -59,7 +71,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
           />
 
           <section className="mt-9" aria-label="Solo games">
-            <SoloGrid canPlaySolo={viewer} />
+            <SoloGrid canPlaySolo={viewer} higherOrLowerEra={higherOrLowerEra} />
           </section>
         </div>
       </main>

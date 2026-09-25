@@ -161,8 +161,26 @@ struct PromptPost: Identifiable, Equatable, Sendable {
     /// `{slot → {option → percent of that slot's respondents who chose it}}`.
     /// `nil` until the post is past open or the viewer has answered.
     let aggregate: [UUID: [UUID: Double]]?
+    /// Power Rankings only: the six teams the admin chose for the cover art, in
+    /// placement order.
+    var coverTeamCodes: [String] = []
+    /// Power Rankings only: `{team code → position}` from the viewer's most
+    /// recent *earlier* Power Rankings ballot. Option ids are unique to each
+    /// weekly post, so the team code is what ties one week to the next.
+    var previousRankByTeam: [String: Int] = [:]
+    /// Power Rankings only: the teams most often placed in a ballot's top
+    /// five, best first. Empty until `aggregate` is (same reveal rule).
+    var powerRankingTopFive: [PowerRankingConsensusEntry] = []
 
     var viewerAnswered: Bool { viewerResponse != nil }
+
+    /// Power Rankings: an opinion-only, weekly ranking of the league where the
+    /// respondent — not the composer — chooses to rank 5, 10 or all 32 teams.
+    var isPowerRankings: Bool { templateKind == Self.powerRankingsKind }
+
+    static let powerRankingsKind = "power_rankings"
+    /// How many teams a Power Rankings ballot may hold (`submit_response`).
+    static let powerRankingDepths = [5, 10, 32]
 
     /// Whether every slot is a head-to-head between two teams, which is when
     /// the post is drawn as matchup covers instead of an option list.
@@ -173,13 +191,44 @@ struct PromptPost: Identifiable, Equatable, Sendable {
     /// Whether this viewer can still make picks on it.
     func canBeAnswered(at now: Date) -> Bool { isTakingPicks(at: now) && !viewerAnswered }
 
-    /// The web home shows Picks posts only ("the picks surface for now" in
-    /// `webapp/app/page.tsx`); the other kinds stay with the admin tooling.
-    /// `game_pick` and `weekly_picks` remain readable for posts written before
-    /// Picks unified them.
+    /// Picks posts. `game_pick` and `weekly_picks` remain readable for posts
+    /// written before Picks unified them.
     static let picksKinds = ["picks", "game_pick", "weekly_picks"]
 
     static func isPicksKind(_ kind: String) -> Bool { picksKinds.contains(kind) }
+
+    /// What the web home shows (`isHomePrompt` in `webapp/app/page.tsx`): Picks
+    /// plus Power Rankings. The other kinds stay with the admin tooling.
+    static let feedKinds = picksKinds + [powerRankingsKind]
+
+    static func isFeedKind(_ kind: String) -> Bool { feedKinds.contains(kind) }
+}
+
+/// One team of a Power Rankings post's "most common top 5"
+/// (`prompts.power_ranking_top_five`).
+struct PowerRankingConsensusEntry: Equatable, Sendable {
+    let optionId: UUID
+    /// How many ballots put the team in their top five.
+    let topFiveCount: Int
+    /// The team's average position across the ballots that ranked it.
+    let averageRank: Double
+}
+
+/// How a team moved between the viewer's last two Power Rankings ballots.
+enum PowerRankingMovement: Equatable, Sendable {
+    /// Ranked before, and by this many places higher now.
+    case up(Int)
+    case down(Int)
+    case unchanged
+    /// Not on the viewer's previous ballot (or they have none).
+    case new
+
+    /// `previous` is the team's 1-based place last time, `current` its place now.
+    init(previous: Int?, current: Int) {
+        guard let previous else { self = .new; return }
+        let places = previous - current
+        self = places > 0 ? .up(places) : places < 0 ? .down(-places) : .unchanged
+    }
 }
 
 // MARK: - Rows
@@ -199,6 +248,8 @@ struct PromptPostRow: Decodable, Equatable, Sendable {
     let status: String
     let voidReason: String?
     let isOpinion: Bool
+    /// Power Rankings only (`cover_team_codes`, 0118); `nil` on every other kind.
+    let coverTeamCodes: [String]?
 
     /// `nil` for a status this app doesn't know.
     var postStatus: PostStatus? { PostStatus(rawValue: status) }
@@ -206,12 +257,14 @@ struct PromptPostRow: Decodable, Equatable, Sendable {
     init(
         id: UUID, templateKind: String = "picks", templateName: String = "Picks", authorId: UUID,
         caption: String = "", promptText: String, resolutionCriteria: String = "", lockAt: Date,
-        createdAt: Date, status: String = "open", voidReason: String? = nil, isOpinion: Bool = false
+        createdAt: Date, status: String = "open", voidReason: String? = nil, isOpinion: Bool = false,
+        coverTeamCodes: [String]? = nil
     ) {
         self.id = id; self.templateKind = templateKind; self.templateName = templateName
         self.authorId = authorId; self.caption = caption; self.promptText = promptText
         self.resolutionCriteria = resolutionCriteria; self.lockAt = lockAt; self.createdAt = createdAt
         self.status = status; self.voidReason = voidReason; self.isOpinion = isOpinion
+        self.coverTeamCodes = coverTeamCodes
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -225,6 +278,7 @@ struct PromptPostRow: Decodable, Equatable, Sendable {
         case createdAt = "created_at"
         case voidReason = "void_reason"
         case isOpinion = "is_opinion"
+        case coverTeamCodes = "cover_team_codes"
     }
 
     init(from decoder: Decoder) throws {
@@ -241,6 +295,7 @@ struct PromptPostRow: Decodable, Equatable, Sendable {
         status = try c.decode(String.self, forKey: .status)
         voidReason = try c.decodeIfPresent(String.self, forKey: .voidReason)
         isOpinion = try c.decode(Bool.self, forKey: .isOpinion)
+        coverTeamCodes = try c.decodeIfPresent([String].self, forKey: .coverTeamCodes)
     }
 }
 
@@ -408,6 +463,33 @@ struct PromptAggregateRow: Decodable, Equatable, Sendable {
         optionId = try c.decode(UUID.self, forKey: .optionId)
         pct = try c.decodeNumericIfPresent(forKey: .pct)
         totalResponses = try c.decodeNumericIfPresent(forKey: .totalResponses).map { Int($0) }
+    }
+}
+
+/// One row of `prompts.power_ranking_top_five` — a team's showing in the
+/// ballots' top fives. Team-level only; never an individual ballot.
+struct PromptPowerTopFiveRow: Decodable, Equatable, Sendable {
+    let optionId: UUID
+    let topFiveCount: Int
+    let averageRank: Double
+
+    init(optionId: UUID, topFiveCount: Int, averageRank: Double) {
+        self.optionId = optionId; self.topFiveCount = topFiveCount; self.averageRank = averageRank
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case optionId = "option_id"
+        case topFiveCount = "top_five_count"
+        case averageRank = "average_rank"
+    }
+
+    /// `bigint` and `numeric` arrive as a number or a string depending on the
+    /// path PostgREST takes, like `post_aggregates`' columns.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        optionId = try c.decode(UUID.self, forKey: .optionId)
+        topFiveCount = try c.decodeNumericIfPresent(forKey: .topFiveCount).map { Int($0) } ?? 0
+        averageRank = try c.decodeNumericIfPresent(forKey: .averageRank) ?? 0
     }
 }
 
