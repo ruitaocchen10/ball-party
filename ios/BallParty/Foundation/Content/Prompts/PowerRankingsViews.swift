@@ -217,11 +217,90 @@ private struct PowerRankRow: View {
 
 // MARK: - Making a ballot
 
+/// How the ranking is laid out, as on the web: five teams are one column of
+/// full rows, ten are two columns of five, all thirty-two are four columns of
+/// eight — each column filled top to bottom before the next.
+private enum RankBoardLayout {
+    case full, compact, tiny
+
+    init(depth: Int) { self = depth > 10 ? .tiny : depth > 5 ? .compact : .full }
+
+    var columns: Int {
+        switch self {
+        case .full: 1
+        case .compact: 2
+        case .tiny: 4
+        }
+    }
+
+    var rowHeight: CGFloat { self == .full ? rankRowHeight : 48 }
+}
+
+/// A place in the ranking no team has been chosen for yet.
+private struct EmptyRankSlot: View {
+    let rank: Int
+    let layout: RankBoardLayout
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("\(rank)")
+                .font(.mono(14))
+                .monospacedDigit()
+                .frame(width: layout == .tiny ? nil : 28, alignment: layout == .tiny ? .center : .leading)
+            if layout != .tiny {
+                Text("Choose a team").monoLabel(10, tracking: 0.08)
+                Spacer(minLength: 0)
+            }
+        }
+        .foregroundStyle(Theme.fgMuted)
+        .padding(.horizontal, layout == .tiny ? 0 : 12)
+        .frame(maxWidth: .infinity, minHeight: layout.rowHeight, maxHeight: layout.rowHeight)
+        .background(Theme.surfaceRaised.opacity(0.5))
+        .overlay(Rectangle().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Place \(rank), empty")
+    }
+}
+
+/// A ranked team on the thirty-two-team board, where a column is under ninety
+/// points wide: its number, a logo and the movement tab, no name.
+private struct TinyRankCell: View {
+    let rank: Int
+    let option: PromptOption
+    var movement: PowerRankingMovement?
+
+    private let height: CGFloat = 48
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text("\(rank)")
+                .font(.slab(16))
+                .foregroundStyle(.white)
+                .monospacedDigit()
+                .frame(width: 24, height: height)
+                .background(Color.black.opacity(0.45))
+            PowerTeamMark(option: option, size: 40)
+                .frame(maxWidth: .infinity)
+                .clipped()
+            if let movement {
+                MovementBadge(movement: movement, width: 24, height: height)
+            }
+        }
+        .frame(height: height)
+        .background(teamGradient(option.teamCode))
+        .overlay(Rectangle().strokeBorder(Color.white.opacity(0.22), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(rank), \(option.label)")
+    }
+}
+
 /// Composing a ballot: choose how deep to go, tap teams into the ranking, drag
 /// the rows into order. A ballot is complete when every place is filled.
 struct PowerRankingsPicker: View {
     @ObservedObject var viewModel: HuddleViewModel
     let post: PromptPost
+    /// The place a row is being dragged over.
+    @State private var dropTarget: Int?
 
     var body: some View {
         if let slot = post.slots.first {
@@ -231,7 +310,9 @@ struct PowerRankingsPicker: View {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     SectionTitle(text: "Your power rankings", trailing: "\(chosen.count)/\(depth) ranked")
-                    Text("Tap teams to add them, then drag the rows into order.")
+                    Text(depth > 10
+                        ? "Tap teams to add them, drag to reorder, tap a placed team to remove it."
+                        : "Tap teams to add them, then drag the rows into order.")
                         .font(.sans(14)).foregroundStyle(Theme.fgMuted)
                 }
                 depthPicker(depth)
@@ -261,79 +342,97 @@ struct PowerRankingsPicker: View {
         .accessibilityLabel("Number of teams to rank")
     }
 
-    /// The ranked rows, in a `List` for its drag-to-reorder. The list sits
-    /// inside the screen's own scroll view, so it is sized to its rows and
-    /// doesn't scroll itself; edit mode is what turns on the drag handles.
-    @ViewBuilder
+    /// Every place is on the board from the start, as on the web: the ranked
+    /// teams fill it from the top and the places not yet chosen are numbered,
+    /// dashed slots after them. A ranked row is dragged onto another place to
+    /// move it there; dropping on an empty place moves it to the end.
     private func ranking(slot: PromptSlot, chosen: [UUID], optionById: [UUID: PromptOption], depth: Int) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if !chosen.isEmpty {
-                List {
-                    ForEach(Array(chosen.enumerated()), id: \.element) { index, optionId in
-                        if let option = optionById[optionId] {
-                            PowerRankRow(
-                                rank: index + 1,
-                                option: option,
-                                movement: PowerRankingMovement(
-                                    previous: option.teamCode.flatMap { post.previousRankByTeam[$0] }, current: index + 1
-                                ),
-                                onRemove: { viewModel.toggle(optionId, in: slot.id, of: post.id) }
-                            )
-                            .listRowInsets(EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .deleteDisabled(true)
-                        }
-                    }
-                    .onMove { source, destination in
-                        guard let from = source.first else { return }
-                        // `onMove` hands over the gap dropped into; the view model
-                        // takes the place the row ends up in.
-                        viewModel.moveRanked(
-                            from: from, to: destination > from ? destination - 1 : destination, in: slot.id, of: post.id
-                        )
+        let layout = RankBoardLayout(depth: depth)
+        let perColumn = depth / layout.columns
+        return HStack(alignment: .top, spacing: 6) {
+            ForEach(0..<layout.columns, id: \.self) { column in
+                VStack(spacing: 6) {
+                    ForEach(column * perColumn ..< (column + 1) * perColumn, id: \.self) { index in
+                        place(index, layout: layout, slot: slot, chosen: chosen, optionById: optionById)
                     }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .scrollDisabled(true)
-                .environment(\.editMode, .constant(.active))
-                .frame(height: CGFloat(chosen.count) * (rankRowHeight + 6))
-            }
-            if chosen.count < depth {
-                Text(chosen.isEmpty ? "Choose \(depth) teams below" : "Choose \(depth - chosen.count) more below")
-                    .monoLabel(10, tracking: 0.08)
-                    .frame(maxWidth: .infinity, minHeight: rankRowHeight, alignment: .center)
-                    .overlay(Rectangle().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
+                .frame(maxWidth: .infinity, alignment: .top)
             }
         }
     }
 
+    private func place(
+        _ index: Int, layout: RankBoardLayout, slot: PromptSlot, chosen: [UUID], optionById: [UUID: PromptOption]
+    ) -> some View {
+        Group {
+            if chosen.indices.contains(index), let option = optionById[chosen[index]] {
+                rankedTeam(index, option: option, layout: layout, slot: slot)
+                    .draggable(option.id.uuidString)
+            } else {
+                EmptyRankSlot(rank: index + 1, layout: layout)
+            }
+        }
+        .overlay {
+            if dropTarget == index { Rectangle().strokeBorder(Theme.panel, lineWidth: 2) }
+        }
+        .dropDestination(for: String.self) { items, _ in
+            guard let raw = items.first, let id = UUID(uuidString: raw), let from = chosen.firstIndex(of: id)
+            else { return false }
+            viewModel.moveRanked(from: from, to: min(index, chosen.count - 1), in: slot.id, of: post.id)
+            return true
+        } isTargeted: { isTargeted in
+            if isTargeted { dropTarget = index } else if dropTarget == index { dropTarget = nil }
+        }
+    }
+
+    @ViewBuilder
+    private func rankedTeam(_ index: Int, option: PromptOption, layout: RankBoardLayout, slot: PromptSlot) -> some View {
+        let movement = PowerRankingMovement(
+            previous: option.teamCode.flatMap { post.previousRankByTeam[$0] }, current: index + 1
+        )
+        let remove = { viewModel.toggle(option.id, in: slot.id, of: post.id) }
+        switch layout {
+        case .full:
+            PowerRankRow(rank: index + 1, option: option, movement: movement, onRemove: remove)
+        case .compact:
+            PowerRankRow(rank: index + 1, option: option, movement: movement, onRemove: remove, compact: true)
+        case .tiny:
+            TinyRankCell(rank: index + 1, option: option, movement: movement)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: remove)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint("Removes \(option.label) from your ranking")
+        }
+    }
+
+    /// The teams not yet ranked, as on the web: a ticket-shaped card with the
+    /// logo cropped large behind a "+", four across with smaller cut corners
+    /// than the web's. The team's name is the accessibility label only.
     private func pool(slot: PromptSlot, chosen: [UUID], depth: Int) -> some View {
         let available = slot.options.filter { !chosen.contains($0.id) }
         let isFull = chosen.count >= depth
         return VStack(alignment: .leading, spacing: 8) {
             Text("Available teams").monoLabel(10, tracking: 0.1)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
                 ForEach(available) { option in
                     Button {
                         viewModel.toggle(option.id, in: slot.id, of: post.id)
                     } label: {
-                        HStack(spacing: 8) {
-                            PowerTeamMark(option: option, size: 36)
-                            Text(option.label)
-                                .font(.sans(15, weight: .bold))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                            Spacer(minLength: 0)
-                            Image(systemName: "plus").font(.system(size: 13, weight: .bold)).foregroundStyle(.white.opacity(0.85))
-                        }
-                        .padding(.horizontal, 10)
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(teamGradient(option.teamCode))
-                        .overlay(Rectangle().strokeBorder(Color.white.opacity(0.2), lineWidth: 1))
-                        .contentShape(Rectangle())
+                        PowerTeamMark(option: option, size: 64)
+                            .shadow(color: .black.opacity(0.5), radius: 4, y: 4)
+                            .frame(maxWidth: .infinity, minHeight: rankRowHeight, maxHeight: rankRowHeight)
+                            .clipped()
+                            .overlay(alignment: .bottomTrailing) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 15, weight: .black))
+                                    .foregroundStyle(.white.opacity(0.85))
+                                    .padding(.trailing, 10)
+                                    .padding(.bottom, 4)
+                            }
+                            .background(teamGradient(option.teamCode))
+                            .clipShape(TicketShape(cutX: 14, cutY: 8))
+                            .overlay(TicketShape(cutX: 14, cutY: 8).stroke(Color.white.opacity(0.2), lineWidth: 1))
+                            .contentShape(TicketShape(cutX: 14, cutY: 8))
                     }
                     .buttonStyle(.plain)
                     .disabled(isFull)
@@ -350,17 +449,22 @@ struct PowerRankingsPicker: View {
 
 // MARK: - After the ballot
 
-/// The viewer's saved ballot as a board, with how each team moved since their
-/// last one. As on the web it takes the width it needs: five teams are a
-/// single column of full rows, ten or thirty-two two columns of compact ones,
-/// reading down the left and then down the right.
+/// A saved ballot as a board — the viewer's own by default, with how each team
+/// moved since their last one. As on the web it takes the width it needs: five
+/// teams are a single column of full rows, ten or thirty-two two columns of
+/// compact ones, reading down the left and then down the right.
 struct PowerRankingsBoard: View {
     let post: PromptPost
+    /// Whose ballot to draw; the viewer's when nil.
+    var response: [UUID: [UUID]]?
+    /// Movement is measured against the viewer's own last ballot, so it is
+    /// meaningful only on a board the viewer made.
+    var showsMovement = true
 
     var body: some View {
         if let slot = post.slots.first {
             let optionById = Dictionary(slot.options.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-            let ranked = (post.viewerResponse?[slot.id] ?? []).compactMap { optionById[$0] }
+            let ranked = ((response ?? post.viewerResponse)?[slot.id] ?? []).compactMap { optionById[$0] }
             if !ranked.isEmpty {
                 let columns = ranked.count > 5 ? 2 : 1
                 let perColumn = (ranked.count + columns - 1) / columns
@@ -371,10 +475,12 @@ struct PowerRankingsBoard: View {
                                 PowerRankRow(
                                     rank: index + 1,
                                     option: ranked[index],
-                                    movement: PowerRankingMovement(
-                                        previous: ranked[index].teamCode.flatMap { post.previousRankByTeam[$0] },
-                                        current: index + 1
-                                    ),
+                                    movement: showsMovement
+                                        ? PowerRankingMovement(
+                                            previous: ranked[index].teamCode.flatMap { post.previousRankByTeam[$0] },
+                                            current: index + 1
+                                        )
+                                        : nil,
                                     compact: columns == 2
                                 )
                             }
@@ -444,32 +550,14 @@ struct PowerRankingsResults: View {
     }
 }
 
-/// Somebody's saved ballot as a take shows it: their order as a compact grid of
-/// `1 KC` chips, since a take card is no place for thirty-two rows.
+/// Somebody's saved ballot as a take shows it: the same team rows as the
+/// viewer's own card, less the movement tab — that compares against the
+/// viewer's last ballot, which says nothing about theirs.
 struct PowerRankingTicket: View {
     let post: PromptPost
     let response: [UUID: [UUID]]
 
     var body: some View {
-        if let slot = post.slots.first {
-            let optionById = Dictionary(slot.options.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-            let ranked = (response[slot.id] ?? []).compactMap { optionById[$0] }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 68), spacing: 6)], alignment: .leading, spacing: 6) {
-                ForEach(Array(ranked.enumerated()), id: \.element.id) { index, option in
-                    HStack(spacing: 5) {
-                        Text("\(index + 1)").font(.mono(11, weight: .bold)).foregroundStyle(Theme.fgMuted)
-                        Text(option.teamCode ?? option.label).font(.mono(12, weight: .bold)).foregroundStyle(Theme.fg)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
-                    .padding(.horizontal, 8)
-                    .background(Theme.surface)
-                    .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
-                }
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(
-                "Ranked " + ranked.enumerated().map { "\($0.offset + 1), \($0.element.label)" }.joined(separator: "; ")
-            )
-        }
+        PowerRankingsBoard(post: post, response: response, showsMovement: false)
     }
 }

@@ -120,7 +120,7 @@ it("marking a picks post as opinion publishes it without an auto-resolve source"
 
   render(<PromptPostComposer displayName="Admin" games={games} players={[]} onPublish={onPublish} />);
 
-  await user.click(screen.getByRole("button", { name: /Opinion — no correct answer, no points/ }));
+  await user.click(screen.getByRole("checkbox", { name: /Opinion prompt/ }));
   await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
 
   expect(onPublish).toHaveBeenCalledTimes(1);

@@ -251,6 +251,7 @@ export function PowerRankingsSlot({
   previousRankByTeam,
   disabled = false,
   showEditorHeader = true,
+  showMovement = true,
 }: {
   slot: Slot;
   response: string[];
@@ -259,6 +260,11 @@ export function PowerRankingsSlot({
   disabled?: boolean;
   /** Completed take cards show only the saved board, not editor controls. */
   showEditorHeader?: boolean;
+  /**
+   * `previousRankByTeam` is the viewer's own last ballot, so movement means
+   * something only on a board the viewer made. Someone else's board omits it.
+   */
+  showMovement?: boolean;
 }) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
@@ -384,18 +390,20 @@ export function PowerRankingsSlot({
                 ...PROMPT_TICKET_CUT_CORNERS,
                 ...(option.teamCode ? { background: `linear-gradient(135deg, ${teamPrimaryColor(option.teamCode) ?? "#252722"}, #171914 72%)` } : {}),
               }}
-              className={`relative grid h-14 min-w-0 grid-cols-[2.1rem_minmax(0,1fr)_2rem] overflow-hidden border text-white shadow-[0_4px_10px_rgb(0_0_0/0.28)] transition-[border-color,box-shadow] ${dropTargetIndex === index && draggedId ? "border-panel ring-1 ring-panel" : "border-white/25"} ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
+              className={`relative grid h-14 min-w-0 ${showMovement ? "grid-cols-[2.1rem_minmax(0,1fr)_2rem]" : "grid-cols-[2.1rem_minmax(0,1fr)]"} overflow-hidden border text-white shadow-[0_4px_10px_rgb(0_0_0/0.28)] transition-[border-color,box-shadow] ${dropTargetIndex === index && draggedId ? "border-panel ring-1 ring-panel" : "border-white/25"} ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
             >
               <span className="z-10 flex items-center justify-center border-r border-white/20 bg-black/45 font-slab text-2xl leading-none text-white tabular-nums">{index + 1}</span>
               <span className="relative flex min-w-0 items-center justify-center overflow-hidden">
                 <OptionIcon option={option} className="h-24 w-24 shrink-0 drop-shadow-[0_5px_7px_rgb(0_0_0/0.65)]" />
               </span>
               <span className="sr-only">{option.label}</span>
-              <span className="relative z-10 flex items-center justify-center border-l border-black/15 bg-[#f7f5ee]">
-                <span className={`font-mono text-xs font-black tabular-nums ${movement === "New" ? "text-fg-muted" : typeof movement === "number" && movement > 0 ? "text-grade-elite" : typeof movement === "number" && movement < 0 ? "text-grade-rough" : "text-fg-muted"}`}>
-                  {movement === "New" ? "—" : movement === 0 ? "—" : movement > 0 ? `+${movement}` : movement}
+              {showMovement ? (
+                <span className="relative z-10 flex items-center justify-center border-l border-black/15 bg-[#f7f5ee]">
+                  <span className={`font-mono text-xs font-black tabular-nums ${movement === "New" ? "text-fg-muted" : typeof movement === "number" && movement > 0 ? "text-grade-elite" : typeof movement === "number" && movement < 0 ? "text-grade-rough" : "text-fg-muted"}`}>
+                    {movement === "New" ? "—" : movement === 0 ? "—" : movement > 0 ? `+${movement}` : movement}
+                  </span>
                 </span>
-              </span>
+              ) : null}
             </li>
           );
         })}

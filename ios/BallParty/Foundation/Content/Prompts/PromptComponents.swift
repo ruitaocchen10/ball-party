@@ -84,6 +84,7 @@ struct TakeCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
+                Avatar(name: comment.author, url: comment.authorAvatarURL, size: 28)
                 Text(comment.author).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
                 if comment.isViewer {
                     Text("You").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)

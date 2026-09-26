@@ -13,14 +13,19 @@ import SwiftUI
 
 /// The ticket-stub silhouette: opposite corners cut off (`PROMPT_TICKET_CUT_CORNERS`).
 struct TicketShape: Shape {
+    /// How far each cut runs along the edge it starts from, and down the one it
+    /// ends on. The web's are 24 by 14; a small card takes smaller ones.
+    var cutX: CGFloat = 24
+    var cutY: CGFloat = 14
+
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        path.move(to: CGPoint(x: rect.minX + 24, y: rect.minY))
+        path.move(to: CGPoint(x: rect.minX + cutX, y: rect.minY))
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - 14))
-        path.addLine(to: CGPoint(x: rect.maxX - 24, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - cutY))
+        path.addLine(to: CGPoint(x: rect.maxX - cutX, y: rect.maxY))
         path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + 14))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + cutY))
         path.closeSubpath()
         return path
     }
@@ -317,6 +322,8 @@ struct MatchupTile: View {
     /// The winner, once the slot is graded; `nil` until then.
     var winner: UUID?
     var onSelect: ((UUID) -> Void)?
+    /// The cropped logo's size; smaller shows more of each mark.
+    var logoSize: CGFloat = 104
 
     var body: some View {
         PromptTicket(ringed: true) {
@@ -361,7 +368,7 @@ struct MatchupTile: View {
             }
             .overlay {
                 if let code = option.teamCode {
-                    TeamLogo(code: code, size: 104)
+                    TeamLogo(code: code, size: logoSize)
                         .grayscale(passed ? 1 : 0)
                         .opacity(passed ? 0.4 : 1)
                 }

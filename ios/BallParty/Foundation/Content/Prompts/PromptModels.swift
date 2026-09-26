@@ -112,6 +112,8 @@ struct PromptSlot: Identifiable, Equatable, Sendable {
 struct PromptComment: Identifiable, Equatable, Sendable {
     let id: UUID
     let author: String
+    /// The author's profile picture; without one the card draws their initial.
+    var authorAvatarURL: URL? = nil
     let body: String
     let createdAt: Date
     let isViewer: Bool
@@ -411,14 +413,16 @@ struct PromptCommentRow: Decodable, Equatable, Sendable {
     }
 }
 
-/// `profiles` rows read for author names — `display_name` only.
+/// `profiles` rows read for who wrote a post or take — their name and picture.
 struct PromptProfileRow: Decodable, Equatable, Sendable {
     let id: UUID
     let displayName: String
+    var avatarUrl: String? = nil
 
     private enum CodingKeys: String, CodingKey {
         case id
         case displayName = "display_name"
+        case avatarUrl = "avatar_url"
     }
 }
 

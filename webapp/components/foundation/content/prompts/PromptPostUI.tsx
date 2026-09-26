@@ -281,6 +281,28 @@ export type CreatePromptPostParams = {
   isOpinion?: boolean;
 };
 
+/** What "the setup is ready" means for each template, in the publish checklist. */
+const SETUP_CHECK_LABELS: Record<TemplateKind, string> = {
+  picks: "At least one game selected",
+  game_pick: "At least one game selected",
+  weekly_picks: "At least one game selected",
+  stat_leader: "Candidates chosen (and prompt art, for a big pool)",
+  ranking: "Candidates chosen to rank",
+  power_rankings: `${COVER_TEAM_COUNT} cover teams chosen`,
+  custom_multi: "Setup complete",
+};
+
+/** Heading for the template-specific section, since what it holds differs per template. */
+const SETUP_SECTION_TITLES: Record<TemplateKind, string> = {
+  picks: "Game",
+  game_pick: "Game",
+  weekly_picks: "Game",
+  stat_leader: "Candidates",
+  ranking: "What to rank",
+  power_rankings: "Cover art",
+  custom_multi: "Structure",
+};
+
 const OPINION_CRITERIA = "Opinion only — there's no correct answer, so no points are awarded. Just for the debate.";
 
 export function PromptPostComposer({
@@ -414,6 +436,20 @@ export function PromptPostComposer({
   const templateName = TEMPLATE_DEFS.find((t) => t.kind === kind)!.name;
   const lockAtDate = new Date(lockAt);
   const lockInPast = isInPast(lockAt);
+
+  // The same conditions that used to sit inline on Publish's `disabled`, split
+  // out so the checklist beside the button can say which one is holding it back.
+  const setupReady =
+    slots.length > 0
+    && !(kind === "ranking" && effectiveRankCount === 0)
+    && !(kind === "power_rankings" && coverTeamCodes.length !== COVER_TEAM_COUNT)
+    && !(kind === "stat_leader" && needsCoverChoice(slots[0]?.options ?? []));
+  const checklist = [
+    { label: SETUP_CHECK_LABELS[kind], ok: setupReady },
+    { label: "Every point value is a whole number, 1 or more", ok: !hasInvalidPoints },
+    { label: "Lock time is in the future", ok: !lockInPast },
+  ];
+  const canPublish = !pending && checklist.every((item) => item.ok);
   const previewPost: Post = {
     id: "preview",
     templateKind: kind,
@@ -438,9 +474,17 @@ export function PromptPostComposer({
       <PostCardC post={previewPost} viewerCanAnswer onOpenAnswer={() => {}} />
       <div className="mt-3">
         {error ? <p role="alert" className="mb-2 font-mono text-[10px] tracking-[0.1em] text-grade-rough uppercase">{error}</p> : null}
+        <ul className="mb-3 flex flex-col gap-1.5 border border-line px-3 py-2.5">
+          {checklist.map((item) => (
+            <li key={item.label} className={`flex items-center gap-2 text-sm ${item.ok ? "text-fg" : "text-fg-muted"}`}>
+              <span aria-hidden className="w-3 text-center font-mono text-xs">{item.ok ? "✓" : "○"}</span>
+              <span>{item.label}</span>
+            </li>
+          ))}
+        </ul>
         <Button
           fullWidth
-          disabled={pending || lockInPast || slots.length === 0 || hasInvalidPoints || (kind === "ranking" && effectiveRankCount === 0) || (kind === "power_rankings" && coverTeamCodes.length !== COVER_TEAM_COUNT) || (kind === "stat_leader" && needsCoverChoice(slots[0]?.options ?? []))}
+          disabled={!canPublish}
           onClick={async () => {
             setPending(true);
             setError(null);
@@ -521,8 +565,9 @@ export function PromptPostComposer({
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:items-start lg:gap-8 xl:gap-12">
         <div>
           <h1 className="mb-5 font-slab text-2xl leading-none uppercase">New prompt</h1>
-          <div className="flex flex-col gap-6">
-        <FieldBlock label="Template">
+          <div className="flex flex-col gap-4">
+        <Section n={1} title="Template">
+        <div>
           <div className="flex flex-wrap gap-1.5">
             {TEMPLATE_DEFS.map((t) => (
               <button
@@ -535,20 +580,29 @@ export function PromptPostComposer({
               </button>
             ))}
           </div>
-        </FieldBlock>
+          <p className="mt-2 text-sm text-fg-muted">{TEMPLATE_DEFS.find((t) => t.kind === kind)?.blurb}</p>
+        </div>
 
         {kind !== "power_rankings" ? (
-          <FieldBlock label="Resolution">
-            <button
-              type="button"
-              onClick={toggleOpinion}
-              className={`flex items-center gap-1.5 px-3 py-2 font-slab text-xs uppercase ${isOpinion ? "bg-panel text-panel-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
-            >
-              {isOpinion ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> : null}
-              Opinion — no correct answer, no points
-            </button>
-          </FieldBlock>
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={isOpinion}
+            onClick={toggleOpinion}
+            className={`flex w-full items-start gap-3 border px-3.5 py-3 text-left ${isOpinion ? "border-fg" : "border-line"}`}
+          >
+            <span aria-hidden className={`mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center border ${isOpinion ? "border-fg bg-fg text-surface" : "border-fg-muted"}`}>
+              {isOpinion ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+            </span>
+            <span>
+              <span className="block font-semibold">Opinion prompt</span>
+              <span className="text-sm text-fg-muted">No correct answer, no points</span>
+            </span>
+          </button>
         ) : null}
+        </Section>
+
+        <Section n={2} title={SETUP_SECTION_TITLES[kind]}>
 
         {kind === "picks" ? (
           <>
@@ -570,20 +624,23 @@ export function PromptPostComposer({
                 ))}
               </div>
             </FieldBlock>
-            <FieldBlock label="Season">
-              <Select name="picks-season" ariaLabel="NFL season" value={season} onValueChange={(nextSeason) => selectSchedulePeriod(nextSeason, firstWeekForSeason(nextSeason), "picks")} options={seasons.map((value) => ({ value: String(value), label: String(value) }))} />
-            </FieldBlock>
-            <FieldBlock label="Week">
-              <Select name="picks-week" ariaLabel="NFL week" value={week} onValueChange={(nextWeek) => selectSchedulePeriod(season, nextWeek, "picks")} options={weeks.map((value) => ({ value: String(value), label: `Week ${value}` }))} />
-            </FieldBlock>
-            {picksMode === "single" ? <FieldBlock label="Game">
-              {weeklyGames.length ? <GameSelectField value={gameId} onChange={(id) => {
-                setGameId(id);
-                setPromptText(defaultPromptText("picks", weeklyGames.find((game) => game.id === id)));
-              }} games={weeklyGames} /> : <p className="text-sm text-fg-muted">The NFL schedule is temporarily unavailable. Try again shortly.</p>}
-            </FieldBlock> : <FieldBlock label="Games — all selected by default">
+            <div className="flex flex-wrap items-start gap-4">
+              <FieldBlock label="Season">
+                <Select name="picks-season" ariaLabel="NFL season" value={season} onValueChange={(nextSeason) => selectSchedulePeriod(nextSeason, firstWeekForSeason(nextSeason), "picks")} options={seasons.map((value) => ({ value: String(value), label: String(value) }))} />
+              </FieldBlock>
+              <FieldBlock label="Week">
+                <Select name="picks-week" ariaLabel="NFL week" value={week} onValueChange={(nextWeek) => selectSchedulePeriod(season, nextWeek, "picks")} options={weeks.map((value) => ({ value: String(value), label: `Week ${value}` }))} />
+              </FieldBlock>
+              {picksMode === "single" ? <FieldBlock label="Game">
+                {weeklyGames.length ? <GameSelectField value={gameId} onChange={(id) => {
+                  setGameId(id);
+                  setPromptText(defaultPromptText("picks", weeklyGames.find((game) => game.id === id)));
+                }} games={weeklyGames} /> : <p className="text-sm text-fg-muted">The NFL schedule is temporarily unavailable. Try again shortly.</p>}
+              </FieldBlock> : null}
+            </div>
+            {picksMode === "set" ? <FieldBlock label="Games — all selected by default">
               {weeklyGames.length ? <CheckboxPoolField options={weeklyGames.map((game) => ({ id: game.id, label: game.label, sublabel: new Date(game.kickoff).toLocaleString(), teamCodes: [game.away, game.home] }))} selectedIds={weeklyGameIds} onToggle={(id) => setWeeklyGameIds((current) => current.includes(id) ? current.filter((gameId_) => gameId_ !== id) : [...current, id])} roomyTeams /> : <p className="text-sm text-fg-muted">Choose a season and week with scheduled games.</p>}
-            </FieldBlock>}
+            </FieldBlock> : null}
           </>
         ) : null}
         {kind === "stat_leader" ? (
@@ -644,14 +701,14 @@ export function PromptPostComposer({
               </div>
             </FieldBlock>
             {rankingTarget === "games" ? (
-              <>
+              <div className="flex flex-wrap items-start gap-4">
                 <FieldBlock label="Season">
                   <Select name="ranking-season" ariaLabel="Ranking NFL season" value={season} onValueChange={(nextSeason) => selectSchedulePeriod(nextSeason, firstWeekForSeason(nextSeason), "ranking")} options={seasons.map((value) => ({ value: String(value), label: String(value) }))} />
                 </FieldBlock>
                 <FieldBlock label="Week">
                   <Select name="ranking-week" ariaLabel="Ranking NFL week" value={week} onValueChange={(nextWeek) => selectSchedulePeriod(season, nextWeek, "ranking")} options={weeks.map((value) => ({ value: String(value), label: `Week ${value}` }))} />
                 </FieldBlock>
-              </>
+              </div>
             ) : null}
             {rankingTarget === "players" ? (
               <PlayerCandidatePicker
@@ -703,7 +760,21 @@ export function PromptPostComposer({
             </p>
           </FieldBlock>
         ) : null}
+        </Section>
 
+        <Section n={3} title="Copy">
+        <FieldBlock label="Prompt text">
+          <input value={promptText} onChange={(e) => setPromptText(e.target.value)} className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm" />
+        </FieldBlock>
+        <FieldBlock label="Caption — optional">
+          <input value={caption} onChange={(e) => setCaption(e.target.value)} className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm" />
+        </FieldBlock>
+        <FieldBlock label="Resolution criteria — shown before anyone answers">
+          <textarea value={criteria} onChange={(e) => setCriteria(e.target.value)} rows={3} className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm" />
+        </FieldBlock>
+        </Section>
+
+        <Section n={4} title="Scoring & timing">
         {!isOpinion && slots.length ? (
           <FieldBlock label="Points per slot">
             <div className="flex flex-col gap-2">
@@ -733,15 +804,6 @@ export function PromptPostComposer({
           </FieldBlock>
         ) : null}
 
-        <FieldBlock label="Caption">
-          <input value={caption} onChange={(e) => setCaption(e.target.value)} className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm" />
-        </FieldBlock>
-        <FieldBlock label="Prompt text">
-          <input value={promptText} onChange={(e) => setPromptText(e.target.value)} className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm" />
-        </FieldBlock>
-        <FieldBlock label="Resolution criteria — shown before anyone answers">
-          <textarea value={criteria} onChange={(e) => setCriteria(e.target.value)} rows={3} className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm" />
-        </FieldBlock>
         <FieldBlock label="Locks at">
           <input
             type="datetime-local"
@@ -753,6 +815,7 @@ export function PromptPostComposer({
             <p className="mt-1 font-mono text-[9px] tracking-[0.1em] text-grade-rough uppercase">Pick a time in the future</p>
           ) : null}
         </FieldBlock>
+        </Section>
           </div>
         </div>
 
@@ -776,6 +839,19 @@ export function PromptPostComposer({
         </div>
       </div>
     </div>
+  );
+}
+
+/** A numbered card grouping one stage of the form, so the composer reads as four steps rather than one long column. */
+function Section({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+  return (
+    <section className="border border-line">
+      <header className="flex items-center gap-3 border-b border-line px-4 py-3">
+        <span aria-hidden className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-fg-muted font-mono text-[11px] text-fg-muted">{n}</span>
+        <h2 className="font-slab text-lg leading-none uppercase">{title}</h2>
+      </header>
+      <div className="flex flex-col gap-4 p-4">{children}</div>
+    </section>
   );
 }
 

@@ -44,6 +44,16 @@ final class SoloRunViewModel: ObservableObject {
             case .timedOut: "Timed out"
             }
         }
+
+        /// `label` without the call's direction, for the recap's compact tiles.
+        var shortLabel: String {
+            switch self {
+            case .startingPoint: "Start"
+            case .correct: "Correct"
+            case .miss: "Miss"
+            case .timedOut: "Timed out"
+            }
+        }
     }
 
     struct RecapEntry: Equatable, Identifiable {

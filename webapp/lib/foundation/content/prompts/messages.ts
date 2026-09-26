@@ -16,6 +16,7 @@ export const PROMPT_MESSAGES: Record<string, string> = {
   invalid_cover_options: "Choose four different players for the prompt art.",
   not_authorized: "Only the admin can do that.",
   not_resolvable: "This prompt has already been resolved or voided.",
+  opinion_not_resolvable: "Opinion prompts have no right answer, so they can't be resolved.",
   missing_answer: "Every pick needs an answer before this can resolve.",
   reason_required: "Give a reason before voiding.",
   not_voidable: "This prompt can no longer be voided.",

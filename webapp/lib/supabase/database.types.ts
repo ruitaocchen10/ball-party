@@ -249,6 +249,10 @@ export type Database = {
         }
         Returns: string
       }
+      is_admin: {
+        Args: never
+        Returns: boolean
+      }
       player_options: {
         Args: never
         Returns: {

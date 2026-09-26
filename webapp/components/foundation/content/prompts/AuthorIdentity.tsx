@@ -40,8 +40,6 @@ export function AuthorAvatar({
   return (
     <span className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-panel-fg font-slab text-panel ring-1 ring-line ring-inset ${className}`}>
       {showImage ? (
-        // Other comment authors' avatars aren't fetched at all (feed.ts only
-        // selects display_name for them) — this only ever fires for the viewer.
         // eslint-disable-next-line @next/next/no-img-element
         <img src={avatarUrl!} alt="" className="h-full w-full object-cover object-top" onError={() => setFailed(true)} />
       ) : (

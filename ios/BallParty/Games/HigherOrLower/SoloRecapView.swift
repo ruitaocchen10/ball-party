@@ -91,34 +91,49 @@ struct SoloRecapView: View {
                 Text("Your ladder").slabTitle(28)
                     .accessibilityAddTraits(.isHeader)
             }
-            ForEach(recap.ladder) { entry in
-                HStack(spacing: 12) {
-                    Text("\(entry.card.ordinal + 1)")
-                        .font(.mono(10, weight: .bold))
-                        .foregroundStyle(Theme.panelFg)
-                        .frame(width: 22, height: 22)
-                        .background(Theme.panel, in: Circle())
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(entry.card.displayName)
-                            .slabTitle(18)
-                            .lineLimit(1)
-                        Text("\(entry.card.position) · \(entry.card.identityLine)")
-                            .monoLabel(10, tracking: 0.07)
-                            .lineLimit(1)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text(entry.card.points.map(LadderCardView.formatPoints) ?? "—")
-                            .slabTitle(26)
-                            .monospacedDigit()
-                        ResultBadge(text: entry.outcome.label, tone: entry.outcome.isCorrect ? .good : .neutral)
-                    }
+            // Two or three tiles a row, depending on the screen's width.
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8, alignment: .top)], spacing: 8) {
+                ForEach(recap.ladder) { entry in
+                    ladderTile(entry)
                 }
-                .padding(12)
-                .frame(maxWidth: .infinity)
-                .well()
-                .accessibilityElement(children: .combine)
             }
         }
+    }
+
+    private func ladderTile(_ entry: SoloRunViewModel.RecapEntry) -> some View {
+        let card = entry.card
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("\(card.ordinal + 1)")
+                .font(.mono(10, weight: .bold))
+                .foregroundStyle(Theme.panelFg)
+                .frame(width: 22, height: 22)
+                .background(Theme.panel, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(card.displayName)
+                    .slabTitle(15)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                Text("\(card.position) · \(card.team)")
+                    .monoLabel(10, tracking: 0.07)
+                    .lineLimit(1)
+                // Verbatim, so the season isn't run through number formatting ("2,021").
+                Text(verbatim: card.week.map { "\(String(card.season)) · Wk \($0)" } ?? String(card.season))
+                    .monoLabel(10, tracking: 0.07)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Text(card.points.map(LadderCardView.formatPoints) ?? "—")
+                .slabTitle(24)
+                .monospacedDigit()
+            ResultBadge(text: entry.outcome.shortLabel, tone: entry.outcome.isCorrect ? .good : .neutral)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .well()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(card.ordinal + 1). \(card.displayName), \(card.identityLine)")
+        .accessibilityValue("\(card.points.map(LadderCardView.formatPoints) ?? "no score"), \(entry.outcome.label)")
     }
 }
