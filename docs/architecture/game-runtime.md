@@ -406,7 +406,7 @@ create_post(
 it's granted to every `authenticated` caller the same way every RPC in this
 codebase is, per convention (see `supabase/README.md`). This is the web
 admin composer's entry point, not a player action: the web reaches it only
-from `/admin/prompts`, behind `isAdminViewer`, so a regular player has no
+from `/admin/prompts`, behind `prompts.is_admin()` (the same allowlist), so a regular player has no
 compose entry point on either client. #59 puts admin tooling out of scope for
 iOS, so **the iOS app never calls this** and its Huddle has no authoring
 surface (issue #66's "post a new prompt where the web app allows it" is,

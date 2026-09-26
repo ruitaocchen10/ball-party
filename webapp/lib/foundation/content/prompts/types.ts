@@ -56,6 +56,8 @@ export type MatchupGameContext = {
 export type Comment = {
   id: string;
   author: string;
+  /** The author's profile picture, or null when they have none — the card then draws a generated one. */
+  authorAvatarUrl?: string | null;
   body: string;
   createdAt: string;
   /** True only for the signed-in reader's comment. */

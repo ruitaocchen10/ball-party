@@ -100,7 +100,7 @@ struct PromptDetailView: View {
                 ForEach(others) { take in
                     TakeCardView(
                         post: post, comment: take, showsReplyCount: true,
-                        collapsesPicks: post.isMatchupPost || post.isPowerRankings,
+                        collapsesPicks: true,
                         threadDestination: { AnyView(TakeThreadView(viewModel: viewModel, postId: post.id, takeId: take.id)) }
                     )
                 }
@@ -124,6 +124,7 @@ private struct YourCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 if let take {
+                    Avatar(name: take.author, url: take.authorAvatarURL, size: 28)
                     Text(take.author).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
                 }
                 Text("You").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
@@ -247,7 +248,7 @@ private struct AnswerForm: View {
 }
 
 /// The picks of a post made only of games: a single game is a full poster to
-/// tap a side of, a slate a column of compact strips to work down.
+/// tap a side of, a slate compact strips two to a row to work down.
 private struct MatchupPicks: View {
     @ObservedObject var viewModel: HuddleViewModel
     let post: PromptPost
@@ -266,13 +267,19 @@ private struct MatchupPicks: View {
                     Spacer()
                     Text("\(picked)/\(post.slots.count) picked").monoLabel(10, tracking: 0.08)
                 }
-                ForEach(post.slots) { slot in
-                    if let matchup = slot.matchup {
-                        MatchupTile(
-                            away: matchup.away, home: matchup.home,
-                            selected: viewModel.selection(in: slot.id, of: post.id).first,
-                            onSelect: { viewModel.toggle($0, in: slot.id, of: post.id) }
-                        )
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 2),
+                    spacing: 10
+                ) {
+                    ForEach(post.slots) { slot in
+                        if let matchup = slot.matchup {
+                            MatchupTile(
+                                away: matchup.away, home: matchup.home,
+                                selected: viewModel.selection(in: slot.id, of: post.id).first,
+                                onSelect: { viewModel.toggle($0, in: slot.id, of: post.id) },
+                                logoSize: 80
+                            )
+                        }
                     }
                 }
             }

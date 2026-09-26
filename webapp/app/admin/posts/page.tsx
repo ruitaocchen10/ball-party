@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PostActions, type AdminSlot } from "@/components/admin/PostActions";
 import { createClient } from "@/lib/supabase/server";
 
 const FILTERS = ["all", "open", "locked", "resolved", "void"] as const;
@@ -16,6 +17,11 @@ function selectedFilter(status: string | undefined): Filter {
   return FILTERS.includes(status as Filter) ? (status as Filter) : "open";
 }
 
+/** Read once per request — this page is server-rendered on every visit. */
+function hasLocked(lockAt: string) {
+  return new Date(lockAt).getTime() <= Date.now();
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -29,6 +35,10 @@ function formatDate(value: string) {
 /**
  * The admin's prompt index. It opens on the open-status slice, while the
  * other lifecycle filters keep finished and voided posts discoverable too.
+ * Open and locked posts carry resolve/void controls; game picks with a
+ * resolution source are graded by auto_resolve_tick (0096), so for those
+ * Resolve is only the fallback if the sweep can't. Opinion posts (0111) are
+ * never graded, so they only get Void.
  */
 export default async function AdminPostsPage({
   searchParams,
@@ -41,7 +51,9 @@ export default async function AdminPostsPage({
 
   let query = supabase
     .from("prompt_posts")
-    .select("id, template_name, caption, prompt_text, lock_at, status, created_at, resolved_at, void_reason")
+    .select(
+      "id, template_kind, is_opinion, template_name, caption, prompt_text, lock_at, status, created_at, resolved_at, void_reason, resolution_source, prompt_slots(id, label, shape, pick_count, sort_order, prompt_slot_options(id, label, sublabel, sort_order))",
+    )
     .order("created_at", { ascending: false });
 
   if (filter !== "all") query = query.eq("status", filter);
@@ -65,7 +77,7 @@ export default async function AdminPostsPage({
               href={href}
               aria-current={active ? "page" : undefined}
               className={`border px-3 py-2 font-mono text-[10px] font-bold tracking-[0.12em] uppercase transition-colors ${
-                active ? "border-fg bg-fg text-bg" : "border-line text-fg-muted hover:border-fg hover:text-fg"
+                active ? "border-fg bg-fg text-surface" : "border-line text-fg-muted hover:border-fg hover:text-fg"
               }`}
             >
               {candidate === "all" ? "All" : STATUS_LABELS[candidate]}
@@ -78,7 +90,21 @@ export default async function AdminPostsPage({
         <p className="mt-8 text-sm text-fg-muted">Posts could not be loaded. Please try again.</p>
       ) : posts?.length ? (
         <ul className="mt-6 divide-y divide-line border-y border-line">
-          {posts.map((post) => (
+          {posts.map((post) => {
+            const slots: AdminSlot[] = [...post.prompt_slots]
+              .sort((a, b) => a.sort_order - b.sort_order)
+              .map((slot) => ({
+                id: slot.id,
+                label: slot.label,
+                shape: slot.shape,
+                pickCount: slot.pick_count,
+                options: [...slot.prompt_slot_options]
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                  .map(({ id, label, sublabel }) => ({ id, label, sublabel })),
+              }));
+            const actionable = post.status === "open" || post.status === "locked";
+            const autoResolves = post.template_kind === "game_pick" && post.resolution_source !== null;
+            return (
             <li key={post.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-6">
               <div className="min-w-0">
                 <p className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">{post.template_name}</p>
@@ -94,8 +120,18 @@ export default async function AdminPostsPage({
                 </p>
               </div>
               {post.status === "void" && post.void_reason ? <p className="text-sm text-fg-muted sm:col-span-2">Void reason: {post.void_reason}</p> : null}
+              {actionable && autoResolves ? (
+                <p className="text-sm text-fg-muted sm:col-span-2">Grades automatically once the game is final.</p>
+              ) : null}
+              {actionable && post.is_opinion ? (
+                <p className="text-sm text-fg-muted sm:col-span-2">Opinion post — there&apos;s no right answer to grade, so it can only be voided.</p>
+              ) : null}
+              {actionable ? (
+                <PostActions postId={post.id} slots={slots} canResolve={!post.is_opinion && hasLocked(post.lock_at)} />
+              ) : null}
             </li>
-          ))}
+            );
+          })}
         </ul>
       ) : (
         <p className="mt-8 text-sm text-fg-muted">No {filter === "all" ? "posts" : `${STATUS_LABELS[filter].toLowerCase()} posts`} yet.</p>

@@ -59,14 +59,3 @@ export function canAnswerPrompt(
 ): boolean {
   return isSignedInViewer(claims) && !isGuestViewer(claims);
 }
-
-/**
- * Prompt composers are configured by the server-only comma-separated
- * PROMPTS_ADMIN_EMAILS list. ADMIN_EMAIL remains a fallback for the older
- * single-admin setup. Neither value is shipped to the browser.
- */
-export function isAdminViewer(claims: { email?: string } | null | undefined): boolean {
-  const configured = process.env.PROMPTS_ADMIN_EMAILS ?? process.env.ADMIN_EMAIL ?? "";
-  const adminEmails = configured.split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
-  return Boolean(claims?.email && adminEmails.includes(claims.email.toLowerCase()));
-}

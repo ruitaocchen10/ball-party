@@ -117,3 +117,32 @@ export async function createPromptPost(
   if (error) return { error: promptErrorMessage(error.message) };
   return { id: data };
 }
+
+/**
+ * Admin grading for a post auto_resolve_tick doesn't cover (0096 only grades
+ * game_pick posts with a resolution source). `answers` is {slotId: [correct
+ * option ids]} in rank order, the shape prompts.resolve_post (0095) takes —
+ * every slot on the post needs an entry, since a post resolves as a whole.
+ */
+export async function resolvePromptPost(
+  supabase: SupabaseBrowserClient,
+  { postId, answers }: { postId: string; answers: Record<string, string[]> },
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.schema("prompts").rpc("resolve_post", {
+    p_post_id: postId,
+    p_answers: answers,
+  });
+  return { error: error ? promptErrorMessage(error.message) : null };
+}
+
+/** Closes a post with no grading; the reason is what the Posts list shows afterwards. */
+export async function voidPromptPost(
+  supabase: SupabaseBrowserClient,
+  { postId, reason }: { postId: string; reason: string },
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.schema("prompts").rpc("void_post", {
+    p_post_id: postId,
+    p_reason: reason,
+  });
+  return { error: error ? promptErrorMessage(error.message) : null };
+}

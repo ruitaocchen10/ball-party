@@ -26,6 +26,18 @@ final class PromptModelsTests: XCTestCase {
         XCTAssertEqual(row.createdAt.timeIntervalSince1970, 1_789_646_400.123, accuracy: 0.001)
     }
 
+    func test_profileRow_decodesAnAvatarWhenThereIsOneAndNoneWhenThereIsNot() throws {
+        let with = try decode(PromptProfileRow.self, """
+        {"id": "1A2B3C4D-0000-4000-8000-000000000001", "display_name": "Tasha", "avatar_url": "https://example.test/tasha.png"}
+        """)
+        let without = try decode(PromptProfileRow.self, """
+        {"id": "1A2B3C4D-0000-4000-8000-000000000002", "display_name": "Kai", "avatar_url": null}
+        """)
+
+        XCTAssertEqual(with.avatarUrl, "https://example.test/tasha.png")
+        XCTAssertNil(without.avatarUrl)
+    }
+
     func test_postRow_decodesAPowerRankingsCover() throws {
         let row = try decode(PromptPostRow.self, """
         {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "template_kind": "power_rankings", "template_name": "Power Rankings",

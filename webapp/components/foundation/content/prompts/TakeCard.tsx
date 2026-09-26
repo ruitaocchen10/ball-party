@@ -25,7 +25,7 @@ export function TakeCard({
 }: {
   comment: Comment;
   isYou?: boolean;
-  /** Only ever passed for the viewer's own card — other authors' avatars aren't fetched. */
+  /** Overrides the author's own picture, which comes with the comment. */
   avatarUrl?: string | null;
   /** A real comment id is required to open the discussion for this take. */
   commentHref?: string;
@@ -45,7 +45,7 @@ export function TakeCard({
   return (
     <article className="relative border border-line bg-surface-raised shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
       <div className="flex items-center gap-2.5 px-4 pt-4">
-        <AuthorIdentity name={comment.author} avatarUrl={avatarUrl} />
+        <AuthorIdentity name={comment.author} avatarUrl={avatarUrl ?? comment.authorAvatarUrl ?? null} />
         {isYou ? <span className="shrink-0 bg-panel px-1.5 py-0.5 font-mono text-[10px] tracking-[0.06em] text-panel-fg uppercase">You</span> : null}
         <span className="ml-auto shrink-0 font-mono text-[10px] tracking-[0.04em] text-fg-muted">{relativeTime(comment.createdAt)}</span>
       </div>

@@ -1,9 +1,9 @@
 "use client";
 
 import { ShareTakeButton } from "./ShareTakeButton";
-import { PowerRankingsSlot, SlotFaceC, YourCalls } from "./SlotFaces";
 import { TakeCard } from "./TakeCard";
 import { TakeComposer } from "./TakeComposer";
+import { TakeResponse } from "./TakeResponse";
 import { usePromptDeadlineNow } from "./usePromptDeadline";
 import { isPicksPost, isPromptOpenForAnswers, totalPoints } from "@/lib/foundation/content/prompts/logic";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
@@ -54,19 +54,7 @@ export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = t
               </span>
             }
           >
-            {isPicksPost(post) ? (
-              <YourCalls slots={post.slots} responses={post.viewerResponse ?? {}} />
-            ) : post.templateKind === "power_rankings" ? (
-              <div className="px-4 pt-4">
-                <PowerRankingsSlot slot={post.slots[0]} disabled showEditorHeader={false} response={post.viewerResponse?.[post.slots[0].id] ?? []} onChange={() => {}} previousRankByTeam={post.previousRankByTeam ?? {}} />
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4 px-4 pt-4">
-                {post.slots.map((slot) => (
-                  <SlotFaceC key={slot.id} slot={slot} disabled response={post.viewerResponse?.[slot.id] ?? []} onChange={() => {}} allResponses={post.viewerResponse ?? {}} />
-                ))}
-              </div>
-            )}
+            <TakeResponse post={post} response={post.viewerResponse ?? {}} />
           </TakeCard>
         ) : null}
 
@@ -82,11 +70,9 @@ export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = t
                 key={take.id}
                 comment={take}
                 commentHref={`/prompts/${post.id}/takes/${take.id}`}
-                collapsedByDefault={Boolean(isPicksPost(post) && take.response)}
+                collapsedByDefault={Boolean(take.response)}
               >
-                {isPicksPost(post) && take.response ? (
-                  <YourCalls slots={post.slots} responses={take.response} collapsible />
-                ) : null}
+                {take.response ? <TakeResponse post={post} response={take.response} collapsible isViewer={false} /> : null}
               </TakeCard>
             ))}
           </div>

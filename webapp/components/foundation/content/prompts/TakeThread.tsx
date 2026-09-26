@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { postComment } from "@/lib/foundation/content/prompts/client";
 import { createClient } from "@/lib/supabase/client";
 import { TakeReplyComposer } from "./TakeReplyComposer";
-import { YourCalls } from "./SlotFaces";
 import { TakeCard } from "./TakeCard";
-import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
+import { TakeResponse } from "./TakeResponse";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
 
 /** The focused discussion screen for one take and its one-level reply thread. */
@@ -59,7 +58,7 @@ export function TakeThread({
         isYou={take.isViewer}
         avatarUrl={take.isViewer ? avatarUrl : null}
         commentHref={`#take-comment-${take.id}`}
-        collapsedByDefault={Boolean(isPicksPost(post) && takeResponse)}
+        collapsedByDefault={Boolean(takeResponse)}
         composer={viewerCanAnswer ? (
           <TakeReplyComposer
             takeId={take.id}
@@ -86,9 +85,7 @@ export function TakeThread({
           </div>
         }
       >
-        {isPicksPost(post) && takeResponse ? (
-          <YourCalls slots={post.slots} responses={takeResponse} collapsible />
-        ) : null}
+        {takeResponse ? <TakeResponse post={post} response={takeResponse} collapsible isViewer={take.isViewer} /> : null}
       </TakeCard>
 
 
