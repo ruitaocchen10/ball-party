@@ -120,6 +120,10 @@ private struct YourCard: View {
     /// Their take, when they left one with their picks.
     let take: PromptComment?
 
+    /// Your own ticket folds away too, same as everyone else's, so a long
+    /// slate doesn't force a scroll past it to reach the other takes.
+    @State private var picksShown = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
@@ -136,13 +140,21 @@ private struct YourCard: View {
             if let take, !take.body.isEmpty {
                 Text(take.body).font(.sans(16)).foregroundStyle(Theme.fg)
             }
-            picks
+            if picksShown { picks }
             HStack(spacing: 12) {
                 Label("Picks locked in", systemImage: "lock.fill").monoLabel(10, tracking: 0.08)
                 if let points = post.viewerPointsAwarded {
                     ResultBadge(text: "+\(points)", tone: points > 0 ? .good : .bad)
                 }
                 Spacer(minLength: 0)
+                Button { picksShown.toggle() } label: {
+                    Text(picksShown ? "Hide take" : "View take")
+                        .monoLabel(10, weight: .semibold, tracking: 0.08)
+                        .frame(minHeight: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(.isButton)
                 if let take { replyLink(take) }
             }
         }

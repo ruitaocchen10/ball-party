@@ -45,6 +45,7 @@ export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = t
             isYou
             avatarUrl={avatarUrl}
             commentHref={viewerTake ? `/prompts/${post.id}/takes/${viewerTake.id}` : undefined}
+            collapsedByDefault
             footer={
               <span className="flex items-center gap-3 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">
                 Picks locked in
@@ -72,7 +73,7 @@ export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = t
                 commentHref={`/prompts/${post.id}/takes/${take.id}`}
                 collapsedByDefault={Boolean(take.response)}
               >
-                {take.response ? <TakeResponse post={post} response={take.response} collapsible isViewer={false} /> : null}
+                {take.response ? <TakeResponse post={post} response={take.response} isViewer={false} /> : null}
               </TakeCard>
             ))}
           </div>
