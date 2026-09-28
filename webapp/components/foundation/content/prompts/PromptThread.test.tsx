@@ -53,7 +53,7 @@ describe("PromptThread", () => {
     expect(screen.queryByLabelText("Make your picks")).not.toBeInTheDocument();
   });
 
-  it("collapses another reader's power rankings ballot until they open it", () => {
+  it("collapses power rankings ballots — the viewer's own included — until opened", () => {
     const teams = ["Bills", "Chiefs", "Eagles", "Lions", "Ravens"].map((label) => ({ id: label.toLowerCase(), label, teamCode: label.slice(0, 3).toUpperCase() }));
     const ballot: Post = {
       ...post(true),
@@ -68,24 +68,28 @@ describe("PromptThread", () => {
     };
     render(<PromptThread post={ballot} displayName="Demo Reader" avatarUrl={null} />);
 
+    // Both the viewer's own board and Tasha's start folded away.
+    expect(screen.getAllByRole("button", { name: "View take" })).toHaveLength(2);
+    expect(screen.queryAllByLabelText("Your power rankings")).toHaveLength(0);
+
     // Movement is measured against the viewer's own last ballot, which says
     // nothing about Tasha's, so only the viewer's board carries it.
-    fireEvent.click(screen.getByRole("button", { name: "View take" }));
+    for (const button of screen.getAllByRole("button", { name: "View take" })) fireEvent.click(button);
     const [yours, tashas] = screen.getAllByLabelText("Your power rankings");
     expect(yours.querySelectorAll("li > span:last-child.bg-\\[\\#f7f5ee\\]").length).toBeGreaterThan(0);
     expect(tashas.querySelectorAll("li > span.bg-\\[\\#f7f5ee\\]")).toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", { name: "Hide take" }));
 
-    // Only Tasha's card carries a ballot to open; the viewer's own is always shown.
+    // Hiding the viewer's own board leaves Tasha's open.
+    fireEvent.click(screen.getAllByRole("button", { name: "Hide take" })[0]);
     expect(screen.getAllByRole("button", { name: "View take" })).toHaveLength(1);
     expect(screen.getAllByLabelText("Your power rankings")).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: "View take" }));
-    expect(screen.getByRole("button", { name: "Hide take" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Hide take" })).toHaveLength(2);
     expect(screen.getAllByLabelText("Your power rankings")).toHaveLength(2);
   });
 
-  it("lets another reader's answers to a custom prompt be opened too", () => {
+  it("lets a custom prompt's answers — the viewer's own and another reader's — be opened", () => {
     const custom: Post = {
       ...post(true),
       slots: [{ id: "mvp", label: "MVP", shape: "pick", points: 1, options: [{ id: "allen", label: "Josh Allen" }, { id: "hurts", label: "Jalen Hurts" }] }],
@@ -94,7 +98,7 @@ describe("PromptThread", () => {
     };
     render(<PromptThread post={custom} displayName="Demo Reader" avatarUrl={null} />);
 
-    expect(screen.getByRole("button", { name: "View take" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "View take" })).toHaveLength(2);
   });
 
   it("shows each author's profile picture on their take", () => {

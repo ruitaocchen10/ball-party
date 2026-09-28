@@ -17,7 +17,7 @@ struct TakeThreadView: View {
                         if let message = viewModel.errorMessage {
                             ErrorBanner(message: message)
                         }
-                        TakeCardView(post: post, comment: take)
+                        TakeCardView(post: post, comment: take, collapsesPicks: true)
 
                         if take.replies.isEmpty {
                             Text("Be the first to add a comment.")

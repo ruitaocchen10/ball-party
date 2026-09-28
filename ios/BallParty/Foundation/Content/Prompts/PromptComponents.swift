@@ -100,7 +100,10 @@ struct TakeCardView: View {
                     .foregroundStyle(Theme.fg)
             }
             if let response = comment.response, !collapsesPicks || picksShown {
-                TicketView(post: post, response: response, collapsible: collapsesPicks)
+                // `collapsesPicks` already gates this whole ticket behind "View
+                // take" above; a second, inner fold would make the reader tap
+                // twice to see a matchup slate in full.
+                TicketView(post: post, response: response)
             }
             if showsReplyCount || (collapsesPicks && comment.response != nil) {
                 HStack(spacing: 12) {

@@ -85,7 +85,7 @@ export function TakeThread({
           </div>
         }
       >
-        {takeResponse ? <TakeResponse post={post} response={takeResponse} collapsible isViewer={take.isViewer} /> : null}
+        {takeResponse ? <TakeResponse post={post} response={takeResponse} isViewer={take.isViewer} /> : null}
       </TakeCard>
 
 
