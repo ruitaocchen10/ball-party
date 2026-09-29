@@ -319,7 +319,7 @@ private struct ClosedRoomView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             PageHeader(title: "This room has closed.")
-            Button("Back") { viewModel.dismissClosedRoom() }
+            Button("Back") { Task { await viewModel.dismissClosedRoom() } }
                 .buttonStyle(.solid)
         }
         .padding(16)
