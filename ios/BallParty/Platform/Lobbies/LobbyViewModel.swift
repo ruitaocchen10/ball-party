@@ -259,7 +259,7 @@ final class LobbyViewModel: ObservableObject {
             errorMessage = Self.describe(error)
             return
         }
-        exitRoom()
+        await exitRoom()
     }
 
     /// End the room for everybody. Host-only; everybody else finds out because
@@ -274,12 +274,12 @@ final class LobbyViewModel: ObservableObject {
             errorMessage = Self.describe(error)
             return
         }
-        exitRoom()
+        await exitRoom()
     }
 
     /// Acknowledge a room that closed under us, from the closed screen.
-    func dismissClosedRoom() {
-        exitRoom()
+    func dismissClosedRoom() async {
+        await exitRoom()
     }
 
     // MARK: - Staying in step
@@ -351,12 +351,31 @@ final class LobbyViewModel: ObservableObject {
         observe()
     }
 
-    private func exitRoom() {
-        stopObserving()
+    private func exitRoom() async {
+        await stopObservingAndWait()
         snapshot = nil
         errorMessage = nil
         dismissedMatchId = nil
         stage = .entry
+    }
+
+    /// `stopObserving()`, but waits for the channel to actually come down
+    /// rather than only requesting it.
+    ///
+    /// Cancelling `observation` doesn't close its channel by itself — the
+    /// observing task only does that once it notices the cancellation and its
+    /// `for await` loop over `LobbyClient.events` returns. Leaving that to
+    /// happen on its own time is fine for a screen that's simply gone
+    /// (`stopObserving()`, from `.onDisappear`), but leaving or closing a room
+    /// needs the old channel gone *before* the screen goes back to `.entry` —
+    /// otherwise a stale subscription to the room just exited outlives it.
+    private func stopObservingAndWait() async {
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+        guard let observation else { return }
+        self.observation = nil
+        observation.cancel()
+        await observation.value
     }
 
     private func startRenewingPresence(_ lobbyId: UUID) {
