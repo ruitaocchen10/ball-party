@@ -32,8 +32,14 @@ select ok(
   'a live turn runs for twenty seconds'
 );
 
+-- With two players, the opener's pass leaves one live bidder stuck with a
+-- real turn (0158) rather than an automatic sale -- they still have to claim
+-- it before there is anything to hold a sold acknowledgement for.
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'm')));
 select auction.pass_lot((select v from tests.fx where k = 'm'));
+select tests.act_as_admin();
+select tests.act_as(tests.on_clock((select v from tests.fx where k = 'm')));
+select auction.place_bid((select v from tests.fx where k = 'm'), 0);
 select tests.act_as_admin();
 
 select ok(

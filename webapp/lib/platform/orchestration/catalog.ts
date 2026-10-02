@@ -7,9 +7,8 @@
  * read — availability by region, say, or per-player unlocks.
  *
  * `status` means playable, not planned. The auction, Higher or Lower, and
- * Sabotage Draft are built end to end; Wavelength is documented and unbuilt,
- * and saying otherwise on the home screen would be the product lying about
- * itself.
+ * Sabotage Draft and Wavelength are built end to end. A game is only live
+ * once its lobby path can deal it and participants can play it through.
  */
 export type GameStatus = "live" | "development";
 
@@ -172,13 +171,13 @@ export const GAMES: readonly Game[] = [
   },
   {
     slug: "wavelength",
-    match: null,
+    match: "wavelength_2v2",
     name: ["2v2", "Wavelength"],
     shortName: ["2v2", "Wavelength"],
-    kind: "2v2 · hidden target",
+    kind: "2v2 or co-op · hidden target",
     tagline: "One clue, one dial, one partner who carves up a fuzzy scale differently than you do.",
-    players: "4 players",
-    status: "development",
+    players: "2 or 4 players",
+    status: "live",
     solo: false,
     group: true,
     featured: false,

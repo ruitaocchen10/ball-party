@@ -16,6 +16,11 @@ vi.mock("@/components/platform/lobbies/StartSabotageDraft", () => ({
     <button>Start sabotage draft with {players} players</button>
   ),
 }));
+vi.mock("@/components/platform/lobbies/StartWavelength", () => ({
+  StartWavelength: ({ players }: { players: number }) => (
+    <button>Start Wavelength with {players} players</button>
+  ),
+}));
 
 import { selectGame } from "@/lib/platform/lobbies/actions";
 import { GameSelector } from "./GameSelector";
@@ -37,6 +42,7 @@ describe("GameSelector", () => {
     expect(screen.getByRole("button", { name: /sabotage/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /higher or lower/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /auction/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /wavelength/i })).toBeInTheDocument();
   });
 
   it("submits the chosen game to the select action", async () => {
@@ -75,6 +81,21 @@ describe("GameSelector", () => {
     expect(screen.getByRole("heading", { name: "Sabotage draft" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /start sabotage draft with 2 players/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Change game" })).toBeInTheDocument();
+  });
+
+  it("shows Wavelength's dedicated start control to the host", () => {
+    render(
+      <GameSelector
+        lobbyId="lobby"
+        code="BLTZ"
+        isHost
+        inFlight={false}
+        selectedGame="wavelength_2v2"
+        players={2}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Start Wavelength with 2 players" })).toBeInTheDocument();
   });
 
   it("hides the start control and the change option while a match is in flight", () => {

@@ -293,13 +293,19 @@ select ok(
   'and it is in no publication, so Realtime can never replicate it'
 );
 
--- The four client-readable tables are in, since the UI is driven by them.
+-- The client-readable tables are in, since the UI is driven by them.
+-- auction_scouting_hints (0159) and auction_sealed_bids (0160) joined this
+-- list RLS-scoped rather than world-readable like the original four -- see
+-- those migrations for why that is still safe to replicate.
+-- auction_sealed_bid_statuses (0160) is readable by any match member, same
+-- shape as the original four, just a later addition.
 select bag_eq(
   $$ select tablename::text from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public'
         and tablename like 'auction%' $$,
-  $$ values ('auction_matches'), ('auction_players'), ('auction_lots'), ('auction_bids') $$,
-  'the four client-readable auction tables are replicated'
+  $$ values ('auction_matches'), ('auction_players'), ('auction_lots'), ('auction_bids'),
+            ('auction_scouting_hints'), ('auction_sealed_bids'), ('auction_sealed_bid_statuses') $$,
+  'the client-readable auction tables are replicated'
 );
 
 -- No hint of tier or rank crossed over. Easy to add later by accident.

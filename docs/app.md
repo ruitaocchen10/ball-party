@@ -14,4 +14,4 @@ Ball Party is a sports knowledge party game. It's a platform where people can co
 - [Auction team builder](./games/auction_team_builder.md)
 - [Cards Against Humanity](./games/cards_against_humanity.md)
 - [Higher or lower stats](./games/higher_or_lower.md)
-- [2v2 Wavelength](./games/2v2_wavelength.md)
+- [2v2 Wavelength](./games/2v2_wavelength.md) — playable in co-op (2 players) or versus (4 players)

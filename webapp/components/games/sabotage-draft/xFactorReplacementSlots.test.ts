@@ -34,4 +34,10 @@ describe("xFactorReplacementSlots", () => {
   it("offers no replacement slots until it can identify the X-Factor", () => {
     expect(xFactorReplacementSlots(pick, [])).toEqual([]);
   });
+
+  it("offers FLEX alongside the matching position slot in the shorter modes", () => {
+    expect(xFactorReplacementSlots(pick, options("WR"), 7)).toEqual(["WR1", "FLEX"]);
+    expect(xFactorReplacementSlots(pick, options("RB"), 10)).toEqual(["RB1", "RB2", "FLEX"]);
+    expect(xFactorReplacementSlots(pick, options("QB"), 7)).toEqual(["QB"]);
+  });
 });

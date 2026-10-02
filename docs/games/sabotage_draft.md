@@ -11,6 +11,37 @@ roster is set, its strength generates a simulated season record, and best
 record wins. The skill is knowing team history deep enough to both make a
 good pick and call another player's.
 
+### Game modes
+
+The host picks a mode when starting the match. Everything else in this doc
+describes **Full**; the shorter modes change only the roster and the season's
+yardstick, not the pick/guess/X-Factor mechanics.
+
+| Mode | Rounds | Slots |
+|---|---|---|
+| Full | 14 | QB, RB1, RB2, WR1-3, TE, OL, DL, LB, CB, S, ST, X-Factor |
+| Standard | 10 | QB, RB1, RB2, WR1, WR2, TE, FLEX, DEF, ST, X-Factor |
+| Quick | 7 | QB, RB1, WR1, TE, FLEX, DEF, X-Factor |
+
+- **FLEX** takes any RB, WR or TE from the spun franchise.
+- **DEF** ("Defensive Player") takes any single DL, LB, CB or S. It is one
+  player on the shared AV scale, not a team defense: the pool has no
+  team-level defensive data, and drafting a franchise-year as a unit would be
+  a different kind of pick.
+- **X-Factor** is the last round of every mode and may upgrade any offensive
+  skill slot the mode has, FLEX included.
+- **Season baseline is per mode.** Each is built the way Full's 93 was (the
+  average over every real 2006-2025 team-season of that team's best player at
+  each of the mode's slots; FLEX is the best skill player left over, DEF the
+  best DL/LB/CB/S): Standard 62, Quick 52. The logistic's 25-point divisor
+  scales with the baseline (`25 * baseline / 93`), so a roster the same
+  relative distance above its own baseline wins about the same share of games
+  in any mode. Letter grades rescale the same way.
+- **Guess economy is unchanged.** One successful sabotage in Quick hits a
+  larger share of a seven-card roster; if that plays too swingy, tune it then.
+- Existing matches are Full. Implemented in migration 0157
+  (`sabotage_draft_private.mode_slots`, `baseline_roster_strength(mode)`).
+
 ### Decided
 
 **Round structure — one team spin per player per slot, picks made against your

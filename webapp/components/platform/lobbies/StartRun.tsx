@@ -89,6 +89,20 @@ export function StartRun({
           ]}
         />
       </label>
+      <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+        Tokens
+        <Select
+          ariaLabel="Tokens"
+          name="token_count"
+          defaultValue="1"
+          options={[
+            { value: "0", label: "Off" },
+            { value: "1", label: "1 per player" },
+            { value: "2", label: "2 per player" },
+            { value: "3", label: "3 per player" },
+          ]}
+        />
+      </label>
       {era ? (
         <div className="flex gap-2">
           <label className="flex flex-1 flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">

@@ -14,6 +14,23 @@ export type Lot = Database["public"]["Tables"]["auction_lots"]["Row"];
 export type Seat = Database["public"]["Tables"]["auction_players"]["Row"];
 export type Bid = Database["public"]["Tables"]["auction_bids"]["Row"];
 export type Standing = Database["public"]["Tables"]["match_players"]["Row"];
+/**
+ * A scouted tier, RLS-scoped to its own owner (0159) — the rows this client
+ * ever receives are only the viewer's own, never an opponent's, regardless
+ * of how many players are in the match.
+ */
+export type ScoutHint = Database["public"]["Tables"]["auction_scouting_hints"]["Row"];
+/**
+ * A sealed-round bid amount, RLS-scoped to its own owner the same way
+ * ScoutHint is (0160) — this client never receives an opponent's amount,
+ * win or lose.
+ */
+export type SealedBid = Database["public"]["Tables"]["auction_sealed_bids"]["Row"];
+/**
+ * Presence, not value: readable by any match member, so "you've submitted /
+ * waiting on Tasha" is renderable without the amount ever leaking (0160).
+ */
+export type SealedBidStatus = Database["public"]["Tables"]["auction_sealed_bid_statuses"]["Row"];
 
 export type Player = Seat & { display_name: string; avatar_url: string | null };
 
@@ -24,8 +41,16 @@ export type Turn = {
   turnSeat: number | null;
   openerSeat: number;
   freeFallbackSeat: number | null;
+  /**
+   * The seat the board is about to hand this lot to for free because nobody
+   * else is live on it -- the same shape as `freeFallbackSeat`, but for "you
+   * are the only eligible bidder" rather than "you are the broke opener".
+   * That seat gets a real turn instead of an automatic $0 win: take it, or
+   * spend a pass token to let it go unsold. See migration 0158.
+   */
+  stuckSeat: number | null;
   turnDeadline: string | null;
-  phase: "lot_preview" | "bidding" | "sold";
+  phase: "lot_preview" | "bidding" | "sold" | "sealed";
   phaseDeadline: string | null;
 };
 
@@ -41,6 +66,8 @@ export type AuctionFormat = {
   purse: number;
   seasonFrom: number;
   seasonTo: number;
+  /** How many of Pass/Scout/Seal a player may invoke this match, total. */
+  tokenCount: number;
 };
 
 /** The era the board was dealt from, as the format line names it. */
@@ -48,10 +75,15 @@ export function eraLabel(format: AuctionFormat): string {
   return `${format.seasonFrom}-${format.seasonTo}`;
 }
 
-export type AuctionPhase = "lot_preview" | "bidding_self" | "bidding_other" | "sold";
+/**
+ * "sealed" is its own case, not a self/other split -- unlike ascending
+ * bidding, every live player acts in the same window, so there is no single
+ * seat whose turn it is to distinguish (0160).
+ */
+export type AuctionPhase = "lot_preview" | "bidding_self" | "bidding_other" | "sold" | "sealed";
 
 export function viewerPhase(turn: Turn, viewerSeat: number | null): AuctionPhase {
-  if (turn.phase === "lot_preview" || turn.phase === "sold") return turn.phase;
+  if (turn.phase === "lot_preview" || turn.phase === "sold" || turn.phase === "sealed") return turn.phase;
   return turn.turnSeat === viewerSeat ? "bidding_self" : "bidding_other";
 }
 
@@ -87,6 +119,13 @@ export function lotAt(lots: Lot[], seq: number): Lot | null {
   return lots.find((lot) => lot.seq === seq) ?? null;
 }
 
+/** Replaces the lot with the same seq, or appends it (a redrawn lot), keeping seq order. */
+export function upsertLot(lots: Lot[], lot: Lot): Lot[] {
+  return lots.some((l) => l.seq === lot.seq)
+    ? lots.map((l) => (l.seq === lot.seq ? lot : l))
+    : [...lots, lot].sort((a, b) => a.seq - b.seq);
+}
+
 /** The opening price is $0, and an uncontested lot goes for it. */
 export function standingPrice(bids: Bid[], seq: number): number {
   const raises = bids.filter((b) => b.seq === seq && b.action === "raise");
@@ -101,6 +140,26 @@ export function highBidder(bids: Bid[], seq: number): string | null {
 
 export function hasPassed(bids: Bid[], seq: number, userId: string): boolean {
   return bids.some((b) => b.seq === seq && b.user_id === userId && b.action === "pass");
+}
+
+/**
+ * The viewer's own scouted tier for this lot, if they spent their token on
+ * it -- never an opponent's, since the rows this client holds are already
+ * RLS-scoped to the viewer alone (0159).
+ */
+export function myScoutHint(hints: ScoutHint[], seq: number, userId: string): ScoutHint | null {
+  return hints.find((h) => h.seq === seq && h.user_id === userId) ?? null;
+}
+
+/** The viewer's own sealed-round submission for this lot, if they've made one. */
+export function mySealedBid(bids: SealedBid[], seq: number, userId: string): SealedBid | null {
+  return bids.find((b) => b.seq === seq && b.user_id === userId) ?? null;
+}
+
+/** Whether a given seat has locked in a sealed bid for this lot -- presence
+ *  only, readable regardless of whose it is (0160's status table). */
+export function hasSubmittedSealedBid(statuses: SealedBidStatus[], seq: number, userId: string): boolean {
+  return statuses.some((s) => s.seq === seq && s.user_id === userId && s.submitted);
 }
 
 /** A player's roster is the slots on the lots they won — there is no roster table. */
@@ -201,6 +260,20 @@ export function blockedReason(args: {
 
 export function canAfford(price: number, budget: number, increment: number): boolean {
   return price + increment <= budget;
+}
+
+/**
+ * How many of a player's three single-use abilities (Pass/Scout/Seal) they
+ * have left to spend this match, total -- not per-ability. A match dealt
+ * before tokens existed has no `format`, and `tokensUsed`-style reads from a
+ * seat row default every `used_*_token` to `false`, so both read as the
+ * token-count floor (0) and every ability stays unavailable, matching how
+ * this feature behaves when it's off.
+ */
+export function tokensRemaining(format: AuctionFormat | null, me: Pick<Seat, "used_pass_token" | "used_scout_token" | "used_seal_token"> | null): number {
+  if (!format || !me) return 0;
+  const used = Number(me.used_pass_token) + Number(me.used_scout_token) + Number(me.used_seal_token);
+  return Math.max(0, format.tokenCount - used);
 }
 
 /** Weekly cards name the player's team before their opponent; season cards show the stable player-season identity. */

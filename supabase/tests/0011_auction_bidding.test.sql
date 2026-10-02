@@ -7,7 +7,7 @@
 -- rather than asserting on individual moves.
 
 begin;
-select plan(58);
+select plan(59);
 
 \ir support/harness.psql
 
@@ -269,7 +269,8 @@ select tests.act_as_admin();
 insert into tests.fx (k, v) values ('mr', tests.deal_and_open(2, 0.33));
 select tests.act_as_admin();
 
--- With two players, one pass leaves one live bidder and the lot resolves.
+-- With two players, one pass leaves one live bidder, who is handed a real
+-- stuck turn (0158) rather than being awarded the lot automatically.
 insert into tests.fx (k, v) select 'winner', ap.user_id
   from public.auction_players ap
   join public.auction_matches am on am.match_id = ap.match_id
@@ -288,8 +289,19 @@ select tests.act_as_admin();
 select is(
   (select winner_id from public.auction_lots
     where match_id = (select v from tests.fx where k = 'mr') and seq = 1),
+  null,
+  'the sole live bidder is not awarded the lot automatically -- they are stuck with a real turn instead'
+);
+
+select tests.act_as(tests.on_clock((select v from tests.fx where k = 'mr')));
+select auction.place_bid((select v from tests.fx where k = 'mr'), 0);
+select tests.act_as_admin();
+
+select is(
+  (select winner_id from public.auction_lots
+    where match_id = (select v from tests.fx where k = 'mr') and seq = 1),
   (select v from tests.fx where k = 'winner'),
-  'the last live bidder takes the lot'
+  'the last live bidder takes the lot once they claim it'
 );
 
 select is(
