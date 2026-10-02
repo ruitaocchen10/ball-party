@@ -96,16 +96,22 @@ describe("WavelengthMatch", () => {
       error: null,
     }));
     const round2Card = { ...cards[0], round: 2, card_id: 2, left_label: "Left 2", right_label: "Right 2" };
+    console.error("DEBUG checkpoint A: rendering");
     match("guess", "u0", null, [{ ...rounds[0], status: "open" }], board, [], [cards[0], round2Card]);
+    console.error("DEBUG checkpoint B: waiting for channel");
     await waitFor(() => expect(supabase.channel).toHaveBeenCalled());
+    console.error("DEBUG checkpoint C: channel seen, emitting");
     // Any change to the match row is enough to make the client reconcile --
     // this is how a settle another player triggered reaches this screen too.
     await act(async () => { supabase.emit("wavelength_matches", {}); });
+    console.error("DEBUG checkpoint D: emitted, waiting for status");
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("So close!"));
+    console.error("DEBUG checkpoint E: status seen");
     expect(screen.getByRole("status")).toHaveTextContent("3 points");
     // Round 2's own board, underneath the banner, is still fully live.
     expect(screen.getByRole("slider", { name: "Guess needle" })).toBeInTheDocument();
     expect(screen.getByText("Left 2")).toBeInTheDocument();
+    console.error("DEBUG checkpoint F: done");
   }, 15000);
 
   it("lets a psychic who owns several rounds write each clue in turn", async () => {
