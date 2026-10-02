@@ -95,8 +95,8 @@ describe("WavelengthMatch", () => {
     // immediately: a self-sustaining render loop that starves the DOM update
     // this test is waiting for. A real `tick` doesn't manufacture a new
     // deadline out of nothing, so neither does this mock.
-    supabase.rpc.mockImplementation(async (name: string) => {
-      if (name !== "state") return { data: null, error: null };
+    supabase.rpc.mockImplementation(async (...args: unknown[]) => {
+      if (args[0] !== "state") return { data: null, error: null };
       return {
         data: { match_id: MATCH, mode: "coop", preset: "short", round_count: 4, current_round: 2, phase: "guess", phase_deadline: new Date(Date.now() + 30_000).toISOString(), server_now: new Date().toISOString(), team_scores: [3] },
         error: null,
