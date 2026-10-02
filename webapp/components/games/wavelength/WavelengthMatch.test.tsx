@@ -26,6 +26,8 @@ function match(phase: Board["phase"] = board.phase, viewerId = "u0", initialResu
   return render(<WavelengthMatch matchId={MATCH} viewerId={viewerId} roomCode="ABCD" isHost={false} initial={{ board: { ...initialBoard, phase }, players, rounds: initialRounds, cards: initialCards, clues: [], clueStatuses, result: initialResult }} />);
 }
 
+process.on("unhandledRejection", (reason) => { console.error("DEBUG unhandledRejection:", reason); });
+
 describe("WavelengthMatch", () => {
   beforeEach(() => { globalThis.__supabaseMock = supabaseMock(); });
 
