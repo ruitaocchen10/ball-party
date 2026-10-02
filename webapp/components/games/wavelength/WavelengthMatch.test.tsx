@@ -26,8 +26,6 @@ function match(phase: Board["phase"] = board.phase, viewerId = "u0", initialResu
   return render(<WavelengthMatch matchId={MATCH} viewerId={viewerId} roomCode="ABCD" isHost={false} initial={{ board: { ...initialBoard, phase }, players, rounds: initialRounds, cards: initialCards, clues: [], clueStatuses, result: initialResult }} />);
 }
 
-process.on("unhandledRejection", (reason) => { console.error("DEBUG unhandledRejection:", reason); });
-
 describe("WavelengthMatch", () => {
   beforeEach(() => { globalThis.__supabaseMock = supabaseMock(); });
 
@@ -77,9 +75,6 @@ describe("WavelengthMatch", () => {
   });
 
   it("flashes a reveal banner for a round that just settled without hiding the next round's live board", async () => {
-    // Heavier than its neighbors -- two sequential waitFors around a refetch
-    // that Promise.all's eight mocked queries -- so give it more room than
-    // the default 5s before a loaded CI runner calls it a hang.
     const supabase = globalThis.__supabaseMock as ReturnType<typeof supabaseMock>;
     const baseFrom = supabase.from.getMockImplementation()!;
     // Round 1 settles server-side -- the server itself jumps straight from
@@ -93,39 +88,32 @@ describe("WavelengthMatch", () => {
       if (table === "wavelength_rounds") query.then = (resolve) => Promise.resolve({ data: [settledRound1, openRound2], error: null }).then(resolve);
       return query;
     });
-    supabase.rpc.mockImplementation(async () => ({
-      data: { match_id: MATCH, mode: "coop", preset: "short", round_count: 4, current_round: 2, phase: "guess", phase_deadline: new Date(Date.now() + 30_000).toISOString(), server_now: new Date().toISOString(), team_scores: [3] },
-      error: null,
-    }));
+    // Only the deliberate "state" refetch below gets a board back. Answering
+    // every RPC this way -- including the clock's own unconditional
+    // heartbeat tick -- would hand that heartbeat a *fresh* phase_deadline on
+    // every ask, which resets the clock's jitter and fires the next ask
+    // immediately: a self-sustaining render loop that starves the DOM update
+    // this test is waiting for. A real `tick` doesn't manufacture a new
+    // deadline out of nothing, so neither does this mock.
+    supabase.rpc.mockImplementation(async (name: string) => {
+      if (name !== "state") return { data: null, error: null };
+      return {
+        data: { match_id: MATCH, mode: "coop", preset: "short", round_count: 4, current_round: 2, phase: "guess", phase_deadline: new Date(Date.now() + 30_000).toISOString(), server_now: new Date().toISOString(), team_scores: [3] },
+        error: null,
+      };
+    });
     const round2Card = { ...cards[0], round: 2, card_id: 2, left_label: "Left 2", right_label: "Right 2" };
-    console.error("DEBUG checkpoint A: rendering");
     match("guess", "u0", null, [{ ...rounds[0], status: "open" }], board, [], [cards[0], round2Card]);
-    console.error("DEBUG checkpoint B: waiting for channel");
     await waitFor(() => expect(supabase.channel).toHaveBeenCalled());
-    console.error("DEBUG checkpoint C: channel seen, emitting");
     // Any change to the match row is enough to make the client reconcile --
     // this is how a settle another player triggered reaches this screen too.
     await act(async () => { supabase.emit("wavelength_matches", {}); });
-    console.error("DEBUG checkpoint D: emitted, waiting for status");
-    try {
-      await waitFor(
-        () => expect(screen.getByRole("status")).toHaveTextContent("So close!"),
-        { timeout: 12000, interval: 500 },
-      );
-    } catch (waitErr) {
-      console.error("DEBUG rpc calls:", JSON.stringify(supabase.rpc.mock.calls));
-      console.error("DEBUG from calls:", JSON.stringify(supabase.from.mock.calls));
-      console.error("DEBUG body text:", document.body.textContent);
-      console.error("DEBUG status roles:", screen.queryAllByRole("status").map((el) => el.textContent));
-      throw waitErr;
-    }
-    console.error("DEBUG checkpoint E: status seen");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("So close!"));
     expect(screen.getByRole("status")).toHaveTextContent("3 points");
     // Round 2's own board, underneath the banner, is still fully live.
     expect(screen.getByRole("slider", { name: "Guess needle" })).toBeInTheDocument();
     expect(screen.getByText("Left 2")).toBeInTheDocument();
-    console.error("DEBUG checkpoint F: done");
-  }, 15000);
+  });
 
   it("lets a psychic who owns several rounds write each clue in turn", async () => {
     const user = userEvent.setup();
