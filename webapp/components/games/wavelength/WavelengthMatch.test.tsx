@@ -107,7 +107,18 @@ describe("WavelengthMatch", () => {
     // this is how a settle another player triggered reaches this screen too.
     await act(async () => { supabase.emit("wavelength_matches", {}); });
     console.error("DEBUG checkpoint D: emitted, waiting for status");
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("So close!"));
+    try {
+      await waitFor(
+        () => expect(screen.getByRole("status")).toHaveTextContent("So close!"),
+        { timeout: 12000, interval: 500 },
+      );
+    } catch (waitErr) {
+      console.error("DEBUG rpc calls:", JSON.stringify(supabase.rpc.mock.calls));
+      console.error("DEBUG from calls:", JSON.stringify(supabase.from.mock.calls));
+      console.error("DEBUG body text:", document.body.textContent);
+      console.error("DEBUG status roles:", screen.queryAllByRole("status").map((el) => el.textContent));
+      throw waitErr;
+    }
     console.error("DEBUG checkpoint E: status seen");
     expect(screen.getByRole("status")).toHaveTextContent("3 points");
     // Round 2's own board, underneath the banner, is still fully live.
