@@ -239,16 +239,16 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
 
       {/* DOM order is the phone's decision order: see the board, decide what
           to do, then check everyone else — the same order Auction uses. */}
-      <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(6rem,1fr)] gap-3 lg:grid-cols-[minmax(15rem,.62fr)_minmax(0,1fr)_minmax(21rem,.95fr)] lg:grid-rows-1">
+      <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(6rem,1fr)] gap-3 lg:grid-cols-[minmax(15rem,.5fr)_minmax(0,1.4fr)_minmax(21rem,.8fr)] lg:grid-rows-1">
 
-        <section className="relative flex min-h-0 flex-1 flex-col lg:col-start-2 lg:row-start-1" aria-label="The board">
+        <section className="relative flex min-h-0 flex-1 flex-col items-center justify-start lg:col-start-2 lg:row-start-1" aria-label="The board">
           {revealRound != null && board.phase !== "reveal" && (
             <RevealBanner round={rounds.find((round) => round.round === revealRound) ?? null} scores={board.teamScores} />
           )}
           {board.phase === "fill" && (
             canFill
               ? <BoardPanel card={myFillCard} target={myFillTarget ?? undefined} caption="Only you can see the target" />
-              : <div className="flex flex-1 items-center justify-center bg-panel p-6 text-center text-sm text-panel-muted shadow-card">Everyone fills out their own cards in private.</div>
+              : <div className="flex w-full items-center justify-center bg-panel p-6 text-center text-sm text-panel-muted shadow-card">Everyone fills out their own cards in private.</div>
           )}
           {board.phase === "guess" && (
             <BoardPanel card={currentCard} clue={currentClue} target={isPsychic ? currentTarget : null} needle={needle} setNeedle={moveNeedle} interactive={isGuesser && !locking} />
@@ -371,19 +371,24 @@ function BoardPanel({ card, clue, target, needle, setNeedle, interactive, points
   caption?: string;
 }) {
   return (
-    <div className="flex flex-1 items-center justify-center bg-panel px-6 py-6 text-panel-fg shadow-card">
-      <div className="flex w-full max-w-xl flex-col items-center gap-3.5">
-        {clue !== undefined && (
-          <div className="text-center">
-            <p className="font-mono text-[11px] uppercase tracking-[.14em] text-panel-muted">The clue</p>
-            <p className="font-slab text-4xl leading-none">&ldquo;{clue ?? "Waiting for the clue…"}&rdquo;</p>
-          </div>
-        )}
-        {caption && <p className="text-center font-mono text-[11px] uppercase tracking-[.14em] text-panel-muted">{caption}</p>}
-        {card && <Endpoints card={card} />}
-        {card && <Dial needle={needle} setNeedle={setNeedle} target={target ?? undefined} interactive={!!interactive} />}
-        {points !== undefined && <p className="font-slab text-2xl">{skipped ? "Clue skipped" : `${points ?? 0} points`}</p>}
-      </div>
+    // Content-sized, not flex-1: the parent section pins this card to the top
+    // instead of stretching it to the full column height. A half-circle dial
+    // is wide and short (viewBox is ~1.9:1), so stretching the card to fill a
+    // tall column just padded it with blank space above/below the dial —
+    // hugging the content and letting the page background show below the
+    // card instead reads as normal breathing room, the way the roster column
+    // beside it already does.
+    <div className="flex w-full max-w-2xl flex-col items-center gap-3.5 bg-panel px-6 py-6 text-panel-fg shadow-card">
+      {clue !== undefined && (
+        <div className="text-center">
+          <p className="font-mono text-[11px] uppercase tracking-[.14em] text-panel-muted">The clue</p>
+          <p className="font-slab text-4xl leading-none">&ldquo;{clue ?? "Waiting for the clue…"}&rdquo;</p>
+        </div>
+      )}
+      {caption && <p className="text-center font-mono text-[11px] uppercase tracking-[.14em] text-panel-muted">{caption}</p>}
+      {card && <Endpoints card={card} />}
+      {card && <Dial needle={needle} setNeedle={setNeedle} target={target ?? undefined} interactive={!!interactive} />}
+      {points !== undefined && <p className="font-slab text-2xl">{skipped ? "Clue skipped" : `${points ?? 0} points`}</p>}
     </div>
   );
 }
