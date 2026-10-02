@@ -75,6 +75,9 @@ describe("WavelengthMatch", () => {
   });
 
   it("flashes a reveal banner for a round that just settled without hiding the next round's live board", async () => {
+    // Heavier than its neighbors -- two sequential waitFors around a refetch
+    // that Promise.all's eight mocked queries -- so give it more room than
+    // the default 5s before a loaded CI runner calls it a hang.
     const supabase = globalThis.__supabaseMock as ReturnType<typeof supabaseMock>;
     const baseFrom = supabase.from.getMockImplementation()!;
     // Round 1 settles server-side -- the server itself jumps straight from
@@ -103,7 +106,7 @@ describe("WavelengthMatch", () => {
     // Round 2's own board, underneath the banner, is still fully live.
     expect(screen.getByRole("slider", { name: "Guess needle" })).toBeInTheDocument();
     expect(screen.getByText("Left 2")).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("lets a psychic who owns several rounds write each clue in turn", async () => {
     const user = userEvent.setup();
