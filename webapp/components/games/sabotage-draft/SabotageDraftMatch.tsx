@@ -23,7 +23,7 @@ import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/ru
 import { dropdownUp, springSnappy, tiebreakBoardReveal, tiebreakMatchReveal, tiebreakRoundReveal } from "@/lib/foundation/ui-kit/motion";
 import { FRANCHISE_NAMES, franchiseName } from "@/lib/foundation/content/nfl/franchises";
 import { gradeForPick, gradeForTeam } from "@/lib/games/sabotage-draft/grades";
-import { ROUND_SLOTS, X_FACTOR_ROUND, slotForRound } from "@/lib/games/sabotage-draft/rounds";
+import { chooseLabel, modeForRoundCount, rosterSlots, slotForRound, slotLabel, xFactorRound, xFactorTargets } from "@/lib/games/sabotage-draft/rounds";
 import { TURN_REVEAL_MS, useTurnReveal } from "@/lib/games/sabotage-draft/useTurnReveal";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/runtime/realtime/client";
@@ -46,7 +46,7 @@ type Pass = { match_id: string; round_number: number; target_user_id: string; us
 type Option = { player_id: string; display_name: string; season: number; slot_category: string; headshot_url: string | null };
 type Decision = { match_id: string; user_id: string; replace_slot: string | null };
 type Standing = { user_id: string; roster_strength: number; wins: number; losses: number; tiebreak_rank: number };
-type PickAv = { user_id: string; round_number: number; av: number };
+type PickAv = { user_id: string; round_number: number; av: number; slot_category?: string };
 // A snapshot of what a turn resolved to, captured once (see the effect in
 // SabotageDraftMatch that builds this) the instant the board moves on to the
 // next one. `pick` is only ever populated when the turn was the viewer's own
@@ -55,7 +55,7 @@ type PickAv = { user_id: string; round_number: number; av: number };
 // watching someone else's turn resolve gets `spin`/`slot` instead: the same
 // franchise-and-slot, name-withheld shape RosterBoard's own concealed rows
 // already show for a still-open pick.
-type TurnResultData = { round: number; userId: string; playerName: string; mine: boolean; pick: Pick | null; spin: Spin | null; slot: string; outcome: "kept" | "respun" | "sabotaged"; actorName: string | null };
+type TurnResultData = { round: number; userId: string; playerName: string; mine: boolean; pick: Pick | null; spin: Spin | null; slot: string; outcome: "kept" | "respun" | "sabotaged"; actorName: string | null; swappedOut: Pick | null };
 type Tiebreak = { record_wins: number; bracket_round: number; game_number: number; player_a: string; player_b: string | null; winner_user_id: string; player_a_score: number | null; player_b_score: number | null };
 
 const MESSAGE: Record<string, string> = { already_picked: "Your pick is already locked.", already_acted: "You have already guessed or passed on this turn.", turn_closed: "This turn has closed.", invalid_pick: "Choose a player from this round's pool.", invalid_guess: "Choose a player from this round's pool.", x_factor_position_mismatch: "Your X-Factor can only replace a slot at the same position.", match_not_playing: "This match isn't accepting moves right now.", not_your_turn: "It isn't your turn right now." };
@@ -149,11 +149,30 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
   // starts null on mount for the same reason useTurnReveal's own lastKey
   // does -- a viewer landing mid-turn has no "previous" turn to report on.
   const prevTurnRef = useRef<{ round: number; userId: string } | null>(null);
+  const resolvedTurnRef = useRef<{ round: number; userId: string } | null>(null);
   const [lastTurnResult, setLastTurnResult] = useState<TurnResultData | null>(null);
+  // The viewer's own pick the first time it was seen, per round. A sabotage
+  // overwrites the pick row in place (see resolve_turn), so the card that
+  // shows the swap can only know who got replaced if the client held on to
+  // what it saw before. First-seen is the right "before": it is the pick as
+  // drafted, ahead of any respin or sabotage. A viewer who loads the page
+  // after the swap never saw the original and simply gets no swap animation.
+  const originalPicksRef = useRef(new Map<number, Pick>());
   useEffect(() => {
-    const prev = prevTurnRef.current;
+    for (const p of picks) {
+      if (p.user_id === viewerId && !originalPicksRef.current.has(p.round_number)) originalPicksRef.current.set(p.round_number, p);
+    }
+  }, [picks, viewerId]);
+  useEffect(() => {
+    const before = prevTurnRef.current;
     prevTurnRef.current = { round: board.current_round, userId: board.active_user_id };
-    if (!prev || (prev.round === board.current_round && prev.userId === board.active_user_id)) return;
+    // The board and the hit rows arrive in separate requests, so the board
+    // can move on a beat before the sabotage that ended the turn is visible
+    // (the card would read "kept" and never recover). Remember which turn
+    // just resolved and rebuild its card whenever more data lands for it.
+    if (before && (before.round !== board.current_round || before.userId !== board.active_user_id)) resolvedTurnRef.current = before;
+    const prev = resolvedTurnRef.current;
+    if (!prev) return;
     const mine = prev.userId === viewerId;
     const pick = mine ? (picks.find(p => p.round_number === prev.round && p.user_id === prev.userId) ?? null) : null;
     const spin = spins.find(s => s.round_number === prev.round && s.user_id === prev.userId) ?? null;
@@ -167,19 +186,22 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
     const respun = !sabotaged && roundHits.some(h => h.kind === "respin");
     const outcome: TurnResultData["outcome"] = sabotaged ? "sabotaged" : respun ? "respun" : "kept";
     const actorGuess = outcome !== "kept" ? guesses.find(g => g.round_number === prev.round && g.target_user_id === prev.userId && g.result === outcome) : undefined;
+    const original = mine && sabotaged ? (originalPicksRef.current.get(prev.round) ?? null) : null;
+    const swappedOut = original && pick && (original.player_id !== pick.player_id || original.season !== pick.season) ? original : null;
     setLastTurnResult({
+      swappedOut,
       round: prev.round,
       userId: prev.userId,
       playerName: players.find(p => p.user_id === prev.userId)?.display_name ?? "Someone",
       mine,
       pick,
       spin,
-      slot: slotForRound(prev.round),
+      slot: slotForRound(prev.round, board.round_count),
       outcome,
       actorName: actorGuess ? (players.find(p => p.user_id === actorGuess.user_id)?.display_name ?? null) : null,
     });
-  }, [board.current_round, board.active_user_id, picks, spins, hits, guesses, players, viewerId]);
-  if (standings.length) return <Final matchId={matchId} roomCode={roomCode} isHost={isHost} viewerId={viewerId} standings={standings} players={players} tiebreaks={tiebreaks} picks={picks} decisions={decisions} pickAvs={pickAvs} />;
+  }, [board.current_round, board.round_count, board.active_user_id, picks, spins, hits, guesses, players, viewerId]);
+  if (standings.length) return <Final roundCount={board.round_count} matchId={matchId} roomCode={roomCode} isHost={isHost} viewerId={viewerId} standings={standings} players={players} tiebreaks={tiebreaks} picks={picks} decisions={decisions} pickAvs={pickAvs} />;
   const disabled = pending || isPaused;
   // The turn clock's status label. Computed once here, where isActive and
   // activePlayer already live, rather than inside TurnClock -- it's handed
@@ -200,7 +222,7 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
     <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="flex items-center gap-1.5 font-mono text-xs tracking-[.14em] text-fg-muted uppercase">
-          Round {board.current_round} of {board.round_count} · {board.slot.replace("_", " ")}
+          Round {board.current_round} of {board.round_count} · {slotLabel(board.slot)}
           <SlotInfo />
         </p>
         {isHost ? <PauseButton matchId={matchId} paused={isPaused} /> : null}
@@ -222,7 +244,7 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
           {board.turn_deadline && !turnRevealed ? (lastTurnResult ? <TurnResultCard result={lastTurnResult} /> : <Card edge={false}><CardTitle>Spinning…</CardTitle><CardMeta>The board is picking {isActive ? "your" : `${activePlayer?.display_name ?? "their"}`} team</CardMeta></Card>) : null}
           {board.turn_deadline && turnRevealed && isActive ? <PickForm options={options} mine={myPick} pending={disabled} onSubmit={(o) => call("submit_pick", { p_match_id: matchId, p_player_id: o.player_id, p_season: o.season })} /> : null}
           {board.turn_deadline && turnRevealed && !isActive ? <GuessForm targetName={activePlayer?.display_name ?? "them"} status={myGuess ? "guessed" : myPass ? "passed" : "open"} pending={disabled} loadOptions={loadActiveOptions} onSubmit={(choice, exact, replacement) => call("submit_guess", { p_match_id: matchId, p_player_id: choice.player_id, p_season: exact ? choice.season : null, p_replacement_player_id: exact ? replacement?.player_id : null, p_replacement_season: exact ? replacement?.season : null })} onPass={() => call("submit_pass", { p_match_id: matchId })} /> : null}
-          {board.x_factor_open && isActive ? <Decision mine={myDecision} pending={disabled} replacementSlots={xFactorReplacementSlots(picks.find(p => p.round_number === 14 && p.user_id === viewerId), options)} onSubmit={(slot) => call("submit_x_factor_decision", { p_match_id: matchId, p_replace_slot: slot })} /> : null}
+          {board.x_factor_open && isActive ? <Decision mine={myDecision} pending={disabled} replacementSlots={xFactorReplacementSlots(picks.find(p => p.round_number === xFactorRound(board.round_count) && p.user_id === viewerId), options, board.round_count)} onSubmit={(slot) => call("submit_x_factor_decision", { p_match_id: matchId, p_replace_slot: slot })} /> : null}
           {board.x_factor_open && !isActive ? <Card edge={false}><CardTitle>{activePlayer?.display_name ?? "…"}&apos;s X-Factor</CardTitle><CardMeta>Waiting on their decision</CardMeta></Card> : null}
           {!board.turn_deadline && !board.x_factor_open ? <Card edge={false}><CardTitle>Between turns</CardTitle><CardMeta>Waiting on the next turn to open</CardMeta></Card> : null}
         </section>
@@ -394,7 +416,7 @@ function TurnSpinner({ board, players, spins, revealed }: { board: Board; player
       <div className="px-3 pt-3 pb-3">
         <p className="font-slab text-2xl leading-none uppercase">{activePlayer?.display_name ?? "…"} is picking</p>
         <p className="mt-1 font-mono text-[11px] tracking-[0.11em] text-panel-muted uppercase">
-          {revealed && landedName ? `Spun the ${landedName}` : "Spinning…"} · choosing {board.slot === "X_FACTOR" ? "any offensive skill player" : `a ${board.slot.replace(/[0-9]/g, "")}`}
+          {revealed && landedName ? `Spun the ${landedName}` : "Spinning…"} · choosing {chooseLabel(board.slot)}
         </p>
       </div>
     </Card>
@@ -483,7 +505,7 @@ function TurnStrip({ board, players, spins, picks, statuses, hits, viewerId }: {
   return (
     <MatchStrip ariaLabel="Draft order">
       {Array.from({ length: board.round_count }, (_, i) => i + 1).flatMap(round => {
-        const slot = slotForRound(round);
+        const slot = slotForRound(round, board.round_count);
         return seated.map((player, seatIndex) => {
           const key = `${round}-${player.user_id}`;
           const spin = spins.find(s => s.round_number === round && s.user_id === player.user_id) ?? null;
@@ -566,12 +588,40 @@ function FutureTurnCell({ round, slot, player, spin }: { round: number; slot: st
  * same "a result just landed" beat.
  */
 function TurnResultCard({ result }: { result: TurnResultData }) {
-  const { playerName, mine, pick, spin, slot, outcome, actorName } = result;
+  const { playerName, mine, pick, spin, slot, outcome, actorName, swappedOut } = result;
   const headline = outcome === "kept"
     ? mine ? "You kept the pick" : `${playerName} kept the pick`
     : outcome === "respun"
     ? `${actorName ?? "Someone"} forced a respin on ${mine ? "you" : playerName}`
     : `${actorName ?? "Someone"} sabotaged ${mine ? "you" : playerName}`;
+  // Sabotaged and the viewer saw what they had drafted: show it leaving and
+  // the replacement arriving, rather than only saying it happened.
+  if (mine && pick && swappedOut) {
+    return (
+      <Card className="animate-sold-headline" edge={false}>
+        <div className="flex flex-col gap-2 p-3">
+          <p className="font-mono text-[10px] tracking-[0.14em] text-panel-muted uppercase">{headline}</p>
+          <div className="relative flex items-center gap-2.5">
+            <div className="animate-swap-out flex min-w-0 flex-1 items-center gap-2.5">
+              <PlayerPortrait name={swappedOut.display_name} headshotUrl={swappedOut.headshot_url} className="h-10 w-10 shrink-0" />
+              <div className="min-w-0">
+                <p className="font-mono text-[9px] tracking-[0.14em] text-panel-muted uppercase">Removed</p>
+                <p className="truncate font-slab text-base leading-none uppercase line-through decoration-hidden-text">{swappedOut.display_name} · {swappedOut.season}</p>
+              </div>
+            </div>
+            <span aria-hidden className="animate-swap-arrow shrink-0 font-mono text-lg text-hidden-text">→</span>
+            <div className="animate-swap-in flex min-w-0 flex-1 items-center gap-2.5">
+              <PlayerPortrait name={pick.display_name} headshotUrl={pick.headshot_url} className="h-10 w-10 shrink-0" />
+              <div className="min-w-0">
+                <p className="font-mono text-[9px] tracking-[0.14em] text-hidden-text uppercase">Now your {slotLabel(slot)}</p>
+                <p className="truncate font-slab text-base leading-none uppercase">{pick.display_name} · {pick.season}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
   return (
     <Card className="animate-sold-headline" edge={!mine}>
       <div className="flex items-center gap-2.5 p-3">
@@ -675,7 +725,7 @@ function RosterBoard({ board, players, spins, picks, statuses, hits, viewerId, j
             <div className="px-2.5 pb-2.5">
               <div className="flex flex-col gap-1.5 bg-panel p-1.5 text-panel-fg">
                 {rounds.map(round => {
-                  const slot = slotForRound(round);
+                  const slot = slotForRound(round, board.round_count);
                   const filled = statuses.some(s => s.round_number === round && s.user_id === player.user_id);
                   const roundHits = hits.filter(h => h.round_number === round && h.target_user_id === player.user_id);
                   const respun = roundHits.some(h => h.kind === "respin");
@@ -1099,12 +1149,9 @@ function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass 
     </Card>
   );
 }
-export function xFactorReplacementSlots(pick: Pick | undefined, options: Option[]): string[] {
+export function xFactorReplacementSlots(pick: Pick | undefined, options: Option[], roundCount = 14): string[] {
   const category = pick && options.find(option => option.player_id === pick.player_id && option.season === pick.season)?.slot_category;
-  if (category === "QB" || category === "TE") return [category];
-  if (category === "RB") return ["RB1", "RB2"];
-  if (category === "WR") return ["WR1", "WR2", "WR3"];
-  return [];
+  return xFactorTargets(category, roundCount);
 }
 
 function Decision({ mine, pending, replacementSlots, onSubmit }: { mine?: Decision; pending: boolean; replacementSlots: string[]; onSubmit: (slot: string | null) => void }) { if (mine) return <Card><CardTitle>X-Factor decision locked</CardTitle><CardMeta>{mine.replace_slot ? `Replaces ${mine.replace_slot}` : "Discarded"}</CardMeta></Card>; return <Card><CardTitle>Assign or discard your X-Factor</CardTitle><div className="grid grid-cols-2 gap-2 p-3 pt-0">{replacementSlots.map(slot => <Button key={slot} variant="ink" disabled={pending} onClick={() => onSubmit(slot)}>Replace {slot}</Button>)}<Button className="col-span-2" disabled={pending} onClick={() => onSubmit(null)}>Discard X-Factor</Button></div></Card>; }
@@ -1128,7 +1175,7 @@ function Decision({ mine, pending, replacementSlots, onSubmit }: { mine?: Decisi
  * total order: no two players ever land on the same position, and there is
  * always exactly one winner.
  */
-function Final({ matchId, roomCode, isHost, viewerId, standings, players, tiebreaks, picks, decisions, pickAvs }: { matchId: string; roomCode: string | null; isHost: boolean; viewerId: string; standings: Standing[]; players: Player[]; tiebreaks: Tiebreak[]; picks: Pick[]; decisions: Decision[]; pickAvs: PickAv[] }) {
+function Final({ roundCount, matchId, roomCode, isHost, viewerId, standings, players, tiebreaks, picks, decisions, pickAvs }: { roundCount: number; matchId: string; roomCode: string | null; isHost: boolean; viewerId: string; standings: Standing[]; players: Player[]; tiebreaks: Tiebreak[]; picks: Pick[]; decisions: Decision[]; pickAvs: PickAv[] }) {
   const name = (id: string) => players.find(p => p.user_id === id)?.display_name ?? "Unknown";
   const avatarOf = (id: string) => players.find(p => p.user_id === id)?.avatar_url ?? null;
   const ranked = [...standings].sort((a, b) => b.wins - a.wins || a.tiebreak_rank - b.tiebreak_rank);
@@ -1144,10 +1191,10 @@ function Final({ matchId, roomCode, isHost, viewerId, standings, players, tiebre
     endMetric: (
       <span className="flex min-w-[4.75rem] flex-col items-end gap-2">
         <span className="font-mono text-[8px] leading-none tracking-[0.12em] text-panel-muted uppercase">Draft grade</span>
-        <GradeBadge grade={gradeForTeam(s.roster_strength)} emphasis="standings" />
+        <GradeBadge grade={gradeForTeam(s.roster_strength, modeForRoundCount(roundCount))} emphasis="standings" />
       </span>
     ),
-    roster: <SabotageRosterFinal userId={s.user_id} picks={picks} decisions={decisions} pickAvs={pickAvs} />,
+    roster: <SabotageRosterFinal roundCount={roundCount} userId={s.user_id} picks={picks} decisions={decisions} pickAvs={pickAvs} />,
   }));
 
   return (
@@ -1268,9 +1315,8 @@ function BracketCompetitor({ player, score, winner, viewerId, revealDelay }: { p
 }
 
 /**
- * One table's final roster: all thirteen picks in round order — the seven
- * offensive skill slots and the six defense/OL/ST slots ROUND_SLOTS deals
- * right after them, not just the first seven — plus, when accepted, the
+ * One table's final roster: every pick but the X-Factor, in round order,
+ * for whichever mode the match was played in (`rosterSlots`) — plus, when accepted, the
  * X-Factor swap replacing whichever (offense-only, per 0055's own check)
  * slot it targeted, shown as a strikeout of the discarded card's name
  * rather than just disappearing it. Each player gets their own photo
@@ -1282,15 +1328,16 @@ function BracketCompetitor({ player, score, winner, viewerId, revealDelay }: { p
  * still-live table reaching this screen mid-round would be the only way,
  * and even then a viewer's own picks always resolve).
  */
-function SabotageRosterFinal({ userId, picks, decisions, pickAvs }: { userId: string; picks: Pick[]; decisions: Decision[]; pickAvs: PickAv[] }) {
+function SabotageRosterFinal({ roundCount, userId, picks, decisions, pickAvs }: { roundCount: number; userId: string; picks: Pick[]; decisions: Decision[]; pickAvs: PickAv[] }) {
   const avFor = (round: number) => pickAvs.find(a => a.round_number === round && a.user_id === userId)?.av ?? null;
   const decision = decisions.find(d => d.user_id === userId);
-  const xFactorPick = decision?.replace_slot ? (picks.find(p => p.round_number === X_FACTOR_ROUND && p.user_id === userId) ?? null) : null;
-  const xFactorAv = xFactorPick ? avFor(X_FACTOR_ROUND) : null;
+  const categoryFor = (round: number) => pickAvs.find(a => a.round_number === round && a.user_id === userId)?.slot_category;
+  const xFactorPick = decision?.replace_slot ? (picks.find(p => p.round_number === xFactorRound(roundCount) && p.user_id === userId) ?? null) : null;
+  const xFactorAv = xFactorPick ? avFor(xFactorRound(roundCount)) : null;
 
   return (
     <dl className="flex flex-col gap-2">
-      {ROUND_SLOTS.map((slot, i) => {
+      {rosterSlots(roundCount).map((slot, i) => {
         const round = i + 1;
         const pick = picks.find(p => p.round_number === round && p.user_id === userId);
         const replaced = decision?.replace_slot === slot;
@@ -1310,7 +1357,7 @@ function SabotageRosterFinal({ userId, picks, decisions, pickAvs }: { userId: st
                 <span className="text-panel-muted">—</span>
               )}
             </dd>
-            <GradeBadge grade={shown && av !== null ? gradeForPick(slot, av) : null} />
+            <GradeBadge grade={shown && av !== null ? gradeForPick(slot, av, replaced && xFactorPick ? categoryFor(xFactorRound(roundCount)) : categoryFor(round)) : null} />
           </div>
         );
       })}

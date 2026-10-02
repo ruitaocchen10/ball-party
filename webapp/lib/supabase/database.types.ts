@@ -62,6 +62,7 @@ export type Database = {
           p_scoring_mode: string
           p_season_from?: number
           p_season_to?: number
+          p_token_count?: number
         }
         Returns: Database["auction"]["CompositeTypes"]["turn"]
         SetofOptions: {
@@ -72,6 +73,27 @@ export type Database = {
         }
       }
       state: {
+        Args: { p_match_id: string }
+        Returns: Database["auction"]["CompositeTypes"]["turn"]
+        SetofOptions: {
+          from: "*"
+          to: "turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_sealed_bid: {
+        Args: { p_amount: number; p_match_id: string }
+        Returns: Database["auction"]["CompositeTypes"]["turn"]
+        SetofOptions: {
+          from: "*"
+          to: "turn"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      use_scout_token: { Args: { p_match_id: string }; Returns: string }
+      use_seal_token: {
         Args: { p_match_id: string }
         Returns: Database["auction"]["CompositeTypes"]["turn"]
         SetofOptions: {
@@ -102,6 +124,7 @@ export type Database = {
         phase: string | null
         phase_deadline: string | null
         free_fallback_seat: number | null
+        stuck_seat: number | null
       }
     }
   }
@@ -249,10 +272,7 @@ export type Database = {
         }
         Returns: string
       }
-      is_admin: {
-        Args: never
-        Returns: boolean
-      }
+      is_admin: { Args: never; Returns: boolean }
       player_options: {
         Args: never
         Returns: {
@@ -455,7 +475,9 @@ export type Database = {
           scoring_mode: string | null
           season_from: number | null
           season_to: number | null
+          stuck_seat: number | null
           te_slots: number | null
+          token_count: number
           turn_deadline: string | null
           turn_seat: number | null
           wr_slots: number | null
@@ -476,7 +498,9 @@ export type Database = {
           scoring_mode?: string | null
           season_from?: number | null
           season_to?: number | null
+          stuck_seat?: number | null
           te_slots?: number | null
+          token_count?: number
           turn_deadline?: string | null
           turn_seat?: number | null
           wr_slots?: number | null
@@ -497,7 +521,9 @@ export type Database = {
           scoring_mode?: string | null
           season_from?: number | null
           season_to?: number | null
+          stuck_seat?: number | null
           te_slots?: number | null
+          token_count?: number
           turn_deadline?: string | null
           turn_seat?: number | null
           wr_slots?: number | null
@@ -517,18 +543,27 @@ export type Database = {
           budget: number
           match_id: string
           seat: number
+          used_pass_token: boolean
+          used_scout_token: boolean
+          used_seal_token: boolean
           user_id: string
         }
         Insert: {
           budget?: number
           match_id: string
           seat: number
+          used_pass_token?: boolean
+          used_scout_token?: boolean
+          used_seal_token?: boolean
           user_id: string
         }
         Update: {
           budget?: number
           match_id?: string
           seat?: number
+          used_pass_token?: boolean
+          used_scout_token?: boolean
+          used_seal_token?: boolean
           user_id?: string
         }
         Relationships: [
@@ -541,6 +576,120 @@ export type Database = {
           },
           {
             foreignKeyName: "auction_players_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auction_scouting_hints: {
+        Row: {
+          created_at: string
+          match_id: string
+          seq: number
+          tier: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          match_id: string
+          seq: number
+          tier: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          match_id?: string
+          seq?: number
+          tier?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_scouting_hints_match_id_seq_fkey"
+            columns: ["match_id", "seq"]
+            isOneToOne: false
+            referencedRelation: "auction_lots"
+            referencedColumns: ["match_id", "seq"]
+          },
+          {
+            foreignKeyName: "auction_scouting_hints_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auction_sealed_bid_statuses: {
+        Row: {
+          match_id: string
+          seq: number
+          submitted: boolean
+          user_id: string
+        }
+        Insert: {
+          match_id: string
+          seq: number
+          submitted?: boolean
+          user_id: string
+        }
+        Update: {
+          match_id?: string
+          seq?: number
+          submitted?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_sealed_bid_statuses_match_id_seq_fkey"
+            columns: ["match_id", "seq"]
+            isOneToOne: false
+            referencedRelation: "auction_lots"
+            referencedColumns: ["match_id", "seq"]
+          },
+          {
+            foreignKeyName: "auction_sealed_bid_statuses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auction_sealed_bids: {
+        Row: {
+          amount: number
+          match_id: string
+          seq: number
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          match_id: string
+          seq: number
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          match_id?: string
+          seq?: number
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_sealed_bids_match_id_seq_fkey"
+            columns: ["match_id", "seq"]
+            isOneToOne: false
+            referencedRelation: "auction_lots"
+            referencedColumns: ["match_id", "seq"]
+          },
+          {
+            foreignKeyName: "auction_sealed_bids_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1723,6 +1872,7 @@ export type Database = {
           active_seat: number
           current_round: number
           match_id: string
+          mode: string
           round_count: number
           turn_deadline: string | null
           x_factor_open: boolean
@@ -1731,6 +1881,7 @@ export type Database = {
           active_seat?: number
           current_round?: number
           match_id: string
+          mode?: string
           round_count?: number
           turn_deadline?: string | null
           x_factor_open?: boolean
@@ -1739,6 +1890,7 @@ export type Database = {
           active_seat?: number
           current_round?: number
           match_id?: string
+          mode?: string
           round_count?: number
           turn_deadline?: string | null
           x_factor_open?: boolean
@@ -2190,6 +2342,289 @@ export type Database = {
           },
         ]
       }
+      wavelength_cards: {
+        Row: {
+          card_id: number
+          left_label: string
+          match_id: string
+          right_label: string
+          round: number
+        }
+        Insert: {
+          card_id: number
+          left_label: string
+          match_id: string
+          right_label: string
+          round: number
+        }
+        Update: {
+          card_id?: number
+          left_label?: string
+          match_id?: string
+          right_label?: string
+          round?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wavelength_cards_match_id_round_fkey"
+            columns: ["match_id", "round"]
+            isOneToOne: true
+            referencedRelation: "wavelength_rounds"
+            referencedColumns: ["match_id", "round"]
+          },
+        ]
+      }
+      wavelength_clue_statuses: {
+        Row: {
+          match_id: string
+          round: number
+        }
+        Insert: {
+          match_id: string
+          round: number
+        }
+        Update: {
+          match_id?: string
+          round?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wavelength_clue_statuses_match_id_round_fkey"
+            columns: ["match_id", "round"]
+            isOneToOne: true
+            referencedRelation: "wavelength_rounds"
+            referencedColumns: ["match_id", "round"]
+          },
+        ]
+      }
+      wavelength_clues: {
+        Row: {
+          clue: string
+          match_id: string
+          round: number
+        }
+        Insert: {
+          clue: string
+          match_id: string
+          round: number
+        }
+        Update: {
+          clue?: string
+          match_id?: string
+          round?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wavelength_clues_match_id_round_fkey"
+            columns: ["match_id", "round"]
+            isOneToOne: true
+            referencedRelation: "wavelength_rounds"
+            referencedColumns: ["match_id", "round"]
+          },
+        ]
+      }
+      wavelength_matches: {
+        Row: {
+          current_round: number
+          match_id: string
+          mode: string
+          phase: string
+          phase_deadline: string | null
+          phase_started_at: string
+          preset: string | null
+          round_count: number
+        }
+        Insert: {
+          current_round?: number
+          match_id: string
+          mode: string
+          phase?: string
+          phase_deadline?: string | null
+          phase_started_at?: string
+          preset?: string | null
+          round_count: number
+        }
+        Update: {
+          current_round?: number
+          match_id?: string
+          mode?: string
+          phase?: string
+          phase_deadline?: string | null
+          phase_started_at?: string
+          preset?: string | null
+          round_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wavelength_matches_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wavelength_players: {
+        Row: {
+          absent: boolean
+          last_seen_at: string
+          match_id: string
+          seat: number
+          team: number
+          user_id: string
+        }
+        Insert: {
+          absent?: boolean
+          last_seen_at?: string
+          match_id: string
+          seat: number
+          team: number
+          user_id: string
+        }
+        Update: {
+          absent?: boolean
+          last_seen_at?: string
+          match_id?: string
+          seat?: number
+          team?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wavelength_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wavelength_players_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wavelength_results: {
+        Row: {
+          bullseyes: number
+          match_id: string
+          mode: string
+          outcome: string
+          preset: string | null
+          score: number
+          stars: number | null
+        }
+        Insert: {
+          bullseyes: number
+          match_id: string
+          mode: string
+          outcome: string
+          preset?: string | null
+          score: number
+          stars?: number | null
+        }
+        Update: {
+          bullseyes?: number
+          match_id?: string
+          mode?: string
+          outcome?: string
+          preset?: string | null
+          score?: number
+          stars?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wavelength_results_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wavelength_rounds: {
+        Row: {
+          guess_position: number | null
+          guesser_id: string
+          match_id: string
+          points: number | null
+          psychic_id: string
+          revealed_target: number | null
+          round: number
+          status: string
+        }
+        Insert: {
+          guess_position?: number | null
+          guesser_id: string
+          match_id: string
+          points?: number | null
+          psychic_id: string
+          revealed_target?: number | null
+          round: number
+          status?: string
+        }
+        Update: {
+          guess_position?: number | null
+          guesser_id?: string
+          match_id?: string
+          points?: number | null
+          psychic_id?: string
+          revealed_target?: number | null
+          round?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wavelength_rounds_guesser_id_fkey"
+            columns: ["guesser_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wavelength_rounds_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wavelength_rounds_psychic_id_fkey"
+            columns: ["psychic_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wavelength_targets: {
+        Row: {
+          match_id: string
+          round: number
+          target: number
+        }
+        Insert: {
+          match_id: string
+          round: number
+          target: number
+        }
+        Update: {
+          match_id?: string
+          round?: number
+          target?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wavelength_targets_match_id_round_fkey"
+            columns: ["match_id", "round"]
+            isOneToOne: true
+            referencedRelation: "wavelength_rounds"
+            referencedColumns: ["match_id", "round"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2486,11 +2921,12 @@ export type Database = {
         Returns: {
           av: number
           round_number: number
+          slot_category: string
           user_id: string
         }[]
       }
       start: {
-        Args: { p_match_id: string }
+        Args: { p_match_id: string; p_mode?: string }
         Returns: Database["sabotage_draft"]["CompositeTypes"]["round"]
         SetofOptions: {
           from: "*"
@@ -2579,6 +3015,86 @@ export type Database = {
         x_factor_open: boolean | null
         active_user_id: string | null
         turn_deadline: string | null
+      }
+    }
+  }
+  wavelength: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      lock_guess: {
+        Args: { p_match_id: string; p_position: number; p_round: number }
+        Returns: Database["wavelength"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      report_needle: {
+        Args: { p_match_id: string; p_position: number; p_round: number }
+        Returns: undefined
+      }
+      start: {
+        Args: { p_match_id: string; p_mode: string; p_preset?: string }
+        Returns: Database["wavelength"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      state: {
+        Args: { p_match_id: string }
+        Returns: Database["wavelength"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_clue: {
+        Args: { p_clue: string; p_match_id: string; p_round: number }
+        Returns: Database["wavelength"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tick: {
+        Args: { p_match_id: string }
+        Returns: Database["wavelength"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      board: {
+        match_id: string | null
+        mode: string | null
+        preset: string | null
+        round_count: number | null
+        current_round: number | null
+        phase: string | null
+        phase_deadline: string | null
+        server_now: string | null
+        team_scores: number[] | null
       }
     }
   }
@@ -2729,6 +3245,9 @@ export const Constants = {
     Enums: {
       guess_result: ["miss", "respun", "sabotaged"],
     },
+  },
+  wavelength: {
+    Enums: {},
   },
 } as const
 

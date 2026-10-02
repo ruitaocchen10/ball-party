@@ -2,7 +2,7 @@
 -- reconnecting client uses.  These are deliberate clock jumps: the server
 -- validates every transition under its match-row lock.
 begin;
-select plan(29);
+select plan(32);
 \ir support/harness.psql
 
 select tests.act_as_admin();
@@ -19,8 +19,15 @@ select auction_private.expire((select v from tests.fx where k = 'm'));
 select is((select phase from public.auction_matches where match_id = (select v from tests.fx where k = 'm')), 'bidding', 'only the server advances the expired preview into bidding');
 select isnt((select turn_deadline from public.auction_matches where match_id = (select v from tests.fx where k = 'm')), null, 'live bidding receives the ten-second deadline');
 
+-- With two players, the opener's pass leaves one live bidder stuck with a
+-- real turn (0158), not an automatic award -- so resolution needs their
+-- explicit $0 claim before the phase can reach sold.
 select tests.act_as(tests.on_clock((select v from tests.fx where k = 'm')));
 select auction.pass_lot((select v from tests.fx where k = 'm'));
+select tests.act_as_admin();
+select is((select phase from public.auction_matches where match_id = (select v from tests.fx where k = 'm')), 'bidding', 'the stuck seat still has to claim it -- a pass alone does not resolve the lot');
+select tests.act_as(tests.on_clock((select v from tests.fx where k = 'm')));
+select auction.place_bid((select v from tests.fx where k = 'm'), 0);
 select tests.act_as_admin();
 select is((select phase from public.auction_matches where match_id = (select v from tests.fx where k = 'm')), 'sold', 'resolution enters sold before exposing another lot');
 select is((select current_lot::int from public.auction_matches where match_id = (select v from tests.fx where k = 'm')), 1, 'sold keeps the resolved lot visible');
@@ -29,11 +36,12 @@ select auction_private.expire((select v from tests.fx where k = 'm'));
 select is((select current_lot::int from public.auction_matches where match_id = (select v from tests.fx where k = 'm')), 2, 'sold expiry advances to the next preview');
 
 
--- ------------------------------------------------- automatic awards --------
+-- ------------------------------------------------- the only eligible bidder --
 
--- A lot only one player can use is awarded without anybody acting. It still has
--- to earn a preview and a sold acknowledgement, or the rhythm breaks exactly
--- where the game is least able to explain itself.
+-- A lot only one player can use still earns a preview, same as any other --
+-- but since 0158 it is not awarded without anybody acting. The sole eligible
+-- bidder is handed a stuck turn and has to claim it themselves, the same as
+-- any other uncontested lot.
 select tests.act_as_admin();
 insert into tests.fx (k, v) values ('ma', tests.deal(2, 0.31));
 update public.matches set status = 'playing', started_at = now()
@@ -71,8 +79,17 @@ update public.auction_matches set phase_deadline = now() - interval '1 second' w
 select auction_private.expire((select v from tests.fx where k = 'ma'));
 
 select is((select winner_id from public.auction_lots where match_id = (select v from tests.fx where k = 'ma') and seq = 1),
+          null,
+          'preview expiry does not award the only eligible bidder automatically');
+select is((select stuck_seat::int from public.auction_matches where match_id = (select v from tests.fx where k = 'ma')),
+          0,
+          'it hands them a stuck turn instead');
+select tests.act_as(tests.on_clock((select v from tests.fx where k = 'ma')));
+select auction.place_bid((select v from tests.fx where k = 'ma'), 0);
+select tests.act_as_admin();
+select is((select winner_id from public.auction_lots where match_id = (select v from tests.fx where k = 'ma') and seq = 1),
           (select ap.user_id from public.auction_players ap where ap.match_id = (select v from tests.fx where k = 'ma') and ap.seat = 0),
-          'preview expiry awards the only eligible bidder');
+          'and claiming it awards the only eligible bidder');
 select is((select price from public.auction_lots where match_id = (select v from tests.fx where k = 'ma') and seq = 1), 0, 'at the opening price of zero');
 select is((select phase from public.auction_matches where match_id = (select v from tests.fx where k = 'ma')), 'sold', 'and holds a sold acknowledgement rather than opening bidding');
 select is((select current_lot::int from public.auction_matches where match_id = (select v from tests.fx where k = 'ma')), 1, 'with the awarded lot still the current one');

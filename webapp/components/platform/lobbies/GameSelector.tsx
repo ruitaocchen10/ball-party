@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { StartHigherOrLower } from "@/components/platform/lobbies/StartHigherOrLower";
 import { StartRun, type Era } from "@/components/platform/lobbies/StartRun";
 import { StartSabotageDraft } from "@/components/platform/lobbies/StartSabotageDraft";
+import { StartWavelength } from "@/components/platform/lobbies/StartWavelength";
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Card } from "@/components/foundation/ui-kit/Card";
 import { groupGames, type MatchGame } from "@/lib/platform/orchestration/catalog";
@@ -72,6 +73,8 @@ export function GameSelector({
               <StartHigherOrLower lobbyId={lobbyId} code={code} players={players} era={higherOrLowerEra} />
             ) : selected.match === "sabotage_draft" ? (
               <StartSabotageDraft lobbyId={lobbyId} code={code} players={players} />
+            ) : selected.match === "wavelength_2v2" ? (
+              <StartWavelength lobbyId={lobbyId} code={code} players={players} />
             ) : (
               <StartRun lobbyId={lobbyId} code={code} players={players} era={era} />
             )

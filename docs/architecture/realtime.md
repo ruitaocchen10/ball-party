@@ -8,11 +8,12 @@ This doc records the actual, current shape of that contract as implemented in
 plainly rather than invented, so iOS isn't asked to reverse-engineer a richer
 contract than what exists.
 
-The mechanism throughout is one thing: a Postgres logical-replication feed
+The mechanism is normally a Postgres logical-replication feed
 (`supabase_realtime` publication) fanned out over a per-topic WebSocket
 channel as `postgres_changes` events, scoped by each table's own RLS `select`
-policy — the same policy a plain `select` would enforce. There is no separate
-Realtime-specific authorization model to learn.
+policy — the same policy a plain `select` would enforce. Wavelength's live
+needle is the one exception: it uses a private Broadcast channel, described
+below, because no database row should be written for cosmetic pointer motion.
 
 ## Authenticating the socket
 
@@ -149,6 +150,28 @@ return to lobby" choice (`choose_post_game`, see `game-runtime.md`) to every
 other open tab, so a player who isn't the one who tapped the button still
 gets carried to the next match or back to the lobby. Payload:
 `{ choice: "replay" | "lobby", next_match_id: string | null }`.
+
+## The private `wavelength:${matchId}` Broadcast channel
+
+Wavelength also subscribes to `wavelength:${matchId}` with
+`config.private: true`. Alongside its ordinary table-change handlers, it
+listens for the `needle` Broadcast event with `{ round, position }`. The active
+guesser sends at most **10 updates per second** (one every 100 ms); all other
+match members render the latest valid update for the active round. The guesser
+does not apply their own broadcast, preserving immediate local pointer motion.
+
+This is private Broadcast rather than the table-change baseline because the
+needle is cosmetic, ephemeral, and would make a high-frequency database write
+out of pointer movement. `realtime.messages` policies authorize `SELECT` only
+for Wavelength match members and `INSERT` only for the current round's guesser
+while the board is in `guess`, so a non-participant can neither receive nor
+inject an update. The channel uses no target or scoring data.
+
+Broadcast is deliberately best-effort. A failed, slow, or dropped Broadcast
+connection leaves the dial locally interactive and `lock_guess` fully usable;
+the server scores only the position passed to that RPC. Publishing stops as
+soon as locking starts, and the database policy independently stops it when the
+phase ends.
 
 ## Presence is a heartbeat RPC, not the Realtime Presence feature
 

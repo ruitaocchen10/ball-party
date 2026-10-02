@@ -9,9 +9,11 @@ appear in the games diagram or `docs/games/` above precisely because it isn't
 lobby/match-shaped the way `auction · wavelength · higher-or-lower · cah` are
 — see its own section below for why none of the lobby/match RPCs apply to it.
 Written so iOS can be implemented deliberately from this doc instead of
-reverse-engineered from the TypeScript in `webapp/`. The auction, sabotage
-draft, and 2v2 wavelength are not covered here yet; their write APIs exist but
-are still *(todo)* for this doc.
+reverse-engineered from the TypeScript in `webapp/`. The auction and sabotage
+draft write APIs are not covered here yet; their write APIs exist but are still
+*(todo)* for this doc. Wavelength is a playable lobby game; its state, clue,
+guess, clock, and post-game APIs follow the same runtime contract described
+here.
 
 Every signature below is the current, final one — migration history in
 `supabase/migrations/` sometimes replaces a function two or three times, and

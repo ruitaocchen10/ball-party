@@ -1,5 +1,8 @@
 # 2v2 Wavelength
 
+**Status: playable.** Start it from a lobby with two players for co-op or four
+players for versus.
+
 ### Core idea
 
 Players take turns as the psychic. The psychic secretly sees a hidden target on

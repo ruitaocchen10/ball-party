@@ -78,6 +78,12 @@ start a QB Season Builder run, add `qb_season_builder` to Settings → API →
 Exposed schemas and save. Until then every call into the schema fails with
 PGRST106. Locally, `supabase stop && supabase start` picks the change up.
 
+**Deploying 0161 takes it once more.** Migration 0161 adds `wavelength` to
+`[api] schemas` above, local development only. Before the hosted project can
+start a Wavelength match, add `wavelength` to Settings → API → Exposed schemas
+and save. Until then every call into the schema fails with PGRST106. Locally,
+`supabase stop && supabase start` picks the change up.
+
 ## Migrations
 
 The list below stops at 0011 and has not been kept up; `ls migrations/` is the
