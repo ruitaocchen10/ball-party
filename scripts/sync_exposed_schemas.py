@@ -64,7 +64,9 @@ def main() -> None:
     current = api_request("GET", f"/projects/{ref}/postgrest", token)
     current_schemas = [s.strip() for s in current.get("db_schema", "").split(",") if s.strip()]
 
-    if current_schemas == desired:
+    # Order isn't meaningful to PostgREST, and the hosted list is appended to
+    # by the dashboard, so compare as sets or every run reports false drift.
+    if set(current_schemas) == set(desired):
         print(f"Exposed schemas already match config.toml: {desired}")
         return
 
@@ -74,7 +76,11 @@ def main() -> None:
     print("Updating the Data API's exposed schemas...")
 
     current["db_schema"] = ",".join(desired)
-    api_request("PATCH", f"/projects/{ref}/postgrest", token, current)
+    # The GET returns unset fields as null (e.g. db_pool), which the PATCH
+    # validator rejects as "expected number, received null". Omitting them
+    # leaves those settings as they are.
+    body = {k: v for k, v in current.items() if v is not None}
+    api_request("PATCH", f"/projects/{ref}/postgrest", token, body)
     print(f"Updated. Exposed schemas are now: {desired}")
 
 
