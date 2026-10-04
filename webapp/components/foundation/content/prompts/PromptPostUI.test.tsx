@@ -129,6 +129,71 @@ it("marking a picks post as opinion publishes it without an auto-resolve source"
   expect(published.resolutionSource).toBeUndefined();
 });
 
+const composerGames = [
+  { id: "2026_01_KC_BUF", season: 2026, week: 1, kickoff: "2099-09-11T00:20:00.000Z", away: "KC", home: "BUF", label: "Chiefs @ Bills", stadium: "Highmark Stadium", primetime: true },
+  { id: "2026_01_PHI_DAL", season: 2026, week: 1, kickoff: "2099-09-11T17:00:00.000Z", away: "PHI", home: "DAL", label: "Eagles @ Cowboys", stadium: "AT&T Stadium", primetime: false },
+];
+
+it("offers Game Picks and Weekly Picks as separate templates and no longer offers Picks", () => {
+  render(<PromptPostComposer displayName="Admin" games={composerGames} players={[]} onPublish={vi.fn()} />);
+
+  expect(screen.getByRole("button", { name: "Game Picks" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Weekly Picks" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Picks" })).not.toBeInTheDocument();
+});
+
+it("publishes a single game as game_pick with one slot", async () => {
+  const user = userEvent.setup();
+  const onPublish = vi.fn().mockResolvedValue({ id: "new-post" });
+  render(<PromptPostComposer displayName="Admin" games={composerGames} players={[]} onPublish={onPublish} />);
+
+  await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
+
+  const published = onPublish.mock.calls[0][0];
+  expect(published.templateKind).toBe("game_pick");
+  expect(published.templateName).toBe("Game Picks");
+  expect(published.slots).toHaveLength(1);
+  expect(published.resolutionSource).toEqual({ provider: "nflverse", rule: "winner" });
+
+  const [slot] = published.slots;
+  expect(slot.points).toBe(20);
+  expect(slot.options.map((o: { teamCode: string; margin: string; label: string }) => [o.teamCode, o.margin, o.label])).toEqual([
+    [composerGames[0].away, "under_7", expect.stringMatching(/ by <7$/)],
+    [composerGames[0].away, "7_plus", expect.stringMatching(/ by 7\+$/)],
+    [composerGames[0].home, "under_7", expect.stringMatching(/ by <7$/)],
+    [composerGames[0].home, "7_plus", expect.stringMatching(/ by 7\+$/)],
+  ]);
+});
+
+it("keeps Weekly Picks games winner-only at 10 points", async () => {
+  const user = userEvent.setup();
+  const onPublish = vi.fn().mockResolvedValue({ id: "new-post" });
+  render(<PromptPostComposer displayName="Admin" games={composerGames} players={[]} onPublish={onPublish} />);
+
+  await user.click(screen.getByRole("button", { name: "Weekly Picks" }));
+  await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
+
+  for (const slot of onPublish.mock.calls[0][0].slots) {
+    expect(slot.points).toBe(10);
+    expect(slot.options).toHaveLength(2);
+  }
+});
+
+it("publishes a week's slate as weekly_picks with a slot per game", async () => {
+  const user = userEvent.setup();
+  const onPublish = vi.fn().mockResolvedValue({ id: "new-post" });
+  render(<PromptPostComposer displayName="Admin" games={composerGames} players={[]} onPublish={onPublish} />);
+
+  await user.click(screen.getByRole("button", { name: "Weekly Picks" }));
+  await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
+
+  const published = onPublish.mock.calls[0][0];
+  expect(published.templateKind).toBe("weekly_picks");
+  expect(published.templateName).toBe("Weekly Picks");
+  expect(published.slots).toHaveLength(2);
+  expect(published.resolutionSource).toEqual({ provider: "nflverse", rule: "winner" });
+});
+
 it("publishes the point value configured for each slot", async () => {
   const user = userEvent.setup();
   const onPublish = vi.fn().mockResolvedValue({ id: "new-post" });
@@ -146,8 +211,8 @@ it("publishes the point value configured for each slot", async () => {
 
   render(<PromptPostComposer displayName="Admin" games={games} players={[]} onPublish={onPublish} />);
 
-  await user.clear(screen.getByLabelText("Chiefs @ Bills — winner points"));
-  await user.type(screen.getByLabelText("Chiefs @ Bills — winner points"), "42");
+  await user.clear(screen.getByLabelText("Chiefs @ Bills — winner and margin points"));
+  await user.type(screen.getByLabelText("Chiefs @ Bills — winner and margin points"), "42");
   await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
 
   expect(onPublish).toHaveBeenCalledTimes(1);
@@ -180,6 +245,25 @@ it("shows the admin's six chosen teams on the Power Rankings cover for every vie
   const logoSources = [...board.querySelectorAll("img")].map((img) => img.getAttribute("src"));
   expect(logoSources).toEqual(["DAL", "KC", "BUF", "PHI", "BAL", "GB"].map((code) => franchiseLogoUrl(teamLogoCode(code)!)));
   expect(board).not.toHaveTextContent("#1");
+});
+
+it("shows the Weekly Awards cover with a single subheadline and no team logos", () => {
+  const awardsPost: Post = { ...post([]), templateKind: "weekly_awards", templateName: "Weekly Awards", isOpinion: true };
+  render(<PromptPostFeed posts={[awardsPost]} viewerCanAnswer onSelectPost={() => {}} />);
+
+  const cover = screen.getByTestId("weekly-awards-cover");
+  expect(cover).toHaveTextContent("Hand out the hardware");
+  expect(cover.querySelectorAll("img")).toHaveLength(0);
+});
+
+it("shows the Bold Predictions cover with a single subheadline and no team logos", () => {
+  const boldPost: Post = { ...post([]), templateKind: "bold_predictions", templateName: "Bold Predictions" };
+  render(<PromptPostFeed posts={[boldPost]} viewerCanAnswer onSelectPost={() => {}} />);
+
+  const cover = screen.getByTestId("bold-predictions-cover");
+  expect(cover).toHaveTextContent("Call it before it happens");
+  expect(cover).not.toHaveTextContent("Private until lock");
+  expect(cover.querySelectorAll("img")).toHaveLength(0);
 });
 
 it("makes the admin choose exactly six Power Rankings cover teams, in placement order", async () => {

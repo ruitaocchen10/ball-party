@@ -224,3 +224,28 @@ struct TicketView: View {
         }
     }
 }
+
+// MARK: - Unsupported kinds
+
+/// What a prompt of a kind this build doesn't know shows in place of its
+/// picks: a note to update. Plain copy only — no App Store listing is
+/// configured to link to.
+struct UpdateAppNotice: View {
+    let compact: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Update the app to play this", systemImage: "arrow.down.app")
+                .monoLabel(compact ? 10 : 11, weight: .bold, tracking: 0.1, color: Theme.fg)
+            Text("This prompt needs a newer version of Ball Party. Update the app from the App Store to see it and make your picks.")
+                .font(.sans(compact ? 13 : 15))
+                .foregroundStyle(Theme.fgMuted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Theme.surface)
+        .overlay(Rectangle().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
+        .accessibilityElement(children: .combine)
+    }
+}

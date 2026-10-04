@@ -116,7 +116,7 @@ select is(
 select is(
   (select correct_option_ids from public.prompt_slots
     where id = tests.slot_of((select v from tests.fx where k = 'week'), 'game-tie')),
-  null, 'a tied game leaves only its own slot pending');
+  '{}'::uuid[], 'a tied game''s slot is graded no-contest (0174), without holding back the others');
 select is((select status from public.prompt_posts where id = (select v from tests.fx where k = 'week')),
   'open', 'the post stays open while any slot is ungraded — the production bug was the opposite');
 select is((select resolved_at from public.prompt_posts where id = (select v from tests.fx where k = 'week')),
@@ -130,7 +130,7 @@ select is(tests.points((select v from tests.fx where k = 'week'), 'game-later'),
 select is(
   (select count(*)::int from private.prompt_slot_answers
     where slot_id in (select id from public.prompt_slots where post_id = (select v from tests.fx where k = 'week'))),
-  1, 'only the graded slot has a stored answer');
+  1, 'only the graded slot has a stored answer — a no-contest slot has none');
 
 -- Re-running the same feed is a no-op: graded slots are not selected again.
 select lives_ok($$ select prompts_private.grade_due_game_picks(tests.schedule(false)) $$,
@@ -152,19 +152,20 @@ select is((select sum(points_earned)::int from public.prompt_responses
             where post_id = (select v from tests.fx where k = 'pair')),
   10, 'the post total is the sum of its per-game scores');
 select is((select status from public.prompt_posts where id = (select v from tests.fx where k = 'week')),
-  'open', 'a post with a tied game never fully resolves on its own — it stays for an admin');
+  'resolved', 'a post with a tied game still resolves once its other slots are graded (0174)');
 
 -- ------------------------------------------------------------ admin path --
 
 -- resolve_post over a post the sweep has only partly graded: Thursday's slot
--- grades from the feed, the tie slot can't, so an admin supplies every answer.
+-- grades from the feed, the later game isn't final yet, so an admin supplies
+-- every answer.
 select tests.act_as_prompts_admin();
-insert into tests.fx (k, v) select 'partial', tests.mk_picks(array['game-thursday', 'game-tie']);
+insert into tests.fx (k, v) select 'partial', tests.mk_picks(array['game-thursday', 'game-later']);
 select tests.act_as_admin();
-select prompts_private.grade_due_game_picks(tests.schedule(true));
+select prompts_private.grade_due_game_picks(tests.schedule(false));
 
 select is((select status from public.prompt_posts where id = (select v from tests.fx where k = 'partial')),
-  'open', 'setup: the Thursday slot graded, the tie slot is pending');
+  'open', 'setup: the Thursday slot graded, the later slot is pending');
 
 select tests.act_as_prompts_admin();
 select lives_ok(
@@ -172,7 +173,7 @@ select lives_ok(
     (select v from tests.fx where k = 'partial'),
     (select jsonb_object_agg(s.id::text, jsonb_build_array((
        select o.id from public.prompt_slot_options o
-        where o.slot_id = s.id and o.team_code = case s.source_game_id when 'game-tie' then 'HOM' else 'AWY' end
+        where o.slot_id = s.id and o.team_code = case s.source_game_id when 'game-later' then 'HOM' else 'AWY' end
      ))) from public.prompt_slots s where s.post_id = (select v from tests.fx where k = 'partial'))),
   'an admin can resolve a post whose slots are partly auto-graded');
 select is((select status from public.prompt_posts where id = (select v from tests.fx where k = 'partial')),

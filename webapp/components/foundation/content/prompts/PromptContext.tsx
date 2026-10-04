@@ -2,6 +2,7 @@
 
 import { OptionIcon } from "./SlotFaces";
 import { usePromptDeadlineNow } from "./usePromptDeadline";
+import { WeeklyAwardsResults } from "./WeeklyAwards";
 import { isPicksPost, isPromptOpenForAnswers, relativeTime } from "@/lib/foundation/content/prompts/logic";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 
@@ -17,6 +18,7 @@ export function PromptContext({ post }: { post: Post }) {
   const now = usePromptDeadlineNow(post);
   const singleGameSlot = post.templateKind !== "power_rankings" && (isPicksPost(post) || post.isOpinion) && post.slots.length === 1 ? post.slots[0] : null;
   const split = singleGameSlot ? post.aggregate?.[singleGameSlot.id] : undefined;
+  const awardsResults = post.templateKind === "weekly_awards" && post.aggregate;
   const consensusSlot = post.templateKind === "power_rankings" ? post.slots[0] : null;
   const consensusTopFive = post.powerRankingTopFive ?? [];
 
@@ -30,7 +32,7 @@ export function PromptContext({ post }: { post: Post }) {
             <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Resolves</p>
             <p className="mt-1.5 text-sm leading-6 text-fg">{post.resolutionCriteria}</p>
           </div>
-          <div className={split || consensusTopFive.length ? "border-b border-line py-3.5" : "py-3.5"}>
+          <div className={split || consensusTopFive.length || awardsResults ? "border-b border-line py-3.5" : "py-3.5"}>
             <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Status</p>
             <p className="mt-1.5 text-sm leading-6 text-fg">{statusLine(post, now)}</p>
           </div>
@@ -50,6 +52,11 @@ export function PromptContext({ post }: { post: Post }) {
                   <span key={option.id} style={{ width: `${split[option.id] ?? 0}%` }} className="h-full bg-panel first:bg-panel last:bg-fg-muted/40" />
                 ))}
               </div>
+            </div>
+          ) : null}
+          {awardsResults ? (
+            <div className="py-3.5">
+              <WeeklyAwardsResults post={post} />
             </div>
           ) : null}
           {consensusSlot && consensusTopFive.length ? (
@@ -79,7 +86,9 @@ export function PromptContext({ post }: { post: Post }) {
 }
 
 function statusLine(post: Post, now: number): string {
-  const people = `${post.responseCount} ${post.responseCount === 1 ? "person" : "people"} answered`;
+  const people = post.templateKind === "bold_predictions"
+    ? `${post.predictionCount ?? 0} ${post.predictionCount === 1 ? "prediction" : "predictions"}`
+    : `${post.responseCount} ${post.responseCount === 1 ? "person" : "people"} answered`;
   if (post.status === "void") return `Voided — ${post.voidReason ?? "no reason given"}`;
   if (post.status === "resolved") return `Resolved · ${people}`;
   if (!isPromptOpenForAnswers(post, now)) return `Locked · ${people}`;

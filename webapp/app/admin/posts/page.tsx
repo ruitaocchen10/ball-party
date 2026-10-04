@@ -103,7 +103,7 @@ export default async function AdminPostsPage({
                   .map(({ id, label, sublabel }) => ({ id, label, sublabel })),
               }));
             const actionable = post.status === "open" || post.status === "locked";
-            const autoResolves = post.template_kind === "game_pick" && post.resolution_source !== null;
+            const autoResolves = ["picks", "game_pick", "weekly_picks"].includes(post.template_kind) && post.resolution_source !== null;
             return (
             <li key={post.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-6">
               <div className="min-w-0">

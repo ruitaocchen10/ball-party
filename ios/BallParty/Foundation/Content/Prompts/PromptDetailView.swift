@@ -15,7 +15,9 @@ struct PromptDetailView: View {
                         if let message = viewModel.errorMessage {
                             ErrorBanner(message: message)
                         }
-                        if viewModel.canAnswer(postId) {
+                        if post.isUnsupported {
+                            UpdateAppNotice(compact: false)
+                        } else if viewModel.canAnswer(postId) {
                             AnswerForm(viewModel: viewModel, post: post)
                         } else {
                             results(post)

@@ -214,3 +214,37 @@ it("marks a wrong pick on a graded matchup as incorrect", () => {
   expect(screen.getByLabelText("Incorrect")).toBeInTheDocument();
   expect(screen.queryByLabelText("Correct")).not.toBeInTheDocument();
 });
+
+const marginSlot: Slot = {
+  id: "game",
+  label: "Chiefs @ Bills — winner and margin",
+  shape: "pick",
+  points: 20,
+  sourceGameId: "g1",
+  options: [
+    { id: "kc-u", label: "Chiefs by <7", sublabel: "Wins by 1–6", teamCode: "KC", margin: "under_7" },
+    { id: "kc-p", label: "Chiefs by 7+", sublabel: "Wins by 7 or more", teamCode: "KC", margin: "7_plus" },
+    { id: "buf-u", label: "Bills by <7", sublabel: "Wins by 1–6", teamCode: "BUF", margin: "under_7" },
+    { id: "buf-p", label: "Bills by 7+", sublabel: "Wins by 7 or more", teamCode: "BUF", margin: "7_plus" },
+  ],
+};
+
+it("lays a Game Picks slot out as four choices and reports the one picked", async () => {
+  const onChange = vi.fn();
+  render(<MatchupPicker slot={marginSlot} variant="featured" mode="picker" onChange={onChange} />);
+
+  expect(screen.getAllByRole("radio")).toHaveLength(4);
+  await userEvent.setup().click(screen.getByText("Bills by 7+"));
+  expect(onChange).toHaveBeenCalledWith(["buf-p"]);
+});
+
+it("marks a graded Game Picks choice right or wrong", () => {
+  const { rerender } = render(<MatchupPicker slot={{ ...marginSlot, correct: ["buf-p"] }} variant="compact" mode="revealed" response={["buf-p"]} />);
+  expect(screen.getByLabelText("Correct")).toBeInTheDocument();
+
+  rerender(<MatchupPicker slot={{ ...marginSlot, correct: ["buf-p"] }} variant="compact" mode="revealed" response={["buf-u"]} />);
+  expect(screen.getByLabelText("Incorrect")).toBeInTheDocument();
+
+  rerender(<MatchupPicker slot={{ ...marginSlot, correct: [] }} variant="compact" mode="revealed" response={["buf-u"]} />);
+  expect(screen.queryByLabelText("Incorrect")).not.toBeInTheDocument();
+});

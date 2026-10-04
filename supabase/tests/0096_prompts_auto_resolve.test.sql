@@ -157,7 +157,7 @@ select lives_ok(
 );
 
 select is((select status from public.prompt_posts where id = (select v from tests.fx where k = 'tie_post')),
-  'open', 'a tied final score is left unresolved rather than guessing a winner');
+  'void', 'a tied final score voids the post rather than guessing a winner (0174)');
 select is((select status from public.prompt_posts where id = (select v from tests.fx where k = 'not_played_post')),
   'open', 'a game with no scores yet is left unresolved');
 select is((select status from public.prompt_posts where id = (select v from tests.fx where k = 'mismatched_post')),

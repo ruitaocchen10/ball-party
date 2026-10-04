@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { coverOptions, isPromptOpenForAnswers, matchesSearchQuery, needsCoverChoice } from "./logic";
-import type { Option } from "./types";
+import { coverOptions, isPromptOpenForAnswers, matchesSearchQuery, needsCoverChoice, scoreSlot } from "./logic";
+import type { Option, Slot } from "./types";
 
 const pool = (count: number, placed: Record<number, number> = {}): Option[] =>
   Array.from({ length: count }, (_, index) => ({ id: `p${index + 1}`, label: `Player ${index + 1}`, ...(placed[index + 1] ? { coverPosition: placed[index + 1] } : {}) }));
@@ -73,5 +73,40 @@ describe("matchesSearchQuery", () => {
 
   it("rejects a query none of the three fields contain", () => {
     expect(matchesSearchQuery(post, "eagles")).toBe(false);
+  });
+});
+
+describe("scoreSlot", () => {
+  const slot: Slot = {
+    id: "s",
+    label: "Game",
+    shape: "pick",
+    points: 20,
+    options: [
+      { id: "kc-under_7", label: "Chiefs by <7", teamCode: "KC", margin: "under_7" },
+      { id: "kc-7_plus", label: "Chiefs by 7+", teamCode: "KC", margin: "7_plus" },
+      { id: "buf-under_7", label: "Bills by <7", teamCode: "BUF", margin: "under_7" },
+      { id: "buf-7_plus", label: "Bills by 7+", teamCode: "BUF", margin: "7_plus" },
+    ],
+  };
+
+  it("pays a four-option game pick all-or-nothing", () => {
+    expect(scoreSlot({ ...slot, correct: ["buf-7_plus"] }, ["buf-7_plus"])?.pointsEarned).toBe(20);
+    expect(scoreSlot({ ...slot, correct: ["buf-7_plus"] }, ["buf-under_7"])?.pointsEarned).toBe(0);
+    expect(scoreSlot({ ...slot, correct: ["buf-7_plus"] }, ["kc-7_plus"])?.pointsEarned).toBe(0);
+  });
+
+  it("scores nothing for a no-contest slot (empty answer) or an ungraded one", () => {
+    expect(scoreSlot({ ...slot, correct: [] }, ["buf-7_plus"])).toBeNull();
+    expect(scoreSlot(slot, ["buf-7_plus"])).toBeNull();
+  });
+});
+
+describe("isSlotNoContest", () => {
+  it("is true only for a graded slot whose answer is empty", async () => {
+    const { isSlotNoContest } = await import("@/lib/foundation/content/prompts/logic");
+    expect(isSlotNoContest({ correct: [] })).toBe(true);
+    expect(isSlotNoContest({ correct: undefined })).toBe(false);
+    expect(isSlotNoContest({ correct: ["a"] })).toBe(false);
   });
 });

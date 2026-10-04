@@ -19,11 +19,13 @@ export type PromptMeta = {
 };
 
 /**
- * The kinds the Huddle on Home shows (see isHomePrompt in app/page.tsx).
+ * The kinds the Huddle on Home shows (see isHomePrompt in app/page.tsx). Bold
+ * Predictions is listed, but fetchPromptMeta only ever reads a post's own prompt
+ * text and caption — never a prediction, which stays hidden until a viewer has locked in their own.
  * Other kinds are composer-only for now, so they stay out of the sitemap
  * rather than advertising pages the product isn't presenting yet.
  */
-export const INDEXABLE_TEMPLATE_KINDS: TemplateKind[] = ["picks", "game_pick", "weekly_picks", "power_rankings"];
+export const INDEXABLE_TEMPLATE_KINDS: TemplateKind[] = ["picks", "game_pick", "weekly_picks", "weekly_awards", "power_rankings", "bold_predictions"];
 
 /** Fallback when a post has no caption to lend the meta description. */
 function fallbackDescription(templateName: string): string {

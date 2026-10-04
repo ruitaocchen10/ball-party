@@ -61,12 +61,14 @@ function toCreatePostSlots(slots: Slot[]) {
       .map((id) => indexById.get(id))
       .filter((index): index is number => index !== undefined),
     source_game_id: slot.sourceGameId ?? null,
+    player_search: slot.playerSearch ?? false,
     options: slot.options.map((option, index) => ({
       label: option.label,
       sublabel: option.sublabel ?? null,
       team_code: option.teamCode ?? null,
       headshot_url: option.headshotUrl ?? null,
       cover_position: option.coverPosition ?? null,
+      margin: option.margin ?? null,
       sort_order: index,
     })),
   }));

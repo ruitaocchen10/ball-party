@@ -77,7 +77,7 @@ export default async function Home(props: PageProps<"/">) {
 
 /** Older single- and weekly-pick rows remain readable while their data is migrated to `picks`. */
 function isHomePrompt(post: { templateKind: string }) {
-  return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks" || post.templateKind === "power_rankings";
+  return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks" || post.templateKind === "weekly_awards" || post.templateKind === "power_rankings" || post.templateKind === "bold_predictions";
 }
 
 /**

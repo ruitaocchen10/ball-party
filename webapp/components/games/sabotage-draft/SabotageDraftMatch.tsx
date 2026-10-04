@@ -2,14 +2,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Supabase types are regenerated after this migration lands. */
 
 import { motion } from "motion/react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from "react";
 
 import { FinalStandings, type FinalStandingsRow } from "@/components/runtime/game-runtime/FinalStandings";
 import { PauseBanner } from "@/components/runtime/game-runtime/PauseBanner";
 import { PauseButton } from "@/components/runtime/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/runtime/game-runtime/PostGameControls";
 import { PostGameNavigation } from "@/components/runtime/game-runtime/PostGameNavigation";
+import { AnchoredList } from "@/components/foundation/ui-kit/AnchoredList";
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
 import { SlotReel } from "@/components/foundation/ui-kit/SlotReel";
 import { TeamLogo } from "@/components/foundation/ui-kit/TeamLogo";
@@ -901,28 +901,7 @@ function PlayerPicker({ options, needsSeason, value, onChange, pending }: { opti
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [expanded, setExpanded] = useState<Tenured | null>(null);
-  // The dropdown is portaled to <body> (see below) so it isn't clipped by
-  // whichever `Card` it's sitting inside — Card is `overflow-hidden` by
-  // design (it clips the top edge strip to the card's rounded corners), and
-  // this list needs to float above that, not be cropped by it. A portal
-  // needs its own coordinates, since it's no longer a normal document-flow
-  // child of the input it belongs to.
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
-  const positionDropdown = useCallback(() => {
-    const rect = searchInputRef.current?.getBoundingClientRect();
-    if (rect) setDropdownRect({ top: rect.bottom, left: rect.left, width: rect.width });
-  }, []);
-  // Recomputed for as long as the dropdown is open, not just once on open —
-  // a scroll or resize while it's up would otherwise leave it floating over
-  // the wrong spot.
-  useLayoutEffect(() => {
-    if (!searchOpen) return;
-    positionDropdown();
-    window.addEventListener("resize", positionDropdown);
-    window.addEventListener("scroll", positionDropdown, true);
-    return () => { window.removeEventListener("resize", positionDropdown); window.removeEventListener("scroll", positionDropdown, true); };
-  }, [searchOpen, positionDropdown]);
   // Rank badges track tenure, not screen position, so they're captured
   // before the expanded card gets pulled to the front of the row below.
   const rankByPlayer = useMemo(() => new Map(tenured.map((g, i) => [g.player_id, i + 1])), [tenured]);
@@ -1011,12 +990,7 @@ function PlayerPicker({ options, needsSeason, value, onChange, pending }: { opti
               field that's secretly a dropdown reads as one at a glance. */}
           <Chevron className={`pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-fg-muted transition-transform ${searchOpen ? "-rotate-90" : "rotate-90"}`} />
         </div>
-        {searchOpen && dropdownRect
-          ? createPortal(
-              <ul
-                style={{ position: "fixed", top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width }}
-                className="z-50 mt-1 max-h-56 overflow-y-auto border border-line bg-surface-raised shadow-card"
-              >
+        <AnchoredList anchor={searchInputRef} open={searchOpen}>
                 {filteredRows.length ? filteredRows.map(row => (
                   <li key={row.key}>
                     <button
@@ -1036,10 +1010,7 @@ function PlayerPicker({ options, needsSeason, value, onChange, pending }: { opti
                 )) : (
                   <li className="px-3 py-2 font-mono text-xs text-fg-muted uppercase">No matches</li>
                 )}
-              </ul>,
-              document.body,
-            )
-          : null}
+        </AnchoredList>
       </div>
     </div>
   );

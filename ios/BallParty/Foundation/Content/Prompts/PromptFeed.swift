@@ -19,7 +19,10 @@ enum PromptFeed {
         // picks, not merely `status == 'open'` (`PostStatus.isTakingPicks`).
         // `post_aggregates` is the only sanctioned way to see anyone else's
         // pick, so it is asked for only the posts that actually need it.
-        let needingAggregate = posts.filter { row in
+        // A kind this build can't render has nothing to reveal, so it is never
+        // asked for either.
+        let renderable = posts.filter { !PromptPost.isUnsupportedKind($0.templateKind) }
+        let needingAggregate = renderable.filter { row in
             answered.contains(row.id) || !(row.postStatus?.isTakingPicks(lockAt: row.lockAt, now: now) ?? false)
         }
         let aggregates = try await gather(needingAggregate) {
@@ -40,7 +43,7 @@ enum PromptFeed {
         // behind the server's, in which case the server says `picks_not_revealed`
         // for a post the phone thought had locked: that is "nothing to show
         // yet", not a failed feed. Any other failure still fails it.
-        let revealed = try await gather(posts.filter { $0.lockAt <= now || $0.postStatus == .resolved }) { post in
+        let revealed = try await gather(renderable.filter { $0.lockAt <= now || $0.postStatus == .resolved }) { post in
             do {
                 return try await client.revealedResponses(postId: post.id)
             } catch let error as HuddleServerError where error.message == HuddleServerError.picksNotRevealed {
@@ -113,8 +116,11 @@ enum PromptFeed {
                 // correctly, so the post is left out — the way an unknown status
                 // is — rather than shown with a control that would send the
                 // server the wrong thing.
-                let shapes = slotRows.compactMap { SlotShape(rawValue: $0.shape) }
-                guard shapes.count == slotRows.count else { return nil }
+                // An unsupported kind carries no slots at all: its shapes are
+                // the newer release's, and its card is only a placeholder.
+                let unsupported = PromptPost.isUnsupportedKind(row.templateKind)
+                let shapes = unsupported ? [] : slotRows.compactMap { SlotShape(rawValue: $0.shape) }
+                guard unsupported || shapes.count == slotRows.count else { return nil }
                 let slots = zip(slotRows, shapes).map { slotRow, shape in
                     PromptSlot(
                         id: slotRow.id,
