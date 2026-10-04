@@ -13,6 +13,7 @@ export const PROMPT_MESSAGES: Record<string, string> = {
   invalid_option: "One of those picks isn't valid anymore. Refresh and try again.",
   option_already_used: "You've already used that team in another pick on this prompt.",
   invalid_cover_teams: "Choose exactly six different teams for the cover art.",
+  invalid_weekly_awards: "Weekly Awards needs six slots: two team picks, a game, and three player searches.",
   invalid_cover_options: "Choose four different players for the prompt art.",
   not_authorized: "Only the admin can do that.",
   not_resolvable: "This prompt has already been resolved or voided.",
@@ -22,6 +23,11 @@ export const PROMPT_MESSAGES: Record<string, string> = {
   not_voidable: "This prompt can no longer be voided.",
   parent_not_found: "That take isn't available anymore. Refresh and try again.",
   nested_reply: "You can only reply to a take, not to another reply.",
+  too_many_predictions: "A response holds at most five predictions.",
+  no_predictions: "Add at least one prediction before you lock in.",
+  already_answered: "You've already locked in your predictions.",
+  invalid_target: "That tag isn't valid for this post anymore. Pick another.",
+  not_bold_predictions: "This post doesn't take predictions.",
 };
 
 export function promptErrorMessage(message: string): string {

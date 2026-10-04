@@ -117,3 +117,21 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Sync exposed Data API schemas
+        # config.toml's api.schemas is already the file people edit when a new
+        # game adds its own schema (prompts, wavelength, ...) -- but nothing
+        # synced that list to the hosted project's Data API settings, so a
+        # migration could ship a schema the API still 404s on (prompts sat
+        # unexposed for a while this way; see the admin 404 this fixed).
+        #
+        # `supabase config push` isn't it here: it pushes every block the CLI
+        # manages, and config.toml's auth/db/storage values are stale local
+        # defaults that would stomp real prod settings (site_url, Apple
+        # sign-in, the iOS redirect URL, pooler sizing). This hits the
+        # Management API's dedicated postgrest-config endpoint instead, so
+        # the only thing it can ever change is db_schema.
+        run: python3 scripts/sync_exposed_schemas.py
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: xjsbmxgnmrvqfsqcohjv

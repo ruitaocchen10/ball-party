@@ -38,6 +38,31 @@ final class PromptModelsTests: XCTestCase {
         XCTAssertNil(without.avatarUrl)
     }
 
+    func test_postRow_decodesAnUnknownTemplateKindAndSelectsThePlaceholder() throws {
+        let row = try decode(PromptPostRow.self, """
+        {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "template_kind": "weekly_awards", "template_name": "Weekly Awards",
+         "author_id": "1A2B3C4D-0000-4000-8000-000000000001", "caption": "", "prompt_text": "Hand out the hardware",
+         "resolution_criteria": "Opinion.", "lock_at": "2026-09-20T17:00:00+00:00",
+         "created_at": "2026-09-17T12:00:00+00:00", "status": "open", "void_reason": null, "is_opinion": true}
+        """)
+
+        XCTAssertEqual(row.templateKind, "weekly_awards")
+        XCTAssertTrue(PromptPost.isUnsupportedKind("weekly_awards"))
+        XCTAssertTrue(PromptPost.isUnsupportedKind("bold_predictions"))
+        XCTAssertTrue(PromptPost.isFeedKind("bold_predictions"))
+    }
+
+    func test_kinds_knownOnesAreNeverPlaceholdersAndAdminOnlyOnesStayOffTheFeed() {
+        for kind in ["picks", "game_pick", "weekly_picks", "power_rankings"] {
+            XCTAssertFalse(PromptPost.isUnsupportedKind(kind), kind)
+            XCTAssertTrue(PromptPost.isFeedKind(kind), kind)
+        }
+        for kind in ["stat_leader", "ranking", "custom_multi"] {
+            XCTAssertFalse(PromptPost.isUnsupportedKind(kind), kind)
+            XCTAssertFalse(PromptPost.isFeedKind(kind), kind)
+        }
+    }
+
     func test_postRow_decodesAPowerRankingsCover() throws {
         let row = try decode(PromptPostRow.self, """
         {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "template_kind": "power_rankings", "template_name": "Power Rankings",

@@ -6,8 +6,12 @@
 
 export type SlotShape = "pick" | "pick_set" | "rank";
 
-/** `game_pick` and `weekly_picks` remain readable for posts created before Picks unified them. */
-export type TemplateKind = "picks" | "game_pick" | "weekly_picks" | "stat_leader" | "ranking" | "power_rankings" | "custom_multi";
+/**
+ * `picks` is legacy: 0173 backfilled every row to `weekly_picks` and the composer no longer
+ * writes it, but the database still allows it. `bold_predictions` is reserved for a later
+ * prompt-type slice and has no composer or renderer yet.
+ */
+export type TemplateKind = "picks" | "game_pick" | "weekly_picks" | "weekly_awards" | "bold_predictions" | "stat_leader" | "ranking" | "power_rankings" | "custom_multi";
 
 export type LifecycleStatus = "open" | "locked" | "resolved" | "void";
 
@@ -26,7 +30,11 @@ export type Option = {
    * a candidate that isn't in the art.
    */
   coverPosition?: number;
+  /** A Game Picks option's margin bucket: the team wins by under 7, or by 7+ (exactly 7 counts as 7+). */
+  margin?: OptionMargin;
 };
+
+export type OptionMargin = "under_7" | "7_plus";
 
 export type Slot = {
   id: string;
@@ -43,6 +51,12 @@ export type Slot = {
   excludesSlotIds?: string[];
   /** nflverse game identity for an automatically graded winner pick. */
   sourceGameId?: string;
+  /**
+   * Answered by searching the player directory instead of choosing from `options`. Options
+   * appear here only once someone has picked that player (prompts.submit_response creates
+   * them), so `options` is the set of players picked so far, not a pool to choose from.
+   */
+  playerSearch?: boolean;
 };
 
 /** Schedule details shown on a matchup cover, indexed by a slot's source game. */
@@ -91,6 +105,8 @@ export type Post = {
   slots: Slot[];
   comments: Comment[];
   responseCount: number;
+  /** Bold Predictions only: how many predictions people have written. The text stays hidden until a viewer locks in their own response. */
+  predictionCount?: number;
   viewerAnswered: boolean;
   viewerResponse?: Record<string, string[]>;
   /** Power Rankings only: the six teams the admin chose for the cover art, in placement order. */

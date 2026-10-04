@@ -257,6 +257,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bold_prediction_counts: {
+        Args: { p_post_ids: string[] }
+        Returns: {
+          author_count: number
+          post_id: string
+          prediction_count: number
+        }[]
+      }
+      bold_predictions_for_post: {
+        Args: { p_post_id: string }
+        Returns: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          post_id: string
+          target_id: string
+          target_type: string
+          updated_at: string
+        }[]
+      }
       create_post: {
         Args: {
           p_caption: string
@@ -273,6 +294,19 @@ export type Database = {
         Returns: string
       }
       is_admin: { Args: never; Returns: boolean }
+      my_bold_predictions: {
+        Args: { p_post_id: string }
+        Returns: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          post_id: string
+          target_id: string
+          target_type: string
+          updated_at: string
+        }[]
+      }
       player_options: {
         Args: never
         Returns: {
@@ -280,6 +314,17 @@ export type Database = {
           headshot_url: string
           player_id: string
           position: string
+          team: string
+        }[]
+      }
+      players_by_ids: {
+        Args: { p_ids: string[] }
+        Returns: {
+          display_name: string
+          headshot_url: string
+          player_id: string
+          position: string
+          status: string
           team: string
         }[]
       }
@@ -319,6 +364,21 @@ export type Database = {
           profile_id: string
           slot_id: string
         }[]
+      }
+      search_players: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          display_name: string
+          headshot_url: string
+          player_id: string
+          position: string
+          status: string
+          team: string
+        }[]
+      }
+      submit_bold_predictions: {
+        Args: { p_post_id: string; p_predictions: Json }
+        Returns: undefined
       }
       submit_response: {
         Args: { p_choices: Json; p_comment?: string; p_post_id: string }
@@ -693,6 +753,54 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bold_predictions: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          post_id: string
+          target_id: string
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          post_id: string
+          target_id: string
+          target_type: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          target_id?: string
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bold_predictions_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bold_predictions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_posts"
             referencedColumns: ["id"]
           },
         ]
@@ -1513,6 +1621,8 @@ export type Database = {
           headshot_url: string | null
           id: string
           label: string
+          margin: string | null
+          player_id: string | null
           slot_id: string
           sort_order: number
           sublabel: string | null
@@ -1523,6 +1633,8 @@ export type Database = {
           headshot_url?: string | null
           id?: string
           label: string
+          margin?: string | null
+          player_id?: string | null
           slot_id: string
           sort_order?: number
           sublabel?: string | null
@@ -1533,6 +1645,8 @@ export type Database = {
           headshot_url?: string | null
           id?: string
           label?: string
+          margin?: string | null
+          player_id?: string | null
           slot_id?: string
           sort_order?: number
           sublabel?: string | null
@@ -1554,6 +1668,7 @@ export type Database = {
           id: string
           label: string
           pick_count: number | null
+          player_search: boolean
           points: number
           post_id: string
           shape: string
@@ -1565,6 +1680,7 @@ export type Database = {
           id?: string
           label: string
           pick_count?: number | null
+          player_search?: boolean
           points: number
           post_id: string
           shape: string
@@ -1576,6 +1692,7 @@ export type Database = {
           id?: string
           label?: string
           pick_count?: number | null
+          player_search?: boolean
           points?: number
           post_id?: string
           shape?: string

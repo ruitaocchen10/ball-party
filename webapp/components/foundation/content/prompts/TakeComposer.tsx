@@ -8,6 +8,7 @@ import { submitPromptResponse } from "@/lib/foundation/content/prompts/client";
 import { createClient } from "@/lib/supabase/client";
 import { AuthorIdentity } from "./AuthorIdentity";
 import { GamePickFace, GamePickList, PowerRankingsSlot, SlotFaceC } from "./SlotFaces";
+import { WeeklyAwardsSlots } from "./WeeklyAwards";
 import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 
@@ -82,6 +83,8 @@ export function TakeComposer({ post, displayName, avatarUrl }: TakeComposerProps
           <GamePickFace slot={post.slots[0]} disabled={false} response={draft[post.slots[0].id] ?? []} onChange={(response) => setSlotResponse(post.slots[0].id, response)} />
         ) : isPicksPost(post) ? (
           <GamePickList slots={post.slots} responses={draft} onChange={setSlotResponse} />
+        ) : post.templateKind === "weekly_awards" ? (
+          <WeeklyAwardsSlots slots={post.slots} responses={draft} onChange={setSlotResponse} />
         ) : post.templateKind === "power_rankings" ? (
           <div className="px-4 pt-4">
             <PowerRankingsSlot

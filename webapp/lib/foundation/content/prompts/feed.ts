@@ -1,4 +1,4 @@
-import type { Comment, LifecycleStatus, Option, Post, Slot, SlotShape, TemplateKind } from "@/lib/foundation/content/prompts/types";
+import type { Comment, LifecycleStatus, Option, OptionMargin, Post, Slot, SlotShape, TemplateKind } from "@/lib/foundation/content/prompts/types";
 import type { Database } from "@/lib/supabase/database.types";
 import type { createClient } from "@/lib/supabase/server";
 
@@ -123,6 +123,15 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
     );
   }
 
+  // A Bold Predictions post has no responses to aggregate; its card counts
+  // predictions instead. The RPC returns totals only, never text, so it is
+  // safe before lock (bold_predictions itself is own-rows-only until then).
+  const boldPostIds = postRows.filter((row) => row.template_kind === "bold_predictions").map((row) => row.id);
+  const predictionCounts = boldPostIds.length
+    ? await supabase.schema("prompts").rpc("bold_prediction_counts", { p_post_ids: boldPostIds }).then((result) => result.data ?? [])
+    : [];
+  const predictionCountByPost = new Map(predictionCounts.map((row) => [row.post_id, Number(row.prediction_count)]));
+
   // Individual calls become social content only after the board closes. The
   // RPC is security-definer rather than a wider RLS policy, so an open prompt
   // never leaks a pick that a later participant could copy.
@@ -147,6 +156,7 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
     powerRankingTopFiveByPost,
     revealedByPost,
     previousRankByPowerPost,
+    predictionCountByPost,
   }));
 }
 
@@ -180,6 +190,7 @@ function mapPost(
     powerRankingTopFiveByPost: Map<string, { option_id: string; top_five_count: number | null; average_rank: number | null }[]>;
     revealedByPost: Map<string, RevealedResponseRow[]>;
     previousRankByPowerPost: Map<string, Record<string, number>>;
+    predictionCountByPost: Map<string, number>;
   },
 ): Post {
   const slots: Slot[] = (ctx.slotsByPost.get(row.id) ?? []).map((slotRow) => ({
@@ -191,6 +202,7 @@ function mapPost(
     pickCount: slotRow.pick_count ?? undefined,
     points: slotRow.points,
     sourceGameId: slotRow.source_game_id ?? undefined,
+    playerSearch: slotRow.player_search || undefined,
     correct: slotRow.correct_option_ids ?? undefined,
     excludesSlotIds: (ctx.exclusionsBySlot.get(slotRow.id) ?? []).map((ex) => ex.excluded_slot_id),
     options: (ctx.optionsBySlot.get(slotRow.id) ?? []).map(
@@ -201,6 +213,8 @@ function mapPost(
         teamCode: optionRow.team_code ?? undefined,
         headshotUrl: optionRow.headshot_url ?? undefined,
         coverPosition: optionRow.cover_position ?? undefined,
+        teamCodes: matchupTeamCodes(optionRow.sublabel),
+        margin: (optionRow.margin as OptionMargin | null) ?? undefined,
       }),
     ),
   }));
@@ -258,6 +272,7 @@ function mapPost(
     slots,
     comments,
     responseCount,
+    predictionCount: row.template_kind === "bold_predictions" ? ctx.predictionCountByPost.get(row.id) ?? 0 : undefined,
     viewerAnswered,
     viewerResponse,
     viewerPointsAwarded,
@@ -299,6 +314,15 @@ function buildCommentTree(
     else topLevel.push(comment);
   }
   return topLevel;
+}
+
+/**
+ * A Weekly Awards "Best game" option stores its two clubs as "AWAY @ HOME" in the sublabel, since
+ * prompt_slot_options has one team_code column. Anything else is not a matchup.
+ */
+function matchupTeamCodes(sublabel: string | null): string[] | undefined {
+  const match = sublabel?.match(/^([A-Z]{2,3}) @ ([A-Z]{2,3})$/);
+  return match ? [match[1], match[2]] : undefined;
 }
 
 function groupBy<T, K>(rows: T[], key: (row: T) => K): Map<K, T[]> {

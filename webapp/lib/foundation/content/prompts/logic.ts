@@ -15,7 +15,8 @@ export type SlotResult = {
 
 /** Scores one slot's response against its ground truth. Undefined until `slot.correct` is set. */
 export function scoreSlot(slot: Slot, response: string[] | undefined): SlotResult | null {
-  if (!slot.correct || !response || response.length === 0) return null;
+  // An empty answer is a no-contest slot (a tied game): nothing to score either way.
+  if (!slot.correct || slot.correct.length === 0 || !response || response.length === 0) return null;
 
   if (slot.shape === "pick") {
     const correctCount = response[0] === slot.correct[0] ? 1 : 0;
@@ -45,7 +46,12 @@ export function isSlotGraded(slot: Pick<Slot, "correct">): boolean {
   return (slot.correct?.length ?? 0) > 0;
 }
 
-/** `game_pick` and `weekly_picks` remain readable for posts created before Picks unified them — see types.ts's TemplateKind. */
+/** A graded slot with no right answer: a tied game on a weekly slate (0174). Everyone earned 0 on it. */
+export function isSlotNoContest(slot: Pick<Slot, "correct">): boolean {
+  return slot.correct !== undefined && slot.correct.length === 0;
+}
+
+/** `picks` is legacy (backfilled to `weekly_picks` by 0173) but still allowed by the database — see types.ts's TemplateKind. */
 export function isPicksPost(post: Pick<Post, "templateKind">): boolean {
   return post.templateKind === "picks" || post.templateKind === "game_pick" || post.templateKind === "weekly_picks";
 }

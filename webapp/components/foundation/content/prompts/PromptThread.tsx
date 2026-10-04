@@ -1,11 +1,13 @@
 "use client";
 
+import { BoldPredictionsBoard } from "./BoldPredictionsBoard";
 import { ShareTakeButton } from "./ShareTakeButton";
 import { TakeCard } from "./TakeCard";
 import { TakeComposer } from "./TakeComposer";
 import { TakeResponse } from "./TakeResponse";
 import { usePromptDeadlineNow } from "./usePromptDeadline";
 import { isPicksPost, isPromptOpenForAnswers, totalPoints } from "@/lib/foundation/content/prompts/logic";
+import type { BoldPredictionBoardData } from "@/lib/foundation/content/prompts/boldPredictions";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
 
 /**
@@ -14,7 +16,15 @@ import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
  * readers unlock other takes by making a pick; public readers can browse the
  * discussion but never receive a response or reply control.
  */
-export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = true }: { post: Post; displayName: string; avatarUrl: string | null; viewerCanAnswer?: boolean }) {
+export function PromptThread({ post, displayName, avatarUrl, viewerCanAnswer = true, boldPredictions }: { post: Post; displayName: string; avatarUrl: string | null; viewerCanAnswer?: boolean; boldPredictions?: BoldPredictionBoardData }) {
+  // Bold Predictions has no picks or takes to unlock — its own board is the whole thread.
+  if (post.templateKind === "bold_predictions" && boldPredictions) {
+    return <BoldPredictionsBoard post={post} data={boldPredictions} viewerCanAnswer={viewerCanAnswer} displayName={displayName} avatarUrl={avatarUrl} />;
+  }
+  return <PickThread post={post} displayName={displayName} avatarUrl={avatarUrl} viewerCanAnswer={viewerCanAnswer} />;
+}
+
+function PickThread({ post, displayName, avatarUrl, viewerCanAnswer }: { post: Post; displayName: string; avatarUrl: string | null; viewerCanAnswer: boolean }) {
   const now = usePromptDeadlineNow(post);
   const canSubmit = viewerCanAnswer && isPromptOpenForAnswers(post, now) && !post.viewerAnswered;
   const viewerTake = post.comments.find((item) => item.isViewer && item.postedWithPick);

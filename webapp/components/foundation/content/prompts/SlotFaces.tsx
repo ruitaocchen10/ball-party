@@ -53,7 +53,7 @@ export function YourCalls({
   const hiddenCount = slots.length - visibleSlots.length;
   return (
     <section className="mt-4 px-4" aria-label="Your calls">
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      <div className={`grid gap-2 sm:gap-3 ${slots.length === 1 ? "" : "grid-cols-2"}`}>
         {visibleSlots.map((slot) => (
           <MatchupPicker key={slot.id} slot={slot} response={responses[slot.id] ?? []} variant="compact" mode="revealed" />
         ))}

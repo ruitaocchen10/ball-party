@@ -133,9 +133,15 @@ private struct PostCard: View {
                     .padding(.top, 12)
             }
 
-            teaser
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+            if post.isUnsupported {
+                UpdateAppNotice(compact: true)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+            } else {
+                teaser
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+            }
 
             if post.aggregate != nil {
                 Text("\(post.responseCount) \(post.responseCount == 1 ? "person has" : "people have") answered")

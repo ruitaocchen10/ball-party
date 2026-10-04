@@ -24,7 +24,7 @@ final class HuddleViewModel: ObservableObject {
     /// three calls to action the web's card makes, plus one for a prompt that
     /// has closed on somebody who never answered.
     enum CardAction: Equatable {
-        case makePicks, viewPicks, seeTakes, seeResults
+        case makePicks, viewPicks, seeTakes, seeResults, updateApp
 
         var label: String {
             switch self {
@@ -32,6 +32,7 @@ final class HuddleViewModel: ObservableObject {
             case .viewPicks: "View your picks"
             case .seeTakes: "See takes"
             case .seeResults: "See results"
+            case .updateApp: "Update to play"
             }
         }
     }
@@ -132,6 +133,7 @@ final class HuddleViewModel: ObservableObject {
 
     func callToAction(for postId: UUID) -> CardAction {
         guard let post = post(postId) else { return .seeResults }
+        if post.isUnsupported { return .updateApp }
         if canAnswer(postId) { return .makePicks }
         if post.viewerAnswered { return post.isTakingPicks(at: now()) ? .viewPicks : .seeTakes }
         return .seeResults

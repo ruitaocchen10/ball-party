@@ -191,7 +191,7 @@ struct PromptPost: Identifiable, Equatable, Sendable {
     func isTakingPicks(at now: Date) -> Bool { status.isTakingPicks(lockAt: lockAt, now: now) }
 
     /// Whether this viewer can still make picks on it.
-    func canBeAnswered(at now: Date) -> Bool { isTakingPicks(at: now) && !viewerAnswered }
+    func canBeAnswered(at now: Date) -> Bool { !isUnsupported && isTakingPicks(at: now) && !viewerAnswered }
 
     /// Picks posts. `game_pick` and `weekly_picks` remain readable for posts
     /// written before Picks unified them.
@@ -203,7 +203,23 @@ struct PromptPost: Identifiable, Equatable, Sendable {
     /// plus Power Rankings. The other kinds stay with the admin tooling.
     static let feedKinds = picksKinds + [powerRankingsKind]
 
-    static func isFeedKind(_ kind: String) -> Bool { feedKinds.contains(kind) }
+    /// Kinds that stay with the admin tooling and never reach the feed, here or
+    /// on the web.
+    static let adminOnlyKinds = ["stat_leader", "ranking", "custom_multi"]
+
+    /// A kind this build can't render — a newer release's (`weekly_awards`,
+    /// `bold_predictions`). It shows as an "update the app" placeholder rather
+    /// than vanishing or being drawn with answer UI that would send the server
+    /// the wrong thing.
+    static func isUnsupportedKind(_ kind: String) -> Bool {
+        !feedKinds.contains(kind) && !adminOnlyKinds.contains(kind)
+    }
+
+    /// Whether the feed lists a post of this kind: the kinds this app renders,
+    /// plus the placeholder for the ones it doesn't.
+    static func isFeedKind(_ kind: String) -> Bool { feedKinds.contains(kind) || isUnsupportedKind(kind) }
+
+    var isUnsupported: Bool { Self.isUnsupportedKind(templateKind) }
 }
 
 /// One team of a Power Rankings post's "most common top 5"

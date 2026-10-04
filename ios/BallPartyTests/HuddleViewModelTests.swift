@@ -52,6 +52,26 @@ final class HuddleViewModelTests: XCTestCase {
         )
     }
 
+    func test_feed_aKindFromANewerRelease_showsAsAnUpdatePlaceholderNotAnAnswerForm() async throws {
+        client.addPost("Weekly awards", kind: "weekly_awards")
+        client.addPost("Bold predictions", kind: "bold_predictions")
+        client.addPost("A picks post")
+
+        await viewModel.load()
+
+        let awards = try XCTUnwrap(viewModel.posts.first { $0.templateKind == "weekly_awards" })
+        XCTAssertEqual(viewModel.posts.count, 3)
+        XCTAssertTrue(awards.isUnsupported)
+        XCTAssertTrue(awards.slots.isEmpty)
+        XCTAssertFalse(viewModel.canAnswer(awards.id))
+        XCTAssertEqual(viewModel.callToAction(for: awards.id), .updateApp)
+        XCTAssertEqual(viewModel.callToAction(for: awards.id).label, "Update to play")
+
+        let picks = try XCTUnwrap(viewModel.posts.first { $0.promptText == "A picks post" })
+        XCTAssertFalse(picks.isUnsupported)
+        XCTAssertEqual(viewModel.callToAction(for: picks.id), .makePicks)
+    }
+
     func test_feed_failingToLoadSaysWhy() async throws {
         client.failures["feed_rows"] = HuddleServerError(message: "post_not_found")
 

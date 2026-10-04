@@ -1,4 +1,5 @@
 import { PowerRankingsSlot, SlotFaceC, YourCalls } from "./SlotFaces";
+import { WeeklyAwardsBallot } from "./WeeklyAwards";
 import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 
@@ -22,6 +23,8 @@ export function TakeResponse({
   isViewer?: boolean;
 }) {
   if (isPicksPost(post)) return <YourCalls slots={post.slots} responses={response} collapsible={collapsible} />;
+
+  if (post.templateKind === "weekly_awards") return <WeeklyAwardsBallot post={post} response={response} />;
 
   if (post.templateKind === "power_rankings") {
     return (
