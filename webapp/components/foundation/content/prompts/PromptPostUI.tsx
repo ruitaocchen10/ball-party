@@ -35,6 +35,7 @@ import {
 } from "./ComposerFields";
 import { COVER_OPTION_LIMIT, coverOptions, isPicksPost, isPromptOpenForAnswers, needsCoverChoice, relativeTime } from "@/lib/foundation/content/prompts/logic";
 import type { MatchupGameContext, Option, Player, Post, Slot, TemplateKind } from "@/lib/foundation/content/prompts/types";
+import { Badge } from "@/components/foundation/ui-kit/Badge";
 
 /**
  * Big match-style tiles borrowing this app's own
@@ -97,11 +98,11 @@ function PostCardC({
     : canAnswer ? "Make your picks" : post.viewerAnswered && promptOpen ? "View your picks" : "See takes";
   const timingLabel = postTimingLabel(post, now);
   const statusChip = post.viewerAnswered
-    ? <span className="inline-flex shrink-0 items-center gap-1 bg-grade-elite px-2 py-1 type-label-xs font-bold leading-none text-[#fffdf7]"><Check aria-hidden className="h-3 w-3" strokeWidth={3} /> Complete</span>
+    ? <Badge tone="success" size="xs" icon={<Check aria-hidden className="h-3 w-3" strokeWidth={3} />}>Complete</Badge>
     : post.status !== "void" && !promptOpen && post.status !== "resolved"
-      ? <span className="inline-flex shrink-0 items-center gap-1 border border-fg-muted/50 bg-surface px-2 py-1 type-label-xs font-bold leading-none text-fg-muted"><Lock aria-hidden className="h-3 w-3" strokeWidth={2.5} /> Locked</span>
+      ? <Badge tone="outline" size="xs" icon={<Lock aria-hidden className="h-3 w-3" strokeWidth={2.5} />}>Locked</Badge>
       : post.status === "resolved"
-        ? <span className="inline-flex shrink-0 border border-panel/50 bg-panel/10 px-2 py-1 type-label-xs font-bold leading-none text-panel">Resolved</span>
+        ? <Badge tone="soft" size="xs">Resolved</Badge>
       : null;
 
   return (

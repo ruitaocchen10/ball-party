@@ -15,6 +15,7 @@ import { completedMatchesFromHistory, profileStatRanges, summarizeMultiplayerPro
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
+import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 
 /** A player's durable record, kept deliberately separate from a live room. */
 export default async function ProfilePage() {
@@ -193,7 +194,7 @@ function TakeHistoryItem({
 }
 
 function EmptyTakeHistory() {
-  return <div className="mt-3 rounded-card bg-surface-raised px-5 py-6 text-sm leading-6 text-fg-muted shadow-well">No takes yet. Your takes on prompt posts will show up here.</div>;
+  return <EmptyState className="mt-3">No takes yet. Your takes on prompt posts will show up here.</EmptyState>;
 }
 
 function joinedMonth(date?: string) { return date ? new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(new Date(date)) : "today"; }

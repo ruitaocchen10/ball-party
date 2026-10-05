@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { GAMES, type Game, type SoloMode } from "@/lib/platform/orchestration/catalog";
 import { playSolo } from "@/lib/platform/lobbies/actions";
 import { SoloSeasonRange } from "./SoloSeasonRange";
+import { Badge } from "@/components/foundation/ui-kit/Badge";
 
 /** The seasons on offer for Higher or Lower's era picker; absent when the bounds could not be read. */
 export type SoloEra = { seasonMin: number; seasonMax: number };
@@ -65,9 +66,7 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
         <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-surface text-fg-muted ring-1 ring-line ring-inset transition-colors group-hover:text-fg">
           <Gamepad2 aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.6} />
         </span>
-        <span className="bg-surface px-2 py-1 type-label-xs font-semibold text-fg-muted ring-1 ring-line ring-inset">
-          1 player
-        </span>
+        <Badge tone="muted" size="xs">1 player</Badge>
       </div>
 
       <h3 className="mt-4 font-slab text-xl leading-[1.04] uppercase">

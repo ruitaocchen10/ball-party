@@ -22,6 +22,7 @@ import { isPromptOpenForAnswers } from "@/lib/foundation/content/prompts/logic";
 import type { PlayerResult, PlayerSearch } from "@/lib/foundation/content/prompts/players";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 import { createClient } from "@/lib/supabase/client";
+import { Badge } from "@/components/foundation/ui-kit/Badge";
 
 type Draft = { body: string; target: BoldTarget };
 
@@ -212,7 +213,7 @@ function YouHeader({ name, avatarUrl }: { name: string; avatarUrl: string | null
   return (
     <div className="flex items-center gap-2.5">
       <AuthorIdentity name={name} avatarUrl={avatarUrl} />
-      <span className="shrink-0 bg-panel px-1.5 py-0.5 type-label text-panel-fg">You</span>
+      <Badge>You</Badge>
     </div>
   );
 }
@@ -279,7 +280,7 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
     <article key={group.key} aria-label={`${group.author}'s predictions`} className={`${CARD_SHELL} p-4`}>
       <div className="flex items-center gap-2.5">
         <AuthorIdentity name={group.author} />
-        {group.isViewer ? <span className="shrink-0 bg-panel px-1.5 py-0.5 type-label text-panel-fg">You</span> : null}
+        {group.isViewer ? <Badge>You</Badge> : null}
       </div>
       <ul className="mt-4 flex flex-col gap-3">
         {group.predictions.map((prediction) => (
