@@ -6,6 +6,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { type ProfileUpdateState, updateProfile } from "@/app/profile/actions";
 import { ProfileAvatar } from "@/components/foundation/identity/ProfileAvatar";
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
+import { Field, Input } from "@/components/foundation/ui-kit/Input";
 import { createClient } from "@/lib/supabase/client";
 import { PresetAvatarPicker } from "./PresetAvatarPicker";
 
@@ -170,18 +171,16 @@ function ProfileEditorDialog({ displayName, avatarUrl, userId, onClose }: Profil
               </button>
               <input type="hidden" name="avatar_url" value={avatar} />
             </div>
-            <label className="mt-5 block type-label text-fg-muted">
-              Display name
-              <input
+            <Field label="Display name" className="mt-5">
+<Input
                 ref={nameInput}
                 name="display_name"
                 defaultValue={displayName}
                 minLength={2}
                 maxLength={16}
                 required
-                className="mt-1.5 block w-full border border-line bg-surface px-3 py-2.5 font-sans text-sm normal-case tracking-normal text-fg outline-none focus:border-panel"
-              />
-            </label>
+                />
+</Field>
             <AnimatedMessage role="alert" className="mt-3 text-sm text-hidden-text">
               {state.error}
             </AnimatedMessage>

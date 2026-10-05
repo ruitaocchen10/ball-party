@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
 import { Button } from "@/components/foundation/ui-kit/Button";
+import { Field, Input } from "@/components/foundation/ui-kit/Input";
 import { signInWithEmail, signUpWithEmail } from "@/lib/foundation/identity/actions";
 import {
   DISPLAY_NAME_MAX,
@@ -19,8 +20,6 @@ import { GoogleButton } from "./GoogleButton";
 
 // Fields are wells cut into the background, not panels — three cream blocks would
 // blow out a screen whose whole premise is that light is rare.
-const FIELD =
-  "h-12 w-full border border-line bg-surface-raised px-3 text-sm text-fg outline-none placeholder:text-fg-muted focus:border-panel";
 
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -65,9 +64,8 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
         <input type="hidden" name="next" value={next} />
 
         {isSignup && (
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Display name</span>
-            <input
+          <Field label="Display name">
+<Input
               name="display_name"
               type="text"
               required
@@ -75,35 +73,30 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
               maxLength={DISPLAY_NAME_MAX}
               autoComplete="nickname"
               placeholder="What your friends will see"
-              className={FIELD}
-            />
-          </label>
+/>
+</Field>
         )}
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Email</span>
-          <input
+        <Field label="Email">
+<Input
             name="email"
             type="email"
             required
             autoComplete="email"
             placeholder="you@example.com"
-            className={FIELD}
-          />
-        </label>
+/>
+</Field>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Password</span>
-          <input
+        <Field label="Password">
+<Input
             name="password"
             type="password"
             required
             minLength={isSignup ? PASSWORD_MIN : undefined}
             autoComplete={isSignup ? "new-password" : "current-password"}
             placeholder={isSignup ? `At least ${PASSWORD_MIN} characters` : ""}
-            className={FIELD}
-          />
-        </label>
+/>
+</Field>
 
         {/* The one place red isn't about hidden information. Inventing a second
             alarm colour would cost more than reusing this one. */}

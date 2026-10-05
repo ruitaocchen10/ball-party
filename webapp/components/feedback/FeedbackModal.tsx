@@ -5,6 +5,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import { submitFeedback } from "@/lib/feedback/actions";
 import { EMPTY_FEEDBACK_STATE } from "@/lib/feedback/state";
+import { Field, Textarea } from "@/components/foundation/ui-kit/Input";
 
 type FeedbackKind = "bug" | "feature";
 
@@ -54,10 +55,9 @@ export function FeedbackModal({ route, onClose }: { route: string; onClose: () =
             </fieldset>
             <input type="hidden" name="kind" value={kind} />
             <input type="hidden" name="route" value={route} />
-            <label className="mt-5 block font-mono text-xs font-semibold tracking-[0.1em] text-fg-muted uppercase">
-              {kind === "bug" ? "What went wrong?" : "What would you like to see?"}
-              <textarea ref={messageInput} name="message" required minLength={3} maxLength={2000} rows={5} placeholder={kind === "bug" ? "Tell us what happened and what you expected." : "Describe the feature that would help."} className="mt-2 block w-full resize-y border border-line bg-surface px-3 py-2.5 font-sans text-sm normal-case tracking-normal text-fg outline-none placeholder:text-fg-muted focus:border-panel" />
-            </label>
+            <Field label={kind === "bug" ? "What went wrong?" : "What would you like to see?"} className="mt-5">
+<Textarea ref={messageInput} name="message" required minLength={3} maxLength={2000} rows={5} placeholder={kind === "bug" ? "Tell us what happened and what you expected." : "Describe the feature that would help."} />
+</Field>
             {state.error ? <p role="alert" className="mt-3 text-sm text-hidden-text">{state.error}</p> : null}
             <div className="mt-5 flex items-center gap-3">
               <button type="submit" disabled={pending} className="bg-panel px-3.5 py-2.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase disabled:opacity-60">{pending ? "Sending…" : "Send feedback"}</button>

@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Card } from "@/components/foundation/ui-kit/Card";
+import { Input, Textarea } from "@/components/foundation/ui-kit/Input";
 import { Select } from "@/components/foundation/ui-kit/Select";
 import type { NflScheduleGame } from "@/lib/foundation/content/nfl/schedule";
 import { OptionIcon } from "./SlotFaces";
@@ -804,13 +805,13 @@ export function PromptPostComposer({
 
         <Section n={3} title="Copy">
         <FieldBlock label="Prompt text">
-          <input value={promptText} onChange={(e) => setPromptText(e.target.value)} className="w-full border border-line bg-surface-raised px-3 py-2 text-sm" />
+          <Input variant="well" value={promptText} onChange={(e) => setPromptText(e.target.value)} />
         </FieldBlock>
         <FieldBlock label="Caption — optional">
-          <input value={caption} onChange={(e) => setCaption(e.target.value)} className="w-full border border-line bg-surface-raised px-3 py-2 text-sm" />
+          <Input variant="well" value={caption} onChange={(e) => setCaption(e.target.value)} />
         </FieldBlock>
         <FieldBlock label="Resolution criteria — shown before anyone answers">
-          <textarea value={criteria} onChange={(e) => setCriteria(e.target.value)} rows={3} className="w-full border border-line bg-surface-raised px-3 py-2 text-sm" />
+          <Textarea variant="well" value={criteria} onChange={(e) => setCriteria(e.target.value)} rows={3} />
         </FieldBlock>
         </Section>
 

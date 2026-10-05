@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 
 import { Button } from "@/components/foundation/ui-kit/Button";
+import { Field, Textarea } from "@/components/foundation/ui-kit/Input";
 import {
   abbreviate, MatchStrip, StripCell, StripCellAvatar, StripCellCaption, StripCellName,
   StripCellTextColumn, StripCellTitle, StripCellTop,
@@ -413,10 +414,9 @@ function FillControls({ canFill, myFillWritten, myFillTotal, clue, error, saving
         <p className="font-slab text-xl">Write your clue{myFillTotal > 1 ? ` (${myFillWritten + 1} of ${myFillTotal})` : ""}</p>
         <p className="mt-1 text-sm text-fg-muted">One shot, aimed at the hidden target only you can see.</p>
       </div>
-      <label className="grid gap-1 text-sm font-medium">
-        Clue
-        <textarea aria-label="Clue" value={clue} maxLength={CLUE_MAX_CHARS + 1} onChange={(event) => onChange(event.target.value)} className="min-h-24 border border-line bg-panel p-3 text-panel-fg" />
-      </label>
+      <Field label="Clue">
+        <Textarea variant="panel" value={clue} maxLength={CLUE_MAX_CHARS + 1} onChange={(event) => onChange(event.target.value)} className="min-h-24" />
+      </Field>
       <p className="font-mono text-xs text-fg-muted">{clue.trim().split(/\s+/).filter(Boolean).length}/{CLUE_MAX_WORDS} words · {clue.length}/{CLUE_MAX_CHARS} characters · no digits</p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <Button type="submit" disabled={saving}>{saving ? "Writing clue…" : "Clue written"}</Button>
