@@ -25,7 +25,7 @@ export function ColumnHead({
         {title}
       </Heading>
       <span aria-hidden className="h-px flex-1 bg-line" />
-      <span className="font-mono text-[9px] tracking-[0.15em] text-fg-muted uppercase">
+      <span className="type-label-xs text-fg-muted">
         {meta}
       </span>
     </div>

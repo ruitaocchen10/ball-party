@@ -57,7 +57,7 @@ function PickThread({ post, displayName, avatarUrl, viewerCanAnswer }: { post: P
             commentHref={viewerTake ? `/prompts/${post.id}/takes/${viewerTake.id}` : undefined}
             collapsedByDefault
             footer={
-              <span className="flex items-center gap-3 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">
+              <span className="flex items-center gap-3 type-label text-fg-muted">
                 Picks locked in
                 {points !== null ? (
                   <span className={`grade-scoremark grade-scoremark--standings ${points > 0 ? "grade-scoremark--elite" : "grade-scoremark--rough"}`}>+{points}</span>
@@ -75,7 +75,7 @@ function PickThread({ post, displayName, avatarUrl, viewerCanAnswer }: { post: P
 
         {(post.viewerAnswered || !viewerCanAnswer) && otherTakes.length ? (
           <div className="flex flex-col gap-3" aria-label="Other takes">
-            <h2 className="px-1 font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Other takes</h2>
+            <h2 className="px-1 type-label text-fg-muted">Other takes</h2>
             {otherTakes.map((take) => (
               <TakeCard
                 key={take.id}

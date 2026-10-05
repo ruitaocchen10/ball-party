@@ -70,7 +70,7 @@ function ShareFeaturedMatchup({ slot, response }: { slot: Slot; response: string
       <div className="relative flex h-full flex-col">
         {pickedId === away.id ? <div aria-hidden className="absolute inset-y-0 left-0 w-1/2" style={surface(away)} /> : null}
         {pickedId === home.id ? <div aria-hidden className="absolute inset-y-0 right-0 w-1/2" style={surface(home)} /> : null}
-        <div className="relative z-10 flex items-center justify-between px-5 pt-5 font-mono text-[10px] font-semibold tracking-[0.16em] text-fg/70 uppercase">
+        <div className="relative z-10 flex items-center justify-between px-5 pt-5 type-label font-semibold text-fg/70">
           <span className={pickedId === away.id ? "text-panel/80" : ""}>Your call</span>
           <span className={pickedId === home.id ? "text-panel/80" : ""}>Pick the winner</span>
         </div>
@@ -80,7 +80,7 @@ function ShareFeaturedMatchup({ slot, response }: { slot: Slot; response: string
           <span aria-hidden className="flex h-11 w-11 self-center items-center justify-center rounded-full border border-fg/30 bg-transparent font-mono text-sm font-bold text-fg shadow-[0_4px_12px_rgb(0_0_0/0.25)]">@</span>
           <ShareFeaturedSide option={home} picked={pickedId === home.id} graded={graded} correct={graded && pickedId === slot.correct?.[0] && pickedId === home.id} />
         </div>
-        <div className="relative mx-5 flex justify-center border-t border-fg/20 pt-3 pb-5 font-mono text-[10px] tracking-[0.14em] text-fg/70 uppercase">{slot.label}</div>
+        <div className="relative mx-5 flex justify-center border-t border-fg/20 pt-3 pb-5 type-label text-fg/70">{slot.label}</div>
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const FIELD =
   "mt-1.5 block w-full border border-line bg-surface px-3 py-2.5 font-sans text-sm normal-case tracking-normal text-fg outline-none focus:border-panel";
-const LABEL = "block font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase";
+const LABEL = "block type-label text-fg-muted";
 
 /** Credential changes go straight through `auth.updateUser` client-side — the
  *  same call GuestUpgrade already makes — rather than a server action, since

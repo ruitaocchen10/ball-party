@@ -64,7 +64,7 @@ export function InviteSuite({ code }: { code: string }) {
         aria-label="Copy join code"
         className={`text-center transition-colors hover:text-fg-muted ${FOCUS}`}
       >
-        <span className="block font-mono text-[9px] tracking-[0.15em] text-fg-muted uppercase">
+        <span className="block type-label-xs text-fg-muted">
           {status === "copied-code" ? "Copied" : "Join code"}
         </span>
         <span className="block font-mono text-lg leading-none font-semibold tracking-[0.16em] text-fg">
@@ -75,7 +75,7 @@ export function InviteSuite({ code }: { code: string }) {
       <button
         type="button"
         onClick={invite}
-        className={`flex h-9 shrink-0 items-center justify-center bg-panel px-3.5 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] ${FOCUS}`}
+        className={`flex h-9 shrink-0 items-center justify-center bg-panel px-3.5 type-label font-bold text-panel-fg transition-colors hover:bg-panel-hover ${FOCUS}`}
       >
         {status === "copied-link" ? "Link copied" : "Invite friends"}
       </button>

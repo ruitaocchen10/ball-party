@@ -22,7 +22,7 @@ export default function AdminQueuePage() {
         </p>
         <Link
           href="/admin/prompts"
-          className="mt-6 inline-block border border-fg bg-fg px-4 py-2.5 font-mono text-[10px] font-bold tracking-[0.12em] text-surface uppercase transition-colors hover:bg-white"
+          className="mt-6 inline-block border border-fg bg-fg px-4 py-2.5 type-label font-bold text-surface transition-colors hover:bg-white"
         >
           Write a prompt →
         </Link>

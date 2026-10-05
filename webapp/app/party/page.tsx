@@ -201,7 +201,7 @@ function PartyGuide({ className = "" }: { className?: string }) {
 
   return (
     <section aria-label="How party play works" className={`mt-7 border border-line bg-surface-raised p-4 shadow-well ${className}`}>
-      <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Game plan</p>
+      <p className="type-label font-semibold text-hidden-text">Game plan</p>
       <h2 className="mt-1 font-slab text-[27px] leading-none uppercase">How it works</h2>
       <ol className="mt-4 border-t border-line">
         {steps.map(([number, title, body]) => (

@@ -351,7 +351,7 @@ function RevealBanner({ round, scores }: { round: WavelengthRound | null; scores
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate font-slab text-lg leading-none">{skipped ? reaction : `${reaction} · ${round.points ?? 0} points`}</p>
-        <p className="mt-1 font-mono text-[11px] uppercase tracking-[.1em] text-panel-muted">Round {round.round} · running score {scores.join(" – ")}</p>
+        <p className="mt-1 type-label-lg text-panel-muted">Round {round.round} · running score {scores.join(" – ")}</p>
       </div>
     </div>
   );
@@ -381,11 +381,11 @@ function BoardPanel({ card, clue, target, needle, setNeedle, interactive, points
     <div className="flex w-full max-w-2xl flex-col items-center gap-3.5 bg-panel px-6 py-6 text-panel-fg shadow-card">
       {clue !== undefined && (
         <div className="text-center">
-          <p className="font-mono text-[11px] uppercase tracking-[.14em] text-panel-muted">The clue</p>
+          <p className="type-label-lg text-panel-muted">The clue</p>
           <p className="font-slab text-4xl leading-none">&ldquo;{clue ?? "Waiting for the clue…"}&rdquo;</p>
         </div>
       )}
-      {caption && <p className="text-center font-mono text-[11px] uppercase tracking-[.14em] text-panel-muted">{caption}</p>}
+      {caption && <p className="text-center type-label-lg text-panel-muted">{caption}</p>}
       {card && <Endpoints card={card} />}
       {card && <Dial needle={needle} setNeedle={setNeedle} target={target ?? undefined} interactive={!!interactive} />}
       {points !== undefined && <p className="font-slab text-2xl">{skipped ? "Clue skipped" : `${points ?? 0} points`}</p>}
@@ -400,7 +400,7 @@ function FillControls({ canFill, myFillWritten, myFillTotal, clue, error, saving
   if (!canFill) {
     return (
       <div className="flex flex-1 flex-col justify-center gap-2 bg-surface-raised p-5 text-sm text-fg-muted shadow-well">
-        <p className="font-mono text-[10px] uppercase tracking-[.12em] text-fg-muted">Your move</p>
+        <p className="type-label text-fg-muted">Your move</p>
         <p>{myFillTotal > 0 && myFillWritten === myFillTotal ? "Your clues are written. Waiting for the others." : "Your teammate is writing the clues."}</p>
       </div>
     );
@@ -408,7 +408,7 @@ function FillControls({ canFill, myFillWritten, myFillTotal, clue, error, saving
   return (
     <form onSubmit={onSubmit} className="flex flex-1 flex-col gap-3 bg-surface-raised p-5 shadow-well">
       <div>
-        <p className="font-mono text-[10px] uppercase tracking-[.12em] text-fg-muted">Your move</p>
+        <p className="type-label text-fg-muted">Your move</p>
         <p className="font-slab text-xl">Write your clue{myFillTotal > 1 ? ` (${myFillWritten + 1} of ${myFillTotal})` : ""}</p>
         <p className="mt-1 text-sm text-fg-muted">One shot, aimed at the hidden target only you can see.</p>
       </div>
@@ -429,7 +429,7 @@ function GuessControls({ isGuesser, isPsychic, locking, error, onLock, hasCard }
   return (
     <div className="flex flex-1 flex-col gap-3 bg-surface-raised p-5 shadow-well">
       <div>
-        <p className="font-mono text-[10px] uppercase tracking-[.12em] text-fg-muted">Your move</p>
+        <p className="type-label text-fg-muted">Your move</p>
         <p className="font-slab text-xl">{isGuesser ? "Place the needle" : "Watching"}</p>
         <p className="mt-1 text-sm text-fg-muted">
           {isGuesser ? "Drag along the arc, or use the arrow keys, to where you think the clue points, then lock it in." : isPsychic ? "Your target is hidden from everyone else until the guess locks." : "Watch the guesser set the needle."}
@@ -438,7 +438,7 @@ function GuessControls({ isGuesser, isPsychic, locking, error, onLock, hasCard }
       {isGuesser && <Button disabled={locking || !hasCard} onClick={onLock}>{locking ? "Locking…" : "Confirm guess"}</Button>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <div className="mt-auto flex flex-col gap-1.5 border-t border-line pt-3">
-        <p className="font-mono text-[10px] uppercase tracking-[.1em] text-fg-muted">Scoring</p>
+        <p className="type-label text-fg-muted">Scoring</p>
         <p className="flex items-center gap-2 text-sm"><span aria-hidden className="h-3 w-3 bg-[#d94b45]" />Bullseye — 4</p>
         <p className="flex items-center gap-2 text-sm"><span aria-hidden className="h-3 w-3 bg-[#e49b55]" />Near — 3</p>
         <p className="flex items-center gap-2 text-sm"><span aria-hidden className="h-3 w-3 bg-[#e8cf75]" />Edge — 2</p>
@@ -450,7 +450,7 @@ function GuessControls({ isGuesser, isPsychic, locking, error, onLock, hasCard }
 function RevealControls({ round }: { round: WavelengthRound | null }) {
   return (
     <div className="flex flex-1 flex-col justify-center gap-2 bg-surface-raised p-5 shadow-well">
-      <p className="font-mono text-[10px] uppercase tracking-[.12em] text-fg-muted">Round locked</p>
+      <p className="type-label text-fg-muted">Round locked</p>
       <p className="font-slab text-xl">{round?.status === "skipped" ? "Clue skipped" : `${round?.points ?? 0} points`}</p>
       <p className="text-sm text-fg-muted">The target is visible to everyone now. Next round starts automatically.</p>
     </div>
@@ -503,11 +503,11 @@ function TablePanel({ players, board, rounds, statuses, current, viewerId }: {
 function ResultScreen({ result, scores, roundCount, rounds }: { result: WavelengthResult; scores: number[]; roundCount: number; rounds: WavelengthRound[] }) {
   if (result.mode === "coop") {
     const maximum = ({ short: 16, medium: 24, long: 32 } as const)[result.preset ?? "short"];
-    return <section className="grid gap-4 rounded-sm bg-surface-raised p-5"><p className="font-slab text-2xl">{result.outcome === "win" ? "You won!" : "Not this time"}</p><p className="text-lg">{result.score} / {maximum} points</p><p>{result.bullseyes} {result.bullseyes === 1 ? "bullseye" : "bullseyes"}</p><p aria-label={`${result.stars ?? 0} star tier`} className="font-slab text-xl">{"★".repeat(result.stars ?? 0)}{"☆".repeat(3 - (result.stars ?? 0))}</p></section>;
+    return <section className="grid gap-4 bg-surface-raised p-5"><p className="font-slab text-2xl">{result.outcome === "win" ? "You won!" : "Not this time"}</p><p className="text-lg">{result.score} / {maximum} points</p><p>{result.bullseyes} {result.bullseyes === 1 ? "bullseye" : "bullseyes"}</p><p aria-label={`${result.stars ?? 0} star tier`} className="font-slab text-xl">{"★".repeat(result.stars ?? 0)}{"☆".repeat(3 - (result.stars ?? 0))}</p></section>;
   }
   const winner = result.outcome === "team_0_win" ? 0 : 1;
   const settledBy = rounds.length > roundCount ? "Sudden death" : scores[0] === scores[1] ? "Bullseye tiebreak" : null;
-  return <section className="grid gap-4 rounded-sm bg-surface-raised p-5"><p className="font-slab text-2xl">Team {winner + 1} wins!</p><div className="flex gap-4 text-lg"><p>Team 1: {scores[0] ?? 0}</p><p>Team 2: {scores[1] ?? 0}</p></div>{settledBy && <p>{settledBy}</p>}</section>;
+  return <section className="grid gap-4 bg-surface-raised p-5"><p className="font-slab text-2xl">Team {winner + 1} wins!</p><div className="flex gap-4 text-lg"><p>Team 1: {scores[0] ?? 0}</p><p>Team 2: {scores[1] ?? 0}</p></div>{settledBy && <p>{settledBy}</p>}</section>;
 }
 function Endpoints({ card }: { card: Card }) { return <div className="flex w-full justify-between gap-4 font-slab text-sm"><span>{card.left_label}</span><span className="text-right">{card.right_label}</span></div>; }
 

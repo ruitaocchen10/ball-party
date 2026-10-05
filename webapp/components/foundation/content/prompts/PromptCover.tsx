@@ -76,7 +76,7 @@ export function PromptCover({
           <span className="block text-white">{title[0]}</span>
           <span className="block text-[#ef4444]">{title[1]}</span>
         </h3>
-        <p className="mt-3 font-mono text-[9px] tracking-[0.12em] text-[#fff8e4]/85 uppercase">{subtitle}</p>
+        <p className="mt-3 type-label-xs text-[#fff8e4]/85">{subtitle}</p>
       </div>
     </section>
   );

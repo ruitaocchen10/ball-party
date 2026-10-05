@@ -14,7 +14,7 @@ export function StartSabotageDraft({ lobbyId, code, players }: { lobbyId: string
     <input type="hidden" name="lobby_id" value={lobbyId} />
     <input type="hidden" name="code" value={code} />
     <input type="hidden" name="game" value="sabotage_draft" />
-    <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+    <label className="flex flex-col gap-1 type-label text-panel-muted">
       Mode
       <Select
         ariaLabel="Mode"
@@ -26,6 +26,6 @@ export function StartSabotageDraft({ lobbyId, code, players }: { lobbyId: string
     </label>
     <p className="text-xs leading-4 text-panel-muted normal-case">{MODE_LABELS[mode].blurb}</p>
     <Button type="submit" disabled={short}>Start sabotage draft</Button>
-    {short ? <p className="font-mono text-[10px] tracking-[.13em] text-fg-muted uppercase">Waiting for one more player</p> : null}
+    {short ? <p className="type-label text-fg-muted">Waiting for one more player</p> : null}
   </form>;
 }

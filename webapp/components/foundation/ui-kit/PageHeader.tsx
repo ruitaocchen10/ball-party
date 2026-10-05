@@ -24,14 +24,14 @@ export function PageHeader({
         <div className="mb-4">
           <Link
             href={backHref}
-            className="inline-flex shrink-0 items-center gap-1 border-b border-fg/50 pb-1 font-mono text-[10px] tracking-[0.12em] text-fg uppercase transition-colors hover:border-fg hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-panel"
+            className="inline-flex shrink-0 items-center gap-1 border-b border-fg/50 pb-1 type-label text-fg transition-colors hover:border-fg hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-panel"
           >
             <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} />
             {backLabel}
           </Link>
         </div>
       ) : null}
-      {eyebrow ? <p className="font-mono text-[10px] font-semibold tracking-[0.16em] text-hidden-text uppercase">{eyebrow}</p> : null}
+      {eyebrow ? <p className="type-label font-semibold text-hidden-text">{eyebrow}</p> : null}
       <h1 className="mt-1 font-slab text-[34px] leading-none uppercase sm:text-[42px]">{title}</h1>
       {description ? <p className="mt-1 max-w-2xl text-base leading-6 text-fg-muted">{description}</p> : null}
     </header>

@@ -31,7 +31,7 @@ export function WayIn({
         {title}
       </h3>
       <p
-        className={`m-1 text-[13.5px] leading-[1.5] ${lit ? "text-[#4c4739]" : "text-[#a5a29c]"}`}
+        className={`m-1 text-[13.5px] leading-[1.5] ${lit ? "text-panel-soft" : "text-[#a5a29c]"}`}
       >
         {body}
       </p>

@@ -96,7 +96,7 @@ export function LobbyTopStrip({
         ) : (
           <Link
             href="/login"
-            className={`font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase transition-colors hover:text-fg ${FOCUS}`}
+            className={`type-label text-fg-muted transition-colors hover:text-fg ${FOCUS}`}
           >
             Sign in
           </Link>

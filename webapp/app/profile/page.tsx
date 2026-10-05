@@ -106,7 +106,7 @@ function GuestProfile() {
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
       <main className="app-page flex-1">
         <section className="max-w-xl">
-          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Current game</p>
+          <p className="type-label text-hidden-text">Current game</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Make your record yours</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Your name is just for the current game. Create an account to save a profile and keep your results.</p>
           <div className="mt-6"><GuestUpgrade /></div>
@@ -123,10 +123,10 @@ function SignedOutProfile() {
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
       <main className="app-page flex-1">
         <section className="max-w-xl">
-          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Player profile</p>
+          <p className="type-label text-hidden-text">Player profile</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Your record starts here</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Sign in to keep a record of your games, wins, and streaks.</p>
-          <Link href="/login?next=/profile" className="mt-6 inline-flex bg-panel px-4 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
+          <Link href="/login?next=/profile" className="mt-6 inline-flex bg-panel px-4 py-3 type-label font-bold text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
         </section>
       </main>
     </>
@@ -136,14 +136,14 @@ function SignedOutProfile() {
 function NextGame() {
   return (
     <section className="rounded-card border border-line bg-surface-raised p-5 text-fg shadow-well sm:p-6">
-      <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">Your next game</p>
+      <p className="type-label text-fg-muted">Your next game</p>
       <h2 className="mt-2 font-slab text-[25px] leading-[.98] uppercase">Make the record</h2>
       <p className="mt-3 max-w-[32ch] text-sm leading-6 text-fg-muted">
         Every completed game lands here — play with friends, chase a streak, and leave a mark.
       </p>
       <Link
         href="/"
-        className="mt-5 inline-flex bg-panel px-3.5 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-panel-shade focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        className="mt-5 inline-flex bg-panel px-3.5 py-3 type-label font-bold text-panel-fg transition-colors hover:bg-panel-shade focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
       >
         Find a game
       </Link>
@@ -152,7 +152,7 @@ function NextGame() {
 }
 
 function SectionHeading({ id, children }: { id: string; children: React.ReactNode }) {
-  return <h2 id={id} className="font-mono text-[10px] font-bold tracking-[0.15em] text-fg-muted uppercase">{children}</h2>;
+  return <h2 id={id} className="type-label font-bold text-fg-muted">{children}</h2>;
 }
 
 function TakeHistoryItem({

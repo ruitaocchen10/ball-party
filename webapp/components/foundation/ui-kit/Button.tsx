@@ -50,11 +50,11 @@ const BASE =
   "focus-visible:outline-2 focus-visible:outline-offset-2";
 
 const VARIANTS = {
-  solid: "bg-panel text-panel-fg hover:bg-[#fffdf7] focus-visible:outline-panel",
+  solid: "bg-panel text-panel-fg hover:bg-panel-hover focus-visible:outline-panel",
   ghost:
     "bg-transparent text-fg ring-1 ring-line ring-inset hover:bg-surface-raised " +
     "focus-visible:outline-panel",
-  ink: "bg-panel-fg text-panel hover:bg-[#2c2921] focus-visible:outline-panel-fg",
+  ink: "bg-panel-fg text-panel hover:bg-panel-ink-hover focus-visible:outline-panel-fg",
 } as const;
 
 export function Button({

@@ -68,7 +68,7 @@ function GameCard({
         {/* The featured tile is two rows tall, so its content is centred in
             what that buys rather than parked at the top over a hole. */}
         <div className={featured ? "flex flex-1 flex-col justify-center" : "contents"}>
-          <p className="mb-2 font-mono text-[10px] tracking-[0.16em] text-hidden-ink uppercase">
+          <p className="mb-2 type-label text-hidden-ink">
             {game.kind}
           </p>
 
@@ -109,7 +109,7 @@ function GameCard({
               : "flex flex-col items-stretch gap-2.5 pt-3"
           }`}
         >
-          <p className="font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
+          <p className="type-label text-panel-muted">
             {game.players}
           </p>
           <Action canCreateLobby={canCreateLobby} stretch={!featured} />
@@ -127,7 +127,7 @@ function GameCard({
 const ACTION =
   "inline-flex h-9 cursor-pointer items-center bg-panel-fg px-3.5 " +
   "font-slab text-[13px] tracking-[0.04em] text-panel uppercase " +
-  "transition-colors hover:bg-[#2c2921] " +
+  "transition-colors hover:bg-panel-ink-hover " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-fg";
 
 /**

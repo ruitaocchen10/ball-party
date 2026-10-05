@@ -27,7 +27,7 @@ export function LobbyScoreboard({
   return (
     <section aria-labelledby="scoreboard-heading" className="flex flex-col gap-3">
       <div>
-        <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">This session</p>
+        <p className="type-label text-fg-muted">This session</p>
         <h2 id="scoreboard-heading" className="mt-1 font-slab text-2xl leading-none uppercase">
           Scoreboard
         </h2>

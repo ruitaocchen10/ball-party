@@ -53,7 +53,7 @@ export function TakeReplyComposer({
           {pending ? "Sending…" : "Reply"}
         </Button>
       </div>
-      {error ? <p role="alert" className="mt-2 font-mono text-[10px] tracking-[0.1em] text-grade-rough uppercase">{error}</p> : null}
+      {error ? <p role="alert" className="mt-2 type-label text-grade-rough">{error}</p> : null}
     </form>
   );
 }

@@ -55,7 +55,7 @@ export function MemberRoster({
           >
             <Card edge={false} className="h-full min-h-64 border-t-[5px] border-hidden">
               <div className="flex h-full flex-col items-center px-3 py-4 text-center sm:py-5">
-                <span className="self-start font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+                <span className="self-start type-label text-panel-muted">
                   Seat {seat + 1}
                 </span>
                 <div className="my-auto py-3">
@@ -68,7 +68,7 @@ export function MemberRoster({
                   {member.profiles?.display_name ?? "Unknown player"}
                 </span>
                 <PlayerForm summary={stats[member.user_id] ?? EMPTY_SUMMARY} />
-                <span className="mt-2 block min-h-3 font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
+                <span className="mt-2 block min-h-3 type-label text-panel-muted">
                   {[
                     member.user_id === hostId ? "host" : null,
                     member.profiles?.is_guest ? "playing now" : null,
@@ -87,7 +87,7 @@ export function MemberRoster({
           <Concealed label="Open spot, waiting for a player" className="flex h-full min-h-64 items-center justify-center">
             <span className="relative px-3 text-center">
               <span className="block font-slab text-2xl leading-none uppercase">Open seat</span>
-              <span className="mt-2 block font-mono text-[10px] tracking-[0.15em] text-panel uppercase">Invite a friend</span>
+              <span className="mt-2 block type-label text-panel">Invite a friend</span>
             </span>
           </Concealed>
         </li>
@@ -101,7 +101,7 @@ const EMPTY_SUMMARY: ProfileSummary = { gamesPlayed: 0, wins: 0, winRate: 0, bes
 /** Incoming form belongs beside the player it describes, not in a second rail. */
 function PlayerForm({ summary }: { summary: ProfileSummary }) {
   if (summary.gamesPlayed === 0) {
-    return <span className="mt-2 block font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">New</span>;
+    return <span className="mt-2 block type-label text-panel-muted">New</span>;
   }
 
   const recent = summary.recent.map((match) => (match.placement === 1 ? "win" : "loss")).join(", ");

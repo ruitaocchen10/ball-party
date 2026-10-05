@@ -47,8 +47,8 @@ export function ProfileHighlightsCard({ highlights }: { highlights: ProfileHighl
             aria-label="Profile stat type"
             className="inline-flex w-fit rounded-full border border-line bg-surface p-1"
           >
-            <ToggleGroup.Item value="knower" className="min-h-9 rounded-full px-4 font-mono text-[10px] font-black tracking-[0.1em] text-fg-muted uppercase transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hidden data-[state=on]:bg-hidden data-[state=on]:text-white">Ball knower</ToggleGroup.Item>
-            <ToggleGroup.Item value="gamer" className="min-h-9 rounded-full px-4 font-mono text-[10px] font-black tracking-[0.1em] text-fg-muted uppercase transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hidden data-[state=on]:bg-hidden data-[state=on]:text-white">Gamer</ToggleGroup.Item>
+            <ToggleGroup.Item value="knower" className="min-h-9 rounded-full px-4 type-label font-black text-fg-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hidden data-[state=on]:bg-hidden data-[state=on]:text-white">Ball knower</ToggleGroup.Item>
+            <ToggleGroup.Item value="gamer" className="min-h-9 rounded-full px-4 type-label font-black text-fg-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hidden data-[state=on]:bg-hidden data-[state=on]:text-white">Gamer</ToggleGroup.Item>
           </ToggleGroup.Root>
           {view === "knower" ? <div className="w-full sm:w-auto">
             <Select
@@ -81,7 +81,7 @@ export function ProfileHighlightsCard({ highlights }: { highlights: ProfileHighl
 
 function Highlight({ value, label, detail }: { value: string | number; label: string; detail: string }) {
   return <div className="rounded-card border border-line bg-surface p-4 sm:p-5">
-    <span className="block font-mono text-[10px] font-black tracking-[0.13em] text-hidden uppercase">{label}</span>
+    <span className="block type-label font-black text-hidden">{label}</span>
     <strong className="mt-3 block font-slab text-[42px] leading-[.9] text-fg sm:text-[48px]">{value}</strong>
     <p className="mt-1.5 text-sm leading-5 text-fg-muted">{detail}</p>
   </div>;
@@ -95,7 +95,7 @@ function KnowerStanding({ percentile }: { percentile: number | null }) {
 
   return (
     <div className="rounded-card border border-line bg-surface p-4 sm:p-5">
-      <span className="block font-mono text-[10px] font-black tracking-[0.13em] text-hidden uppercase">Ball knower standing</span>
+      <span className="block type-label font-black text-hidden">Ball knower standing</span>
       <div className="mt-3 flex items-center gap-4">
         <div className="relative grid size-[72px] shrink-0 place-items-center" aria-label={percentile === null ? "Not ranked yet" : `${percentile}th percentile among active ball knowers`}>
           <svg viewBox="0 0 80 80" className="size-full -rotate-90" aria-hidden="true">
@@ -129,7 +129,7 @@ function KnowerStatus({ percentile }: { percentile: number | null }) {
   const status = percentile === null ? "Unranked" : percentile < 20 ? "Rookie" : percentile < 40 ? "Casual" : percentile < 60 ? "Fan" : percentile < 80 ? "Ball knower" : "Ball god";
 
   return <div className="rounded-card border border-line bg-surface p-4 sm:p-5">
-    <span className="block font-mono text-[10px] font-black tracking-[0.13em] text-hidden uppercase">Ball knower status</span>
+    <span className="block type-label font-black text-hidden">Ball knower status</span>
     <strong className="mt-3 block font-slab text-[32px] leading-[.9] text-fg uppercase sm:text-[38px]">{status}</strong>
     <p className="mt-2 text-sm leading-5 text-fg-muted">{percentile === null ? "Your lifetime score will set your status" : `Lifetime · ${ordinal(percentile)} percentile`}</p>
   </div>;

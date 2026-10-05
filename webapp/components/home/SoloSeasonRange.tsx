@@ -21,11 +21,11 @@ export function SoloSeasonRange({ era }: { era: { seasonMin: number; seasonMax: 
 
   return (
     <fieldset className="mb-3 flex flex-col gap-1.5">
-      <legend className="mb-1.5 font-mono text-[9px] font-semibold tracking-[0.1em] text-fg-muted uppercase">
+      <legend className="mb-1.5 type-label-xs font-semibold text-fg-muted">
         Era
       </legend>
       <div className="flex gap-2">
-        <label className="flex flex-1 flex-col gap-1 font-mono text-[9px] tracking-[0.1em] text-fg-muted uppercase">
+        <label className="flex flex-1 flex-col gap-1 type-label-xs text-fg-muted">
           First season
           <Select
             variant="dark"
@@ -39,7 +39,7 @@ export function SoloSeasonRange({ era }: { era: { seasonMin: number; seasonMax: 
             options={options}
           />
         </label>
-        <label className="flex flex-1 flex-col gap-1 font-mono text-[9px] tracking-[0.1em] text-fg-muted uppercase">
+        <label className="flex flex-1 flex-col gap-1 type-label-xs text-fg-muted">
           Last season
           <Select
             variant="dark"

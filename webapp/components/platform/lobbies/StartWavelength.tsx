@@ -30,7 +30,7 @@ export function StartWavelength({ lobbyId, code, players }: { lobbyId: string; c
       <input type="hidden" name="lobby_id" value={lobbyId} />
       <input type="hidden" name="code" value={code} />
       <input type="hidden" name="game" value="wavelength_2v2" />
-      <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+      <label className="flex flex-col gap-1 type-label text-panel-muted">
         Mode
         <Select
           ariaLabel="Mode"
@@ -44,14 +44,14 @@ export function StartWavelength({ lobbyId, code, players }: { lobbyId: string; c
         />
       </label>
       {mode === "coop" ? (
-        <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+        <label className="flex flex-col gap-1 type-label text-panel-muted">
           Game length
           <Select ariaLabel="Game length" name="wavelength_preset" defaultValue="short" options={[...PRESETS]} />
         </label>
       ) : null}
       <Button type="submit" disabled={countMismatch}>Start Wavelength</Button>
       {countMismatch ? (
-        <p className="font-mono text-[10px] tracking-[.13em] text-fg-muted uppercase">
+        <p className="type-label text-fg-muted">
           {modeLabel} needs exactly {requiredPlayers} players (you have {players})
         </p>
       ) : null}

@@ -314,7 +314,7 @@ function SignedOutAccount({ compact }: { compact: boolean }) {
     <div className="flex flex-col gap-2">
       <Link
         href="/signup"
-        className={`flex h-9 items-center justify-center bg-panel px-3.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] ${FOCUS}`}
+        className={`flex h-9 items-center justify-center bg-panel px-3.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-panel-hover ${FOCUS}`}
       >
         Sign up
       </Link>

@@ -120,11 +120,11 @@ export function SharePreviewModal({
 function ShareFormatField({ format, onChange }: { format: ShareFormat; onChange?: (format: ShareFormat) => void }) {
   return (
     <fieldset>
-      <legend className="mb-1.5 font-mono text-[10px] font-semibold tracking-[0.12em] text-fg-muted uppercase">Instagram format</legend>
+      <legend className="mb-1.5 type-label font-semibold text-fg-muted">Instagram format</legend>
       <div className="grid grid-cols-2 gap-2">
         {(["post", "reel"] as const).map((value) => (
           <button key={value} type="button" onClick={() => onChange?.(value)} className={`border px-2.5 py-2 text-left ${format === value ? "border-panel bg-panel text-panel-fg" : "border-line bg-surface text-fg-muted"}`}>
-            <span className="block font-mono text-[10px] font-bold tracking-[0.09em] uppercase">Instagram {value}</span>
+            <span className="block type-label font-bold">Instagram {value}</span>
             <span className="mt-0.5 block font-mono text-[10px] opacity-70">{value === "post" ? "4:5 · 1080 × 1350" : "9:16 · 1080 × 1920"}</span>
           </button>
         ))}
@@ -136,10 +136,10 @@ function ShareFormatField({ format, onChange }: { format: ShareFormat; onChange?
 function ShareHeadlineField({ id, label, value, defaultValue, maxLength, onChange, onReset, red = false }: { id: string; label: string; value?: string; defaultValue?: string; maxLength: number; onChange?: (value: string) => void; onReset?: () => void; red?: boolean }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block font-mono text-[10px] font-semibold tracking-[0.12em] text-fg-muted uppercase">{label}</label>
+      <label htmlFor={id} className="mb-1.5 block type-label font-semibold text-fg-muted">{label}</label>
       <div className="flex gap-2">
         <input id={id} value={value} maxLength={maxLength} onChange={(event) => onChange?.(event.target.value)} className={`min-w-0 flex-1 border border-line bg-surface px-2.5 py-2 ${red ? "font-mono text-xs font-semibold tracking-[0.12em] text-[#c9382c]" : "font-slab text-sm text-fg"} uppercase outline-none focus:border-fg-muted`} />
-        {value !== defaultValue ? <button type="button" onClick={onReset} className="shrink-0 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase hover:text-fg">Reset</button> : null}
+        {value !== defaultValue ? <button type="button" onClick={onReset} className="shrink-0 type-label text-fg-muted hover:text-fg">Reset</button> : null}
       </div>
     </div>
   );

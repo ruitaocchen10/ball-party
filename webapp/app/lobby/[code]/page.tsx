@@ -137,7 +137,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
       <LobbyRealtime lobbyId={lobby.id} />
 
       {inFlight ? (
-        <p className="rounded bg-surface-raised px-3.5 py-2.5 text-sm text-fg-muted shadow-well">
+        <p className="bg-surface-raised px-3.5 py-2.5 text-sm text-fg-muted shadow-well">
           A game is in progress. You&apos;re in for the next one.
         </p>
       ) : null}
@@ -186,7 +186,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">{children}</p>
+    <p className="type-label text-fg-muted">{children}</p>
   );
 }
 
@@ -235,7 +235,7 @@ function Shell({
         {error ? (
           <p
             role="alert"
-            className="rounded border border-hidden/40 bg-hidden/10 px-3.5 py-2.5 text-sm text-hidden-text"
+            className="border border-hidden/40 bg-hidden/10 px-3.5 py-2.5 text-sm text-hidden-text"
           >
             {error}
           </p>

@@ -49,7 +49,7 @@ export function GameSelector({
   return (
     <section aria-labelledby="next-up-heading" className="flex flex-col gap-3">
       <div>
-        <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">Next up</p>
+        <p className="type-label text-fg-muted">Next up</p>
         <h2 id="next-up-heading" className="mt-1 font-slab text-2xl leading-none uppercase">
           {selected && !(isHost && picking) ? selected.name.join(" ") : "Choose a game"}
         </h2>
@@ -103,11 +103,11 @@ function SelectedGame({
   return (
     <Card className="flex flex-col">
       <div className="flex flex-col gap-2 p-3.5">
-        <p className="font-mono text-[10px] tracking-[0.13em] text-hidden-ink uppercase">
+        <p className="type-label text-hidden-ink">
           {game.kind}
         </p>
-        <p className="text-sm leading-5 text-[#4c4739]">{game.tagline}</p>
-        <p className="font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
+        <p className="text-sm leading-5 text-panel-soft">{game.tagline}</p>
+        <p className="type-label text-panel-muted">
           {game.players}
         </p>
       </div>
@@ -116,16 +116,16 @@ function SelectedGame({
         <button
           type="button"
           onClick={onChange}
-          className="border-t border-[#c7bfac] px-3.5 py-2.5 text-left font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase transition-colors hover:text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+          className="border-t border-panel-line px-3.5 py-2.5 text-left type-label text-panel-muted transition-colors hover:text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
         >
           Change game
         </button>
       ) : null}
 
-      {children ? <div className="border-t border-[#c7bfac] bg-panel-shade p-2.5">{children}</div> : null}
+      {children ? <div className="border-t border-panel-line bg-panel-shade p-2.5">{children}</div> : null}
 
       {!isHost && !inFlight ? (
-        <p className="border-t border-[#c7bfac] px-3.5 py-2.5 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+        <p className="border-t border-panel-line px-3.5 py-2.5 type-label text-panel-muted">
           Waiting for the host to start
         </p>
       ) : null}
@@ -153,10 +153,10 @@ function GamePicker({
               <input type="hidden" name="game" value={game.match ?? ""} />
               <button
                 type="submit"
-                className="flex w-full flex-col gap-1 rounded-card bg-panel px-3.5 py-3 text-left text-panel-fg shadow-card transition-colors hover:bg-[#fffdf7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+                className="flex w-full flex-col gap-1 rounded-card bg-panel px-3.5 py-3 text-left text-panel-fg shadow-card transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
               >
                 <span className="font-slab text-lg leading-none uppercase">{game.name.join(" ")}</span>
-                <span className="font-mono text-[10px] tracking-[0.11em] text-panel-muted uppercase">
+                <span className="type-label text-panel-muted">
                   {game.players}
                 </span>
               </button>

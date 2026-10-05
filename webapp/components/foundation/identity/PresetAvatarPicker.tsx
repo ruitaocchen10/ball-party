@@ -88,7 +88,7 @@ export function PresetAvatarPicker({
 
   return (
     <fieldset className="mt-4">
-      <legend className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">Starter avatars</legend>
+      <legend className="type-label text-fg-muted">Starter avatars</legend>
       <p className="mt-1 text-[13px] leading-5 text-fg-muted">Customize the palette, then choose a design.</p>
       <div className="mt-3">
         <div className="flex items-center gap-1.5" aria-label="Avatar colors">

@@ -25,6 +25,10 @@
   --panel-shade: #e7e0cf; /* a subdued band inside a panel */
   --panel-fg: #17150f;
   --panel-muted: #6b665a; /* secondary text on a panel */
+  --panel-soft: #4c4739; /* body copy on a panel: darker than muted, softer than fg */
+  --panel-line: #c7bfac; /* rules and borders on a panel */
+  --panel-hover: #fffdf7; /* a cream button's hover: the panel, one step lighter */
+  --panel-ink-hover: #2c2921; /* an ink button's hover */
 
   /* the one accent */
   --hidden: #c9382c; /* as a surface: concealed values, unfilled spots */
@@ -70,6 +74,10 @@ html[data-sidebar-collapsed] {
   --color-panel-shade: var(--panel-shade);
   --color-panel-fg: var(--panel-fg);
   --color-panel-muted: var(--panel-muted);
+  --color-panel-soft: var(--panel-soft);
+  --color-panel-line: var(--panel-line);
+  --color-panel-hover: var(--panel-hover);
+  --color-panel-ink-hover: var(--panel-ink-hover);
   --color-hidden: var(--hidden);
   --color-hidden-text: var(--hidden-text);
   --color-hidden-ink: var(--hidden-ink);
@@ -180,6 +188,24 @@ body {
     padding-inline: 2rem;
     padding-bottom: 5rem;
   }
+}
+
+/* The type scale. The product's small print is one style, a mono uppercase
+   label, which had drifted into a dozen near-identical spellings (tracking
+   anywhere from 0.06em to 0.16em). These are the only sizes of it. Weight and
+   colour stay at the call site, since they carry meaning (red, muted, bold).
+   Line-height is deliberately unset so a label keeps whatever its parent gave
+   it. */
+@layer components {
+  .type-label-xs,
+  .type-label,
+  .type-label-lg {
+    font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+    text-transform: uppercase;
+  }
+  .type-label-xs { font-size: 9px; letter-spacing: 0.1em; }
+  .type-label { font-size: 10px; letter-spacing: 0.13em; }
+  .type-label-lg { font-size: 11px; letter-spacing: 0.13em; }
 }
 
 @layer components {
