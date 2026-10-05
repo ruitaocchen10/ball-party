@@ -5,9 +5,9 @@ Sabotage draft's pool: every rostered player, every franchise, 2006 through
 plus OL/DL/LB/CB/S/ST), priced on one scale — Approximate Value (AV) — so a
 Hall of Fame guard and a Hall of Fame receiver compare on the same number.
 Game rules in
-[`docs/games/sabotage_draft.md`](../../docs/games/sabotage_draft.md); the
-full scoping behind this pool's shape and era floor is in
-[`docs/games/sabotage_draft_data_scoping.md`](../../docs/games/sabotage_draft_data_scoping.md).
+[`docs/games/sabotage_draft/rules.md`](../../docs/games/sabotage_draft/rules.md); the
+data decisions behind this pool's shape and era floor are in
+[`docs/games/sabotage_draft/data_scoping.md`](../../docs/games/sabotage_draft/data_scoping.md).
 
 A sibling to [`scripts/player_pool/`](../player_pool/), and meaningfully
 heavier: two sources instead of one, a franchise-identity translation step
@@ -23,18 +23,11 @@ Same as the existing pool: the table and its rows both arrive as migrations
 (`0049` creates `private.av_roster_players`, `0050` fills it), so a fresh
 clone reaches a loaded database in one command.
 
-## Why 2006, not 1985
+## Era floor: 2006
 
-1985 was the first candidate, fully scoped in
-[`sabotage_draft_data_scoping.md`](../../docs/games/sabotage_draft_data_scoping.md).
-It was walked back once the live-scrape cost became concrete: everything
-2006-2019 is free, no-scraping data (`nfldata/rosters.csv`, below), so a 2006
-floor confines the *only* live scrape this pool needs to 2020-2025 — about
-192 team-season pages instead of the ~780 a 1985 floor would have needed
-(1985-2005 *and* 2020-present, both requiring a live scrape). That's a real
-trade, made deliberately: it drops 1985-2005 entirely, including the deep-cut
-names that window would have kept (Marino's early prime, Walter Payton's
-final seasons, Lawrence Taylor, Reggie White's debut, the '85 Bears itself).
+Everything 2006-2019 is free, no-scraping data, so the only live scrape is
+2020-2025 (about 192 team-season pages). The reasoning is in
+[`data_scoping.md`](../../docs/games/sabotage_draft/data_scoping.md).
 
 ## Two sources, one pipeline
 

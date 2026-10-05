@@ -1,6 +1,6 @@
 /**
  * The game API raises short machine-readable strings — see the error tables in
- * docs/games/qb_season_builder.md. The message is the contract with the
+ * docs/games/qb_season_builder/rules.md. The message is the contract with the
  * client; this is where each becomes a sentence. Anything absent from the map
  * is a bug rather than a player-facing condition, so it surfaces raw instead of
  * being flattened into a friendly lie.

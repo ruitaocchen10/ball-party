@@ -19,7 +19,7 @@ the group is warmed up and most likely to keep playing.
 ## Decided
 
 **The lobby has no mode.** You pick arcade or party when you start a run, from
-inside the room. That defers the choice until you know how many people showed up
+inside the room. Only arcade is implemented today (`start_run` refuses `party`). That defers the choice until you know how many people showed up
 and how much time they have.
 
 **Two rosters.** Lobby membership (who's in the room) is not run participation

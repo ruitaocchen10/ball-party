@@ -5,7 +5,7 @@
  * (`qb_season_builder_spins.franchise_code`) store this code because it stays
  * stable across a franchise's entire history — PFR
  * unifies every relocation and rename under one code (see
- * docs/games/sabotage_draft_data_scoping.md §2: `oti` spans the Houston
+ * docs/games/sabotage_draft/data_scoping.md §2: `oti` spans the Houston
  * Oilers through the Tennessee Titans, `crd` spans the Chicago through
  * Arizona Cardinals, and so on). That stability is exactly why several of
  * these codes don't read as the modern team name on sight — `clt` (Colts),

@@ -1,10 +1,10 @@
 # App Store submission — materials checklist
 
-Working checklist for submitting Ball Party (iOS) to the App Store. Split into
-what's done, copy-paste text for App Store Connect, and what only you can do
+Checklist for submitting Ball Party (iOS) to the App Store: what's in place,
+copy-paste text for App Store Connect, and what only the account holder can do
 (Apple accounts and payments aren't something an agent can hold).
 
-## Already in place (verified in this repo)
+## In place in the repo
 
 | Item | Value |
 | --- | --- |
@@ -17,14 +17,13 @@ what's done, copy-paste text for App Store Connect, and what only you can do
 | App icon | 1024×1024 present at `ios/BallParty/Assets.xcassets/AppIcon.appiconset/AppIcon.png` |
 | Sign in with Apple | Entitlement present, implemented in `Foundation/Identity` |
 | Export compliance | `ITSAppUsesNonExemptEncryption = false` added to `Info.plist` (standard HTTPS only, no custom crypto) |
-| Build | `xcodebuild build` for the iPhone 18 Pro Max simulator succeeds as of this session |
 
-## Built this session
+## Web pages Apple checks
 
-- **Privacy Policy** — `webapp/app/privacy/page.tsx` → will be live at `https://ballparty.social/privacy`
-- **Support page** — `webapp/app/support/page.tsx` → will be live at `https://ballparty.social/support`
-- Both added to `PUBLIC_PATHS` in `webapp/lib/supabase/proxy.ts` so they're reachable signed-out (App Review must be able to open them without an account) — confirmed 200 locally, existing test suite still green.
-- One real App Store screenshot at the required 6.9" size (1320×2868), captured from the simulator: the sign-in screen. Saved at `/private/tmp/claude-503/-Users-ruitao-ball-party/3f33b32a-1972-4f51-accb-b802b3fb8a47/scratchpad/screenshots/01-sign-in.png` — copy it out of the scratchpad before the session ends.
+- **Privacy Policy**: `webapp/app/privacy/page.tsx`, at `https://ballparty.social/privacy`.
+- **Support page**: `webapp/app/support/page.tsx`, at `https://ballparty.social/support`.
+- Both are in `PUBLIC_PATHS` in `webapp/lib/supabase/proxy.ts`, so App Review can
+  open them signed out.
 
 Contact address on both pages is `testytesttesty9021@gmail.com`.
 
@@ -95,28 +94,20 @@ in-app browser sheet can hit arbitrary URLs (check `ASWebAuthenticationSession`
 usage in `AuthBackend`/`AuthViewModel` — it's OAuth-only, opens Apple/Google's
 own domains, so "No" is correct here too).
 
-## Screenshots — what's left
+## Screenshots
 
-Required set for iPhone-only: **6.9" display** (1320×2868), 3–10 images.
-One is captured (sign-in). The rest need a signed-in session with real game
-data, which needs either:
-
-1. The local Supabase stack running (`npm --prefix webapp run db:reset`) plus
-   a demo account signed in via email/password (Apple/Google can't be
-   scripted in Simulator) — then I drive the simulator screen-by-screen, or
-2. You grab them yourself in a few minutes: `Cmd+R` in Xcode on an iPhone 18
-   Pro Max (or any 6.9" sim/device), sign in, and `Cmd+S` on each screen you
-   want (Home/Huddle, Party lobby, one game in progress, a finished
-   take/result). That's usually faster than scripting simulator taps.
-
-Say the word if you want me to push further on option 1 — it means starting
-the local backend and driving the simulator via computer-use, which takes a
-few more steps and won't be as fast as you just tapping through it yourself.
+Required set for iPhone-only: **6.9" display** (1320×2868), 3–10 images. Capture
+them from an iPhone 18 Pro Max (or any 6.9") simulator or device: `Cmd+R` in
+Xcode, sign in with a demo account (email/password; Apple and Google sign-in
+can't be scripted in Simulator, and need a local backend from
+`npm --prefix webapp run db:reset`), then `Cmd+S` on each screen: Home/Huddle, one
+game in progress, a finished take or result. Leave the Party tab out while it is
+a placeholder.
 
 ## What only you can do
 
 - Confirm the App Store Connect app record's name/bundle ID/SKU match the
-  above (you said the record already exists).
+  above (the record already exists).
 - Pricing: Free, no IAP — set territory availability in Connect.
 - Fill in the metadata fields above in App Store Connect.
 - Deploy the webapp (so `/privacy` and `/support` are actually live) before

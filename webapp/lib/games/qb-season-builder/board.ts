@@ -10,7 +10,7 @@ import type { Database } from "@/lib/supabase/database.types";
  * every grade in them is null in a hidden run until it is finished. Whether a
  * grade shows is therefore never decided here or on the screen — a grade is
  * shown when the server sent one. The number behind a grade never leaves the
- * server. See docs/games/qb_season_builder.md.
+ * server. See docs/games/qb_season_builder/rules.md.
  *
  * Deliberately thin, like the other games' board modules: what little logic
  * there is (parsing the row, finding a slot's pick) is asserted through the

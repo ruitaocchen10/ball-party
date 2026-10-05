@@ -28,7 +28,7 @@ import { TURN_REVEAL_MS, useTurnReveal } from "@/lib/games/sabotage-draft/useTur
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/runtime/realtime/client";
 
-// One shared clock per turn (see docs/games/sabotage_draft.md): the active
+// One shared clock per turn (see docs/games/sabotage_draft/rules.md): the active
 // seat may lock a pick any time within turn_deadline, and every other seat
 // may lock in one guess or one pass any time within that same window,
 // including before the pick exists. A guess's `result` is therefore nullable
@@ -327,7 +327,7 @@ function shuffle<T>(items: T[]): T[] {
 /**
  * "The turn" — what's publicly true right now, whether or not it's the
  * viewer's own action. A round's franchises are all dealt at once when the
- * round opens (see docs/games/sabotage_draft.md), so the reel isn't
+ * round opens (see docs/games/sabotage_draft/rules.md), so the reel isn't
  * revealing new information on every turn — it's re-announcing the turn
  * that's now current, the same instinct as a scoreboard calling out
  * possession rather than only silently changing a number.
@@ -491,7 +491,7 @@ function TurnClock({ label, remainingMs }: { label: string; remainingMs: number 
  *
  * Unlike the auction's LotStrip, there is no undealt cell here: every
  * franchise for every round is dealt up front and is public the whole game
- * (see docs/games/sabotage_draft.md), so even a turn nobody has reached yet
+ * (see docs/games/sabotage_draft/rules.md), so even a turn nobody has reached yet
  * already has a real slot and franchise to show. What a cell withholds is
  * only ever the pick's own content -- identity and year -- exactly what
  * Table's concealed weave already withholds for the current round.
@@ -1048,7 +1048,7 @@ function PickForm({ options, mine, pending, onSubmit }: { options: Option[]; min
 function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass }: { targetName: string; status: "open" | "guessed" | "passed"; pending: boolean; loadOptions: () => Promise<Option[]>; onSubmit: (choice: Option, exact: boolean, replacement?: Option) => void; onPass: () => void }) {
   const [options, setOptions] = useState<Option[]>([]);
   // Which of the two guess types this turn spends (see docs/games/
-  // sabotage_draft.md's "Two guesses, two different weapons"): a name-only
+  // docs/games/sabotage_draft/rules.md's "Two guesses, two different weapons"): a name-only
   // guess is cheap, uncontrolled chaos -- right, and the same player is
   // respun to a random *different year*, no choice for anyone, and no
   // erasing who they picked. Naming the exact year is the harder guess, and

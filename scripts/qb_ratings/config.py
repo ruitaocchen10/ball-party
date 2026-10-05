@@ -3,8 +3,8 @@ guard it.
 
 Everything here is an input to `transform.transform` and to the build's guards,
 not a constant of the algorithm: retune by editing this file and rebuilding a
-new data migration. The Madden / stats weights are the table from issue #72,
-recorded as the go defaults in docs/games/qb_season_builder_madden_data.md §4.
+new data migration. The Madden / stats weights are the table from issue #72; the
+license posture behind them is docs/games/qb_season_builder/madden_data.md.
 On a no-go the Madden column is 0 (`STAT_ONLY`), and nothing downstream changes.
 """
 

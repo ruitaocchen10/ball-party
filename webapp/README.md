@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Webapp
 
-## Getting Started
+The Next.js (App Router) front end for Ball Party. What the product is and how
+the pieces fit: [`docs/app.md`](../docs/app.md) and
+[`docs/architecture/architecture.md`](../docs/architecture/architecture.md).
+Game rules live in the database, so this app renders state and calls RPCs.
 
-First, run the development server:
+## Run it locally
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```sh
+supabase start                       # local Postgres, Auth and Realtime
+cp .env.example .env.local           # fill in from `supabase status`
+npm --prefix webapp install
+npm --prefix webapp run db:reset     # migrations, seed and team logos
+npm --prefix webapp run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`db:reset` is the complete local reset; plain `supabase db reset` leaves the
+`team-logos` bucket empty. A new game schema needs `supabase stop && supabase
+start` to be exposed locally (see [`supabase/README.md`](../supabase/README.md)).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+To use `/admin` locally, set `PROMPTS_ADMIN_EMAILS` in `.env.local` and run
+`npm run admin:sync-local`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Commands
 
-## Learn More
+`npm test` (Vitest), `npm run lint`, `npm run build`.
 
-To learn more about Next.js, take a look at the following resources:
+## Layout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `app/`: routes (Huddle at `/`, `party`, `solo`, `lobby/[code]`, `match/[id]`, `profile`, `admin`).
+- `lib/` and `components/`: split by module, mirroring the architecture
+  (`foundation`, `platform`, `runtime`, `games/<game>`).
+- `lib/platform/orchestration/catalog.ts`: the game catalog (which games are live, solo or room).
+- `lib/supabase/database.types.ts`: generated types for the schema.

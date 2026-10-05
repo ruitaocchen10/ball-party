@@ -2,7 +2,7 @@
 
 The auction's lot pool: every NFL player-week from 2010 through 2025, tiered so
 a board can be dealt to a quota. Game rules in
-[`docs/games/auction_team_builder.md`](../../docs/games/auction_team_builder.md).
+[`docs/games/auction_team_builder/rules.md`](../../docs/games/auction_team_builder/rules.md).
 
 ## Loading it
 
@@ -65,34 +65,15 @@ python3 scripts/player_pool/build_pool.py --sample --rank-by per_game
 `--sample` writes nothing and touches no database. It is a preview of pool
 composition, not the real dealer — lot scheduling belongs to the auction.
 
-### Where the committed values landed
+### What the committed bands produce
 
-The starting bands survived their tuning pass. Two readings backed keeping them:
-
-Every band edge is a name you would recognise. In 2023, QB deep runs Geno Smith
-to Will Levis and WR deep runs Terry McLaurin to Michael Wilson — the deep tier
-is a real starter having a quiet year, not an unguessable practice-squad body.
-That matters for a game whose whole skill is recall.
-
-And the tiers separate on points, which is what gives prices something to spread
-across. Mean PPR by tier, over all 16 seasons:
-
-|    | star | solid | deep | deep p90 | deep ≤ 0 |
-| -- | ---- | ----- | ---- | -------- | -------- |
-| QB | 21.6 | 16.9  | 13.4 | 23.1     | 2%       |
-| RB | 20.4 | 14.1  | 9.5  | 19.1     | 2%       |
-| WR | 19.9 | 14.5  | 10.4 | 20.3     | 4%       |
-| TE | 14.4 | 10.0  | 7.0  | 14.5     | 7%       |
-
-A star is worth roughly twice a deep cut on average, so the ladder is real — but
-the deep p90 column says a deep cut still spikes into star territory one week in
-ten, so paying up is never safe and sitting out is never safe either.
-
-One thing to know: tiering removes most of the duds. 16% of *all* skill weeks
-score at or below zero, but only 2–7% of tiered ones do, because a player good
-enough to be tiered is a player who mostly plays. The possibility of a zero is
-preserved, which is what user story 6 asks for; it is just rarer than the raw
-data suggests.
+Every band edge is a name you would recognise (in 2023, QB deep runs Geno Smith
+to Will Levis): deep is a real starter having a quiet year, not an unguessable
+body, which matters for a recall game. A star averages roughly twice a deep cut
+in PPR, but a deep cut still spikes into star territory about one week in ten,
+so prices have a real spread. Tiering removes most duds (2-7% of tiered weeks
+score at or below zero, against 16% of all skill weeks); a zero stays possible
+but is rarer than the raw data suggests.
 
 ## Shape
 
