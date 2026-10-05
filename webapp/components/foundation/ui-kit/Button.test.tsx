@@ -30,4 +30,36 @@ describe("Button", () => {
 
     expect(link).toHaveTextContent("Join room");
   });
+
+  it("has a compact size for card and dialog footers", () => {
+    render(
+      <Button size="sm" fullWidth={false}>
+        Done
+      </Button>,
+    );
+
+    const button = screen.getByRole("button", { name: "Done" });
+
+    expect(button).toHaveClass("min-h-9", "type-label-lg");
+    expect(button).not.toHaveClass("min-h-12");
+  });
+
+  it.each([
+    ["text", "text-fg-muted"],
+    ["danger", "text-hidden-text"],
+  ] as const)("renders the %s variant", (variant, cls) => {
+    render(<Button variant={variant}>Cancel</Button>);
+
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveClass(cls);
+  });
+
+  it("gives a link the same size options", () => {
+    render(
+      <ButtonLink href="/room" size="sm">
+        Join room
+      </ButtonLink>,
+    );
+
+    expect(screen.getByRole("link", { name: "Join room" })).toHaveClass("min-h-9");
+  });
 });

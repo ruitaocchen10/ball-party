@@ -5,6 +5,7 @@ import { GAMES, type Game, type SoloMode } from "@/lib/platform/orchestration/ca
 import { playSolo } from "@/lib/platform/lobbies/actions";
 import { SoloSeasonRange } from "./SoloSeasonRange";
 import { Badge } from "@/components/foundation/ui-kit/Badge";
+import { Button } from "@/components/foundation/ui-kit/Button";
 
 /** The seasons on offer for Higher or Lower's era picker; absent when the bounds could not be read. */
 export type SoloEra = { seasonMin: number; seasonMax: number };
@@ -92,12 +93,9 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
             {higherOrLowerEra ? <SoloSeasonRange era={higherOrLowerEra} /> : null}
           </SoloSettings>
         ) : null}
-        <button
-          type="submit"
-          className="inline-flex h-9 w-full cursor-pointer items-center justify-center bg-panel px-3.5 type-label-lg font-bold text-panel-fg transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
-        >
+        <Button size="sm" type="submit">
           Play solo
-        </button>
+        </Button>
       </form>
     </article>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/foundation/ui-kit/Button";
 
 const FOCUS =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
@@ -72,13 +73,9 @@ export function InviteSuite({ code }: { code: string }) {
         </span>
       </button>
 
-      <button
-        type="button"
-        onClick={invite}
-        className={`flex h-9 shrink-0 items-center justify-center bg-panel px-3.5 type-label font-bold text-panel-fg transition-colors hover:bg-panel-hover ${FOCUS}`}
-      >
+      <Button size="sm" fullWidth={false} type="button" onClick={invite}>
         {status === "copied-link" ? "Link copied" : "Invite friends"}
-      </button>
+      </Button>
     </div>
   );
 }

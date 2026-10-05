@@ -7,6 +7,7 @@ import { submitFeedback } from "@/lib/feedback/actions";
 import { EMPTY_FEEDBACK_STATE } from "@/lib/feedback/state";
 import { Field, Textarea } from "@/components/foundation/ui-kit/Input";
 import { Modal, ModalTitle } from "@/components/foundation/ui-kit/Modal";
+import { Button } from "@/components/foundation/ui-kit/Button";
 
 type FeedbackKind = "bug" | "feature";
 
@@ -21,7 +22,7 @@ export function FeedbackModal({ route, onClose }: { route: string; onClose: () =
         <div className="pr-10">
           <ModalTitle className="font-slab text-3xl uppercase">Thanks.</ModalTitle>
           <p className="mt-2 text-sm text-fg-muted">Your feedback has been sent to the Ball Party team.</p>
-          <button type="button" onClick={onClose} className="mt-5 bg-panel px-3.5 py-2.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase">Done</button>
+          <Button size="sm" fullWidth={false} className="mt-5" type="button" onClick={onClose}>Done</Button>
         </div>
       ) : (
         <form action={formAction}>
@@ -49,8 +50,8 @@ export function FeedbackModal({ route, onClose }: { route: string; onClose: () =
           </Field>
           {state.error ? <p role="alert" className="mt-3 text-sm text-hidden-text">{state.error}</p> : null}
           <div className="mt-5 flex items-center gap-3">
-            <button type="submit" disabled={pending} className="bg-panel px-3.5 py-2.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase disabled:opacity-60">{pending ? "Sending…" : "Send feedback"}</button>
-            <button type="button" onClick={onClose} className="font-mono text-xs tracking-[0.1em] text-fg-muted uppercase hover:text-fg">Cancel</button>
+            <Button size="sm" fullWidth={false} type="submit" disabled={pending}>{pending ? "Sending…" : "Send feedback"}</Button>
+            <Button variant="text" size="sm" fullWidth={false} type="button" onClick={onClose}>Cancel</Button>
           </div>
         </form>
       )}

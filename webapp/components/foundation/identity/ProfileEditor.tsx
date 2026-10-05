@@ -10,6 +10,7 @@ import { Field, Input } from "@/components/foundation/ui-kit/Input";
 import { Modal, ModalTitle } from "@/components/foundation/ui-kit/Modal";
 import { createClient } from "@/lib/supabase/client";
 import { PresetAvatarPicker } from "./PresetAvatarPicker";
+import { Button } from "@/components/foundation/ui-kit/Button";
 
 const EMPTY_PROFILE_UPDATE_STATE: ProfileUpdateState = { error: null, saved: false };
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
@@ -103,9 +104,9 @@ function ProfileEditorDialog({ displayName, avatarUrl, userId, onClose }: Profil
           <p className="type-label font-semibold text-hidden-text">Profile updated</p>
           <ModalTitle className="mt-1 font-slab text-3xl uppercase">Looking good.</ModalTitle>
           <p className="mt-2 text-sm text-fg-muted">Your profile changes have been saved.</p>
-          <button type="button" onClick={onClose} className="mt-5 bg-panel px-3.5 py-2.5 type-label font-bold text-panel-fg">
+          <Button size="sm" fullWidth={false} className="mt-5" type="button" onClick={onClose}>
             Done
-          </button>
+          </Button>
         </div>
       ) : editingPhoto ? (
         <ProfilePhotoChooser
@@ -156,12 +157,12 @@ function ProfileEditorDialog({ displayName, avatarUrl, userId, onClose }: Profil
             {state.error}
           </AnimatedMessage>
           <div className="mt-5 flex gap-2.5">
-            <button type="submit" disabled={pending || uploading || presetUploading} className="bg-panel px-3.5 py-2.5 type-label font-bold text-panel-fg disabled:opacity-60">
+            <Button size="sm" fullWidth={false} type="submit" disabled={pending || uploading || presetUploading}>
               {pending ? "Saving…" : "Save profile"}
-            </button>
-            <button type="button" disabled={pending} onClick={onClose} className="px-3 py-2.5 type-label font-bold text-fg-muted hover:text-fg disabled:opacity-60">
+            </Button>
+            <Button variant="text" size="sm" fullWidth={false} type="button" disabled={pending} onClick={onClose}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}

@@ -54,7 +54,7 @@ function EmailForm({ currentEmail }: { currentEmail: string }) {
       <AnimatedMessage role="status" className="text-sm text-fg-muted">
         {saved ? "Check both your old and new inbox to confirm the change." : null}
       </AnimatedMessage>
-      <Button type="submit" variant="ghost" fullWidth={false} disabled={pending} className="min-h-9 px-3.5 text-[10px]">
+      <Button type="submit" variant="ghost" fullWidth={false} disabled={pending} size="sm">
         {pending ? "Saving…" : "Update email"}
       </Button>
     </form>
@@ -100,7 +100,7 @@ function PasswordForm() {
       <AnimatedMessage role="status" className="text-sm text-fg-muted">
         {saved ? "Password updated." : null}
       </AnimatedMessage>
-      <Button type="submit" variant="ghost" fullWidth={false} disabled={pending} className="min-h-9 px-3.5 text-[10px]">
+      <Button type="submit" variant="ghost" fullWidth={false} disabled={pending} size="sm">
         {pending ? "Saving…" : "Update password"}
       </Button>
     </form>

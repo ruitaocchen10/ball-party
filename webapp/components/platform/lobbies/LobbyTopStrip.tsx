@@ -80,12 +80,7 @@ export function LobbyTopStrip({
             <input type="hidden" name="code" value={code} />
             {/* Destructive, so it stays visually subordinate — red doubles as
                 the danger colour here, same as the buttons this replaced. */}
-            <Button
-              type="submit"
-              variant="ghost"
-              fullWidth={false}
-              className="min-h-9 px-3 text-[10px] text-hidden-text ring-hidden/40 hover:bg-hidden/10"
-            >
+            <Button type="submit" variant="danger" size="sm" fullWidth={false}>
               Close room
             </Button>
           </form>

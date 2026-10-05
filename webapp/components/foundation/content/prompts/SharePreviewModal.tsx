@@ -4,6 +4,7 @@ import { Download, X } from "lucide-react";
 
 import { Modal, ModalTitle } from "@/components/foundation/ui-kit/Modal";
 import type { ShareFormat } from "./shareFormat";
+import { Button } from "@/components/foundation/ui-kit/Button";
 
 export function SharePreviewModal({
   imageUrl,
@@ -84,20 +85,20 @@ export function SharePreviewModal({
 
       <div className="flex items-center gap-3 border-t border-line px-4 py-3">
         {error ? (
-          <button type="button" onClick={onRetry} className="bg-panel px-3.5 py-2.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase">
+          <Button size="sm" fullWidth={false} type="button" onClick={onRetry}>
             Try again
-          </button>
+          </Button>
         ) : (
           <>
-            <button type="button" onClick={onUpdate} disabled={previewIsCurrent} className="bg-surface-raised px-3.5 py-2.5 font-mono text-xs font-bold tracking-[0.13em] text-fg uppercase disabled:hidden">Update preview</button>
-            <button type="button" onClick={onDownload} disabled={!previewIsCurrent} className="flex items-center gap-2 bg-panel px-3.5 py-2.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase disabled:cursor-not-allowed disabled:opacity-50">
+            <Button variant="ghost" size="sm" fullWidth={false} type="button" onClick={onUpdate} disabled={previewIsCurrent}>Update preview</Button>
+            <Button size="sm" fullWidth={false} className="flex items-center gap-2" type="button" onClick={onDownload} disabled={!previewIsCurrent}>
               <Download className="h-3.5 w-3.5" strokeWidth={2.2} /> Download
-            </button>
+            </Button>
           </>
         )}
-        <button type="button" onClick={onClose} className="font-mono text-xs tracking-[0.1em] text-fg-muted uppercase hover:text-fg">
+        <Button variant="text" size="sm" fullWidth={false} type="button" onClick={onClose}>
           {error ? "Dismiss" : "Cancel"}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
