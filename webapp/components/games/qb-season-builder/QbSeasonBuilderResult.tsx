@@ -27,6 +27,7 @@ import {
   resultPath,
   type SeasonResult,
 } from "@/lib/games/qb-season-builder/result";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 const thousands = (value: number) => value.toLocaleString("en-US");
 
@@ -71,7 +72,7 @@ export function QbSeasonBuilderResult({
   const reveal = useSeasonReveal(result.matchId, staged);
 
   return (
-    <main className="app-page flex-1">
+    <PageShell variant="dashboard">
       <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
         <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
           <PageHeader
@@ -116,14 +117,14 @@ export function QbSeasonBuilderResult({
         </div>
         <ResultRail result={result} personalBest={personalBest} isGuest={isGuest} startNewSeason={startNewSeason} />
       </div>
-    </main>
+    </PageShell>
   );
 }
 
 function Panel({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section aria-label={label} className="border border-line bg-surface-raised p-4">
-      <h2 className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">{label}</h2>
+      <h2 className="type-label font-semibold text-hidden-text">{label}</h2>
       <div className="mt-2">{children}</div>
     </section>
   );
@@ -163,7 +164,7 @@ function PlayerBuild({
         <div>
           <p className="flex items-baseline gap-2">
             <span className="font-slab text-[64px] leading-none tabular-nums">{oneDecimal(result.score)}</span>
-            <span className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">out of 100</span>
+            <span className="type-label-lg text-fg-muted">out of 100</span>
           </p>
         </div>
       ) : null}
@@ -171,7 +172,7 @@ function PlayerBuild({
         <dl className={`${showScore ? "mt-4 border-t border-line pt-4" : ""} grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4`}>
           {lines.map(([name, value]) => (
             <div key={name}>
-              <dt className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{name}</dt>
+              <dt className="type-label text-fg-muted">{name}</dt>
               <dd className="font-slab text-2xl leading-none tabular-nums">{value}</dd>
             </div>
           ))}
@@ -189,12 +190,12 @@ function TeamSuccess({ result, showPlayoffs }: { result: SeasonResult; showPlayo
     <Panel label="Team success">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Record</p>
+          <p className="type-label text-fg-muted">Record</p>
           <p className="mt-1 font-slab text-[40px] leading-none tabular-nums">{result.record.wins}–{result.record.losses}</p>
         </div>
         {showPlayoffs ? (
           <div className="border-t border-line pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
-            <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Playoffs</p>
+            <p className="type-label text-fg-muted">Playoffs</p>
             <p className="mt-1 font-slab text-[27px] leading-none uppercase">{PLAYOFF_LABELS[result.playoffs.result]}</p>
           </div>
         ) : null}
@@ -208,7 +209,7 @@ function AwardIcons({ awards }: { awards: SeasonResult["awards"] }) {
 
   return (
     <div className="mt-4 border-t border-line pt-4">
-      <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Awards</p>
+      <p className="type-label text-fg-muted">Awards</p>
       {won.length === 0 ? (
         <p className="mt-2 text-sm text-fg-muted">No awards this season.</p>
       ) : (
@@ -248,7 +249,7 @@ function gradesForPick(pick: DraftPick, shown: ShownSpin[] | null): Partial<Reco
 function PickedPlayers({ shown, picks }: { shown: ShownSpin[] | null; picks: DraftPick[] }) {
   return (
     <div>
-      <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Players picked</p>
+      <p className="type-label text-fg-muted">Players picked</p>
       <ul aria-label="Players picked" className="mt-2 flex flex-wrap gap-2">
         {[...picks]
           .sort((a, b) => a.round - b.round)
@@ -276,11 +277,11 @@ function PickedPlayer({ pick, grades }: { pick: DraftPick; grades: Partial<Recor
       )}
       <span className="pointer-events-none absolute top-full left-1/2 z-20 mt-2 w-56 -translate-x-1/2 bg-panel p-3 text-left text-panel-fg opacity-0 shadow-card transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
         <span className="block font-slab text-base uppercase">{name}</span>
-        <span className="mt-0.5 block font-mono text-[10px] tracking-[0.1em] text-panel-muted uppercase">{pick.season} {franchiseName(pick.franchiseCode)}</span>
+        <span className="mt-0.5 block type-label text-panel-muted">{pick.season} {franchiseName(pick.franchiseCode)}</span>
         {slots.length > 0 ? (
           <span className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-panel-muted pt-2">
             {slots.map((slot) => (
-              <span key={slot} className="flex items-baseline justify-between gap-2 font-mono text-[10px] tracking-[0.08em] uppercase">
+              <span key={slot} className="flex items-baseline justify-between gap-2 type-label">
                 {SLOT_LABELS[slot]} <strong className={`font-slab text-base leading-none ${pick.slot === slot ? "bg-panel-fg px-1 text-panel" : ""}`}>{grades[slot]}</strong>
               </span>
             ))}
@@ -299,7 +300,7 @@ function Breakdown({ result }: { result: SeasonResult }) {
         {result.breakdown.map((part) => (
           <li key={part.component} className="flex items-baseline justify-between gap-3 py-2">
             <span className="flex flex-col">
-              <span className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <span className="type-label-lg font-bold">
                 {SCORE_COMPONENT_LABELS[part.component] ?? part.component}
               </span>
               <span className="text-[13px] leading-5 text-fg-muted">
@@ -326,7 +327,7 @@ function ResultRail({ result, personalBest, isGuest, startNewSeason }: {
     <DashboardRail headingId="qb-result-control-heading" eyebrow="Your run" title="Next play">
       {!isGuest && personalBest !== null ? (
         <div className="mt-4 border-t border-line pt-3">
-          <p className="font-mono text-[10px] font-semibold tracking-[0.13em] text-fg-muted uppercase">
+          <p className="type-label font-semibold text-fg-muted">
             Personal best · {result.mode}
           </p>
           <p className="mt-1 font-slab text-[40px] leading-none tabular-nums">{oneDecimal(personalBest)}</p>

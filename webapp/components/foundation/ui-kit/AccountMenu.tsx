@@ -211,7 +211,7 @@ export function AccountMenu({
 }
 
 const ITEM =
-  "block w-full cursor-pointer px-3 py-4 text-left font-mono text-[10px] tracking-[0.13em] uppercase " +
+  "block w-full cursor-pointer px-3 py-4 text-left type-label " +
   "transition-colors hover:bg-panel-shade focus:bg-panel-shade focus:outline-none";
 
 function MenuLink({ href, children }: { href: string; children: React.ReactNode }) {

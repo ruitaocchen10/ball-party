@@ -48,7 +48,7 @@ export function JoinRoom({
       />
       <button
         type="submit"
-        className="my-1 mr-1 h-10 shrink-0 cursor-pointer bg-panel px-4 font-slab text-[13px] tracking-[0.04em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        className="my-1 mr-1 h-10 shrink-0 cursor-pointer bg-panel px-4 font-slab text-[13px] tracking-[0.04em] text-panel-fg uppercase transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
       >
         Join
       </button>

@@ -4,12 +4,11 @@ import { useRef, useState } from "react";
 
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
 import { Button } from "@/components/foundation/ui-kit/Button";
+import { Field, Input } from "@/components/foundation/ui-kit/Input";
 import { PASSWORD_MIN } from "@/lib/foundation/identity/types";
 import { createClient } from "@/lib/supabase/client";
 
-const FIELD =
-  "mt-1.5 block w-full border border-line bg-surface px-3 py-2.5 font-sans text-sm normal-case tracking-normal text-fg outline-none focus:border-panel";
-const LABEL = "block font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase";
+const LABEL = "block type-label text-fg-muted";
 
 /** Credential changes go straight through `auth.updateUser` client-side — the
  *  same call GuestUpgrade already makes — rather than a server action, since
@@ -45,17 +44,17 @@ function EmailForm({ currentEmail }: { currentEmail: string }) {
 
   return (
     <form action={submit} className="grid gap-2.5">
-      <label className={LABEL}>
-        Email address
-        <input name="email" type="email" required defaultValue={currentEmail} autoComplete="email" className={FIELD} />
-      </label>
+      <Field label="Email address">
+<Input name="email" type="email" required defaultValue={currentEmail} autoComplete="email"
+/>
+</Field>
       <AnimatedMessage role="alert" className="text-sm text-hidden-text">
         {error}
       </AnimatedMessage>
       <AnimatedMessage role="status" className="text-sm text-fg-muted">
         {saved ? "Check both your old and new inbox to confirm the change." : null}
       </AnimatedMessage>
-      <Button type="submit" variant="ghost" fullWidth={false} disabled={pending} className="min-h-9 px-3.5 text-[10px]">
+      <Button type="submit" variant="ghost" fullWidth={false} disabled={pending} size="sm">
         {pending ? "Saving…" : "Update email"}
       </Button>
     </form>
@@ -85,25 +84,23 @@ function PasswordForm() {
 
   return (
     <form ref={formRef} action={submit} className="grid gap-2.5">
-      <label className={LABEL}>
-        New password
-        <input
+      <Field label="New password">
+<Input
           name="password"
           type="password"
           required
           minLength={PASSWORD_MIN}
           autoComplete="new-password"
           placeholder={`At least ${PASSWORD_MIN} characters`}
-          className={FIELD}
-        />
-      </label>
+/>
+</Field>
       <AnimatedMessage role="alert" className="text-sm text-hidden-text">
         {error}
       </AnimatedMessage>
       <AnimatedMessage role="status" className="text-sm text-fg-muted">
         {saved ? "Password updated." : null}
       </AnimatedMessage>
-      <Button type="submit" variant="ghost" fullWidth={false} disabled={pending} className="min-h-9 px-3.5 text-[10px]">
+      <Button type="submit" variant="ghost" fullWidth={false} disabled={pending} size="sm">
         {pending ? "Saving…" : "Update password"}
       </Button>
     </form>

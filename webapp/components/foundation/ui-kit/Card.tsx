@@ -47,7 +47,7 @@ export function CardTitle({
 /** The line under the name — position, era, matchup, record. */
 export function CardMeta({ children }: { children: ReactNode }) {
   return (
-    <p className="px-3 pb-3 font-mono text-[11px] tracking-[0.11em] text-panel-muted uppercase">
+    <p className="px-3 pb-3 type-label-lg text-panel-muted">
       {children}
     </p>
   );
@@ -59,7 +59,7 @@ export function CardMeta({ children }: { children: ReactNode }) {
  */
 export function CardStats({ children }: { children: ReactNode }) {
   return (
-    <dl className="flex justify-between gap-2 border-t border-dashed border-[#c7bfac] px-3 pt-2 pb-2.5 font-mono text-[10px] text-panel-muted">
+    <dl className="flex justify-between gap-2 border-t border-dashed border-panel-line px-3 pt-2 pb-2.5 font-mono text-[10px] text-panel-muted">
       {children}
     </dl>
   );

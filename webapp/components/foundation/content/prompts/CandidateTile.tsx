@@ -74,7 +74,7 @@ export function CandidateTile({ option, metrics, className = "" }: { option: Opt
       >
         {first && metrics.showFirstName !== false ? <span className={`max-w-full overflow-hidden font-slab leading-none text-ellipsis whitespace-nowrap text-white/80 uppercase ${metrics.firstNameClass}`}>{first}</span> : null}
         <span className="max-w-full overflow-hidden font-slab leading-[1.05] text-ellipsis whitespace-nowrap uppercase" style={{ fontSize: lastNameSize }}>{last}</span>
-        {option.sublabel ? <span className="mt-1 font-mono text-[10px] font-semibold tracking-[0.16em] text-white/60 uppercase">{option.sublabel}</span> : null}
+        {option.sublabel ? <span className="mt-1 type-label font-semibold text-white/60">{option.sublabel}</span> : null}
       </div>
     </div>
   );

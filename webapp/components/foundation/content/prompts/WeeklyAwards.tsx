@@ -129,7 +129,7 @@ export function WeeklyAwardsResults({ post }: { post: Post }) {
         const picks = topAwardPicks(slot, post.aggregate?.[slot.id]);
         return (
           <div key={slot.id}>
-            <p className="mb-1.5 font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">{slot.label}</p>
+            <p className="mb-1.5 type-label text-fg-muted">{slot.label}</p>
             {picks.length ? (
               <ol className="flex flex-col gap-1.5">
                 {picks.map(({ option, percent }) => (

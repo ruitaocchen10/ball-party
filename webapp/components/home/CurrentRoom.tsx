@@ -45,7 +45,7 @@ export function CurrentRoom({
 
         <div className={`flex flex-col p-4 ${compact ? "gap-4" : "gap-5 sm:p-5 lg:flex-row lg:items-center lg:gap-8"}`}>
           <div className="shrink-0">
-            <p className="mb-1.5 font-mono text-[10px] tracking-[0.16em] text-hidden-ink uppercase">
+            <p className="mb-1.5 type-label text-hidden-ink">
               You&apos;re in a room
             </p>
             <p className="font-mono text-[34px] leading-none font-semibold tracking-[0.16em] sm:text-[40px]">
@@ -54,14 +54,14 @@ export function CurrentRoom({
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="mb-2 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+            <p className="mb-2 type-label text-panel-muted">
               {room.players.length} of {CAPACITY} players
             </p>
             <ul className="flex flex-wrap items-center gap-1.5">
               {room.players.map((player) => (
                 <li
                   key={player.id}
-                  className="bg-panel-shade px-2 py-1 font-mono text-[10px] tracking-[0.1em] uppercase"
+                  className="bg-panel-shade px-2 py-1 type-label"
                 >
                   {player.name}
                   {player.id === room.hostId || player.id === room.youId ? (
@@ -77,7 +77,7 @@ export function CurrentRoom({
               {Array.from({ length: openSeats }, (_, i) => (
                 <li
                   key={`open-${i}`}
-                  className="bg-hidden px-2 py-1 font-mono text-[10px] tracking-[0.1em] text-panel/90 uppercase"
+                  className="bg-hidden px-2 py-1 type-label text-panel/90"
                 >
                   Open spot
                 </li>

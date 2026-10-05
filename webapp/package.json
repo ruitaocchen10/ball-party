@@ -13,6 +13,7 @@
     "db:reset": "node ../scripts/team_logos/reset_local_db.mjs"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-select": "^2.3.7",
     "@radix-ui/react-toggle-group": "^1.1.19",
     "@supabase/ssr": "^0.12.4",

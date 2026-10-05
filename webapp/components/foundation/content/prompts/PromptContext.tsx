@@ -25,15 +25,15 @@ export function PromptContext({ post }: { post: Post }) {
   return (
     <aside aria-label="About this prompt" className="xl:sticky xl:top-[92px] xl:self-start">
       <div className="border border-line bg-surface-raised p-4 shadow-well">
-        <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Prompt details</p>
+        <p className="type-label font-semibold text-hidden-text">Prompt details</p>
         <h2 className="mt-1 font-slab text-[27px] leading-none text-fg uppercase">About this prompt</h2>
         <div className="mt-4 border-t border-line">
           <div className="border-b border-line py-3.5">
-            <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Resolves</p>
+            <p className="type-label text-fg-muted">Resolves</p>
             <p className="mt-1.5 text-sm leading-6 text-fg">{post.resolutionCriteria}</p>
           </div>
           <div className={split || consensusTopFive.length || awardsResults ? "border-b border-line py-3.5" : "py-3.5"}>
-            <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Status</p>
+            <p className="type-label text-fg-muted">Status</p>
             <p className="mt-1.5 text-sm leading-6 text-fg">{statusLine(post, now)}</p>
           </div>
           {singleGameSlot && split ? (
@@ -61,7 +61,7 @@ export function PromptContext({ post }: { post: Post }) {
           ) : null}
           {consensusSlot && consensusTopFive.length ? (
             <div className="py-3.5">
-              <p className="mb-2.5 font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Most common top 5</p>
+              <p className="mb-2.5 type-label text-fg-muted">Most common top 5</p>
               <div className="flex flex-col gap-2">
                 {consensusTopFive.map((team, index) => {
                   const option = consensusSlot.options.find((candidate) => candidate.id === team.optionId);

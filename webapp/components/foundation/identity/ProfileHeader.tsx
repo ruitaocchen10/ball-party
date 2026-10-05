@@ -23,7 +23,7 @@ export function ProfileHeader({ displayName, avatarUrl, joinedLabel, action }: P
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
         <ProfileAvatar name={displayName} avatarUrl={avatarUrl} />
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[10px] font-semibold tracking-[0.16em] text-fg-muted uppercase">{joinedLabel}</p>
+          <p className="type-label font-semibold text-fg-muted">{joinedLabel}</p>
           <h1 className="mt-1 font-slab text-[34px] leading-none uppercase sm:text-[42px]">{displayName}</h1>
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}

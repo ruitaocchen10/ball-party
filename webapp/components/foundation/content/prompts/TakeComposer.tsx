@@ -11,6 +11,7 @@ import { GamePickFace, GamePickList, PowerRankingsSlot, SlotFaceC } from "./Slot
 import { WeeklyAwardsSlots } from "./WeeklyAwards";
 import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
 import type { Post } from "@/lib/foundation/content/prompts/types";
+import { Badge } from "@/components/foundation/ui-kit/Badge";
 
 type TakeComposerProps = {
   post: Post;
@@ -63,10 +64,10 @@ export function TakeComposer({ post, displayName, avatarUrl }: TakeComposerProps
       <div className="relative flex flex-1 flex-col overflow-hidden border border-line bg-surface-raised text-fg shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
         <div className="flex items-center gap-2.5 px-4 pt-4">
           <AuthorIdentity name={displayName} avatarUrl={avatarUrl} />
-          <span className="shrink-0 bg-panel px-1.5 py-0.5 font-mono text-[10px] tracking-[0.06em] text-panel-fg uppercase">You</span>
+          <Badge>You</Badge>
         </div>
         <div className="px-4 pt-4">
-          <label htmlFor={`prompt-take-${post.id}`} className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">
+          <label htmlFor={`prompt-take-${post.id}`} className="type-label text-fg-muted">
             Add a take <span className="normal-case">(optional)</span>
           </label>
           <textarea
@@ -106,7 +107,7 @@ export function TakeComposer({ post, displayName, avatarUrl }: TakeComposerProps
             {pending ? "Locking in…" : "Lock in"}
           </Button>
         </div>
-        {error ? <p role="alert" className="border-t border-line px-4 py-3 font-mono text-[10px] tracking-[0.1em] text-grade-rough uppercase">{error}</p> : null}
+        {error ? <p role="alert" className="border-t border-line px-4 py-3 type-label text-grade-rough">{error}</p> : null}
       </div>
     </section>
   );

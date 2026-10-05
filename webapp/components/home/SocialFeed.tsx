@@ -1,6 +1,7 @@
 import { PromptFeedShell } from "@/components/foundation/content/prompts/PromptFeedShell";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import type { MatchupGameContext, Post } from "@/lib/foundation/content/prompts/types";
+import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 
 /** Home is the Huddle's canonical home, using the shared prompt interaction rather than a second preview-only feed. */
 export function SocialFeed({ posts, canAnswer, gameContexts }: { posts: Post[]; canAnswer: boolean; gameContexts: MatchupGameContext[] }) {
@@ -17,9 +18,8 @@ export function SocialFeed({ posts, canAnswer, gameContexts }: { posts: Post[]; 
 
 function EmptyFeed() {
   return (
-    <div className="mt-5 border border-dashed border-line bg-surface-raised px-5 py-9 text-center">
-      <p className="font-slab text-2xl uppercase">The huddle is quiet</p>
-      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-fg-muted">New weekly picks will show up here.</p>
-    </div>
+    <EmptyState title="The huddle is quiet" className="mt-5">
+      New weekly picks will show up here.
+    </EmptyState>
   );
 }

@@ -45,6 +45,7 @@ import { postGameChoice } from "@/lib/platform/lobbies/actions";
 import { teamLogoCode } from "@/lib/foundation/content/nfl/team-logos";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/runtime/realtime/client";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /**
  * The ladder, on one screen.
@@ -281,7 +282,7 @@ export function HigherOrLowerMatch({
     }
 
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-6 py-10">
+      <PageShell variant="narrow">
         <FinalScreen
           standings={standings}
           players={players}
@@ -290,24 +291,22 @@ export function HigherOrLowerMatch({
           matchId={matchId}
           isHost={isHost}
         />
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className={isSolo
-      ? "app-page flex-1"
-      : "mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4"}>
+    <PageShell variant={isSolo ? "dashboard" : "game"} locked={!isSolo}>
       {!isSolo && (
         <header className="flex shrink-0 items-baseline justify-between gap-3">
-          <h1 className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
+          <h1 className="type-label-lg text-fg-muted">
             {questionLabel(board, "visual", isSolo)}
           </h1>
           <div className="flex items-center gap-3">
           <p
             role="note"
             aria-label="Board format"
-            className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase"
+            className="type-label-lg text-fg-muted"
           >
             {scoringModeLabel(board)} · {eraLabel(board)}
           </p>
@@ -336,7 +335,7 @@ export function HigherOrLowerMatch({
               <p
                 role="note"
                 aria-label="Board format"
-                className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase"
+                className="type-label-lg text-fg-muted"
               >
                 {scoringModeLabel(board)} · {eraLabel(board)}
               </p>
@@ -405,8 +404,8 @@ export function HigherOrLowerMatch({
         {!isSolo ? <aside aria-label="The table" className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1">
           <div className="flex flex-col border border-line bg-surface-raised">
             <header className="flex items-baseline justify-between gap-2 px-3 py-2">
-              <h2 className="font-mono text-[10px] font-bold tracking-[0.15em] text-fg-muted uppercase">Standings</h2>
-              <span className="font-mono text-[9px] tracking-[0.08em] text-fg-muted uppercase">Correct · best</span>
+              <h2 className="type-label font-bold text-fg-muted">Standings</h2>
+              <span className="type-label-xs text-fg-muted">Correct · best</span>
             </header>
             <ul className="border-t border-line divide-y divide-line">
               {liveStandings(players, board.phase).map(({ player, rank, tied }) => {
@@ -423,7 +422,7 @@ export function HigherOrLowerMatch({
                     <span className="truncate">{player.display_name}</span>
                     {player.user_id === viewerId ? <span className="font-mono text-[8px] tracking-[0.08em] text-hidden-text">YOU</span> : null}
                   </span>
-                  <span className="truncate font-mono text-[9px] tracking-[0.07em] text-fg-muted uppercase">
+                  <span className="truncate type-label-xs text-fg-muted">
                     {standingStatus(player, call ?? null, lockedIn.has(player.user_id), board.phase)}
                   </span>
                 </span>
@@ -439,7 +438,7 @@ export function HigherOrLowerMatch({
           </div>
         </aside> : null}
       </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -467,7 +466,7 @@ function SoloRunSummary({ player, allTimeHigh, continueAction, className }: { pl
 function RunStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="px-3 py-3 text-center">
-      <p className="font-mono text-[9px] font-bold tracking-[0.14em] text-fg-muted uppercase">{label}</p>
+      <p className="type-label-xs font-bold text-fg-muted">{label}</p>
       <p className="mt-1 font-slab text-3xl leading-none tabular-nums">{value}</p>
     </div>
   );
@@ -492,7 +491,7 @@ function SoloFinalScreen({
   const correct = player?.correct_count ?? 0;
   const revealedCards = cards.filter((card) => card.revealed_at !== null).sort((a, b) => a.ordinal - b.ordinal);
   return (
-    <main className="app-page flex-1">
+    <PageShell variant="dashboard">
       <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
         <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
           <PageHeader
@@ -502,12 +501,12 @@ function SoloFinalScreen({
           />
           <section aria-label="Your final result" className="mt-5 w-full max-w-[760px] overflow-hidden border border-line bg-surface-raised shadow-well">
             <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
-              <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Run complete</p>
+              <p className="type-label font-semibold text-hidden-text">Run complete</p>
               <h2 className="mt-1 font-slab text-4xl leading-none uppercase sm:text-5xl">{correct} correct</h2>
             </div>
             <section aria-labelledby="ladder-recap-heading" className="border-t border-line">
               <header className="px-5 pt-5 pb-1">
-              <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">The players you saw</p>
+              <p className="type-label font-semibold text-hidden-text">The players you saw</p>
               <h2 id="ladder-recap-heading" className="mt-1 font-slab text-2xl leading-none uppercase">Your ladder</h2>
               </header>
               <ol className="grid grid-cols-2 gap-3 px-5 pt-2 pb-5 sm:grid-cols-3 md:grid-cols-4">
@@ -555,7 +554,7 @@ function SoloFinalScreen({
           </div>
         </DashboardRail>
       </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -677,7 +676,7 @@ function CallActions({
 function CallFeedback({ call, error }: { call: Call | null; error: string | null }) {
   return (
     <section aria-label="Your call status" className="grid shrink-0 gap-2">
-      <AnimatedMessage className="sm:col-span-2 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
+      <AnimatedMessage className="sm:col-span-2 type-label-lg text-fg-muted">
         {call ? (call.timed_out ? "You ran out of time." : `You called ${call.direction}.`) : null}
       </AnimatedMessage>
       <AnimatedMessage role="alert" className="sm:col-span-2 text-sm text-red-700">
@@ -763,7 +762,7 @@ function SoloContinue({
 }) {
   return (
     <div aria-label="Continue" className="flex flex-col gap-2 p-3">
-      <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">The answer is revealed</p>
+      <p className="type-label-lg text-fg-muted">The answer is revealed</p>
       <Button disabled={pending} onClick={onContinue}>Continue</Button>
       <AnimatedMessage role="alert" className="text-sm text-red-700">{error}</AnimatedMessage>
     </div>
@@ -790,8 +789,8 @@ function MatchClock({
         ? "The answer is revealed"
         : "Match complete";
   return (
-    <section aria-label="Clock" className={`rounded bg-surface-raised p-3 shadow-well ${className}`}>
-      <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
+    <section aria-label="Clock" className={`bg-surface-raised p-3 shadow-well ${className}`}>
+      <p className="type-label-lg text-fg-muted">{label}</p>
       <p className="mt-1 font-slab text-3xl leading-none tabular-nums" aria-hidden>{seconds === null ? "—" : `${seconds}s`}</p>
       <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
         <div className="h-full bg-panel transition-[width]" style={{ width: `${fraction * 100}%`, transitionDuration: `${TICK_MS}ms` }} />
@@ -845,7 +844,7 @@ function LadderCardPanel({
           distinct reveal beat Higher or Lower depends on. */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden border border-line bg-surface-raised text-center shadow-well">
         <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{card.position}</span>
-        {logoCode ? <TeamLogo code={logoCode} className="absolute top-3 right-3 h-8 w-8" /> : <span className="absolute top-3 right-3 font-mono text-[11px] font-bold tracking-[0.12em] text-fg-muted uppercase">{card.team}</span>}
+        {logoCode ? <TeamLogo code={logoCode} className="absolute top-3 right-3 h-8 w-8" /> : <span className="absolute top-3 right-3 type-label-lg font-bold text-fg-muted">{card.team}</span>}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-5">
           <LadderPortrait name={card.display_name} headshotUrl={card.headshot_url} />
           <h2 className="mt-3 max-w-full truncate font-slab text-3xl leading-none text-fg uppercase">{card.display_name}</h2>
@@ -888,7 +887,7 @@ function LadderCardPanel({
         </div>
       </div>
 
-      <p className="font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">{caption}</p>
+      <p className="type-label-lg text-fg-muted">{caption}</p>
     </section>
   );
 }
@@ -907,11 +906,11 @@ function LadderMatchup({ card }: { card: LadderCard }) {
   const weekly = card.week !== null && card.opponent !== null;
   return (
     <div className="mt-4 w-full border-t border-line pt-3" aria-label={weekly ? `${card.season}, week ${card.week}, ${card.team} versus ${card.opponent}` : `${card.season} season, ${card.team}`}>
-      <p className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">{weekly ? `${card.season} · week ${card.week}` : `${card.season} season`}</p>
+      <p className="type-label text-fg-muted">{weekly ? `${card.season} · week ${card.week}` : `${card.season} season`}</p>
       {weekly ? (
         <div className="mt-2 flex items-center gap-3">
           <LadderTeam code={card.team} />
-          <span className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">vs</span>
+          <span className="type-label text-fg-muted">vs</span>
           <LadderTeam code={card.opponent!} />
         </div>
       ) : <div className="mt-2 flex justify-center"><LadderTeam code={card.team} /></div>}

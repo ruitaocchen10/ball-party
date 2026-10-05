@@ -17,6 +17,7 @@ import { fetchLobbyWins } from "@/lib/platform/lobbies/scoreboard";
 import { fetchLobbyActivity } from "@/lib/platform/lobbies/activity";
 import { fetchLobbyMemberStats } from "@/lib/platform/lobbies/player-stats";
 import type { MatchGame } from "@/lib/platform/orchestration/catalog";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 // An invite link is a private handoff between friends, not a page for a search
 // index — one per room code, all the same content, all short-lived.
@@ -137,7 +138,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
       <LobbyRealtime lobbyId={lobby.id} />
 
       {inFlight ? (
-        <p className="rounded bg-surface-raised px-3.5 py-2.5 text-sm text-fg-muted shadow-well">
+        <p className="bg-surface-raised px-3.5 py-2.5 text-sm text-fg-muted shadow-well">
           A game is in progress. You&apos;re in for the next one.
         </p>
       ) : null}
@@ -186,7 +187,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">{children}</p>
+    <p className="type-label text-fg-muted">{children}</p>
   );
 }
 
@@ -210,7 +211,7 @@ function Shell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="flex w-full flex-1 flex-col px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
+    <PageShell variant="game">
       <LobbyTopStrip lobbyId={lobbyId} code={code} isHost={isHost} displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
       <div className="flex flex-1 flex-col gap-6 pt-4 pb-12 sm:pt-6 lg:gap-8 lg:pt-8">
@@ -235,7 +236,7 @@ function Shell({
         {error ? (
           <p
             role="alert"
-            className="rounded border border-hidden/40 bg-hidden/10 px-3.5 py-2.5 text-sm text-hidden-text"
+            className="border border-hidden/40 bg-hidden/10 px-3.5 py-2.5 text-sm text-hidden-text"
           >
             {error}
           </p>
@@ -243,7 +244,7 @@ function Shell({
 
         {children}
       </div>
-    </main>
+    </PageShell>
   );
 }
 

@@ -76,7 +76,7 @@ export function PlayerPicker({ value, onChange, label, search, disabled }: Props
         <PlayerSummary player={value} onDark />
         <Check aria-hidden className="h-4 w-4 shrink-0 text-white" strokeWidth={3} />
         {disabled ? null : (
-          <button type="button" aria-label={`Change ${label}`} onClick={() => onChange(null)} className="ml-auto cursor-pointer font-mono text-[10px] tracking-[0.08em] text-white/80 uppercase underline underline-offset-2 hover:text-white">
+          <button type="button" aria-label={`Change ${label}`} onClick={() => onChange(null)} className="ml-auto cursor-pointer type-label text-white/80 underline underline-offset-2 hover:text-white">
             Change
           </button>
         )}

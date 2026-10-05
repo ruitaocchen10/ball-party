@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { GAMES, type Game, type SoloMode } from "@/lib/platform/orchestration/catalog";
 import { playSolo } from "@/lib/platform/lobbies/actions";
 import { SoloSeasonRange } from "./SoloSeasonRange";
+import { Badge } from "@/components/foundation/ui-kit/Badge";
+import { Button } from "@/components/foundation/ui-kit/Button";
 
 /** The seasons on offer for Higher or Lower's era picker; absent when the bounds could not be read. */
 export type SoloEra = { seasonMin: number; seasonMax: number };
@@ -65,9 +67,7 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
         <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-surface text-fg-muted ring-1 ring-line ring-inset transition-colors group-hover:text-fg">
           <Gamepad2 aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.6} />
         </span>
-        <span className="bg-surface px-2 py-1 font-mono text-[9px] font-semibold tracking-[0.1em] text-fg-muted uppercase ring-1 ring-line ring-inset">
-          1 player
-        </span>
+        <Badge tone="muted" size="xs">1 player</Badge>
       </div>
 
       <h3 className="mt-4 font-slab text-xl leading-[1.04] uppercase">
@@ -93,12 +93,9 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
             {higherOrLowerEra ? <SoloSeasonRange era={higherOrLowerEra} /> : null}
           </SoloSettings>
         ) : null}
-        <button
-          type="submit"
-          className="inline-flex h-9 w-full cursor-pointer items-center justify-center bg-panel px-3.5 font-mono text-[11px] font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
-        >
+        <Button size="sm" type="submit">
           Play solo
-        </button>
+        </Button>
       </form>
     </article>
   );
@@ -114,7 +111,7 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
 function SoloSettings({ children }: { children: ReactNode }) {
   return (
     <details className="group/settings mb-3">
-      <summary className="flex cursor-pointer list-none items-center justify-between font-mono text-[9px] font-semibold tracking-[0.1em] text-fg-muted uppercase transition-colors marker:hidden hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between type-label-xs font-semibold text-fg-muted transition-colors marker:hidden hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel [&::-webkit-details-marker]:hidden">
         Settings
         <ChevronDown
           aria-hidden
@@ -138,7 +135,7 @@ function SoloSettings({ children }: { children: ReactNode }) {
 function RadioChoice({ name, legend, options }: { name: string; legend: string; options: readonly SoloMode[] }) {
   return (
     <fieldset className="mb-3 flex flex-col gap-1.5">
-      <legend className="mb-1.5 font-mono text-[9px] font-semibold tracking-[0.1em] text-fg-muted uppercase">
+      <legend className="mb-1.5 type-label-xs font-semibold text-fg-muted">
         {legend}
       </legend>
       {options.map((option, index) => (
@@ -154,7 +151,7 @@ function RadioChoice({ name, legend, options }: { name: string; legend: string; 
             className="mt-0.5 accent-current"
           />
           <span className="flex flex-col">
-            <span className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase">{option.label}</span>
+            <span className="type-label-lg font-bold">{option.label}</span>
             <span className="text-[12px] leading-4 text-fg-muted">{option.description}</span>
           </span>
         </label>

@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Card } from "@/components/foundation/ui-kit/Card";
+import { Input, Textarea } from "@/components/foundation/ui-kit/Input";
 import { Select } from "@/components/foundation/ui-kit/Select";
 import type { NflScheduleGame } from "@/lib/foundation/content/nfl/schedule";
 import { OptionIcon } from "./SlotFaces";
@@ -34,6 +35,7 @@ import {
 } from "./ComposerFields";
 import { COVER_OPTION_LIMIT, coverOptions, isPicksPost, isPromptOpenForAnswers, needsCoverChoice, relativeTime } from "@/lib/foundation/content/prompts/logic";
 import type { MatchupGameContext, Option, Player, Post, Slot, TemplateKind } from "@/lib/foundation/content/prompts/types";
+import { Badge } from "@/components/foundation/ui-kit/Badge";
 
 /**
  * Big match-style tiles borrowing this app's own
@@ -96,30 +98,30 @@ function PostCardC({
     : canAnswer ? "Make your picks" : post.viewerAnswered && promptOpen ? "View your picks" : "See takes";
   const timingLabel = postTimingLabel(post, now);
   const statusChip = post.viewerAnswered
-    ? <span className="inline-flex shrink-0 items-center gap-1 bg-grade-elite px-2 py-1 font-mono text-[9px] font-bold leading-none tracking-[0.1em] text-[#fffdf7] uppercase"><Check aria-hidden className="h-3 w-3" strokeWidth={3} /> Complete</span>
+    ? <Badge tone="success" size="xs" icon={<Check aria-hidden className="h-3 w-3" strokeWidth={3} />}>Complete</Badge>
     : post.status !== "void" && !promptOpen && post.status !== "resolved"
-      ? <span className="inline-flex shrink-0 items-center gap-1 border border-fg-muted/50 bg-surface px-2 py-1 font-mono text-[9px] font-bold leading-none tracking-[0.1em] text-fg-muted uppercase"><Lock aria-hidden className="h-3 w-3" strokeWidth={2.5} /> Locked</span>
+      ? <Badge tone="outline" size="xs" icon={<Lock aria-hidden className="h-3 w-3" strokeWidth={2.5} />}>Locked</Badge>
       : post.status === "resolved"
-        ? <span className="inline-flex shrink-0 border border-panel/50 bg-panel/10 px-2 py-1 font-mono text-[9px] font-bold leading-none tracking-[0.1em] text-panel uppercase">Resolved</span>
+        ? <Badge tone="soft" size="xs">Resolved</Badge>
       : null;
 
   return (
     <Card edge={false} className={`rounded-none border border-line !bg-surface-raised !text-fg !shadow-[0_10px_24px_rgb(0_0_0/0.4)] ${void_ ? "opacity-45" : ""}`}>
       <div className="flex items-start gap-3 px-4 pt-4">
         <h2 className="min-w-0 flex-1 font-slab text-2xl leading-[1.05] uppercase">{post.promptText}</h2>
-        {statusChip ?? <span className="shrink-0 pt-0.5 font-mono text-[10px] tracking-[0.14em] text-fg-muted uppercase">{timingLabel}</span>}
+        {statusChip ?? <span className="shrink-0 pt-0.5 type-label text-fg-muted">{timingLabel}</span>}
       </div>
       <p className="px-4 pt-1 text-[13px] text-fg-muted">{post.caption}</p>
 
       {void_ ? (
-        <p className="mx-4 mt-3 flex items-center gap-2 bg-surface px-3 py-2 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">
+        <p className="mx-4 mt-3 flex items-center gap-2 bg-surface px-3 py-2 type-label text-fg-muted">
           {post.voidReason}
         </p>
       ) : null}
 
       <PostTeaser post={post} gameContexts={gameContexts} />
       <div className="flex items-center justify-between gap-3 px-4 pt-4">
-        <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">
+        <p className="type-label text-fg-muted">
           {bold
             ? `${post.predictionCount ?? 0} ${post.predictionCount === 1 ? "prediction" : "predictions"} made`
             : `${post.responseCount} ${post.responseCount === 1 ? "person has" : "people have"} answered`}
@@ -127,7 +129,7 @@ function PostCardC({
       </div>
       <div className="px-4 pt-3 pb-4">
         {(bold ? promptOpen : canAnswer) && !viewerCanAnswer ? (
-          <Link href="/login?next=/" className="flex h-12 items-center justify-center bg-panel px-4 font-slab text-[15px] tracking-[0.04em] text-panel-fg uppercase hover:bg-[#fffdf7]">
+          <Link href="/login?next=/" className="flex h-12 items-center justify-center bg-panel px-4 font-slab text-[15px] tracking-[0.04em] text-panel-fg uppercase hover:bg-panel-hover">
             Sign up to answer
           </Link>
         ) : (
@@ -181,7 +183,7 @@ function PostTeaser({ post, gameContexts }: { post: Post; gameContexts: MatchupG
   return (
     <div className="mt-3 flex flex-col items-center gap-2 px-4">
       {post.slots.length > 1 ? (
-        <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">{post.slots.length} picks to make</p>
+        <p className="type-label text-fg-muted">{post.slots.length} picks to make</p>
       ) : null}
       <div className="flex items-center gap-2">
         {shown.map((option) => (
@@ -540,7 +542,7 @@ export function PromptPostComposer({
     <>
       <PostCardC post={previewPost} viewerCanAnswer onOpenAnswer={() => {}} />
       <div className="mt-3">
-        {error ? <p role="alert" className="mb-2 font-mono text-[10px] tracking-[0.1em] text-grade-rough uppercase">{error}</p> : null}
+        {error ? <p role="alert" className="mb-2 type-label text-grade-rough">{error}</p> : null}
         <ul className="mb-3 flex flex-col gap-1.5 border border-line px-3 py-2.5">
           {checklist.map((item) => (
             <li key={item.label} className={`flex items-center gap-2 text-sm ${item.ok ? "text-fg" : "text-fg-muted"}`}>
@@ -617,7 +619,7 @@ export function PromptPostComposer({
           </Button>
           <Link
             href="/"
-            className="flex h-12 items-center bg-panel px-4 font-slab text-[15px] tracking-[0.04em] text-panel-fg uppercase hover:bg-[#fffdf7]"
+            className="flex h-12 items-center bg-panel px-4 font-slab text-[15px] tracking-[0.04em] text-panel-fg uppercase hover:bg-panel-hover"
           >
             View feed
           </Link>
@@ -794,7 +796,7 @@ export function PromptPostComposer({
                 value={effectiveRankCount || 1}
                 disabled={rankingIds.length === 0}
                 onChange={(event) => setRankCount(Math.max(1, Math.min(Number(event.target.value) || 1, rankingIds.length)))}
-                className="w-24 rounded border border-line bg-surface-raised px-3 py-2 text-sm disabled:opacity-40"
+                className="w-24 border border-line bg-surface-raised px-3 py-2 text-sm disabled:opacity-40"
               />
               <p className="mt-1 text-xs text-fg-muted">People will order their top {effectiveRankCount || "N"} from the {rankingIds.length} candidates you selected.</p>
             </FieldBlock>
@@ -804,13 +806,13 @@ export function PromptPostComposer({
 
         <Section n={3} title="Copy">
         <FieldBlock label="Prompt text">
-          <input value={promptText} onChange={(e) => setPromptText(e.target.value)} className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm" />
+          <Input variant="well" value={promptText} onChange={(e) => setPromptText(e.target.value)} />
         </FieldBlock>
         <FieldBlock label="Caption — optional">
-          <input value={caption} onChange={(e) => setCaption(e.target.value)} className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm" />
+          <Input variant="well" value={caption} onChange={(e) => setCaption(e.target.value)} />
         </FieldBlock>
         <FieldBlock label="Resolution criteria — shown before anyone answers">
-          <textarea value={criteria} onChange={(e) => setCriteria(e.target.value)} rows={3} className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm" />
+          <Textarea variant="well" value={criteria} onChange={(e) => setCriteria(e.target.value)} rows={3} />
         </FieldBlock>
         </Section>
 
@@ -819,7 +821,7 @@ export function PromptPostComposer({
           <FieldBlock label="Points per slot">
             <div className="flex flex-col gap-2">
               {slots.map((slot) => (
-                <label key={slot.id} className="flex items-center justify-between gap-4 rounded border border-line bg-surface-raised px-3 py-2 text-sm">
+                <label key={slot.id} className="flex items-center justify-between gap-4 border border-line bg-surface-raised px-3 py-2 text-sm">
                   <span>{slot.label}</span>
                   <span className="flex shrink-0 items-center gap-2 text-fg-muted">
                     <input
@@ -834,9 +836,9 @@ export function PromptPostComposer({
                         if (!Number.isInteger(points) || points < 0 || points > 32767) return;
                         setPointsBySlot((current) => ({ ...current, [slot.id]: points }));
                       }}
-                      className="w-20 rounded border border-line bg-surface px-2 py-1 text-right text-sm text-fg"
+                      className="w-20 border border-line bg-surface px-2 py-1 text-right text-sm text-fg"
                     />
-                    <span className="font-mono text-[10px] tracking-[0.08em] uppercase">pts</span>
+                    <span className="type-label">pts</span>
                   </span>
                 </label>
               ))}
@@ -849,10 +851,10 @@ export function PromptPostComposer({
             type="datetime-local"
             value={lockAt}
             onChange={(e) => setLockAt(e.target.value)}
-            className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm"
+            className="w-full border border-line bg-surface-raised px-3 py-2 text-sm"
           />
           {lockInPast ? (
-            <p className="mt-1 font-mono text-[9px] tracking-[0.1em] text-grade-rough uppercase">Pick a time in the future</p>
+            <p className="mt-1 type-label-xs text-grade-rough">Pick a time in the future</p>
           ) : null}
         </FieldBlock>
         </Section>
@@ -861,7 +863,7 @@ export function PromptPostComposer({
 
         <aside className="sticky top-6 hidden lg:block">
           <div className="overflow-hidden rounded-card border border-line bg-surface-raised shadow-[0_8px_24px_rgb(0_0_0/0.2)]">
-            <p className="border-b border-line px-3 py-2 font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">Live preview</p>
+            <p className="border-b border-line px-3 py-2 type-label text-fg-muted">Live preview</p>
             <div className="max-h-[calc(100vh-7rem)] overflow-y-auto p-3">{previewContents}</div>
           </div>
         </aside>
@@ -870,7 +872,7 @@ export function PromptPostComposer({
       <div className="fixed inset-x-0 bottom-16 z-20 mx-auto w-full max-w-2xl px-4 sm:px-6 lg:hidden">
         <div className="overflow-hidden rounded-t-card border border-b-0 border-line bg-surface-raised shadow-[0_-8px_24px_rgb(0_0_0/0.4)]">
           <button type="button" onClick={() => setDockOpen((v) => !v)} className="flex w-full items-center justify-between px-3 py-2">
-            <span className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">Live preview</span>
+            <span className="type-label text-fg-muted">Live preview</span>
             {dockOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
           {dockOpen ? (
@@ -898,7 +900,7 @@ function Section({ n, title, children }: { n: number; title: string; children: R
 function FieldBlock({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="mb-1.5 font-mono text-[9px] tracking-[0.1em] text-fg-muted uppercase">{label}</p>
+      <p className="mb-1.5 type-label-xs text-fg-muted">{label}</p>
       {children}
     </div>
   );
@@ -932,7 +934,7 @@ function PlayerCandidatePicker({
         {selected.length ? (
           <div className="flex flex-wrap gap-1.5">
             {selected.map((option) => (
-              <button key={option.id} type="button" onClick={() => onToggle(option.id)} className="flex items-center gap-1.5 rounded border border-panel-fg bg-panel-fg px-2 py-1.5 text-left text-panel">
+              <button key={option.id} type="button" onClick={() => onToggle(option.id)} className="flex items-center gap-1.5 border border-panel-fg bg-panel-fg px-2 py-1.5 text-left text-panel">
                 <OptionIcon option={option} className="h-5 w-5" />
                 <span className="font-mono text-[10px] uppercase">{option.label}</span>
                 <span aria-hidden className="font-mono text-xs">×</span>
@@ -960,14 +962,14 @@ function PlayerCandidatePicker({
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Search player or team"
-          className="w-full rounded border border-line bg-surface-raised px-3 py-2 text-sm"
+          className="w-full border border-line bg-surface-raised px-3 py-2 text-sm"
         />
       </div>
       </FieldBlock>
       <FieldBlock label={narrowed ? `Matching players — ${matchingOptions.length} found` : "Matching players"}>
         {!narrowed ? <p className="text-sm text-fg-muted">Choose a position or search by player or team to browse.</p> : (
           <>
-            <div className="max-h-80 overflow-y-auto rounded border border-line">
+            <div className="max-h-80 overflow-y-auto border border-line">
               {results.map((option) => {
                 const selected_ = selectedIds.includes(option.id);
                 return (

@@ -14,6 +14,8 @@ import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
 import { completedMatchesFromHistory, profileStatRanges, summarizeMultiplayerProfileRange, type CompletedMatchWithMode } from "@/lib/foundation/identity/summary";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
 import { createClient } from "@/lib/supabase/server";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
+import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 
 /** A player's durable record, kept deliberately separate from a live room. */
 export default async function ProfilePage() {
@@ -58,7 +60,7 @@ export default async function ProfilePage() {
     <>
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <div data-profile-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
           <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
             <div className="max-w-[760px]">
@@ -94,7 +96,7 @@ export default async function ProfilePage() {
             </div>
           </aside>
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -104,14 +106,14 @@ function GuestProfile() {
     <>
       <Sidebar />
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <section className="max-w-xl">
-          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Current game</p>
+          <p className="type-label text-hidden-text">Current game</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Make your record yours</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Your name is just for the current game. Create an account to save a profile and keep your results.</p>
           <div className="mt-6"><GuestUpgrade /></div>
         </section>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -121,14 +123,14 @@ function SignedOutProfile() {
     <>
       <Sidebar />
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <section className="max-w-xl">
-          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Player profile</p>
+          <p className="type-label text-hidden-text">Player profile</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Your record starts here</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Sign in to keep a record of your games, wins, and streaks.</p>
-          <Link href="/login?next=/profile" className="mt-6 inline-flex bg-panel px-4 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
+          <Link href="/login?next=/profile" className="mt-6 inline-flex bg-panel px-4 py-3 type-label font-bold text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
         </section>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -136,14 +138,14 @@ function SignedOutProfile() {
 function NextGame() {
   return (
     <section className="rounded-card border border-line bg-surface-raised p-5 text-fg shadow-well sm:p-6">
-      <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">Your next game</p>
+      <p className="type-label text-fg-muted">Your next game</p>
       <h2 className="mt-2 font-slab text-[25px] leading-[.98] uppercase">Make the record</h2>
       <p className="mt-3 max-w-[32ch] text-sm leading-6 text-fg-muted">
         Every completed game lands here — play with friends, chase a streak, and leave a mark.
       </p>
       <Link
         href="/"
-        className="mt-5 inline-flex bg-panel px-3.5 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-panel-shade focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        className="mt-5 inline-flex bg-panel px-3.5 py-3 type-label font-bold text-panel-fg transition-colors hover:bg-panel-shade focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
       >
         Find a game
       </Link>
@@ -152,7 +154,7 @@ function NextGame() {
 }
 
 function SectionHeading({ id, children }: { id: string; children: React.ReactNode }) {
-  return <h2 id={id} className="font-mono text-[10px] font-bold tracking-[0.15em] text-fg-muted uppercase">{children}</h2>;
+  return <h2 id={id} className="type-label font-bold text-fg-muted">{children}</h2>;
 }
 
 function TakeHistoryItem({
@@ -192,7 +194,7 @@ function TakeHistoryItem({
 }
 
 function EmptyTakeHistory() {
-  return <div className="mt-3 rounded-card bg-surface-raised px-5 py-6 text-sm leading-6 text-fg-muted shadow-well">No takes yet. Your takes on prompt posts will show up here.</div>;
+  return <EmptyState className="mt-3">No takes yet. Your takes on prompt posts will show up here.</EmptyState>;
 }
 
 function joinedMonth(date?: string) { return date ? new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(new Date(date)) : "today"; }

@@ -12,6 +12,7 @@ import { fetchPromptById } from "@/lib/foundation/content/prompts/feed";
 import { fetchPromptMeta } from "@/lib/foundation/content/prompts/meta";
 import { SITE_NAME } from "@/lib/seo/site";
 import { createClient } from "@/lib/supabase/server";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /**
  * What a search result or a shared link shows for this prompt. Reads only the
@@ -61,7 +62,7 @@ export default async function PromptDetailPage(props: PageProps<"/prompts/[id]">
     <>
       <Sidebar displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
       <DashboardHeader displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
-      <main data-prompt-detail className="app-page flex-1">
+      <PageShell variant="dashboard" data-prompt-detail>
         <div data-prompt-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
           <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
             <PostHeroHeader post={post} />
@@ -69,7 +70,7 @@ export default async function PromptDetailPage(props: PageProps<"/prompts/[id]">
           </div>
           <PromptContext post={post} />
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }

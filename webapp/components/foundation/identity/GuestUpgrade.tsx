@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
 import { Button } from "@/components/foundation/ui-kit/Button";
+import { Input } from "@/components/foundation/ui-kit/Input";
 import { PASSWORD_MIN } from "@/lib/foundation/identity/types";
 import { createClient } from "@/lib/supabase/client";
 
@@ -33,8 +34,8 @@ export function GuestUpgrade() {
       <h2 className="font-slab text-xl leading-none uppercase">Keep this record</h2>
       <p className="mt-2 text-sm leading-5 text-fg-muted">Add an account and your games stay right where they are.</p>
       <form action={upgrade} className="mt-4 flex flex-col gap-2.5">
-        <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className="h-12 border border-line bg-surface px-3 text-sm" />
-        <input name="password" type="password" required minLength={PASSWORD_MIN} autoComplete="new-password" placeholder={`At least ${PASSWORD_MIN} characters`} className="h-12 border border-line bg-surface px-3 text-sm" />
+        <Input name="email" type="email" required autoComplete="email" placeholder="you@example.com" aria-label="Email" />
+        <Input name="password" type="password" required minLength={PASSWORD_MIN} autoComplete="new-password" placeholder={`At least ${PASSWORD_MIN} characters`} aria-label="Password" />
         <AnimatedMessage role="alert" className="text-sm text-hidden-text">
           {error}
         </AnimatedMessage>

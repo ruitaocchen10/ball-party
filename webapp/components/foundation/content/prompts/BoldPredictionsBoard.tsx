@@ -22,6 +22,7 @@ import { isPromptOpenForAnswers } from "@/lib/foundation/content/prompts/logic";
 import type { PlayerResult, PlayerSearch } from "@/lib/foundation/content/prompts/players";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 import { createClient } from "@/lib/supabase/client";
+import { Badge } from "@/components/foundation/ui-kit/Badge";
 
 type Draft = { body: string; target: BoldTarget };
 
@@ -128,7 +129,7 @@ function PredictionComposer({ post, data, displayName, avatarUrl, act, onPlayerF
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-slab text-xl leading-none uppercase">Your predictions</h2>
-        <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">{drafts.length} of {MAX_BOLD_PREDICTIONS} used</p>
+        <p className="type-label text-fg-muted">{drafts.length} of {MAX_BOLD_PREDICTIONS} used</p>
       </div>
       <p className="flex items-center gap-2 text-sm text-fg-muted"><Lock aria-hidden className="h-3.5 w-3.5 shrink-0" /> Lock them in as one response. You can&apos;t change it after, and you&apos;ll see everyone else&apos;s.</p>
 
@@ -159,7 +160,7 @@ function PredictionComposer({ post, data, displayName, avatarUrl, act, onPlayerF
                     target={draft.target}
                     data={data}
                     actions={
-                      <span className="flex gap-3 font-mono text-[10px] tracking-[0.1em] uppercase">
+                      <span className="flex gap-3 type-label">
                         <button type="button" onClick={() => setEditingIndex(index)} aria-label={`Edit prediction: ${draft.body}`} className="cursor-pointer underline">Edit</button>
                         <button
                           type="button"
@@ -199,7 +200,7 @@ function PredictionComposer({ post, data, displayName, avatarUrl, act, onPlayerF
             {pending ? "Locking in…" : "Lock in"}
           </Button>
         </div>
-        {error ? <p role="alert" className="mt-3 font-mono text-[10px] tracking-[0.1em] text-grade-rough uppercase">{error}</p> : null}
+        {error ? <p role="alert" className="mt-3 type-label text-grade-rough">{error}</p> : null}
       </div>
     </div>
   );
@@ -212,7 +213,7 @@ function YouHeader({ name, avatarUrl }: { name: string; avatarUrl: string | null
   return (
     <div className="flex items-center gap-2.5">
       <AuthorIdentity name={name} avatarUrl={avatarUrl} />
-      <span className="shrink-0 bg-panel px-1.5 py-0.5 font-mono text-[10px] tracking-[0.06em] text-panel-fg uppercase">You</span>
+      <Badge>You</Badge>
     </div>
   );
 }
@@ -244,7 +245,7 @@ function PredictionForm({ idSuffix, initial, data, onPlayerFound, playerSearch, 
   return (
     <form onSubmit={(event) => { event.preventDefault(); submit(); }} className="flex flex-col gap-6">
       <div>
-        <label htmlFor={fieldId} className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Your prediction</label>
+        <label htmlFor={fieldId} className="type-label text-fg-muted">Your prediction</label>
         <div className="relative mt-2">
           <textarea
             id={fieldId}
@@ -259,7 +260,7 @@ function PredictionForm({ idSuffix, initial, data, onPlayerFound, playerSearch, 
         </div>
       </div>
       <div>
-        <p className="mb-2 font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Tag — required</p>
+        <p className="mb-2 type-label text-fg-muted">Tag — required</p>
         <BoldTagPicker value={target} onChange={setTarget} weekGames={data.weekGames} players={data.players} onPlayerFound={onPlayerFound} search={playerSearch} />
       </div>
       <div className="flex gap-2">
@@ -279,7 +280,7 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
     <article key={group.key} aria-label={`${group.author}'s predictions`} className={`${CARD_SHELL} p-4`}>
       <div className="flex items-center gap-2.5">
         <AuthorIdentity name={group.author} />
-        {group.isViewer ? <span className="shrink-0 bg-panel px-1.5 py-0.5 font-mono text-[10px] tracking-[0.06em] text-panel-fg uppercase">You</span> : null}
+        {group.isViewer ? <Badge>You</Badge> : null}
       </div>
       <ul className="mt-4 flex flex-col gap-3">
         {group.predictions.map((prediction) => (
@@ -287,7 +288,7 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
         ))}
       </ul>
       {open && group.isViewer ? (
-        <p className="mt-3 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">Predictions locked in</p>
+        <p className="mt-3 type-label text-fg-muted">Predictions locked in</p>
       ) : null}
     </article>
   );
@@ -304,7 +305,7 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
           {mine ? card(mine) : null}
           {others.length ? (
             <div className="flex flex-col gap-3" aria-label="Other takes">
-              <h2 className="px-1 font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Other takes</h2>
+              <h2 className="px-1 type-label text-fg-muted">Other takes</h2>
               {others.map(card)}
             </div>
           ) : null}

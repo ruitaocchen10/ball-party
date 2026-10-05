@@ -54,7 +54,7 @@ export function FinalStandings({
   return (
     <>
       <header className="flex flex-col gap-2 pt-2">
-        <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{eyebrow}</p>
+        <p className="type-label-lg text-fg-muted">{eyebrow}</p>
         <h1 className="font-slab text-4xl leading-none uppercase">{headline}</h1>
       </header>
 
@@ -87,7 +87,7 @@ function StandingsRow({ row, index, total }: { row: FinalStandingsRow; index: nu
             <span className="shrink-0 font-mono text-[10px] tracking-[0.13em] text-panel-muted">YOU</span>
           ) : null}
         </span>
-        <span className="font-mono text-[11px] tracking-[0.06em] text-panel-muted uppercase">{row.statLine}</span>
+        <span className="type-label-lg text-panel-muted">{row.statLine}</span>
       </span>
       {row.endMetric ? <span className="shrink-0">{row.endMetric}</span> : null}
       {row.roster ? (
@@ -109,7 +109,7 @@ function StandingsRow({ row, index, total }: { row: FinalStandingsRow; index: nu
           {row.roster ? (
             <details className="final-standings-roster">
               <summary className="cursor-pointer">{header}</summary>
-              <div className="border-t border-dashed border-[#c7bfac] px-3.5 pt-2.5 pb-3.5">{row.roster}</div>
+              <div className="border-t border-dashed border-panel-line px-3.5 pt-2.5 pb-3.5">{row.roster}</div>
             </details>
           ) : (
             header

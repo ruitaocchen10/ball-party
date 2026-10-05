@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 // A place to pick settings rather than a landing page (see below), so it stays
 // out of the index until it earns its own content.
@@ -59,7 +60,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
 
         <div className="mx-auto w-full max-w-[1080px]">
@@ -73,7 +74,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
             <SoloGrid higherOrLowerEra={higherOrLowerEra} />
           </section>
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }

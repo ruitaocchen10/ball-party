@@ -107,12 +107,12 @@ export default async function AdminPostsPage({
             return (
             <li key={post.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-6">
               <div className="min-w-0">
-                <p className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">{post.template_name}</p>
+                <p className="type-label text-fg-muted">{post.template_name}</p>
                 <h2 className="mt-1 truncate text-base font-semibold text-fg">{post.caption || post.prompt_text}</h2>
                 {post.caption ? <p className="mt-1 line-clamp-2 text-sm text-fg-muted">{post.prompt_text}</p> : null}
               </div>
               <div className="flex shrink-0 items-center gap-3 sm:flex-col sm:items-end sm:gap-1">
-                <span className="border border-line px-2 py-1 font-mono text-[10px] font-bold tracking-[0.1em] uppercase text-fg">
+                <span className="border border-line px-2 py-1 type-label font-bold text-fg">
                   {STATUS_LABELS[post.status as Exclude<Filter, "all">] ?? post.status}
                 </span>
                 <p className="font-mono text-[10px] tracking-[0.04em] text-fg-muted">

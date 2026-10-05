@@ -29,12 +29,12 @@ export function LobbyLineup({
     <section aria-labelledby="lineup-heading" className="flex flex-col gap-5 lg:gap-6">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">At the table</p>
+          <p className="type-label text-hidden-text">At the table</p>
           <h2 id="lineup-heading" className="mt-1 font-slab text-3xl leading-none uppercase sm:text-4xl">
             Your party
           </h2>
         </div>
-        <p className="pb-0.5 text-right font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
+        <p className="pb-0.5 text-right type-label text-fg-muted">
           {members.length} of {CAPACITY} seats
         </p>
       </div>

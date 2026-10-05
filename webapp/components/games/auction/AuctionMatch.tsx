@@ -57,6 +57,7 @@ import { LOT_REVEAL_MS, useLotReveal } from "@/lib/games/auction/useLotReveal";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/runtime/realtime/client";
 import { TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/runtime/game-runtime/useMatchClock";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /**
  * The whole game, on one screen.
@@ -532,7 +533,7 @@ export function AuctionMatch({
 
   if (finished) {
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-8">
+      <PageShell variant="narrow">
         <FinalScreen
           lots={lots}
           players={players}
@@ -544,15 +545,15 @@ export function AuctionMatch({
           format={format}
           era={initial.era ?? null}
         />
-      </main>
+      </PageShell>
     );
   }
 
   if (!lot) {
     return (
-      <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
+      <PageShell variant="game" locked>
         <p className="text-sm text-fg-muted">Waiting for the next lot…</p>
-      </main>
+      </PageShell>
     );
   }
 
@@ -596,7 +597,7 @@ export function AuctionMatch({
   const sealState: TokenState = me?.used_seal_token ? "used" : sealAvailable ? "usable" : "inactive";
 
   return (
-    <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
+    <PageShell variant="game" locked>
       {isHost || isPaused ? (
         <div className="flex items-start justify-between gap-3">
           {isPaused ? <PauseBanner /> : <div />}
@@ -653,7 +654,7 @@ export function AuctionMatch({
                       control that produces this now lives in the token tray
                       below the clock, alongside Pass and Seal. */}
                   {myHint ? (
-                    <span role="img" aria-label={`Scouted: a ${myHint.tier} performance`} className="font-mono text-[10px] font-bold tracking-[0.12em] text-panel-muted uppercase">
+                    <span role="img" aria-label={`Scouted: a ${myHint.tier} performance`} className="type-label font-bold text-panel-muted">
                       Scouted: {myHint.tier}
                     </span>
                   ) : null}
@@ -776,7 +777,7 @@ export function AuctionMatch({
           : []}
       />
       </aside></div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -991,11 +992,11 @@ function AuctionMatchup({ lot }: { lot: Lot }) {
   const weekly = lot.week !== null && lot.opponent !== null;
   return (
     <div className="mt-4 w-full border-t border-line pt-3" aria-label={weekly ? `${lot.season}, week ${lot.week}, ${lot.team} versus ${lot.opponent}` : `${lot.season} season, ${lot.team}`}>
-      <p className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">{weekly ? `${lot.season} · week ${lot.week}` : `${lot.season} season`}</p>
+      <p className="type-label text-fg-muted">{weekly ? `${lot.season} · week ${lot.week}` : `${lot.season} season`}</p>
       {weekly ? (
         <div className="mt-2 flex items-center gap-3">
           <AuctionTeam code={lot.team} />
-          <span className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">vs</span>
+          <span className="type-label text-fg-muted">vs</span>
           <AuctionTeam code={lot.opponent!} />
         </div>
       ) : <div className="mt-2 flex justify-center"><AuctionTeam code={lot.team} /></div>}
@@ -1013,15 +1014,15 @@ function SoldHeadline({ lot, players }: { lot: Lot; players: Player[] }) {
 
   if (!lot.winner_id) {
     return (
-      <p className="rounded bg-surface-raised px-3.5 py-2 font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase shadow-well">
+      <p className="bg-surface-raised px-3.5 py-2 type-label-lg text-fg-muted shadow-well">
         No sale
       </p>
     );
   }
 
   return (
-    <div aria-hidden className="animate-sold-headline rounded border border-panel bg-panel px-3.5 py-2.5 text-panel-fg shadow-card">
-      <p className="font-mono text-[10px] tracking-[0.15em] text-panel-muted uppercase">Sold to</p>
+    <div aria-hidden className="animate-sold-headline border border-panel bg-panel px-3.5 py-2.5 text-panel-fg shadow-card">
+      <p className="type-label text-panel-muted">Sold to</p>
       <p className="mt-1 flex items-baseline justify-between gap-3 font-slab text-xl leading-none uppercase">
         <span className="truncate">{winner?.display_name ?? "Unknown buyer"}</span>
         <span className="shrink-0 font-mono text-sm tabular-nums">${lot.price ?? 0}</span>
@@ -1040,7 +1041,7 @@ function PointsReveal({ lot, tier }: { lot: Lot; tier: ReturnType<typeof weeklyR
       <span className={`min-w-0 font-slab text-4xl leading-none tabular-nums ${tier === "rough" ? "text-grade-rough" : tier === "solid" ? "text-grade-strong" : tier === "great" ? "text-grade-elite" : ""}`}>
         {fmt(lot.points)}
       </span>
-      {copy ? <span className="font-mono text-[10px] font-bold tracking-[0.12em] text-panel-muted uppercase">{copy}</span> : null}
+      {copy ? <span className="type-label font-bold text-panel-muted">{copy}</span> : null}
     </div>
   );
 }
@@ -1173,7 +1174,7 @@ function Roster({ lots, userId, format, highlightLot = null }: { lots: Lot[]; us
 
         return (
           <div key={`${slot}-${index}`} className={`flex min-h-10 items-center justify-between gap-3 rounded border px-2.5 py-2 ${tone} ${justAdded ? "ring-2 ring-panel motion-safe:animate-player-to-roster" : ""}`}>
-            <span className="shrink-0 font-mono text-[10px] tracking-[0.07em] text-panel-muted uppercase">{label}</span>
+            <span className="shrink-0 type-label text-panel-muted">{label}</span>
             {won ? (
               <span role="img" aria-label={`${label} slot, ${won.display_name}, ${fmt(won.points)} points`} className="flex min-w-0 items-center gap-2 text-sm">
                 {won.headshot_url ? <img src={won.headshot_url} alt="" className="h-6 w-6 shrink-0 rounded-full bg-panel-shade object-cover object-top" /> : <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-hidden font-slab text-[9px] text-panel">{won.display_name.slice(0, 1)}</span>}
@@ -1214,8 +1215,8 @@ function AuctionClock({ phase, remainingMs, onClock, isMine }: { phase: AuctionP
     : isMine ? "Your turn" : `${onClock?.display_name ?? "Someone"} is deciding`;
 
   return (
-    <section aria-label="Clock" className={`rounded border p-3 transition-colors ${tone}`}>
-      <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
+    <section aria-label="Clock" className={`border p-3 transition-colors ${tone}`}>
+      <p className="type-label-lg text-fg-muted">{label}</p>
       <p className={`mt-1 font-mono text-5xl leading-none tabular-nums ${urgent ? "text-hidden-text" : ""}`} aria-hidden>{display}</p>
       <p aria-live="polite" className="sr-only">{announcement}</p>
       <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-current/20">
@@ -1248,7 +1249,7 @@ function TokenTray({ remaining, total, tokens }: { remaining: number; total: num
     // two controls under the clock read as a matched set rather than one
     // titled area and one unlabeled row of icons.
     <section aria-label={`Tokens, ${remaining} of ${total} left`}>
-      <p aria-hidden className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">
+      <p aria-hidden className="type-label-lg text-fg-muted">
         Tokens · {remaining} of {total} left
       </p>
       <div className="relative mt-2 flex items-center gap-2.5">
@@ -1265,7 +1266,7 @@ function TokenTray({ remaining, total, tokens }: { remaining: number; total: num
             role="tooltip"
             className="pointer-events-none absolute top-full left-0 z-20 mt-1.5 w-48 bg-panel px-2.5 py-2 text-left font-sans text-[11px] leading-snug font-normal normal-case tracking-normal text-panel-fg shadow-card"
           >
-            <span className="block font-mono text-[9px] font-bold tracking-[0.1em] text-panel-muted uppercase">{active.label} · {TOKEN_STATE_TEXT[active.state]}</span>
+            <span className="block type-label-xs font-bold text-panel-muted">{active.label} · {TOKEN_STATE_TEXT[active.state]}</span>
             {active.description}
           </div>
         ) : null}
@@ -1395,8 +1396,8 @@ function SealedBidBar({
   const invalid = !Number.isInteger(Number(amount)) || Number(amount) < 0 || Number(amount) > budget;
 
   return (
-    <section aria-label="Sealed bid" className="rounded border border-line bg-surface px-3 py-3">
-      <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">Sealed bid</p>
+    <section aria-label="Sealed bid" className="border border-line bg-surface px-3 py-3">
+      <p className="type-label-lg text-fg-muted">Sealed bid</p>
       <p className="mt-1 font-mono text-[11px] text-fg-muted tabular-nums">Your budget · ${budget} left</p>
       {mine ? (
         <div className="mt-3">
@@ -1412,7 +1413,7 @@ function SealedBidBar({
           className="mt-3 flex items-end gap-2"
           onSubmit={(event) => { event.preventDefault(); if (!invalid) onSubmit(Number(amount)); }}
         >
-          <label className="flex-1 font-mono text-[11px] tracking-[0.13em] text-fg-muted uppercase">
+          <label className="flex-1 type-label-lg text-fg-muted">
             Amount
             <input
               value={amount}
@@ -1423,7 +1424,7 @@ function SealedBidBar({
               step="1"
               inputMode="numeric"
               disabled={pending || paused}
-              className="mt-1 block w-full rounded border border-line bg-surface-raised px-2 py-2 font-mono text-lg font-bold"
+              className="mt-1 block w-full border border-line bg-surface-raised px-2 py-2 font-mono text-lg font-bold"
             />
           </label>
           <Button type="submit" disabled={invalid || pending || paused} fullWidth={false}>Submit</Button>
@@ -1531,10 +1532,10 @@ function BidBar({
       ref={surface}
       tabIndex={-1}
       aria-label="Bid controls"
-      className="relative rounded border border-line bg-surface px-3 py-3 outline-none"
+      className="relative border border-line bg-surface px-3 py-3 outline-none"
     >
       <div className="flex items-baseline justify-between gap-3">
-        <span className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">Standing bid</span>
+        <span className="type-label-lg text-fg-muted">Standing bid</span>
         <span className="font-slab text-2xl leading-none tabular-nums">{phase === "lot_preview" ? "—" : `$${price}`}</span>
       </div>
       <p className="mt-1 font-mono text-[11px] text-fg-muted tabular-nums">Your budget · ${budget} left</p>
@@ -1583,8 +1584,8 @@ function BidBar({
             onSubmit={(event) => { event.preventDefault(); if (!invalid) onRaise(Number(amount)); }}
             onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeCustom(); } }}
           >
-            <label className="block font-mono text-[11px] tracking-[.13em] text-panel-muted uppercase">Custom bid
-              <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full rounded border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
+            <label className="block type-label-lg text-panel-muted">Custom bid
+              <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
             </label>
             <p className="mt-1 text-xs text-panel-muted">Minimum is ${minimum}. Your maximum is ${budget}.</p>
             {error ? <p role="alert" className="mt-1 text-xs text-hidden-ink">{error}</p> : null}
@@ -1673,7 +1674,7 @@ function RosterFinal({ lots, userId, format }: { lots: Lot[]; userId: string; fo
         const tier = lot ? weeklyRevealTier(lot) : null;
         return (
           <div key={`${slot}-${index}`} className="flex min-w-0 items-center gap-2.5">
-            <dt className="w-9 shrink-0 font-mono text-[10px] tracking-[0.05em] text-panel-muted uppercase">{label}</dt>
+            <dt className="w-9 shrink-0 type-label text-panel-muted">{label}</dt>
             {lot ? (
               <>
                 <LotPortrait name={lot.display_name} headshotUrl={lot.headshot_url} className="h-7 w-7 text-xs" />

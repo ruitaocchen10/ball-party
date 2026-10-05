@@ -19,7 +19,7 @@ export function AuthorIdentity({
       <AuthorAvatar name={name} avatarUrl={avatarUrl} />
       <div className="min-w-0 leading-none">
         <p className="truncate font-mono text-base font-bold text-fg">{name}</p>
-        <p className="mt-1 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">Rookie</p>
+        <p className="mt-1 type-label text-fg-muted">Rookie</p>
       </div>
     </div>
   );

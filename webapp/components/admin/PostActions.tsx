@@ -17,7 +17,7 @@ export type AdminSlot = {
 type Mode = "resolve" | "void" | null;
 
 const BUTTON =
-  "border px-3 py-2 font-mono text-[10px] font-bold tracking-[0.12em] uppercase transition-colors disabled:opacity-40";
+  "border px-3 py-2 type-label font-bold transition-colors disabled:opacity-40";
 
 /** How many answers a slot needs: pick is always one, the other shapes carry pick_count. */
 function requiredCount(slot: AdminSlot) {
@@ -119,7 +119,7 @@ export function PostActions({
             return (
               <fieldset key={slot.id}>
                 <legend className="text-sm font-semibold text-fg">{slot.label}</legend>
-                <p className="mt-1 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">
+                <p className="mt-1 type-label text-fg-muted">
                   {slot.shape === "rank"
                     ? `Click ${need} in order, first place first`
                     : need === 1

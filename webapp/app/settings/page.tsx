@@ -9,6 +9,7 @@ import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { canViewProfile, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { createClient } from "@/lib/supabase/server";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /** Account-level controls that don't belong on the public /profile page:
  *  credentials, ranking visibility, and account deletion. */
@@ -37,7 +38,7 @@ export default async function SettingsPage() {
     <>
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <div className="mx-auto w-full max-w-[1080px]">
           <PageHeader eyebrow="Settings" title="Your settings" description="Credentials, privacy, and your account." />
 
@@ -55,7 +56,7 @@ export default async function SettingsPage() {
             </SettingsCard>
           </div>
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -63,7 +64,7 @@ export default async function SettingsPage() {
 function SettingsCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section aria-label={title} className="rounded-card border border-line bg-surface-raised p-5 shadow-well sm:p-6">
-      <h2 className="font-mono text-[10px] font-black tracking-[0.13em] text-hidden uppercase">{title}</h2>
+      <h2 className="type-label font-black text-hidden">{title}</h2>
       <div className="mt-5">{children}</div>
     </section>
   );
@@ -74,14 +75,14 @@ function GuestSettings() {
     <>
       <Sidebar />
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <section className="max-w-xl">
-          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Settings</p>
+          <p className="type-label text-hidden-text">Settings</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Make it yours</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Your name is just for the current game. Create an account to get settings for credentials, privacy, and more.</p>
           <div className="mt-6"><GuestUpgrade /></div>
         </section>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -91,14 +92,14 @@ function SignedOutSettings() {
     <>
       <Sidebar />
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <section className="max-w-xl">
-          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Settings</p>
+          <p className="type-label text-hidden-text">Settings</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Sign in for settings</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Sign in to manage your credentials and account.</p>
-          <Link href="/login?next=/settings" className="mt-6 inline-flex bg-panel px-4 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
+          <Link href="/login?next=/settings" className="mt-6 inline-flex bg-panel px-4 py-3 type-label font-bold text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
         </section>
-      </main>
+      </PageShell>
     </>
   );
 }

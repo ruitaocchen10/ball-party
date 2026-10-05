@@ -7,7 +7,7 @@ export function LobbyActivity({ activity }: { activity: RoomActivity[] }) {
   return (
     <section aria-labelledby="activity-heading" className="flex flex-col gap-3">
       <div>
-        <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">This room</p>
+        <p className="type-label text-fg-muted">This room</p>
         <h2 id="activity-heading" className="mt-1 font-slab text-2xl leading-none uppercase">Activity</h2>
       </div>
 
@@ -23,7 +23,7 @@ export function LobbyActivity({ activity }: { activity: RoomActivity[] }) {
               <Trophy aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-panel" strokeWidth={1.5} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm leading-5 text-fg">{activityLabel(item)}</p>
-                <time dateTime={item.endedAt} className="font-mono text-[9px] tracking-[0.08em] text-fg-muted uppercase">
+                <time dateTime={item.endedAt} className="type-label-xs text-fg-muted">
                   {timeAgo(item.endedAt)}
                 </time>
               </div>

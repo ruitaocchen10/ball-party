@@ -7,11 +7,6 @@ import { deleteAccount } from "@/app/settings/actions";
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
 import { Button } from "@/components/foundation/ui-kit/Button";
 
-// Destructive, so it stays visually subordinate — same convention as
-// LobbyTopStrip's "Close room": ghost + the hidden/red-adjacent tokens,
-// since there's no dedicated destructive Button variant.
-const DANGER_BUTTON = "min-h-9 px-3.5 text-[10px] text-hidden-text ring-hidden/40 hover:bg-hidden/10";
-
 /** Two-step disclosure in place of a modal — one boolean is enough ceremony
  *  for a single confirm, and this is the only destructive control on the page. */
 export function DeleteAccountSection() {
@@ -34,7 +29,7 @@ export function DeleteAccountSection() {
 
   if (!confirming) {
     return (
-      <Button type="button" variant="ghost" fullWidth={false} onClick={() => setConfirming(true)} className={DANGER_BUTTON}>
+      <Button type="button" variant="danger" size="sm" fullWidth={false} onClick={() => setConfirming(true)}>
         Delete account
       </Button>
     );
@@ -49,7 +44,7 @@ export function DeleteAccountSection() {
         {error}
       </AnimatedMessage>
       <div className="flex flex-wrap gap-2.5">
-        <Button type="button" variant="ghost" fullWidth={false} disabled={pending} onClick={confirm} className={DANGER_BUTTON}>
+        <Button type="button" variant="danger" size="sm" fullWidth={false} disabled={pending} onClick={confirm}>
           {pending ? "Deleting…" : "Yes, permanently delete my account"}
         </Button>
         <Button type="button" variant="ghost" fullWidth={false} disabled={pending} onClick={() => setConfirming(false)} className="min-h-9 px-3.5 text-[10px]">

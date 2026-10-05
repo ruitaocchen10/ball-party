@@ -35,7 +35,7 @@ export function PickOneBoard({ options, poolSize }: { options: Option[]; poolSiz
         ))}
       </div>
       {hidden > 0 ? (
-        <p className="mt-2 text-center font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">+{hidden} more to choose from</p>
+        <p className="mt-2 text-center type-label text-fg-muted">+{hidden} more to choose from</p>
       ) : null}
     </section>
   );
