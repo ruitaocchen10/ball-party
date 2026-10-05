@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowLeft, Camera, X } from "lucide-react";
+import { ArrowLeft, Camera } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { type ProfileUpdateState, updateProfile } from "@/app/profile/actions";
 import { ProfileAvatar } from "@/components/foundation/identity/ProfileAvatar";
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
 import { Field, Input } from "@/components/foundation/ui-kit/Input";
+import { Modal, ModalTitle } from "@/components/foundation/ui-kit/Modal";
 import { createClient } from "@/lib/supabase/client";
 import { PresetAvatarPicker } from "./PresetAvatarPicker";
 
@@ -61,20 +62,6 @@ function ProfileEditorDialog({ displayName, avatarUrl, userId, onClose }: Profil
   const [uploadError, setUploadError] = useState<string | null>(null);
   const nameInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    nameInput.current?.focus();
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    const { overflow } = document.body.style;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = overflow;
-    };
-  }, [onClose]);
-
   // Uploads straight to Storage from the browser. The avatars bucket's RLS
   // policy limits a write to the signed-in user's own prefix.
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -110,92 +97,75 @@ function ProfileEditorDialog({ displayName, avatarUrl, userId, onClose }: Profil
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto p-4" role="presentation">
-      <button type="button" aria-label="Close profile editor" onClick={onClose} className="absolute inset-0 bg-black/60" />
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="profile-editor-title"
-        className="relative my-auto w-full max-w-md bg-surface-raised p-5 shadow-card"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close profile editor"
-          className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center text-fg-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
-        >
-          <X className="h-5 w-5" strokeWidth={1.5} />
-        </button>
-
-        {state.saved ? (
+    <Modal onClose={onClose} closeLabel="Close profile editor" initialFocusRef={nameInput}>
+      {state.saved ? (
+        <div className="pr-10">
+          <p className="type-label font-semibold text-hidden-text">Profile updated</p>
+          <ModalTitle className="mt-1 font-slab text-3xl uppercase">Looking good.</ModalTitle>
+          <p className="mt-2 text-sm text-fg-muted">Your profile changes have been saved.</p>
+          <button type="button" onClick={onClose} className="mt-5 bg-panel px-3.5 py-2.5 type-label font-bold text-panel-fg">
+            Done
+          </button>
+        </div>
+      ) : editingPhoto ? (
+        <ProfilePhotoChooser
+          avatarUrl={avatar || null}
+          displayName={displayName}
+          userId={userId}
+          uploading={uploading}
+          uploadError={uploadError}
+          onBack={() => setEditingPhoto(false)}
+          onUpload={handleFileChange}
+          onPresetSelected={(url) => {
+            setAvatar(url);
+            setEditingPhoto(false);
+          }}
+          onPresetUploadingChange={setPresetUploading}
+        />
+      ) : (
+        <form action={formAction}>
           <div className="pr-10">
-            <p className="type-label font-semibold text-hidden-text">Profile updated</p>
-            <h2 id="profile-editor-title" className="mt-1 font-slab text-3xl uppercase">Looking good.</h2>
-            <p className="mt-2 text-sm text-fg-muted">Your profile changes have been saved.</p>
-            <button type="button" onClick={onClose} className="mt-5 bg-panel px-3.5 py-2.5 type-label font-bold text-panel-fg">
-              Done
+            <p className="type-label font-semibold text-hidden-text">Player profile</p>
+            <ModalTitle className="mt-1 font-slab text-3xl uppercase">Edit profile</ModalTitle>
+          </div>
+          <div className="mt-5 pb-5">
+            <button
+              type="button"
+              aria-label="Change profile photo"
+              onClick={() => setEditingPhoto(true)}
+              className="group relative block rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-panel"
+            >
+              <ProfileAvatar name={displayName} avatarUrl={avatar || null} />
+              <span className="absolute right-0 bottom-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface-raised bg-panel text-panel-fg transition-transform group-hover:scale-105">
+                <Camera aria-hidden className="h-4 w-4" strokeWidth={1.8} />
+              </span>
+            </button>
+            <input type="hidden" name="avatar_url" value={avatar} />
+          </div>
+          <Field label="Display name" className="mt-5">
+<Input
+              ref={nameInput}
+              name="display_name"
+              defaultValue={displayName}
+              minLength={2}
+              maxLength={16}
+              required
+              />
+</Field>
+          <AnimatedMessage role="alert" className="mt-3 text-sm text-hidden-text">
+            {state.error}
+          </AnimatedMessage>
+          <div className="mt-5 flex gap-2.5">
+            <button type="submit" disabled={pending || uploading || presetUploading} className="bg-panel px-3.5 py-2.5 type-label font-bold text-panel-fg disabled:opacity-60">
+              {pending ? "Saving…" : "Save profile"}
+            </button>
+            <button type="button" disabled={pending} onClick={onClose} className="px-3 py-2.5 type-label font-bold text-fg-muted hover:text-fg disabled:opacity-60">
+              Cancel
             </button>
           </div>
-        ) : editingPhoto ? (
-          <ProfilePhotoChooser
-            avatarUrl={avatar || null}
-            displayName={displayName}
-            userId={userId}
-            uploading={uploading}
-            uploadError={uploadError}
-            onBack={() => setEditingPhoto(false)}
-            onUpload={handleFileChange}
-            onPresetSelected={(url) => {
-              setAvatar(url);
-              setEditingPhoto(false);
-            }}
-            onPresetUploadingChange={setPresetUploading}
-          />
-        ) : (
-          <form action={formAction}>
-            <div className="pr-10">
-              <p className="type-label font-semibold text-hidden-text">Player profile</p>
-              <h2 id="profile-editor-title" className="mt-1 font-slab text-3xl uppercase">Edit profile</h2>
-            </div>
-            <div className="mt-5 pb-5">
-              <button
-                type="button"
-                aria-label="Change profile photo"
-                onClick={() => setEditingPhoto(true)}
-                className="group relative block rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-panel"
-              >
-                <ProfileAvatar name={displayName} avatarUrl={avatar || null} />
-                <span className="absolute right-0 bottom-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface-raised bg-panel text-panel-fg transition-transform group-hover:scale-105">
-                  <Camera aria-hidden className="h-4 w-4" strokeWidth={1.8} />
-                </span>
-              </button>
-              <input type="hidden" name="avatar_url" value={avatar} />
-            </div>
-            <Field label="Display name" className="mt-5">
-<Input
-                ref={nameInput}
-                name="display_name"
-                defaultValue={displayName}
-                minLength={2}
-                maxLength={16}
-                required
-                />
-</Field>
-            <AnimatedMessage role="alert" className="mt-3 text-sm text-hidden-text">
-              {state.error}
-            </AnimatedMessage>
-            <div className="mt-5 flex gap-2.5">
-              <button type="submit" disabled={pending || uploading || presetUploading} className="bg-panel px-3.5 py-2.5 type-label font-bold text-panel-fg disabled:opacity-60">
-                {pending ? "Saving…" : "Save profile"}
-              </button>
-              <button type="button" disabled={pending} onClick={onClose} className="px-3 py-2.5 type-label font-bold text-fg-muted hover:text-fg disabled:opacity-60">
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-      </section>
-    </div>
+        </form>
+      )}
+    </Modal>
   );
 }
 
@@ -230,7 +200,7 @@ function ProfilePhotoChooser({
         <ProfileAvatar name={displayName} avatarUrl={avatarUrl} />
         <div>
           <p className="type-label font-semibold text-hidden-text">Profile photo</p>
-          <h2 id="profile-editor-title" className="mt-1 font-slab text-3xl uppercase">Choose your look</h2>
+          <ModalTitle className="mt-1 font-slab text-3xl uppercase">Choose your look</ModalTitle>
         </div>
       </div>
       <div className="mt-5">
