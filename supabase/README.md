@@ -6,105 +6,60 @@ matters lives here rather than in the client — see
 
 ## Schemas
 
-A game gets a pair of schemas rather than a naming convention, so that `public`
-does not become a drawer of `place_bid`, `submit_clue`, `pick_card`. Postgres
-schemas are the module boundary the architecture doc describes, and the rule
-that a game may not reach into the platform is a `grant` rather than something
-a reviewer has to notice.
+A game gets a pair of schemas rather than a naming convention, so `public` does
+not become a drawer of `place_bid`, `submit_clue`, `pick_card`. Postgres schemas
+are the module boundary the architecture doc describes, and "a game may not
+reach into the platform" is a `grant` rather than something a reviewer has to
+notice.
 
 ```
-public           platform + contract. Lobbies, runs, matches, post-game.
-                 Also the client-readable game tables, since RLS and the
-                 Realtime publication are what make them readable.
-private          cross-cutting internals, the content module (player_weeks,
-                 player_seasons, player_headshots), and — for now — the
+public           platform + contract. Lobbies, runs, matches, post-game, and
+                 the client-readable game tables (RLS and the Realtime
+                 publication are what make them readable).
+private          cross-cutting internals and the content pools
+                 (player_weeks, player_seasons, player_headshots), plus the
                  auction's hidden state (auction_answers, auction_boards).
-auction          one game's write API. Exposed through PostgREST.
-auction_private  that game's rules engine. Not exposed, and no usage granted
-                 to anon or authenticated, so it is unreachable rather than
-                 merely unrouted.
 
-higher_or_lower          the same pair for the second game. Its hidden state
-higher_or_lower_private  lives in its own private schema rather than in
-                         `private` — see 0032.
-
-sabotage_draft           the third game's pair. Its hidden state (a pick's
-sabotage_draft_private   identity and season) is a column on a client-readable,
-                         Realtime-published table rather than a second
-                         physical table — RLS restricts it to the pick's own
-                         owner. See 0052 and its test file for why that is
-                         still leak-safe.
-
-qb_season_builder          the fourth game's pair. Its hidden state is
-qb_season_builder_private  genuinely separate: the finished ratings and the
-                           value each pick was worth live only in the private
-                           schema, because hidden mode is enforced by what the
-                           API returns and no table a client can select from
-                           may hold a number. See 0120 and
-                           docs/games/qb_season_builder.md.
+<game>           one game's write API, exposed through PostgREST.
+<game>_private   that game's rules engine and hidden state. Not exposed, and no
+                 usage granted to anon or authenticated, so it is unreachable
+                 rather than merely unrouted.
 ```
 
-0029 moved functions only. The auction's tables are still split across `public`
-and `private`, which is why `auction_private.resolve` writes to
-`private.auction_answers`. Moving them touches the Realtime publication and the
-policies the 0010 leak test asserts on, so it is worth doing on its own.
+Games with a pair: `auction`, `higher_or_lower`, `sabotage_draft`,
+`qb_season_builder`, `wavelength`, and `prompts` (the Huddle). A client reaches
+one with `supabase.schema("auction").rpc(...)`.
 
-Adding a game means adding its two schemas and listing the public one in
-`[api] schemas` in `config.toml` — **and in the hosted project's exposed-schema
-setting, which is dashboard state that no migration can carry.** A client
-reaches it with `supabase.schema("auction").rpc(...)`.
+Where a game keeps hidden state differs, and the game's own schema migration
+header explains why:
 
-Note that `supabase db reset` does not re-read `config.toml`. Exposing a new
-schema locally takes `supabase stop && supabase start`, and until then every
-call to it returns PGRST106.
+- **auction:** the tables are still split across `public` and `private`
+  (`auction_private.resolve` writes `private.auction_answers`). Moving them
+  touches the Realtime publication and the policies the `0010` leak test asserts
+  on, so it should be done on its own.
+- **higher_or_lower, qb_season_builder, wavelength:** hidden state lives only in
+  the `_private` schema. For QB Season Builder, hidden mode is enforced by what
+  the API returns, so no client-selectable table holds a number.
+- **sabotage_draft:** a pick's identity and season are columns on a
+  client-readable, Realtime-published table, restricted by RLS to the pick's
+  owner (see `0052` and its test for why that is leak-safe).
 
-**Deploying 0032 takes that dashboard step.** Migration 0032 adds
-`higher_or_lower` to `[api] schemas` above, which covers local development
-only. Before the hosted project can start a Higher or Lower match, add
-`higher_or_lower` to Settings → API → Exposed schemas (the "Data API" section,
-`db-schema` in the PostgREST config) and save. The migration applies fine
-without it, and every call to `higher_or_lower.start` fails with PGRST106 until
-it is done.
+### Adding a game
 
-**Deploying 0051 takes it again.** Migration 0051 adds `sabotage_draft` to
-`[api] schemas` above, local development only. Before the hosted project can
-start a sabotage draft match, add `sabotage_draft` to Settings → API →
-Exposed schemas the same way, and save. Until that step, `sabotage_draft.start`
-and every other call into the schema fails with PGRST106.
-
-**Deploying 0120 takes it once more.** Migration 0120 adds `qb_season_builder`
-to `[api] schemas` above, local development only. Before the hosted project can
-start a QB Season Builder run, add `qb_season_builder` to Settings → API →
-Exposed schemas and save. Until then every call into the schema fails with
-PGRST106. Locally, `supabase stop && supabase start` picks the change up.
-
-**Deploying 0161 takes it once more.** Migration 0161 adds `wavelength` to
-`[api] schemas` above, local development only. Before the hosted project can
-start a Wavelength match, add `wavelength` to Settings → API → Exposed schemas
-and save. Until then every call into the schema fails with PGRST106. Locally,
-`supabase stop && supabase start` picks the change up.
+Add its two schemas, and list the public one in `[api] schemas` in
+`config.toml`. **Also add it to the hosted project's Settings → API → Exposed
+schemas, and save. That is dashboard state no migration can carry.** The
+migration applies fine without it, and every call into the schema then fails
+with `PGRST106` until it is done. Locally, `supabase db reset` does not re-read
+`config.toml`; run `supabase stop && supabase start` to expose a new schema.
 
 ## Migrations
 
-The list below stops at 0011 and has not been kept up; `ls migrations/` is the
-authority.
-
-```
-0001  profiles                 accounts, and the auth trigger behind them
-0002  backfill
-0003  lobbies                  lobby / run / match tables, SELECT policies, Realtime
-0004  harden definer functions the `private` schema, and why it exists
-0005  lobby rpc                the lobby write API
-0006  keep members on close
-0007  player_weeks             the auction's pool, server-side only
-0008  player_weeks 2010-2025   ~40k rows, generated (scripts/player_pool/)
-0009  runs and matches         start_run, finish_match, the janitor's hooks
-0010  auction board            lots, budgets, the dealer, and the two-table split
-0011  auction bidding          bidding, the turn timer, resolution, completion
-```
+`ls migrations/` is the list.
 
 **Migration history is append-only.** An applied file is never edited, not even
-for a comment. A change is a new migration.
+for a comment. A change is a new migration. (This is why some old migration
+comments cite doc paths that have since moved.)
 
 ## Running it locally
 
@@ -128,7 +83,7 @@ project — signing up locally requires clicking a confirmation link, same as
 prod. Local mail never actually sends; it lands in the fake inbox at
 `[local_smtp]` (Studio → the inbox link on port 55324, or `supabase start`'s
 own printed URL) instead of a real mailbox. Google sign-in is not configured
-locally — `components/auth/GoogleButton.tsx` will error if clicked against
+locally — `webapp/components/foundation/identity/GoogleButton.tsx` will error if clicked against
 the local stack; use email/password to test auth locally instead.
 
 ## Tests

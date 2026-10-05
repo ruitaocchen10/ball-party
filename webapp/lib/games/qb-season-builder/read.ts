@@ -8,7 +8,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
  * A finished run's saved season, or null when there is genuinely no such result
  * — an id that is not a run, a run still in play, one that was never finished.
  * Readable signed out: the run's id is the whole capability (see
- * docs/games/qb_season_builder.md), which is what lets a shared link work.
+ * docs/games/qb_season_builder/rules.md), which is what lets a shared link work.
  *
  * Only `result_not_found` is "no result". Anything else is the database failing
  * to answer, and it is raised rather than flattened into a missing season — a

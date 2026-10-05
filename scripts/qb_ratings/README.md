@@ -4,10 +4,10 @@ The offline pipeline behind QB Season Builder's numbers: five quality values
 (Accuracy, Arm Talent, Mobility, IQ, Build, each 0-99) for every qualifying
 quarterback-season and a Supporting Cast value for every team-season, 2006
 through 2025. Game rules in
-[`docs/games/qb_season_builder.md`](../../docs/games/qb_season_builder.md); the
-recipe and weights are from issue #72, and the Madden license decision that
+[`docs/games/qb_season_builder/rules.md`](../../docs/games/qb_season_builder/rules.md); the
+recipe and weights are in `config.py`, and the Madden license decision that
 allows the talent layer is in
-[`docs/games/qb_season_builder_madden_data.md`](../../docs/games/qb_season_builder_madden_data.md).
+[`docs/games/qb_season_builder/madden_data.md`](../../docs/games/qb_season_builder/madden_data.md).
 
 ## Loading it
 
@@ -50,18 +50,18 @@ lists a player but not the attribute a trait needs falls back for that trait
 only. A quarterback with no usable Madden input for a trait is 100% the stat
 side for that trait. Imputed ratings in the source dataset are never used.
 
-### Where this differs from the spec, and why
+### Choices worth knowing
 
 - **Stat proxies are limited to the weekly file.** The weekly file carries
   CPOE, air yards, EPA, sacks and completions of 20+ yards for the whole
-  2006-2025 range (better than the 2010 the issue assumed), but not third-down
+  2006-2025 range but not third-down
   EPA, scrambles or an adjusted completion percentage, and ESPN's QBR is not in
   the feed. IQ leans mostly on passing EPA per dropback (nflverse's `qb_epa`,
   sacks included), with ball security and sack avoidance as a small share;
   Mobility on rushing efficiency, and deep-ball rate is completions of 20+
   yards per attempt.
 - **First-down rate per carry is not a Mobility input.** It rewards quarterback
-  sneaks, and the spec never asked for it.
+  sneaks, and no input needs it.
 - **The value band is 25-99, not 0-99.** A season's worst rated quarterback maps
   to `value_floor` (25) so a qualifying starter never reads as a zero; the
   schema still allows 0-99, and overrides use the full range.

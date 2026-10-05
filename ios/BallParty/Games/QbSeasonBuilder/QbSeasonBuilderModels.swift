@@ -1,7 +1,7 @@
 import Foundation
 
 // Hand-maintained `Decodable` mirrors of what `qb_season_builder.state`, `pick`,
-// `respin`, `finish` and `result` return — see `docs/games/qb_season_builder.md`.
+// `respin`, `finish` and `result` return — see `docs/games/qb_season_builder/rules.md`.
 // The web's equivalents are `webapp/lib/games/qb-season-builder/board.ts` and
 // `result.ts`. The server decides whether a grade is shown at all: every
 // grade in a hidden run is `null` until the run is finished, so a `nil` here

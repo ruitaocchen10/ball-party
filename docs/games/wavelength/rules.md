@@ -1,7 +1,8 @@
 # 2v2 Wavelength
 
-**Status: playable.** Start it from a lobby with two players for co-op or four
-players for versus.
+Start it from a lobby with two players for co-op or four for versus. Arcade
+only (see `docs/app.md`); there is no solo mode, since the game needs a partner
+to read a clue.
 
 ### Core idea
 
@@ -48,18 +49,14 @@ anywhere on the arc. The needle above is sitting in a left `3`.
 **Scoring** — bands, not continuous distance. Max 4 per guess. Bands give a
 discrete "we got a 4!" moment and a clean target for co-op.
 
-**Wedge width** — fixed for the whole game (no narrowing in later rounds).
-Starting value is about 4% of the arc per wedge (20% total scoring zone). The
-published rules don't state the physical widths, so this is a guess to be tuned
-in playtesting. It is a single config constant, kept beside the star thresholds
-below because the two move together.
+**Wedge width** — fixed for the whole game (no narrowing in later rounds), about
+4% of the arc per wedge (20% total scoring zone). A single config constant,
+kept beside the star thresholds below because the two move together.
 
 **Hidden target enforcement** — the target lives in a column that RLS exposes to
 the psychic alone. Everyone sees the arc and the clue; exactly one person ever
-sees where the wedges are. This is the single strongest reason the stack fits:
-the alternative is hand-rolling per-player view filtering on every broadcast,
-forever, where getting it wrong once silently ruins games. The target is
-revealed to everyone when a guess locks.
+sees where the wedges are. The target is revealed to everyone when a guess
+locks.
 
 **Fill phase** — parallel and up front. Every player writes all of their clues
 at once, timed, then guessing runs sequentially, alternating players (and teams,
@@ -72,9 +69,7 @@ never part of what is broadcast.
 
 **Clue limits** — enforced server-side: 1 to 8 words, at most 100 characters, no
 digits. Spelled-out numbers ("sixty-two") are not enforceable and stay a social
-rule. These started at 1 to 4 words and 50 characters and were widened after the
-first card review, because many football cards need a phrase to place precisely.
-They're a single constant, so they can be tightened again if clues turn into
+rule. The limits are a single constant; tighten them if clues turn into
 descriptions of the position.
 
 **Timers**
@@ -95,46 +90,30 @@ actions resolve through the timeout rules above rather than a separate
 absent-player path. There is no cap on absence in co-op: an absent partner just
 produces skipped and auto-locked rounds until they return or the match finishes.
 
-**Prompt bank** — hand-authored, ours. Wavelength's published decks are
-copyrighted, the prompts _are_ the game so taste beats sourcing, and the volume
-is a text file rather than a data pipeline. Not combinatorial: drawing a random
-subject and a random axis independently would need a hand-authored compatibility
-matrix (`"A running back" × Cold/Hot` is nonsense), which is more work than
-writing whole cards.
+**Prompt bank** — hand-authored whole cards (two endpoints each). Wavelength's
+published decks are copyrighted, and subject and axis cannot be combined
+randomly (`"A running back" × Cold/Hot` is nonsense).
 
-- Launch target was **100 approved cards**; the bank is complete at **104**, in
-  `wavelength_cards.md`. They still need to be turned into a seed the game can
-  draw from.
-- **Every card is football-related.** The plan was ~70% NFL and ~30% general,
-  but in the first review batch every general card was rejected as not relevant,
-  so the general category is dropped and there is no `nfl`/`general` tag.
-- Workflow: AI drafts batches into `wavelength_cards.md`; the human marks each
-  card `[x]` (approve) or `[-]` (reject) with an optional note on rejects; repeat
-  until 100 are approved. Batch 1 landed 40 approvals from 60 drafts, all of them
-  football cards.
+- The deck is 104 cards in `wavelength_private.deck`, seeded by migration
+  `0161`. `card_id` is stable; a match copies the labels it was dealt, so editing
+  the deck never rewrites a finished match.
+- **Every card is football-related**, with no `nfl`/`general` tag. A good card is
+  a spectrum where reasonable people place the same clue at different spots.
 - No repeats within a match (draw without replacement). Nothing is tracked
   across matches at MVP; the target re-randomizes anyway.
 
 **No catch mechanic.** Real Wavelength has the opposing team bet left/right of
-the guess for a bonus point, specifically to keep them engaged. We're skipping
-it. Idle players watch the action, which is why the needle is live.
+the guess for a bonus point. We skip it; idle players watch the live needle.
 
-**Accounts** — guests join by room code with just a name, hosting needs an
-account. See ball-party#7.
+**Accounts** — multiplayer requires a real account (see `docs/app.md`).
 
 **Lobby** — the host picks Co-op or 2v2 explicitly. Start is enabled only when
 the player count matches the mode (2 for co-op, 4 for 2v2); three players can't
 start. The catalog lists the game as "2 or 4 players".
 
-**Party points** — deferred to the platform-wide decision, which is still open
-for every game (see `app.md`). Wavelength records a structured result — final
-score, outcome (win/lose or placement), bullseye count, and preset — so any
-later mapping can be applied without touching the game.
-
-**No solo/arcade mode.** The game needs a partner to read a clue, so the minimum
-is two players. Bots and single-player variants are not planned.
-
-**Clients** — webapp only for now. iOS follows once the game is stable.
+**Result** — Wavelength records a structured result (final score, outcome
+win/lose or placement, bullseye count, preset), so a future party-points mapping
+can be applied without touching the game.
 
 ### Decided — 2v2
 
@@ -165,9 +144,9 @@ next to the wedge width, so both can be retuned after playtesting.
 The result screen shows the score against the max, a bullseye count, and the star
 tier.
 
-### Open questions
+### Open
 
-- [ ] **Wedge width and star thresholds** — the starting values above are
-      guesses. Tune against how real games score before treating them as final.
-- [ ] **Sudden-death details** — it needs its own fill and guess phase; how long
-      the timers run for those extra rounds is not decided.
+- Wedge width and star thresholds are starting values; tune against how real
+  games score.
+- Sudden-death rounds need their own fill and guess phase; their timer lengths
+  are not decided.

@@ -13,7 +13,7 @@ select plan(59);
 
 -- ---------------------------------------------------------- no stranding --
 --
--- The claim docs/games/auction_team_builder.md argues for in prose: the deal
+-- The claim docs/games/auction_team_builder/rules.md argues for in prose: the deal
 -- guarantees the position counts, and the rule that a base lot may only be bid
 -- on by a player whose natural slot is open guarantees they get consumed
 -- one-for-one, so nobody can finish with a slot they never had a shot at.

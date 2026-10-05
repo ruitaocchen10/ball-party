@@ -2,7 +2,7 @@ import Foundation
 @testable import BallParty
 import XCTest
 
-/// The wire shapes in `docs/games/qb_season_builder.md`, decoded the way the
+/// The wire shapes in `docs/games/qb_season_builder/rules.md`, decoded the way the
 /// Supabase client would hand them over.
 final class QbSeasonBuilderModelsTests: XCTestCase {
     private func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {

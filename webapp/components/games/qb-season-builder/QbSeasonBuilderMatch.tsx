@@ -58,7 +58,7 @@ const SLOT_ICONS: Record<Slot, LucideIcon> = {
  * null, so the concealed marks below are an honest rendering of an absent
  * value rather than a screen that knows something it is choosing not to say.
  * Nothing here is a rule; `pick` and `respin` refuse anything this screen
- * would let through. See docs/games/qb_season_builder.md.
+ * would let through. See docs/games/qb_season_builder/rules.md.
  *
  * Working title only — the game's name and visual design are not final.
  */
