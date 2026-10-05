@@ -27,6 +27,7 @@ import { chooseLabel, modeForRoundCount, rosterSlots, slotForRound, slotLabel, x
 import { TURN_REVEAL_MS, useTurnReveal } from "@/lib/games/sabotage-draft/useTurnReveal";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/runtime/realtime/client";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 // One shared clock per turn (see docs/games/sabotage_draft/rules.md): the active
 // seat may lock a pick any time within turn_deadline, and every other seat
@@ -219,7 +220,7 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
   // actually applies to the viewer right now, and a quiet waiting state
   // otherwise.
   return (
-    <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
+    <PageShell variant="game" locked>
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="flex items-center gap-1.5 font-mono text-xs tracking-[.14em] text-fg-muted uppercase">
           Round {board.current_round} of {board.round_count} · {slotLabel(board.slot)}
@@ -252,7 +253,7 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
           <RosterBoard board={board} players={players} spins={spins} picks={picks} statuses={statuses} hits={hits} viewerId={viewerId} justResolved={!turnRevealed ? lastTurnResult : null} />
         </aside>
       </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -1169,12 +1170,12 @@ function Final({ roundCount, matchId, roomCode, isHost, viewerId, standings, pla
   }));
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-8">
+    <PageShell variant="narrow">
       <FinalStandings headline={headline} rows={rows} />
       {tiebreaks.length ? <TiebreakBracket tiebreaks={tiebreaks} players={players} viewerId={viewerId} /> : null}
       {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} /> : null}
       {roomCode ? <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} /> : null}
-    </main>
+    </PageShell>
   );
 }
 

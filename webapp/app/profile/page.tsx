@@ -14,6 +14,7 @@ import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
 import { completedMatchesFromHistory, profileStatRanges, summarizeMultiplayerProfileRange, type CompletedMatchWithMode } from "@/lib/foundation/identity/summary";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
 import { createClient } from "@/lib/supabase/server";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /** A player's durable record, kept deliberately separate from a live room. */
 export default async function ProfilePage() {
@@ -58,7 +59,7 @@ export default async function ProfilePage() {
     <>
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <div data-profile-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
           <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
             <div className="max-w-[760px]">
@@ -94,7 +95,7 @@ export default async function ProfilePage() {
             </div>
           </aside>
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -104,14 +105,14 @@ function GuestProfile() {
     <>
       <Sidebar />
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <section className="max-w-xl">
           <p className="type-label text-hidden-text">Current game</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Make your record yours</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Your name is just for the current game. Create an account to save a profile and keep your results.</p>
           <div className="mt-6"><GuestUpgrade /></div>
         </section>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -121,14 +122,14 @@ function SignedOutProfile() {
     <>
       <Sidebar />
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <section className="max-w-xl">
           <p className="type-label text-hidden-text">Player profile</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Your record starts here</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Sign in to keep a record of your games, wins, and streaks.</p>
           <Link href="/login?next=/profile" className="mt-6 inline-flex bg-panel px-4 py-3 type-label font-bold text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
         </section>
-      </main>
+      </PageShell>
     </>
   );
 }

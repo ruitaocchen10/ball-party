@@ -13,6 +13,7 @@ import { groupGames } from "@/lib/platform/orchestration/catalog";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { canCreateLobby, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.
@@ -64,7 +65,7 @@ export default async function PartyPage(props: PageProps<"/party">) {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
 
         <div data-party-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
@@ -103,7 +104,7 @@ export default async function PartyPage(props: PageProps<"/party">) {
             </div>
           </aside>
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }

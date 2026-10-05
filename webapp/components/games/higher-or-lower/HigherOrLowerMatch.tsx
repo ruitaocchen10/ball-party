@@ -45,6 +45,7 @@ import { postGameChoice } from "@/lib/platform/lobbies/actions";
 import { teamLogoCode } from "@/lib/foundation/content/nfl/team-logos";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/runtime/realtime/client";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /**
  * The ladder, on one screen.
@@ -281,7 +282,7 @@ export function HigherOrLowerMatch({
     }
 
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-6 py-10">
+      <PageShell variant="narrow">
         <FinalScreen
           standings={standings}
           players={players}
@@ -290,14 +291,12 @@ export function HigherOrLowerMatch({
           matchId={matchId}
           isHost={isHost}
         />
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className={isSolo
-      ? "app-page flex-1"
-      : "mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4"}>
+    <PageShell variant={isSolo ? "dashboard" : "game"} locked={!isSolo}>
       {!isSolo && (
         <header className="flex shrink-0 items-baseline justify-between gap-3">
           <h1 className="type-label-lg text-fg-muted">
@@ -439,7 +438,7 @@ export function HigherOrLowerMatch({
           </div>
         </aside> : null}
       </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -492,7 +491,7 @@ function SoloFinalScreen({
   const correct = player?.correct_count ?? 0;
   const revealedCards = cards.filter((card) => card.revealed_at !== null).sort((a, b) => a.ordinal - b.ordinal);
   return (
-    <main className="app-page flex-1">
+    <PageShell variant="dashboard">
       <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
         <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
           <PageHeader
@@ -555,7 +554,7 @@ function SoloFinalScreen({
           </div>
         </DashboardRail>
       </div>
-    </main>
+    </PageShell>
   );
 }
 

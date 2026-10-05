@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 export const metadata: Metadata = { title: "Sign-in problem", robots: { index: false } };
 
@@ -11,7 +12,7 @@ export default async function AuthCodeErrorPage({
   const { reason } = await searchParams;
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-4 px-6">
+    <PageShell variant="form">
       <h1 className="font-slab text-3xl leading-none uppercase">
         Sign-in didn&apos;t complete
       </h1>
@@ -24,6 +25,6 @@ export default async function AuthCodeErrorPage({
       >
         Back to sign in
       </Link>
-    </main>
+    </PageShell>
   );
 }

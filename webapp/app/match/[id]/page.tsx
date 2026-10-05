@@ -19,6 +19,7 @@ import { fetchPersonalBest, fetchResult } from "@/lib/games/qb-season-builder/re
 import { playSolo } from "@/lib/platform/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
 import { chromeIdentity, isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /**
  * The match screen.
@@ -438,9 +439,9 @@ function Shell({
   return (
     <>
       {sidebar && <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />}
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-6 py-14">
+      <PageShell variant="form" size="md">
         {children}
-      </main>
+      </PageShell>
     </>
   );
 }

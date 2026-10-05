@@ -27,6 +27,7 @@ import {
   resultPath,
   type SeasonResult,
 } from "@/lib/games/qb-season-builder/result";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 const thousands = (value: number) => value.toLocaleString("en-US");
 
@@ -71,7 +72,7 @@ export function QbSeasonBuilderResult({
   const reveal = useSeasonReveal(result.matchId, staged);
 
   return (
-    <main className="app-page flex-1">
+    <PageShell variant="dashboard">
       <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
         <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
           <PageHeader
@@ -116,7 +117,7 @@ export function QbSeasonBuilderResult({
         </div>
         <ResultRail result={result} personalBest={personalBest} isGuest={isGuest} startNewSeason={startNewSeason} />
       </div>
-    </main>
+    </PageShell>
   );
 }
 

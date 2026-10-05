@@ -30,6 +30,7 @@ import {
 import { GuestNudge } from "@/components/games/qb-season-builder/GuestNudge";
 import { qbErrorMessage } from "@/lib/games/qb-season-builder/messages";
 import { createClient } from "@/lib/supabase/client";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /** What the player has picked out on the spin but not yet locked in. */
 type Choice = { slot: Slot; playerId: string | null };
@@ -171,7 +172,7 @@ export function QbSeasonBuilderMatch({
   }, [board.phase]);
 
   return (
-    <main className="app-page flex-1">
+    <PageShell variant="dashboard">
       <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
         <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
           <PageHeader
@@ -199,7 +200,7 @@ export function QbSeasonBuilderMatch({
         </div>
         <RunControlRail board={board} pending={pending} onRespin={() => play("respin")} startNewSeason={startNewSeason} />
       </div>
-    </main>
+    </PageShell>
   );
 }
 

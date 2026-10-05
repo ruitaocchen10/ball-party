@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { canAnswerPrompt, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPromptFeed } from "@/lib/foundation/content/prompts/feed";
 import { fetchGameContexts } from "@/lib/foundation/content/nfl/schedule";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 // The request-scoped client, carrying the generated Database types with it —
 // a bare SupabaseClient would erase them and untype every nested select below.
@@ -64,13 +65,13 @@ export default async function Home(props: PageProps<"/">) {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <main data-home-main className="app-page flex-1">
+      <PageShell variant="dashboard" data-home-main>
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
         <div data-home-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
           <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><HuddleFeed posts={pickPosts} canAnswer={canAnswerPrompt(claims)} gameContexts={gameContexts} /></div>
           <div data-quick-actions className="hidden xl:block"><QuickActions room={room} /></div>
         </div>
-      </main>
+      </PageShell>
     </SearchQueryProvider>
   );
 }

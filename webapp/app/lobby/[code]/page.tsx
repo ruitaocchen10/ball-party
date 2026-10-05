@@ -17,6 +17,7 @@ import { fetchLobbyWins } from "@/lib/platform/lobbies/scoreboard";
 import { fetchLobbyActivity } from "@/lib/platform/lobbies/activity";
 import { fetchLobbyMemberStats } from "@/lib/platform/lobbies/player-stats";
 import type { MatchGame } from "@/lib/platform/orchestration/catalog";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 // An invite link is a private handoff between friends, not a page for a search
 // index — one per room code, all the same content, all short-lived.
@@ -210,7 +211,7 @@ function Shell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="flex w-full flex-1 flex-col px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
+    <PageShell variant="game">
       <LobbyTopStrip lobbyId={lobbyId} code={code} isHost={isHost} displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
       <div className="flex flex-1 flex-col gap-6 pt-4 pb-12 sm:pt-6 lg:gap-8 lg:pt-8">
@@ -243,7 +244,7 @@ function Shell({
 
         {children}
       </div>
-    </main>
+    </PageShell>
   );
 }
 

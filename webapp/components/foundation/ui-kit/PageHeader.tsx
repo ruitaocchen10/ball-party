@@ -19,7 +19,7 @@ export function PageHeader({
   backLabel,
 }: PageHeaderProps) {
   return (
-    <header className="w-full max-w-[760px] border-b border-line pb-4">
+    <header className="w-full border-b border-line pb-4">
       {backHref && backLabel ? (
         <div className="mb-4">
           <Link

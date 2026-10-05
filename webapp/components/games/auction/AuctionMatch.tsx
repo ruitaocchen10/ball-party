@@ -57,6 +57,7 @@ import { LOT_REVEAL_MS, useLotReveal } from "@/lib/games/auction/useLotReveal";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/runtime/realtime/client";
 import { TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/runtime/game-runtime/useMatchClock";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /**
  * The whole game, on one screen.
@@ -532,7 +533,7 @@ export function AuctionMatch({
 
   if (finished) {
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-8">
+      <PageShell variant="narrow">
         <FinalScreen
           lots={lots}
           players={players}
@@ -544,15 +545,15 @@ export function AuctionMatch({
           format={format}
           era={initial.era ?? null}
         />
-      </main>
+      </PageShell>
     );
   }
 
   if (!lot) {
     return (
-      <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
+      <PageShell variant="game" locked>
         <p className="text-sm text-fg-muted">Waiting for the next lot…</p>
-      </main>
+      </PageShell>
     );
   }
 
@@ -596,7 +597,7 @@ export function AuctionMatch({
   const sealState: TokenState = me?.used_seal_token ? "used" : sealAvailable ? "usable" : "inactive";
 
   return (
-    <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
+    <PageShell variant="game" locked>
       {isHost || isPaused ? (
         <div className="flex items-start justify-between gap-3">
           {isPaused ? <PauseBanner /> : <div />}
@@ -776,7 +777,7 @@ export function AuctionMatch({
           : []}
       />
       </aside></div>
-    </main>
+    </PageShell>
   );
 }
 

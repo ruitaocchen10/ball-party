@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 export const metadata = { title: "Support" };
 
@@ -7,7 +8,7 @@ export const metadata = { title: "Support" };
  *  to reach it. */
 export default function SupportPage() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-16 text-fg">
+    <PageShell variant="prose">
       <h1 className="text-3xl font-semibold text-panel">Support</h1>
 
       <div className="mt-10 space-y-10 text-[15px] leading-relaxed text-fg">
@@ -57,6 +58,6 @@ export default function SupportPage() {
           </p>
         </section>
       </div>
-    </main>
+    </PageShell>
   );
 }

@@ -17,6 +17,7 @@ import {
   type Card, type Clue, type ClueStatus, type Target, type WavelengthPlayer, type WavelengthResult, type WavelengthRound,
   validateClue,
 } from "@/lib/games/wavelength/board";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 type Initial = { board: Board; players: WavelengthPlayer[]; rounds: WavelengthRound[]; cards: Card[]; clues: Clue[]; clueStatuses: ClueStatus[]; result: WavelengthResult | null };
 const NEEDLE_BROADCAST_INTERVAL_MS = 100; // At most 10 position updates per second.
@@ -214,19 +215,19 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
 
   if (board.phase === "complete") {
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-5 py-8 text-fg">
+      <PageShell variant="narrow">
         <header className="border-b border-line pb-4">
           <p className="font-slab text-xs uppercase tracking-[.18em] text-fg-muted">Wavelength</p>
           <h1 className="font-slab text-2xl">{board.mode === "coop" ? "Co-op" : "Team versus"}</h1>
         </header>
         {result && <ResultScreen result={result} scores={board.teamScores} roundCount={board.roundCount} rounds={rounds} />}
         {roomCode && <><PostGameNavigation matchId={matchId} roomCode={roomCode} /><PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} /></>}
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-3 overflow-hidden px-4 pt-3 pb-4">
+    <PageShell variant="game" locked>
       <header className="flex items-baseline justify-between">
         <div>
           <p className="font-slab text-xs uppercase tracking-[.18em] text-fg-muted">Wavelength</p>
@@ -272,7 +273,7 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
           <TablePanel players={players} board={board} rounds={rounds} statuses={statuses} current={current} viewerId={viewerId} />
         </aside>
       </div>
-    </main>
+    </PageShell>
   );
 }
 
