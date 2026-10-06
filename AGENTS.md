@@ -6,6 +6,8 @@ Product management and upcoming features live in the Jira project `BP` ("ball-pa
 
 Read `docs/app.md` first for what the product is and what is built. `docs/architecture/architecture.md` covers the stack, and `docs/games/<game>/rules.md` holds each game's rules.
 
+Before any web UI work, read `docs/design-system.md`: the tokens, the `PageShell` page layouts, and the shared components in `webapp/components/foundation/ui-kit/`. Build screens from the kit rather than hand-styling markup.
+
 # Local development
 
 ## Database reset

@@ -39,22 +39,20 @@ export default async function SettingsPage() {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <PageShell variant="dashboard">
-        <div className="mx-auto w-full max-w-[1080px]">
-          <PageHeader eyebrow="Settings" title="Your settings" description="Credentials, privacy, and your account." />
+        <PageHeader eyebrow="Settings" title="Your settings" description="Credentials, privacy, and your account." />
 
-          <div className="mt-9 grid max-w-[600px] gap-6">
-            <SettingsCard title="Account">
-              <AccountCredentials email={email} providers={providers} />
-            </SettingsCard>
+        <div className="mt-9 grid gap-6">
+          <SettingsCard title="Account">
+            <AccountCredentials email={email} providers={providers} />
+          </SettingsCard>
 
-            <SettingsCard title="Privacy">
-              <RankingsVisibilityToggle initialVisible={profile?.rankings_visible ?? true} />
-            </SettingsCard>
+          <SettingsCard title="Privacy">
+            <RankingsVisibilityToggle initialVisible={profile?.rankings_visible ?? true} />
+          </SettingsCard>
 
-            <SettingsCard title="Danger zone">
-              <DeleteAccountSection />
-            </SettingsCard>
-          </div>
+          <SettingsCard title="Danger zone">
+            <DeleteAccountSection />
+          </SettingsCard>
         </div>
       </PageShell>
     </>

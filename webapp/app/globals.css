@@ -171,6 +171,34 @@ body {
   padding: 1.75rem 1rem 4rem;
 }
 
+/* The dashboard's content column. Every dashboard page's header and body live
+   in it, so a header's divider can never run wider than the content under it.
+   With a rail, the column and the 18rem rail are centered together from `xl`;
+   below that the rail stacks under the column. */
+.app-column {
+  width: 100%;
+  max-width: 47.5rem;
+  margin-inline: auto;
+}
+
+.app-layout {
+  display: grid;
+  width: 100%;
+  max-width: 47.5rem;
+  margin-inline: auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+}
+
+@media (min-width: 80rem) {
+  .app-layout {
+    max-width: none;
+    grid-template-columns: minmax(0, 47.5rem) 18rem;
+    justify-content: center;
+    gap: 3rem;
+  }
+}
+
 @media (min-width: 40rem) {
   .app-page {
     padding-inline: 1.5rem;

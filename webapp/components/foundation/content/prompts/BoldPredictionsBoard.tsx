@@ -75,7 +75,7 @@ export function BoldPredictionsBoard({ post, data, viewerCanAnswer, displayName 
 
   if (open && !answered) {
     return (
-      <section aria-label="Your bold predictions" className="mt-5 w-full max-w-[760px] pb-16">
+      <section aria-label="Your bold predictions" className="mt-5 w-full pb-16">
         {viewerCanAnswer ? (
           <PredictionComposer
             post={post}
@@ -295,7 +295,7 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
 
   // The same shape as a pick prompt's thread: your own card first, then the other takes under a small label.
   return (
-    <section aria-label="Revealed predictions" className="mt-5 w-full max-w-[760px] pb-16">
+    <section aria-label="Revealed predictions" className="mt-5 w-full pb-16">
       {predictions.length === 0 ? (
         <p className="border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">
           {post.status === "void" ? "This post was voided." : "Nobody made a prediction before this locked."}

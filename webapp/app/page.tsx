@@ -65,12 +65,9 @@ export default async function Home(props: PageProps<"/">) {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <PageShell variant="dashboard" data-home-main>
+      <PageShell variant="dashboard" rail={<div className="hidden xl:block"><QuickActions room={room} /></div>}>
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
-        <div data-home-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
-          <div className="mx-auto w-full max-w-[1080px] xl:mx-0"><HuddleFeed posts={pickPosts} canAnswer={canAnswerPrompt(claims)} gameContexts={gameContexts} /></div>
-          <div data-quick-actions className="hidden xl:block"><QuickActions room={room} /></div>
-        </div>
+        <HuddleFeed posts={pickPosts} canAnswer={canAnswerPrompt(claims)} gameContexts={gameContexts} />
       </PageShell>
     </SearchQueryProvider>
   );

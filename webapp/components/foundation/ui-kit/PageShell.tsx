@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 /**
  * The `<main>` every page renders. It owns the page's width, gutters and
@@ -6,7 +6,11 @@ import type { ComponentPropsWithoutRef } from "react";
  * kind can't drift apart.
  *
  * - `dashboard`: the app workspace (Home, Party, Solo, Profile…). Wide,
- *   centered, with room for the top bar. See `.app-page` in globals.css.
+ *   centered, with room for the top bar. Its children go in a single 760px
+ *   column (`.app-column`), so a page header and the content under it share
+ *   one width. Pass `rail` for a secondary panel beside the column from `xl`
+ *   (the rail decides its own visibility below that). See `.app-page` and
+ *   `.app-layout` in globals.css.
  * - `form`: one centered card-sized column, for sign-in and short
  *   single-purpose screens. `size="md"` for a slightly roomier one.
  * - `narrow`: a readable column of stacked sections, for a game's waiting,
@@ -27,6 +31,8 @@ type Props = ComponentPropsWithoutRef<"main"> & {
   size?: "sm" | "md";
   /** `game` only. */
   locked?: boolean;
+  /** `dashboard` only: a secondary panel beside the column from `xl`. */
+  rail?: ReactNode;
 };
 
 const BASE: Record<Variant, string> = {
@@ -39,12 +45,27 @@ const BASE: Record<Variant, string> = {
 
 const GAME_LOCKED = "mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4";
 
-export function PageShell({ variant, size = "sm", locked = false, className = "", ...rest }: Props) {
+export function PageShell({ variant, size = "sm", locked = false, rail, className = "", children, ...rest }: Props) {
   const base =
     variant === "form"
       ? `${BASE.form} ${size === "md" ? "max-w-md" : "max-w-sm"}`
       : variant === "game" && locked
         ? GAME_LOCKED
         : BASE[variant];
-  return <main {...rest} className={`${base} ${className}`.trim()} />;
+  return (
+    <main {...rest} className={`${base} ${className}`.trim()}>
+      {variant === "dashboard" ? (
+        rail ? (
+          <div className="app-layout">
+            <div className="min-w-0">{children}</div>
+            {rail}
+          </div>
+        ) : (
+          <div className="app-column">{children}</div>
+        )
+      ) : (
+        children
+      )}
+    </main>
+  );
 }

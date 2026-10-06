@@ -42,7 +42,7 @@ function PickThread({ post, displayName, avatarUrl, viewerCanAnswer }: { post: P
     : null;
 
   return (
-    <section aria-label="The thread" className="mt-5 w-full max-w-[760px] pb-16">
+    <section aria-label="The thread" className="mt-5 w-full pb-16">
       <div className="flex flex-col gap-5">
         {canSubmit ? <TakeComposer post={post} displayName={displayName} avatarUrl={avatarUrl} /> : null}
         {!canSubmit && !post.viewerAnswered && viewerCanAnswer ? (

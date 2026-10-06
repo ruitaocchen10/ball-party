@@ -19,7 +19,7 @@ type ProfileHeaderProps = {
  */
 export function ProfileHeader({ displayName, avatarUrl, joinedLabel, action }: ProfileHeaderProps) {
   return (
-    <header className="w-full max-w-[760px] border-b border-line pb-5 sm:pb-6">
+    <header className="w-full border-b border-line pb-5 sm:pb-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
         <ProfileAvatar name={displayName} avatarUrl={avatarUrl} />
         <div className="min-w-0 flex-1">

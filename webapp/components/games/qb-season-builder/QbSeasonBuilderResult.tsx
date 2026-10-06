@@ -72,50 +72,48 @@ export function QbSeasonBuilderResult({
   const reveal = useSeasonReveal(result.matchId, staged);
 
   return (
-    <PageShell variant="dashboard">
-      <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
-        <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
-          <PageHeader
-            eyebrow="Solo challenge"
-            title="QB Season Builder"
-            description={`Grades ${result.mode}`}
-          />
+    <PageShell
+      variant="dashboard"
+      rail={<ResultRail result={result} personalBest={personalBest} isGuest={isGuest} startNewSeason={startNewSeason} />}
+    >
+      <PageHeader
+        eyebrow="Solo challenge"
+        title="QB Season Builder"
+        description={`Grades ${result.mode}`}
+      />
 
-          <div className="mt-5 w-full max-w-[760px]">
-            <div aria-live="polite" className="flex w-full flex-col gap-4">
-              {reveal.shows("score") ? (
-                <PlayerBuild
-                  result={result}
-                  shown={shown}
-                  picks={result.picks}
-                  showStats={reveal.shows("stat_line")}
-                  showAwards={reveal.shows("awards")}
-                  showScore={reveal.shows("score")}
-                  showPickedPlayers={reveal.shows("awards")}
-                />
-              ) : null}
-              {reveal.shows("record") ? <TeamSuccess result={result} showPlayoffs={reveal.shows("playoffs")} /> : null}
-            </div>
-
-            {reveal.playing ? (
-              <button
-                type="button"
-                onClick={reveal.skip}
-                className="mt-4 text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
-              >
-                Skip to result
-              </button>
-            ) : null}
-
-            {reveal.shows("details") ? (
-              <div className="mt-4 flex w-full flex-col gap-4">
-                <Breakdown result={result} />
-                <ResultFooter result={result} staged={staged} />
-              </div>
-            ) : null}
-          </div>
+      <div className="mt-5">
+        <div aria-live="polite" className="flex w-full flex-col gap-4">
+          {reveal.shows("score") ? (
+            <PlayerBuild
+              result={result}
+              shown={shown}
+              picks={result.picks}
+              showStats={reveal.shows("stat_line")}
+              showAwards={reveal.shows("awards")}
+              showScore={reveal.shows("score")}
+              showPickedPlayers={reveal.shows("awards")}
+            />
+          ) : null}
+          {reveal.shows("record") ? <TeamSuccess result={result} showPlayoffs={reveal.shows("playoffs")} /> : null}
         </div>
-        <ResultRail result={result} personalBest={personalBest} isGuest={isGuest} startNewSeason={startNewSeason} />
+
+        {reveal.playing ? (
+          <button
+            type="button"
+            onClick={reveal.skip}
+            className="mt-4 text-sm text-fg-muted underline decoration-line underline-offset-4 transition-colors hover:text-fg hover:decoration-fg"
+          >
+            Skip to result
+          </button>
+        ) : null}
+
+        {reveal.shows("details") ? (
+          <div className="mt-4 flex w-full flex-col gap-4">
+            <Breakdown result={result} />
+            <ResultFooter result={result} staged={staged} />
+          </div>
+        ) : null}
       </div>
     </PageShell>
   );
