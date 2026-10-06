@@ -172,34 +172,32 @@ export function QbSeasonBuilderMatch({
   }, [board.phase]);
 
   return (
-    <PageShell variant="dashboard">
-      <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
-        <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
-          <PageHeader
-            eyebrow="Solo challenge"
-            title="QB Season Builder"
-            description={`Round ${board.currentRound} of ${board.roundCount} · Grades ${board.mode} · Era ${board.era}`}
-          />
-          {board.spin === null ? (
-            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-              <FinishedPanel board={board} pending={pending} error={error} onFinish={finish} />
-              <BuildCard board={board} isGuest={isGuest} />
-            </div>
-          ) : (
-            <SpinPanel
-              board={board}
-              spin={board.spin}
-              choice={choice}
-              pending={pending}
-              error={error}
-              isGuest={isGuest}
-              onChoose={setChoice}
-              onPlay={play}
-            />
-          )}
+    <PageShell
+      variant="dashboard"
+      rail={<RunControlRail board={board} pending={pending} onRespin={() => play("respin")} startNewSeason={startNewSeason} />}
+    >
+      <PageHeader
+        eyebrow="Solo challenge"
+        title="QB Season Builder"
+        description={`Round ${board.currentRound} of ${board.roundCount} · Grades ${board.mode} · Era ${board.era}`}
+      />
+      {board.spin === null ? (
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          <FinishedPanel board={board} pending={pending} error={error} onFinish={finish} />
+          <BuildCard board={board} isGuest={isGuest} />
         </div>
-        <RunControlRail board={board} pending={pending} onRespin={() => play("respin")} startNewSeason={startNewSeason} />
-      </div>
+      ) : (
+        <SpinPanel
+          board={board}
+          spin={board.spin}
+          choice={choice}
+          pending={pending}
+          error={error}
+          isGuest={isGuest}
+          onChoose={setChoice}
+          onPlay={play}
+        />
+      )}
     </PageShell>
   );
 }
@@ -242,7 +240,7 @@ function SpinPanel({
   }, [spin.franchiseCode, spinKey]);
 
   return (
-    <section aria-label="The spin" className="mt-5 flex w-full max-w-[760px] flex-col gap-4">
+    <section aria-label="The spin" className="mt-5 flex w-full flex-col gap-4">
       {revealed ? (
         <div className="flex items-center gap-3 border border-line bg-surface-raised p-4">
           <TeamSpinIdentity code={spin.franchiseCode} name={franchiseName(spin.franchiseCode)} season={spin.season} />
@@ -422,7 +420,7 @@ function FinishedPanel({
   onFinish: () => void;
 }) {
   return (
-    <section aria-label="Your quarterback" className="mt-5 flex w-full max-w-[760px] flex-col gap-3 border border-line bg-surface-raised p-4">
+    <section aria-label="Your quarterback" className="mt-5 flex w-full flex-col gap-3 border border-line bg-surface-raised p-4">
       {board.phase === "complete" ? (
         <p className="font-slab text-[27px] leading-none uppercase">This run is finished.</p>
       ) : (

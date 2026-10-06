@@ -52,7 +52,7 @@ export function TakeThread({
   }
 
   return (
-    <section aria-label={`Discussion for ${take.author}'s take`} className="mt-5 w-full max-w-[760px] pb-16">
+    <section aria-label={`Discussion for ${take.author}'s take`} className="mt-5 w-full pb-16">
       <TakeCard
         comment={take}
         isYou={take.isViewer}

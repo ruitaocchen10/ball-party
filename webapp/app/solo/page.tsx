@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 
 import { DashboardHeader } from "@/components/home/DashboardHeader";
+import { SoloBestScores, type SoloBestScore } from "@/components/home/SoloBestScores";
 import { SoloGrid } from "@/components/home/SoloGrid";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
-import { chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { chromeIdentity, isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 // A place to pick settings rather than a landing page (see below), so it stays
@@ -52,6 +53,10 @@ export default async function SoloPage(props: PageProps<"/solo">) {
     ? { seasonMin: era.season_min, seasonMax: era.season_max }
     : null;
 
+  // Best scores are an account feature: RLS refuses a guest these rows, so
+  // they are not even asked for.
+  const scores = viewer && !isGuestViewer(claims) ? await fetchBestScores(supabase, claims!.sub as string) : null;
+
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
 
@@ -60,21 +65,35 @@ export default async function SoloPage(props: PageProps<"/solo">) {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <PageShell variant="dashboard">
+      <PageShell variant="dashboard" rail={<SoloBestScores scores={scores} />}>
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
 
-        <div className="mx-auto w-full max-w-[1080px]">
-          <PageHeader
-            eyebrow="Solo"
-            title="Play on your own"
-            description="Pick a game and jump in whenever you’re ready."
-          />
+        <PageHeader
+          eyebrow="Solo"
+          title="Play on your own"
+          description="Pick a game and jump in whenever you’re ready."
+        />
 
-          <section className="mt-9" aria-label="Solo games">
-            <SoloGrid higherOrLowerEra={higherOrLowerEra} />
-          </section>
-        </div>
+        <section className="mt-9" aria-label="Solo games">
+          <SoloGrid higherOrLowerEra={higherOrLowerEra} />
+        </section>
       </PageShell>
     </>
   );
+}
+
+type Client = Awaited<ReturnType<typeof createClient>>;
+
+/** One row per solo game (per mode where a game keeps one best each); null means no finished run yet. */
+async function fetchBestScores(supabase: Client, userId: string): Promise<SoloBestScore[]> {
+  const [higherOrLower, qb] = await Promise.all([
+    supabase.from("higher_or_lower_player_stats").select("all_time_high").eq("user_id", userId).maybeSingle(),
+    supabase.from("qb_season_builder_player_stats").select("mode, best_score").eq("user_id", userId),
+  ]);
+  const qbBest = (mode: string) => qb.data?.find((row) => row.mode === mode)?.best_score ?? null;
+  return [
+    { game: "Higher or lower", detail: "All-time high", value: higherOrLower.data?.all_time_high ?? null },
+    { game: "QB Season Builder", detail: "Grades visible", value: qbBest("visible") },
+    { game: "QB Season Builder", detail: "Grades hidden", value: qbBest("hidden") },
+  ];
 }

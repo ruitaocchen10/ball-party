@@ -60,42 +60,39 @@ export default async function ProfilePage() {
     <>
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
-      <PageShell variant="dashboard">
-        <div data-profile-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
-          <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
-            <div className="max-w-[760px]">
-              <ProfileHeader
-                displayName={displayName}
-                avatarUrl={profile?.avatar_url ?? null}
-                joinedLabel={`Playing since ${joinedMonth(profile?.created_at)}`}
-                action={<ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} userId={claims.sub} />}
-              />
-
-              <ProfileHighlightsCard highlights={highlights} />
-
-              <div className="xl:hidden">
-                <NextGame />
-              </div>
-
-              <section aria-labelledby="takes-history-heading" className="pt-7">
-                <SectionHeading id="takes-history-heading">Your takes</SectionHeading>
-                {takeHistory.length ? (
-                  <ol className="mt-3 grid gap-3">
-                    {takeHistory.map((take) => <TakeHistoryItem key={take.comment.id} {...take} avatarUrl={avatarUrl} />)}
-                  </ol>
-                ) : (
-                  <EmptyTakeHistory />
-                )}
-              </section>
-            </div>
-          </div>
-
+      <PageShell
+        variant="dashboard"
+        rail={
           <aside className="hidden xl:block">
             <div className="sticky top-[92px]">
               <NextGame />
             </div>
           </aside>
+        }
+      >
+        <ProfileHeader
+          displayName={displayName}
+          avatarUrl={profile?.avatar_url ?? null}
+          joinedLabel={`Playing since ${joinedMonth(profile?.created_at)}`}
+          action={<ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} userId={claims.sub} />}
+        />
+
+        <ProfileHighlightsCard highlights={highlights} />
+
+        <div className="xl:hidden">
+          <NextGame />
         </div>
+
+        <section aria-labelledby="takes-history-heading" className="pt-7">
+          <SectionHeading id="takes-history-heading">Your takes</SectionHeading>
+          {takeHistory.length ? (
+            <ol className="mt-3 grid gap-3">
+              {takeHistory.map((take) => <TakeHistoryItem key={take.comment.id} {...take} avatarUrl={avatarUrl} />)}
+            </ol>
+          ) : (
+            <EmptyTakeHistory />
+          )}
+        </section>
       </PageShell>
     </>
   );

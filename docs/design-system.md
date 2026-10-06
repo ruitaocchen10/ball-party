@@ -67,7 +67,7 @@ Every page renders its `<main>` through `PageShell`. It owns width, gutters and 
 
 | Variant | For | Shape |
 | --- | --- | --- |
-| `dashboard` | App workspaces: Home, Party, Solo, Profile, Settings, prompt pages, solo results | Wide and centered (`app-page`: max 80rem), with room for the top bar. |
+| `dashboard` | App workspaces: Home, Party, Solo, Profile, Settings, prompt pages, solo results | Wide and centered (`app-page`: max 80rem), with room for the top bar. Children go in one 760px column (`app-column`); an optional `rail` sits beside it from `xl`. |
 | `form` | Sign-in, sign-up, and short single-purpose screens (`size="md"` for a roomier one) | One centered column, full height. |
 | `narrow` | A game's waiting, setup and results screens | A readable `max-w-2xl` column of stacked sections. |
 | `prose` | Privacy, Support | Long-form text in a reading column. |
@@ -81,12 +81,14 @@ A dashboard page is always the same stack:
 <>
   <Sidebar displayName={…} email={…} avatarUrl={…} />
   <DashboardHeader displayName={…} email={…} avatarUrl={…} />
-  <PageShell variant="dashboard">
+  <PageShell variant="dashboard" rail={<QuickActions … />}>
     <PageHeader eyebrow="Solo" title="Play on your own" description="…" />
     {/* content */}
   </PageShell>
 </>
 ```
+
+The shell puts its children in a single 760px column, so a page never sets its own width: the `PageHeader` divider and the content under it can't drift apart. Don't add `max-w-*` wrappers inside a dashboard page. `rail` is optional. From `xl` the column and the 18rem rail are centered together; below that the rail stacks under the column, and a rail that should disappear there hides itself (`hidden xl:block`). The column width is defined once, in `globals.css` (`.app-column` and `.app-layout`).
 
 `PageHeader` has no width of its own and takes the shell's. The admin pages (`/admin/*`) are the one exception: they are an internal tool with their own layout.
 

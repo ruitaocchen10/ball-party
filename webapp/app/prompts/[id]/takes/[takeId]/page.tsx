@@ -58,14 +58,9 @@ export default async function TakeDetailPage(props: PageProps<"/prompts/[id]/tak
     <>
       <Sidebar displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
       <DashboardHeader displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
-      <PageShell variant="dashboard" data-prompt-detail>
-        <div data-prompt-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
-          <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
-            <PostHeroHeader post={post} backHref={`/prompts/${id}`} backLabel="All takes" />
-            <TakeThread post={post} take={take} displayName={displayName} avatarUrl={avatarUrl} viewerCanAnswer={canAnswerPrompt(claims)} />
-          </div>
-          <PromptContext post={post} />
-        </div>
+      <PageShell variant="dashboard" rail={<PromptContext post={post} />}>
+        <PostHeroHeader post={post} backHref={`/prompts/${id}`} backLabel="All takes" />
+        <TakeThread post={post} take={take} displayName={displayName} avatarUrl={avatarUrl} viewerCanAnswer={canAnswerPrompt(claims)} />
       </PageShell>
     </>
   );

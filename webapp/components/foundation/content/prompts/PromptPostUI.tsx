@@ -66,7 +66,7 @@ export function PromptPostFeed({
   home?: boolean;
 }) {
   return (
-    <div className={home ? "mt-5 w-full max-w-[760px] pb-16" : "mx-auto w-full max-w-2xl px-4 pt-8 pb-16 sm:px-6"}>
+    <div className={home ? "mt-5 w-full pb-16" : "mx-auto w-full max-w-2xl px-4 pt-8 pb-16 sm:px-6"}>
       {home ? null : <h1 className="mb-5 font-slab text-2xl leading-none uppercase">This week</h1>}
       <div className="flex flex-col gap-5">
         {posts.map((post) => (

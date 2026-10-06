@@ -295,8 +295,97 @@ export function HigherOrLowerMatch({
     );
   }
 
+  const matchContent = (
+    <>
+      {isSolo ? (
+        <div>
+          <PageHeader
+            eyebrow="Solo challenge"
+            title="Higher or lower"
+            description={<>{questionLabel(board, "visual", isSolo)} <span aria-hidden>· make the streak last</span></>}
+          />
+          <div className="mt-3 flex w-full items-center justify-between gap-3">
+            <p
+              role="note"
+              aria-label="Board format"
+              className="type-label-lg text-fg-muted"
+            >
+              {scoringModeLabel(board)} · {eraLabel(board)}
+            </p>
+            {isHost ? <PauseButton matchId={matchId} paused={isPaused} /> : null}
+          </div>
+        </div>
+      ) : null}
+
+      <section className={isSolo ? "mt-5 flex w-full flex-col gap-3" : "flex min-h-0 flex-col gap-3 lg:col-start-2 lg:row-start-1"} aria-label="The comparison">
+        {anchor && challenger ? (
+          <div className={isSolo ? "grid gap-4 md:grid-cols-2" : "grid min-h-0 flex-1 gap-3 sm:grid-cols-2"}>
+            <LadderCardPanel
+              label="Anchor"
+              card={anchor}
+              caption="What the challenger is priced against."
+            />
+            <LadderCardPanel
+              label="Challenger"
+              card={challenger}
+              caption="Higher or lower than the anchor?"
+              action={
+                <CallActions
+                  canCall={canCallNow(board, viewerPlayer)}
+                  call={myCall ?? null}
+                  pending={pendingCall}
+                  paused={isPaused}
+                  onCall={makeCall}
+                />
+              }
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-fg-muted">Waiting for the next card…</p>
+        )}
+      </section>
+
+      <section className={isSolo
+        ? "flex w-full flex-col gap-3"
+        : "flex shrink-0 flex-col gap-3 lg:col-start-1 lg:row-start-1"} aria-label="Your call">
+        {!isSolo ? (
+          <MatchClock className="lg:order-first" phase={board.phase} remainingMs={remainingMs} />
+        ) : null}
+        <CallFeedback call={myCall ?? null} error={callError} />
+      </section>
+
+      {/* Both points panels are hidden from assistive technology, so this
+          region is the complete announcement of what is on screen. */}
+      <p role="status" className="sr-only">
+        {anchor && challenger
+          ? `${questionLabel(board, "spoken", isSolo)}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
+          : ""}
+      </p>
+    </>
+  );
+
+  if (isSolo) {
+    return (
+      <PageShell
+        variant="dashboard"
+        rail={
+          <SoloRunSummary
+            player={viewerPlayer ?? null}
+            allTimeHigh={allTimeHigh}
+            continueAction={board.phase === "reveal"
+              ? <SoloContinue pending={pendingAdvance} error={advanceError} onContinue={advance} />
+              : null}
+          />
+        }
+      >
+        {isPaused ? <PauseBanner /> : null}
+        {matchContent}
+      </PageShell>
+    );
+  }
+
   return (
-    <PageShell variant={isSolo ? "dashboard" : "game"} locked={!isSolo}>
+    <PageShell variant="game" locked>
       {!isSolo && (
         <header className="flex shrink-0 items-baseline justify-between gap-3">
           <h1 className="type-label-lg text-fg-muted">
@@ -317,91 +406,10 @@ export function HigherOrLowerMatch({
 
       {isPaused ? <PauseBanner /> : null}
 
-      {/* Solo follows Home's grid exactly: its shared heading starts the left
-          column while the dashboard rail starts alongside it. On phones, DOM
-          order remains heading, cards, call status, then progress. */}
-      <div className={isSolo
-        ? "grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12"
-        : "grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_minmax(4rem,1fr)] gap-3 lg:grid-cols-[12rem_minmax(0,1fr)_14rem] lg:grid-rows-1"}>
-        <div className={isSolo ? "mx-auto w-full max-w-[1080px] xl:mx-0" : "contents"}>
-        {isSolo ? (
-          <div>
-            <PageHeader
-              eyebrow="Solo challenge"
-              title="Higher or lower"
-              description={<>{questionLabel(board, "visual", isSolo)} <span aria-hidden>· make the streak last</span></>}
-            />
-            <div className="mt-3 flex w-full max-w-[760px] items-center justify-between gap-3">
-              <p
-                role="note"
-                aria-label="Board format"
-                className="type-label-lg text-fg-muted"
-              >
-                {scoringModeLabel(board)} · {eraLabel(board)}
-              </p>
-              {isHost ? <PauseButton matchId={matchId} paused={isPaused} /> : null}
-            </div>
-          </div>
-        ) : null}
+      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_minmax(4rem,1fr)] gap-3 lg:grid-cols-[12rem_minmax(0,1fr)_14rem] lg:grid-rows-1">
+        {matchContent}
 
-        <section className={isSolo ? "mt-5 flex w-full max-w-[760px] flex-col gap-3" : "flex min-h-0 flex-col gap-3 lg:col-start-2 lg:row-start-1"} aria-label="The comparison">
-          {anchor && challenger ? (
-            <div className={isSolo ? "grid gap-4 md:grid-cols-2" : "grid min-h-0 flex-1 gap-3 sm:grid-cols-2"}>
-              <LadderCardPanel
-                label="Anchor"
-                card={anchor}
-                caption="What the challenger is priced against."
-              />
-              <LadderCardPanel
-                label="Challenger"
-                card={challenger}
-                caption="Higher or lower than the anchor?"
-                action={
-                  <CallActions
-                    canCall={canCallNow(board, viewerPlayer)}
-                    call={myCall ?? null}
-                    pending={pendingCall}
-                    paused={isPaused}
-                    onCall={makeCall}
-                  />
-                }
-              />
-            </div>
-          ) : (
-            <p className="text-sm text-fg-muted">Waiting for the next card…</p>
-          )}
-        </section>
-
-        <section className={isSolo
-          ? "mx-auto flex w-full max-w-2xl flex-col gap-3"
-          : "flex shrink-0 flex-col gap-3 lg:col-start-1 lg:row-start-1"} aria-label="Your call">
-          {!isSolo ? (
-            <MatchClock className="lg:order-first" phase={board.phase} remainingMs={remainingMs} />
-          ) : null}
-          <CallFeedback call={myCall ?? null} error={callError} />
-        </section>
-
-      {/* Both points panels are hidden from assistive technology, so this
-          region is the complete announcement of what is on screen. */}
-      <p role="status" className="sr-only">
-        {anchor && challenger
-          ? `${questionLabel(board, "spoken", isSolo)}. ${anchor.display_name} scored ${formatPoints(anchor.points)} fantasy points. ${challenger.points === null ? `${challenger.display_name} is hidden.` : `${challenger.display_name} scored ${formatPoints(challenger.points)} fantasy points.`}`
-          : ""}
-      </p>
-        </div>
-
-        {isSolo ? (
-          <SoloRunSummary
-            player={viewerPlayer ?? null}
-            allTimeHigh={allTimeHigh}
-            continueAction={board.phase === "reveal"
-              ? <SoloContinue pending={pendingAdvance} error={advanceError} onContinue={advance} />
-              : null}
-            className=""
-          />
-        ) : null}
-
-        {!isSolo ? <aside aria-label="The table" className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1">
+        <aside aria-label="The table" className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1">
           <div className="flex flex-col border border-line bg-surface-raised">
             <header className="flex items-baseline justify-between gap-2 px-3 py-2">
               <h2 className="type-label font-bold text-fg-muted">Standings</h2>
@@ -436,7 +444,8 @@ export function HigherOrLowerMatch({
               })}
             </ul>
           </div>
-        </aside> : null}
+        </aside>
+
       </div>
     </PageShell>
   );
@@ -491,42 +500,9 @@ function SoloFinalScreen({
   const correct = player?.correct_count ?? 0;
   const revealedCards = cards.filter((card) => card.revealed_at !== null).sort((a, b) => a.ordinal - b.ordinal);
   return (
-    <PageShell variant="dashboard">
-      <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
-        <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
-          <PageHeader
-            eyebrow="Solo challenge"
-            title="Higher or lower"
-            description="Your run is in the books."
-          />
-          <section aria-label="Your final result" className="mt-5 w-full max-w-[760px] overflow-hidden border border-line bg-surface-raised shadow-well">
-            <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
-              <p className="type-label font-semibold text-hidden-text">Run complete</p>
-              <h2 className="mt-1 font-slab text-4xl leading-none uppercase sm:text-5xl">{correct} correct</h2>
-            </div>
-            <section aria-labelledby="ladder-recap-heading" className="border-t border-line">
-              <header className="px-5 pt-5 pb-1">
-              <p className="type-label font-semibold text-hidden-text">The players you saw</p>
-              <h2 id="ladder-recap-heading" className="mt-1 font-slab text-2xl leading-none uppercase">Your ladder</h2>
-              </header>
-              <ol className="grid grid-cols-2 gap-3 px-5 pt-2 pb-5 sm:grid-cols-3 md:grid-cols-4">
-                {revealedCards.map((card, index) => (
-                  <LadderRecapCard
-                    key={card.ordinal}
-                    card={card}
-                    priorCard={revealedCards[index - 1] ?? null}
-                    call={calls.find((call) => call.user_id === viewerId && call.question === card.ordinal) ?? null}
-                  />
-                ))}
-              </ol>
-            </section>
-            <div className="grid grid-cols-2 divide-x divide-line border-t border-line">
-              <RunStat label="Questions right" value={correct} />
-              <RunStat label="All time high" value={allTimeHigh} />
-            </div>
-          </section>
-        </div>
-
+    <PageShell
+      variant="dashboard"
+      rail={
         <DashboardRail
           headingId="solo-finish-heading"
           eyebrow="Your run"
@@ -553,7 +529,39 @@ function SoloFinalScreen({
             </div>
           </div>
         </DashboardRail>
-      </div>
+      }
+    >
+      <PageHeader
+        eyebrow="Solo challenge"
+        title="Higher or lower"
+        description="Your run is in the books."
+      />
+      <section aria-label="Your final result" className="mt-5 w-full overflow-hidden border border-line bg-surface-raised shadow-well">
+        <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
+          <p className="type-label font-semibold text-hidden-text">Run complete</p>
+          <h2 className="mt-1 font-slab text-4xl leading-none uppercase sm:text-5xl">{correct} correct</h2>
+        </div>
+        <section aria-labelledby="ladder-recap-heading" className="border-t border-line">
+          <header className="px-5 pt-5 pb-1">
+          <p className="type-label font-semibold text-hidden-text">The players you saw</p>
+          <h2 id="ladder-recap-heading" className="mt-1 font-slab text-2xl leading-none uppercase">Your ladder</h2>
+          </header>
+          <ol className="grid grid-cols-2 gap-3 px-5 pt-2 pb-5 sm:grid-cols-3 md:grid-cols-4">
+            {revealedCards.map((card, index) => (
+              <LadderRecapCard
+                key={card.ordinal}
+                card={card}
+                priorCard={revealedCards[index - 1] ?? null}
+                call={calls.find((call) => call.user_id === viewerId && call.question === card.ordinal) ?? null}
+              />
+            ))}
+          </ol>
+        </section>
+        <div className="grid grid-cols-2 divide-x divide-line border-t border-line">
+          <RunStat label="Questions right" value={correct} />
+          <RunStat label="All time high" value={allTimeHigh} />
+        </div>
+      </section>
     </PageShell>
   );
 }

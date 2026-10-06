@@ -62,14 +62,9 @@ export default async function PromptDetailPage(props: PageProps<"/prompts/[id]">
     <>
       <Sidebar displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
       <DashboardHeader displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
-      <PageShell variant="dashboard" data-prompt-detail>
-        <div data-prompt-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
-          <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
-            <PostHeroHeader post={post} />
-            <PromptThread post={post} displayName={displayName} avatarUrl={avatarUrl} viewerCanAnswer={canAnswerPrompt(claims)} boldPredictions={boldPredictions} />
-          </div>
-          <PromptContext post={post} />
-        </div>
+      <PageShell variant="dashboard" rail={<PromptContext post={post} />}>
+        <PostHeroHeader post={post} />
+        <PromptThread post={post} displayName={displayName} avatarUrl={avatarUrl} viewerCanAnswer={canAnswerPrompt(claims)} boldPredictions={boldPredictions} />
       </PageShell>
     </>
   );

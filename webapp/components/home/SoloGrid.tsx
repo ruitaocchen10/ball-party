@@ -22,19 +22,15 @@ const HIGHER_OR_LOWER_SCORING: readonly SoloMode[] = [
 ];
 
 /**
- * The games a lone player can start right now — carved out of the shop
- * window (see GameGrid) rather than living as a tile's second control there.
- * "Start a room" and "play alone" are different promises, and folding them
- * into one tile made the lesser one read as a footnote on the other.
+ * The games a lone player can start right now. "Start a room" and "play
+ * alone" are different promises, so solo has its own page rather than a
+ * second control on a party tile.
  *
  * Cards read as a small games shelf — icon, a "1 player" tag, name, pitch,
- * then Play solo — rather than GameGrid's shop-window bento tiles: solo
- * needs none of that bidding-war framing, just "here's what you can play by
- * yourself right now."
+ * then Play solo: just "here's what you can play by yourself right now."
  *
  * Only a game with `solo: true` and `status: "live"` shows up here. No
- * account-gated fallback the way GameGrid's tiles have one: solo carries none
- * of hosting's account requirement. A visitor with no session at all plays as
+ * account-gated fallback: solo carries none of hosting's account requirement. A visitor with no session at all plays as
  * a guest — `playSolo` creates the session — so every card carries its Play
  * solo control.
  */
@@ -55,8 +51,7 @@ export function SoloGrid({ higherOrLowerEra = null }: { higherOrLowerEra?: SoloE
 }
 
 /**
- * The card itself isn't the control — same split GameGrid uses between a
- * tile and its button — but it still reacts to a hover anywhere on it
+ * The card itself isn't the control, but it still reacts to a hover anywhere on it
  * (`group` sits here, not just on the button) so the whole card reads as
  * live even though only the Play solo button at the bottom actually is.
  */
