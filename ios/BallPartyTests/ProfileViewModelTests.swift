@@ -141,4 +141,14 @@ final class ProfileViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.gamerHighlight, GamerHighlight(gamesPlayed: 1, wins: 1, winRate: 100, currentStreak: 1))
     }
+
+    // MARK: - Avatar storage
+
+    func test_avatarFolder_isTheLowercaseUid() {
+        let id = UUID(uuidString: "0C6771DB-A1B3-4950-A355-37B5A1BA569D")!
+
+        // `uuidString` is uppercase; Storage's `avatars_*_own` policies compare
+        // the folder to the lowercase `auth.uid()::text`.
+        XCTAssertEqual(AvatarStorage.folder(for: id), "0c6771db-a1b3-4950-a355-37b5a1ba569d")
+    }
 }

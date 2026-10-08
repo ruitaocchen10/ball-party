@@ -14,6 +14,8 @@ struct ProfileView: View {
     private let profileClient: ProfileClient
 
     @State private var editor: ProfileEditorViewModel?
+    @State private var confirmingDelete = false
+    @State private var deleteFailed = false
 
     init(auth: AuthViewModel, viewerId: UUID, email: String?) {
         self.auth = auth
@@ -55,10 +57,23 @@ struct ProfileView: View {
                     } label: {
                         Label("Edit profile", systemImage: "pencil")
                     }
+                    Divider()
+                    Link(destination: SiteLinks.privacyPolicy) {
+                        Label("Privacy policy", systemImage: "hand.raised")
+                    }
+                    Link(destination: SiteLinks.support) {
+                        Label("Support", systemImage: "questionmark.circle")
+                    }
+                    Divider()
                     Button(role: .destructive) {
                         Task { await auth.signOut() }
                     } label: {
                         Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                    Button(role: .destructive) {
+                        confirmingDelete = true
+                    } label: {
+                        Label("Delete account", systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "line.3.horizontal")
@@ -66,6 +81,23 @@ struct ProfileView: View {
                 }
                 .accessibilityLabel("Profile menu")
             }
+        }
+        .confirmationDialog(
+            "Delete your account?", isPresented: $confirmingDelete, titleVisibility: .visible
+        ) {
+            Button("Permanently delete my account", role: .destructive) {
+                Task {
+                    if await !auth.deleteAccount() { deleteFailed = true }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This clears your display name and photo and signs you out everywhere. Your past matches and takes stay on record under “Deleted player.” This can’t be undone.")
+        }
+        .alert("We couldn’t delete your account", isPresented: $deleteFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please try again.")
         }
         .sheet(item: $editor) { editorViewModel in
             ProfileEditorView(viewModel: editorViewModel) {

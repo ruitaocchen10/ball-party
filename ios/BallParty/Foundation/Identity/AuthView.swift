@@ -292,6 +292,7 @@ private struct PreviewAuthBackend: AuthBackend {
         configure: @Sendable (ASWebAuthenticationSession) -> Void
     ) async throws -> Session { throw CancellationError() }
     func signOut() async throws {}
+    func deleteAccount() async throws {}
     func setDisplayName(_ displayName: String, userId: UUID) async throws {}
 }
 

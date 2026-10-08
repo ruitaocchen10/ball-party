@@ -8,6 +8,17 @@ struct ProfileSummary: Equatable, Sendable {
     let joinedAt: Date?
 }
 
+/// Where a player's avatar files live in Storage. The folder name must be the
+/// lowercase uid: the `avatars_*_own` policies compare it to `auth.uid()::text`,
+/// and `UUID.uuidString` is uppercase, which Storage rejects with a 403.
+enum AvatarStorage {
+    static let bucket = "avatars"
+
+    static func folder(for userId: UUID) -> String {
+        userId.uuidString.lowercased()
+    }
+}
+
 /// The Profile tab's reads, named as their own protocol so tests can
 /// substitute a fake instead of hitting the network.
 protocol ProfileClient: Sendable {
@@ -72,11 +83,11 @@ struct SupabaseProfileClient: ProfileClient {
     }
 
     func uploadAvatar(_ data: Data, fileExtension: String, contentType: String, for userId: UUID) async throws -> URL {
-        let path = "\(userId.uuidString)/avatar.\(fileExtension)"
-        try await client.storage.from("avatars").upload(
+        let path = "\(AvatarStorage.folder(for: userId))/avatar.\(fileExtension)"
+        try await client.storage.from(AvatarStorage.bucket).upload(
             path, data: data, options: FileOptions(cacheControl: "3600", contentType: contentType, upsert: true)
         )
-        return try client.storage.from("avatars").getPublicURL(path: path)
+        return try client.storage.from(AvatarStorage.bucket).getPublicURL(path: path)
     }
 
     private struct ProfileUpdate: Encodable {

@@ -67,4 +67,9 @@ final class IdentityConstantsTests: XCTestCase {
         }
         XCTAssertEqual(password, "12345678")
     }
+
+    func test_siteLinks_pointAtTheWebsPrivacyAndSupportRoutes() {
+        XCTAssertEqual(SiteLinks.privacyPolicy.absoluteString, "https://ballparty.social/privacy")
+        XCTAssertEqual(SiteLinks.support.absoluteString, "https://ballparty.social/support")
+    }
 }

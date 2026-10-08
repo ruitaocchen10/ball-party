@@ -31,6 +31,8 @@ final class FakeAuthBackend: AuthBackend, @unchecked Sendable {
 
     var signOutCallCount = 0
     var signOutError: Error?
+    var deleteAccountCallCount = 0
+    var deleteAccountError: Error?
     var setDisplayNameCalls: [SetDisplayNameCall] = []
 
     func signUp(email: String, password: String, displayName: String) async throws -> AuthResponse {
@@ -60,6 +62,11 @@ final class FakeAuthBackend: AuthBackend, @unchecked Sendable {
     func signOut() async throws {
         signOutCallCount += 1
         if let signOutError { throw signOutError }
+    }
+
+    func deleteAccount() async throws {
+        deleteAccountCallCount += 1
+        if let deleteAccountError { throw deleteAccountError }
     }
 
     func setDisplayName(_ displayName: String, userId: UUID) async throws {

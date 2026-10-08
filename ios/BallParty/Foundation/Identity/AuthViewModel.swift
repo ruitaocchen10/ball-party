@@ -183,6 +183,23 @@ final class AuthViewModel: ObservableObject {
         session = nil
     }
 
+    /// The web's `deleteAccount` action: anonymizes the profile and signs out
+    /// everywhere. Returns whether it worked so the caller can show its own
+    /// failure UI — no `notice` here, which would otherwise resurface on the
+    /// sign-in screen of the next person to use the device.
+    func deleteAccount() async -> Bool {
+        isBusy = true
+        defer { isBusy = false }
+
+        do {
+            try await backend.deleteAccount()
+            session = nil
+            return true
+        } catch {
+            return false
+        }
+    }
+
     private static func displayName(from components: PersonNameComponents) -> String? {
         let formatted = PersonNameComponentsFormatter.localizedString(from: components, style: .default)
         guard case .valid(let name) = IdentityConstants.validateDisplayName(formatted) else { return nil }
