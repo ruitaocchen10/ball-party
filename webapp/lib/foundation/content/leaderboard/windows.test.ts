@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_LEADERBOARD_SCOPE,
   DEFAULT_LEADERBOARD_WINDOW,
+  LEADERBOARD_SCOPES,
   LEADERBOARD_WINDOWS,
+  leaderboardHref,
+  parseLeaderboardScope,
   parseLeaderboardWindow,
   standingCopy,
   topPercent,
@@ -24,6 +28,32 @@ describe("parseLeaderboardWindow", () => {
   it("uses the first value when the param is repeated", () => {
     expect(parseLeaderboardWindow(["month", "year"])).toBe("month");
     expect(parseLeaderboardWindow(["decade", "year"])).toBe(DEFAULT_LEADERBOARD_WINDOW);
+  });
+});
+
+describe("parseLeaderboardScope", () => {
+  it("accepts every scope the RPC accepts", () => {
+    for (const scope of LEADERBOARD_SCOPES) expect(parseLeaderboardScope(scope)).toBe(scope);
+  });
+
+  it("falls back to everyone for anything else", () => {
+    expect(parseLeaderboardScope(undefined)).toBe(DEFAULT_LEADERBOARD_SCOPE);
+    expect(parseLeaderboardScope("enemies")).toBe(DEFAULT_LEADERBOARD_SCOPE);
+    expect(parseLeaderboardScope(["friends", "all"])).toBe("friends");
+  });
+});
+
+describe("leaderboardHref", () => {
+  it("keeps the window when the scope changes, and omits the default scope", () => {
+    expect(leaderboardHref("month", "all")).toBe("/leaderboard?window=month");
+    expect(leaderboardHref("month", "friends")).toBe("/leaderboard?window=month&scope=friends");
+  });
+});
+
+describe("standingCopy in the friends scope", () => {
+  it("reports a plain rank among friends instead of a percentile", () => {
+    const standing = { status: "ranked", rank: 2, totalPoints: 40, scoredPicks: 9, rankedCount: 5, minPicks: 5 } as const;
+    expect(standingCopy(standing, "friends").detail).toBe("Ranked 2 of 5 on your friends board");
   });
 });
 

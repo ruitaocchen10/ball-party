@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { CurrentRoom, type RoomSummary } from "@/components/home/CurrentRoom";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
+import { RoomInvitesInbox, type RoomInvite } from "@/components/home/RoomInvitesInbox";
 import { JoinRoom } from "@/components/home/JoinRoom";
 import { StartRoom } from "@/components/home/StartRoom";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
@@ -38,12 +39,14 @@ export default async function PartyPage(props: PageProps<"/party">) {
   const canHost = canCreateLobby(claims);
 
   // Independent of each other, so they go together rather than in sequence.
-  const [profileResult, room] = viewer
+  const [profileResult, room, invites] = viewer
     ? await Promise.all([
         supabase.from("profiles").select("display_name, avatar_url").eq("id", claims!.sub).single(),
         currentRoom(supabase, claims!.sub),
+        // Guests have no friends, so nobody can have invited them.
+        canHost ? pendingInvites(supabase) : Promise.resolve([]),
       ])
-    : [{ data: null }, null];
+    : [{ data: null }, null, [] as RoomInvite[]];
 
   const { displayName, email, avatarUrl } = chromeIdentity(claims, profileResult.data);
 
@@ -80,6 +83,7 @@ export default async function PartyPage(props: PageProps<"/party">) {
             <CurrentRoom room={room} headingId="party-room-heading-mobile" />
           </div>
         ) : null}
+        <RoomInvitesInbox invites={invites} hasRoom={room !== null} />
         <ActionStrip hasRoom={room !== null} canCreateLobby={canHost} />
         {!room ? <div className="xl:hidden"><PartyGuide /></div> : null}
 
@@ -116,6 +120,19 @@ async function currentRoom(supabase: Client, userId: string): Promise<RoomSummar
     }));
 
   return { code: lobby.code, players, hostId: lobby.host_id, youId: userId };
+}
+
+/** Pending room invites from friends. A failed read just hides the inbox. */
+async function pendingInvites(supabase: Client): Promise<RoomInvite[]> {
+  const { data } = await supabase.rpc("list_room_invites");
+  return (data ?? []).map((row) => ({
+    inviteId: row.invite_id,
+    senderName: row.sender_display_name,
+    senderUsername: row.sender_username,
+    senderAvatarUrl: row.sender_avatar_url,
+    selectedGame: row.selected_game,
+    memberCount: row.member_count,
+  }));
 }
 
 /**
