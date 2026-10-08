@@ -154,15 +154,15 @@ select is(
 
 select tests.act_as_admin();
 select ok(
-  has_function_privilege('authenticated', 'public.ball_knower_leaderboard(text,integer)', 'execute')
-    and not has_function_privilege('anon', 'public.ball_knower_leaderboard(text,integer)', 'execute')
-    and has_function_privilege('authenticated', 'public.my_ball_knower_standing(text)', 'execute')
-    and not has_function_privilege('anon', 'public.my_ball_knower_standing(text)', 'execute'),
+  has_function_privilege('authenticated', 'public.ball_knower_leaderboard(text,integer,text)', 'execute')
+    and not has_function_privilege('anon', 'public.ball_knower_leaderboard(text,integer,text)', 'execute')
+    and has_function_privilege('authenticated', 'public.my_ball_knower_standing(text,text)', 'execute')
+    and not has_function_privilege('anon', 'public.my_ball_knower_standing(text,text)', 'execute'),
   'only signed-in players can call the leaderboard RPCs'
 );
 select ok(
   not has_function_privilege('authenticated', 'private.ball_knower_totals(text)', 'execute')
-    and not has_function_privilege('authenticated', 'private.ball_knower_cohort(text)', 'execute'),
+    and not has_function_privilege('authenticated', 'private.ball_knower_cohort(text,text,uuid)', 'execute'),
   'the cohort helpers are not callable by clients'
 );
 
