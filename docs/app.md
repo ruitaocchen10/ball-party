@@ -18,17 +18,23 @@ Ball Party is a sports (NFL) knowledge party game and community. People test the
 
 Cards Against Humanity is not built: it has no catalog entry and no doc.
 
-**Rooms (`/party`).** A host creates a room with a join code, friends join, and the host picks a game from the live room-capable games. Each pick starts an **arcade** run: one match of one game. See [lobbies](./architecture/lobbies/lobbies.md) for lobby → run → match.
+**Rooms (`/party`).** A host creates a room with a join code, friends join, and the host picks a game from the live room-capable games. Any member can invite friends from the lobby; the invitee sees pending invites at the top of `/party` and joins or declines (invites last 24 hours, in-app only, no push). Each pick starts an **arcade** run: one match of one game. See [lobbies](./architecture/lobbies/lobbies.md) for lobby → run → match.
 
 **Solo (`/solo`, and the sidebar's solo section).** Starts a solo run of any game with `solo: true`. Signed-out visitors get a guest session on web.
 
-**Profile (`/profile`).** Match history, stats, knower highlights and rankings, and the player's prompt takes.
+**Profile (`/profile`).** Match history, stats, knower highlights and rankings, and the player's prompt takes. Edit profile also sets the player's unique **username**.
 
-**Leaderboard (`/leaderboard`).** The Ball Knower leaderboard: resolved prompt points ranked over the week, month, year or all time, with the viewer's own row. Ranking, ties and the 3-scored-pick floor are all in SQL (`ball_knower_leaderboard`, `my_ball_knower_standing`, migrations 0181 and 0182). Accounts only, not guests or signed-out visitors. There is no Gamer leaderboard yet.
+**Friends (`/friends`).** Accounts only; guests are asked to sign up. Friends list, incoming and outgoing requests, blocked players, exact-username search and a shareable invite link (`/friends/invite/<code>`). An Activity tab shows friends' recent picks (never which options), pick results and match results from the last 30 days. Rules live in SQL (migrations 0183 to 0190).
+
+**Other players' profiles (`/u/<username>`).** Another player's highlights and match history. A private profile shows only its header to non-friends; unknown, guest and blocking users all look like not found (`get_profile`, migration 0186). Leaderboard rows link here.
+
+**Leaderboard (`/leaderboard`).** The Ball Knower leaderboard: resolved prompt points ranked over the week, month, year or all time, with the viewer's own row. Ranking, ties and the 3-scored-pick floor are all in SQL (`ball_knower_leaderboard`, `my_ball_knower_standing`, migrations 0181 and 0182). Accounts only, not guests or signed-out visitors. It can be scoped to Everyone or Friends; the friends board ranks you against your accepted friends. There is no Gamer leaderboard yet.
 
 ## Accounts
 
-Multiplayer needs a real account; guests are refused at `join_lobby` and `start_run`. Solo play works as a guest on web. iOS never carries a guest session.
+Multiplayer needs a real account; guests are refused at `join_lobby` and `start_run`. Solo play works as a guest on web. iOS never carries a guest session. Guests cannot have friends or a username.
+
+Every non-guest account has a unique username (3-20 letters, digits or underscores, case-insensitive): generated from the display name at signup, optionally chosen there, and confirmed once by existing users in a prompt. Settings has a **Private profile** switch (`set_profile_private`): only friends can open a private profile, but its name, username and photo stay searchable and it still ranks.
 
 ## Not built yet
 
@@ -36,7 +42,7 @@ Multiplayer needs a real account; guests are refused at `join_lobby` and `start_
 
 ## iOS
 
-Four tabs: Home (Huddle), Games, Party (placeholder), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard. Games on iOS are Higher or Lower (solo and live match) and QB Season Builder; the rest are web only. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
+Four tabs: Home (Huddle), Games, Party (placeholder), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard. Friends, other players' profiles and the activity feed are in the Profile menu. Room invites wait on rooms shipping on iOS (BPMO-11). Games on iOS are Higher or Lower (solo and live match) and QB Season Builder; the rest are web only. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
 
 ## Keeping this file true
 

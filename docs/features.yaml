@@ -77,9 +77,19 @@ features:
     ios: no
     note: docs/app.md, "iOS never carries a guest session"
   - id: account.edit-profile
-    summary: Edit display name and avatar
+    summary: Edit display name, username and avatar
     web: done
     ios: done
+  - id: account.username
+    summary: Unique username (3-20 letters, digits, underscore), optional at signup, editable in edit-profile with a live availability check; existing accounts confirm their generated name once
+    web: done
+    ios: done
+    note: Signup cannot check availability (no session until the email is confirmed), so the chosen name is claimed at first sign-in. The confirm prompt is remembered per device, not on the server.
+  - id: account.private-profile
+    summary: Private profile setting (only friends can open your profile; you stay searchable and ranked)
+    web: done
+    ios: done
+    note: Web is in Settings; iOS is Privacy in the Profile menu.
   - id: account.change-credentials
     summary: Change email or password
     web: done
@@ -105,9 +115,34 @@ features:
     web: done
     ios: done
 
+  # --- Friends ---------------------------------------------------------------
+  - id: friends.list
+    summary: Friends list, remove, block and unblock
+    web: done
+    ios: done
+  - id: friends.requests-search-invite
+    summary: Friend requests, exact-username search and a shareable invite link
+    web: done
+    ios: partial
+    ticket: BPMO-TBD
+    note: iOS cannot open an incoming invite link yet (needs Associated Domains, an apple-app-site-association file for /friends/invite/*, and an onOpenURL handler). Create the BPMO ticket and replace BPMO-TBD.
+  - id: friends.profiles
+    summary: View another player's profile (public, friends-only and not-found states) with friend actions
+    web: done
+    ios: done
+  - id: friends.activity-feed
+    summary: Friends' recent picks (never which options), pick results and match results from the last 30 days
+    web: done
+    ios: done
+    note: An Activity tab on the Friends page / screen.
+
   # --- Leaderboard -----------------------------------------------------------
   - id: leaderboard.ball-knower
     summary: Ball Knower leaderboard by week, month, year and all time
+    web: done
+    ios: done
+  - id: friends.leaderboard-scope
+    summary: Switch the leaderboard between Everyone and Friends; rows link to the player's profile
     web: done
     ios: done
 
@@ -116,6 +151,12 @@ features:
     summary: Create a room, join by code, leave, close
     web: done
     ios: done
+  - id: friends.room-invites
+    summary: Invite friends into a room from the lobby; accept or decline from the Party page
+    web: done
+    ios: partial
+    ticket: BPMO-11
+    note: iOS has no room surface until BPMO-11 (the Party tab is a placeholder). The backend is done.
   - id: rooms.pick-game
     summary: Host picks the game and starts a run
     web: done
