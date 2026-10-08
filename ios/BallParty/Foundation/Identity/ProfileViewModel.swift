@@ -54,6 +54,8 @@ protocol ProfileClient: Sendable {
     /// `claim_username` — authoritative. Returns the username as stored;
     /// throws `UsernameError` for the refusals the RPC defines.
     func claimUsername(_ username: String) async throws -> String
+    /// `set_profile_private` — returns the stored value.
+    func setProfilePrivate(_ isPrivate: Bool) async throws -> Bool
 }
 
 /// The two username RPCs, shared by the profile client and the auth backend
@@ -178,6 +180,50 @@ struct SupabaseProfileClient: ProfileClient {
 
     func claimUsername(_ username: String) async throws -> String {
         try await UsernameRPC.claim(username, client: client)
+    }
+
+    private struct PrivateParams: Encodable {
+        let p_private: Bool
+    }
+
+    func setProfilePrivate(_ isPrivate: Bool) async throws -> Bool {
+        try await client.rpc("set_profile_private", params: PrivateParams(p_private: isPrivate))
+            .execute().value
+    }
+}
+
+/// The privacy toggle in settings: `set_profile_private`, applied optimistically
+/// and put back if the server refuses.
+@MainActor
+final class PrivacySettingsViewModel: ObservableObject, Identifiable {
+    /// The line under the toggle. Keep identical to the web's setting.
+    static let explanation = "Only friends can see your profile body; you still appear on leaderboards."
+
+    let id = UUID()
+    @Published private(set) var isPrivate: Bool
+    @Published private(set) var isSaving = false
+    @Published var notice: String?
+
+    private let client: ProfileClient
+
+    init(client: ProfileClient, isPrivate: Bool) {
+        self.client = client
+        self.isPrivate = isPrivate
+    }
+
+    func set(_ value: Bool) async {
+        guard value != isPrivate, !isSaving else { return }
+        notice = nil
+        let previous = isPrivate
+        isPrivate = value
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            isPrivate = try await client.setProfilePrivate(value)
+        } catch {
+            isPrivate = previous
+            notice = "We couldn’t update your privacy setting. Please try again."
+        }
     }
 }
 

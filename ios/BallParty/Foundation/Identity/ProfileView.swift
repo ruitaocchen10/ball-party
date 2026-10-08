@@ -14,6 +14,7 @@ struct ProfileView: View {
     private let profileClient: ProfileClient
 
     @State private var editor: ProfileEditorViewModel?
+    @State private var privacy: PrivacySettingsViewModel?
     @State private var confirmingDelete = false
     @State private var deleteFailed = false
 
@@ -57,6 +58,13 @@ struct ProfileView: View {
                         )
                     } label: {
                         Label("Edit profile", systemImage: "pencil")
+                    }
+                    Button {
+                        privacy = PrivacySettingsViewModel(
+                            client: profileClient, isPrivate: viewModel.profile?.isPrivate ?? false
+                        )
+                    } label: {
+                        Label("Privacy", systemImage: "lock")
                     }
                     Divider()
                     Link(destination: SiteLinks.privacyPolicy) {
@@ -105,6 +113,11 @@ struct ProfileView: View {
                 Task { await viewModel.load() }
             }
         }
+        .sheet(item: $privacy, onDismiss: { Task { await viewModel.load() } }) { privacyViewModel in
+            PrivacySettingsView(viewModel: privacyViewModel)
+                .presentationDetents([.medium])
+                .presentationBackground(Theme.surface)
+        }
         .task {
             await viewModel.load()
             await huddle.load()
@@ -142,6 +155,52 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 16)
         .overlay(alignment: .bottom) { LineRule() }
+    }
+}
+
+// MARK: - Privacy
+
+/// The privacy setting, opened from the Profile menu.
+private struct PrivacySettingsView: View {
+    @ObservedObject var viewModel: PrivacySettingsViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Privacy").slabTitle(34)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                Button("Done") { dismiss() }
+                    .buttonStyle(.quiet)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(
+                    "Private profile",
+                    isOn: Binding(
+                        get: { viewModel.isPrivate },
+                        set: { value in Task { await viewModel.set(value) } }
+                    )
+                )
+                .disabled(viewModel.isSaving)
+                .tint(Theme.hiddenText)
+
+                Text(PrivacySettingsViewModel.explanation)
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.fgMuted)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .well()
+
+            if let notice = viewModel.notice {
+                Text(notice).font(.sans(14)).foregroundStyle(Theme.hiddenText)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(24)
+        .screenBackground()
     }
 }
 

@@ -36,9 +36,11 @@ final class ProfileEditorViewModelTests: XCTestCase {
 
         var availableResult: Result<Bool, Error> = .success(true)
         var claimResult: Result<String, Error>?
+        var privateResult: Result<Bool, Error>?
         var profileResult: ProfileSummary?
         private(set) var availabilityChecks: [String] = []
         private(set) var claims: [String] = []
+        private(set) var privateCalls: [Bool] = []
 
         func usernameAvailable(_ username: String) async throws -> Bool {
             availabilityChecks.append(username)
@@ -48,6 +50,11 @@ final class ProfileEditorViewModelTests: XCTestCase {
         func claimUsername(_ username: String) async throws -> String {
             claims.append(username)
             return try (claimResult ?? .success(username)).get()
+        }
+
+        func setProfilePrivate(_ isPrivate: Bool) async throws -> Bool {
+            privateCalls.append(isPrivate)
+            return try (privateResult ?? .success(isPrivate)).get()
         }
     }
 
@@ -302,6 +309,39 @@ final class ProfileEditorViewModelTests: XCTestCase {
         XCTAssertEqual(client.claims, ["sam_new"])
         XCTAssertEqual(prompt?.finished, true)
         XCTAssertTrue(store.isConfirmed(userId))
+    }
+
+    // MARK: - Privacy
+
+    func test_privacy_turningItOnCallsTheRpcAndKeepsTheValue() async {
+        let client = StubClient()
+        let viewModel = PrivacySettingsViewModel(client: client, isPrivate: false)
+
+        await viewModel.set(true)
+
+        XCTAssertEqual(client.privateCalls, [true])
+        XCTAssertTrue(viewModel.isPrivate)
+        XCTAssertNil(viewModel.notice)
+    }
+
+    func test_privacy_aFailedCallPutsTheToggleBack() async {
+        let client = StubClient()
+        client.privateResult = .failure(Offline())
+        let viewModel = PrivacySettingsViewModel(client: client, isPrivate: false)
+
+        await viewModel.set(true)
+
+        XCTAssertFalse(viewModel.isPrivate)
+        XCTAssertNotNil(viewModel.notice)
+    }
+
+    func test_privacy_settingTheCurrentValueDoesNothing() async {
+        let client = StubClient()
+        let viewModel = PrivacySettingsViewModel(client: client, isPrivate: true)
+
+        await viewModel.set(true)
+
+        XCTAssertTrue(client.privateCalls.isEmpty)
     }
 
     // MARK: - Photo upload
