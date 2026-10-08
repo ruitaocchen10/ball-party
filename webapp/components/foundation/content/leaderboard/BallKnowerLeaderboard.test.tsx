@@ -29,4 +29,18 @@ describe("BallKnowerLeaderboard scope toggle", () => {
     render(<BallKnowerLeaderboard window="week" rows={[]} standing={unranked} />);
     expect(screen.getByText("No one is ranked yet")).toBeInTheDocument();
   });
+
+  it("links a row to the profile only when it carries a username", () => {
+    const row = { rank: 1, profileId: "p1", displayName: "Ava", avatarUrl: null, totalPoints: 10, scoredPicks: 6, isMe: false };
+    render(
+      <BallKnowerLeaderboard
+        window="week"
+        rows={[{ ...row, username: "ava" }, { ...row, profileId: "p2", rank: 2, displayName: "Ben" }]}
+        standing={unranked}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Ava" })).toHaveAttribute("href", "/u/ava");
+    expect(screen.queryByRole("link", { name: "Ben" })).not.toBeInTheDocument();
+    expect(screen.getByText("Ben")).toBeInTheDocument();
+  });
 });

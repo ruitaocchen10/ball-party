@@ -20,6 +20,12 @@ export type LeaderboardRow = {
   profileId: string;
   displayName: string;
   avatarUrl: string | null;
+  /**
+   * When present the row links to /u/<username>. The leaderboard RPC does not
+   * return usernames yet, so no row is tappable until it does (see the
+   * follow-up on ball_knower_leaderboard); absent means "not tappable".
+   */
+  username?: string | null;
   totalPoints: number;
   scoredPicks: number;
   isMe: boolean;
@@ -163,7 +169,16 @@ function LeaderboardRowView({ row }: { row: LeaderboardRow }) {
       <span className={`font-slab leading-none ${top ? "text-[28px] text-fg" : "text-[22px] text-fg-muted"}`}>{row.rank}</span>
       <span className="flex min-w-0 items-center gap-3">
         <AuthorAvatar name={row.displayName} avatarUrl={row.avatarUrl} className="h-8 w-8" />
-        <span className="truncate text-base font-medium">{row.displayName}</span>
+        {row.username ? (
+          <Link
+            href={`/u/${row.username}`}
+            className="truncate text-base font-medium hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+          >
+            {row.displayName}
+          </Link>
+        ) : (
+          <span className="truncate text-base font-medium">{row.displayName}</span>
+        )}
       </span>
       <span className="hidden text-right font-mono text-[13px] text-fg-muted sm:block">{row.scoredPicks}</span>
       <span className="text-right font-slab text-[22px] leading-none">{row.totalPoints.toLocaleString("en-US")}</span>
