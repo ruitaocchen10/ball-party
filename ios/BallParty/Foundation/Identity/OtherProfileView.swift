@@ -43,7 +43,7 @@ struct OtherProfileView: View {
         } message: {
             Text(confirming == .block
                 ? "They won’t be able to find you or see your profile, and any friendship ends."
-                : "You’ll stop seeing each other’s activity.")
+                : "You’ll stop seeing each other’s friends rankings.")
         }
     }
 
