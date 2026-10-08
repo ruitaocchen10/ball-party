@@ -2,7 +2,7 @@
 
 How the web app (`webapp/`) is put together visually: the tokens, the page layouts, and the shared components. Read this before any UI work. The point is that a new screen is assembled from the kit, not styled from scratch.
 
-The kit lives in `webapp/components/foundation/ui-kit/`; the tokens live in `webapp/app/globals.css`.
+The kit lives in `webapp/components/foundation/ui-kit/`. The tokens live in `webapp/app/globals.css`.
 
 ## Principles
 
@@ -17,6 +17,8 @@ The kit lives in `webapp/components/foundation/ui-kit/`; the tokens live in `web
 ### Colors
 
 Each is a Tailwind color (`bg-panel`, `text-fg-muted`, `border-line`, …) backed by a CSS variable.
+
+**iOS has its own copy.** `ios/BallParty/Foundation/UIKit/Theme.swift` holds the same colors under camelCase names (`panel-soft` is `panelSoft`). The two files are separate, so each app builds on its own, but `tokens.test.ts` fails if a color differs or exists on only one side. Change a color in both. `/admin/design` (admin only) shows every token as it renders.
 
 | Token | Use |
 | --- | --- |
