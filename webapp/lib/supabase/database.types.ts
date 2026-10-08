@@ -2747,6 +2747,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ball_knower_leaderboard: {
+        Args: { p_limit?: number; p_window: string }
+        Returns: {
+          avatar_url: string | null
+          display_name: string
+          is_me: boolean
+          profile_id: string
+          rank: number
+          ranked_count: number
+          scored_picks: number
+          total_points: number
+        }[]
+      }
       choose_post_game: {
         Args: {
           p_choice: Database["public"]["Enums"]["post_game_choice"]
@@ -2817,6 +2830,17 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      my_ball_knower_standing: {
+        Args: { p_window: string }
+        Returns: {
+          min_picks: number
+          rank: number | null
+          ranked_count: number
+          scored_picks: number
+          status: string
+          total_points: number
+        }[]
       }
       my_match_history: {
         Args: never

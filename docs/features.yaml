@@ -111,6 +111,12 @@ features:
     web: done
     ios: done
 
+  # --- Leaderboard -----------------------------------------------------------
+  - id: leaderboard.ball-knower
+    summary: Ball Knower leaderboard by week, month, year and all time
+    web: done
+    ios: done
+
   # --- Rooms -----------------------------------------------------------------
   - id: rooms.create-join
     summary: Create a room, join by code, leave, close
