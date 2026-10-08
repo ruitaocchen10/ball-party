@@ -9,7 +9,6 @@ import {
   PanelLeftOpen,
   Play,
   Trophy,
-  UserPlus,
   Users,
   X,
 } from "lucide-react";
@@ -172,7 +171,6 @@ function FeedbackButton({ compact, onOpen }: { compact: boolean; onOpen: () => v
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: House },
   { href: "/party", label: "Party", Icon: Users },
-  { href: "/friends", label: "Friends", Icon: UserPlus },
   { href: "/leaderboard", label: "Leaderboard", Icon: Trophy },
 ];
 

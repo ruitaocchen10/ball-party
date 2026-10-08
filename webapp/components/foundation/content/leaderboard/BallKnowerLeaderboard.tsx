@@ -109,7 +109,7 @@ export function BallKnowerLeaderboard({
       {rows.length === 0 && scope === "friends" ? (
         <EmptyState title="No friends on the board yet" className="mt-3">
           Add friends to see how you stack up against them. Friends appear after {standing.minPicks} scored picks in this window.{" "}
-          <Link href="/friends" className="text-fg underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
+          <Link href="/profile?tab=friends" className="text-fg underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
             Find friends
           </Link>
         </EmptyState>

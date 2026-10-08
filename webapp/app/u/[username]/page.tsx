@@ -124,10 +124,10 @@ function PlayerNotFound() {
       <p className="type-label text-hidden-text">Player profile</p>
       <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Player not found</h1>
       <p className="mt-4 text-[15px] leading-6 text-fg-muted">
-        We couldn&apos;t find that player. Check the username, or find friends from your friends page.
+        We couldn&apos;t find that player. Check the username, or find friends from your profile.
       </p>
       <div className="mt-6 max-w-xs">
-        <ButtonLink href="/friends">Go to friends</ButtonLink>
+        <ButtonLink href="/profile?tab=friends">Go to friends</ButtonLink>
       </div>
       <Link href="/" className="mt-4 inline-block type-label text-fg-muted underline underline-offset-2 hover:text-fg">
         Back home

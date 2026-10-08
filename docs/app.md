@@ -22,9 +22,9 @@ Cards Against Humanity is not built: it has no catalog entry and no doc.
 
 **Solo (`/solo`, and the sidebar's solo section).** Starts a solo run of any game with `solo: true`. Signed-out visitors get a guest session on web.
 
-**Profile (`/profile`).** Match history, stats, knower highlights and rankings, and the player's prompt takes. Edit profile also sets the player's unique **username**.
+**Profile (`/profile`).** Three tabs (`?tab=`): **Stats** (match history, knower highlights and rankings), **Takes** (the player's prompt takes) and **Friends** (see below). Edit profile also sets the player's unique **username**.
 
-**Friends (`/friends`).** Accounts only; guests are asked to sign up. Friends list, incoming and outgoing requests, blocked players, exact-username search and a shareable invite link (`/friends/invite/<code>`). An Activity tab shows friends' recent picks (never which options), pick results and match results from the last 30 days. Rules live in SQL (migrations 0183 to 0190).
+**Friends (the Friends tab on `/profile`).** Accounts only; guests are asked to sign up. Friends list, incoming and outgoing requests, blocked players, exact-username search and a shareable invite link (`/friends/invite/<code>`, which stays its own page). The tab label shows a count of pending requests. `/friends` redirects to the tab. There is no friend activity feed in the UI for now; the `friend_activity` RPC exists but nothing calls it. Rules live in SQL (migrations 0183 to 0190).
 
 **Other players' profiles (`/u/<username>`).** Another player's highlights and match history. A private profile shows only its header to non-friends; unknown, guest and blocking users all look like not found (`get_profile`, migration 0186). Leaderboard rows link here.
 
@@ -42,7 +42,7 @@ Every non-guest account has a unique username (3-20 letters, digits or underscor
 
 ## iOS
 
-Four tabs: Home (Huddle), Games, Party (placeholder), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard. Friends, other players' profiles and the activity feed are in the Profile menu. Room invites wait on rooms shipping on iOS (BPMO-11). Games on iOS are Higher or Lower (solo and live match) and QB Season Builder; the rest are web only. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
+Four tabs: Home (Huddle), Games, Party (placeholder), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard. Friends and other players' profiles are in the Profile menu. Room invites wait on rooms shipping on iOS (BPMO-11). Games on iOS are Higher or Lower (solo and live match) and QB Season Builder; the rest are web only. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
 
 ## Keeping this file true
 

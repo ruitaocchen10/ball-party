@@ -46,9 +46,9 @@ describe("InviteFriendsModal", () => {
     expect(screen.getByRole("button", { name: "Invite Ava" })).toHaveTextContent("Try again");
   });
 
-  it("points at /friends when there are no friends", async () => {
+  it("points at the profile Friends tab when there are no friends", async () => {
     rpc.mockResolvedValue({ data: [], error: null });
     render(<InviteFriendsModal lobbyId="lobby-1" onClose={() => {}} />);
-    expect(await screen.findByRole("link", { name: "Find friends" })).toHaveAttribute("href", "/friends");
+    expect(await screen.findByRole("link", { name: "Find friends" })).toHaveAttribute("href", "/profile?tab=friends");
   });
 });

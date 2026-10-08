@@ -87,7 +87,7 @@ export function InviteFriendsModal({ lobbyId, onClose }: { lobbyId: string; onCl
         ) : friends.length === 0 ? (
           <EmptyState title="No friends yet">
             Add friends and you can invite them here.{" "}
-            <Link href="/friends" className="text-fg underline underline-offset-2">Find friends</Link>
+            <Link href="/profile?tab=friends" className="text-fg underline underline-offset-2">Find friends</Link>
           </EmptyState>
         ) : (
           <ul className="border-t border-line">

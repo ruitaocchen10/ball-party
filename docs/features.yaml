@@ -120,6 +120,7 @@ features:
     summary: Friends list, remove, block and unblock
     web: done
     ios: done
+    note: Web is the Friends tab on Profile; iOS is Friends in the Profile menu.
   - id: friends.requests-search-invite
     summary: Friend requests, exact-username search and a shareable invite link
     web: done
@@ -132,9 +133,9 @@ features:
     ios: done
   - id: friends.activity-feed
     summary: Friends' recent picks (never which options), pick results and match results from the last 30 days
-    web: done
-    ios: done
-    note: An Activity tab on the Friends page / screen.
+    web: no
+    ios: no
+    note: Not shipped for now by product decision. The friend_activity RPC (migration 0189) stays in place for a later design; the web and iOS UI for it was removed.
 
   # --- Leaderboard -----------------------------------------------------------
   - id: leaderboard.ball-knower

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { FriendsManager } from "@/components/foundation/friends/FriendsManager";
 import { ProfileEditor } from "@/components/foundation/identity/ProfileEditor";
 import { ProfileHeader } from "@/components/foundation/identity/ProfileHeader";
 import { ProfileHighlightsCard } from "@/components/foundation/identity/ProfileHighlights";
@@ -14,12 +15,14 @@ import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
 import { completedMatchesFromHistory } from "@/lib/foundation/identity/summary";
 import { joinedMonth, profileHighlights } from "@/lib/foundation/identity/highlights";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
+import { friendsDataFromRows } from "@/lib/foundation/friends/friends";
+import { PROFILE_TABS, parseProfileTab, type ProfileTab } from "@/lib/foundation/identity/profileTabs";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 
 /** A player's durable record, kept deliberately separate from a live room. */
-export default async function ProfilePage() {
+export default async function ProfilePage(props: PageProps<"/profile">) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
@@ -27,32 +30,44 @@ export default async function ProfilePage() {
   if (!isSignedInViewer(claims)) return <SignedOutProfile />;
   if (!canViewProfile(claims)) return <GuestProfile />;
 
-  const [{ data: profile }, { data: historyRows }, { data: knowerRows }, { data: takeRows }, promptFeed] = await Promise.all([
+  const tab = parseProfileTab((await props.searchParams).tab);
+
+  // Each tab fetches only what it shows. Pending requests are read on every tab
+  // because the Friends tab label counts them.
+  const [{ data: profile }, historyRows, knowerRows, takeRows, promptFeed, friends, requests, blocked, code] = await Promise.all([
     supabase
       .from("profiles")
       .select("display_name, avatar_url, created_at, username")
       .eq("id", claims.sub)
       .single(),
-    supabase.rpc("my_match_history"),
-    supabase.rpc("my_profile_knower_highlights"),
+    tab === "stats" ? supabase.rpc("my_match_history") : null,
+    tab === "stats" ? supabase.rpc("my_profile_knower_highlights") : null,
     // A take starts a prompt discussion; replies live on its detail page and
     // don't belong in the profile's take history.
-    supabase
-      .from("prompt_comments")
-      .select("id, post_id, body, created_at")
-      .eq("author_id", claims.sub)
-      .is("parent_comment_id", null)
-      .order("created_at", { ascending: false }),
-    fetchPromptFeed(supabase, claims.sub),
+    tab === "takes"
+      ? supabase
+          .from("prompt_comments")
+          .select("id, post_id, body, created_at")
+          .eq("author_id", claims.sub)
+          .is("parent_comment_id", null)
+          .order("created_at", { ascending: false })
+      : null,
+    tab === "takes" ? fetchPromptFeed(supabase, claims.sub) : null,
+    tab === "friends" ? supabase.rpc("list_friends") : null,
+    supabase.rpc("list_friend_requests"),
+    tab === "friends" ? supabase.rpc("list_blocked_users") : null,
+    tab === "friends" ? supabase.rpc("get_my_friend_code") : null,
   ]);
 
-  const matches = completedMatchesFromHistory(historyRows ?? []);
-  const highlights = profileHighlights(matches, knowerRows ?? []);
-  const takeHistory = (takeRows ?? []).flatMap((take) => {
-    const post = promptFeed.find((candidate) => candidate.id === take.post_id);
+  const matches = completedMatchesFromHistory(historyRows?.data ?? []);
+  const highlights = profileHighlights(matches, knowerRows?.data ?? []);
+  const takeHistory = (takeRows?.data ?? []).flatMap((take) => {
+    const post = promptFeed?.find((candidate) => candidate.id === take.post_id);
     const comment = post?.comments.find((candidate) => candidate.id === take.id);
     return post && comment ? [{ post, comment }] : [];
   });
+  const pendingRequests = (requests.data ?? []).filter((row) => row.direction === "incoming").length;
+  const friendsFailed = friends?.error || blocked?.error || requests.error;
   const displayName = profile?.display_name ?? (claims.email as string | undefined) ?? "Player";
   const email = (claims.email as string | undefined) ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
@@ -79,24 +94,63 @@ export default async function ProfilePage() {
           action={<ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} userId={claims.sub} username={profile?.username ?? null} />}
         />
 
-        <ProfileHighlightsCard highlights={highlights} />
+        <ProfileTabs active={tab} pendingRequests={pendingRequests} />
 
-        <div className="xl:hidden">
-          <NextGame />
-        </div>
-
-        <section aria-labelledby="takes-history-heading" className="pt-7">
-          <SectionHeading id="takes-history-heading">Your takes</SectionHeading>
-          {takeHistory.length ? (
-            <ol className="mt-3 grid gap-3">
-              {takeHistory.map((take) => <TakeHistoryItem key={take.comment.id} {...take} avatarUrl={avatarUrl} />)}
-            </ol>
-          ) : (
-            <EmptyTakeHistory />
-          )}
-        </section>
+        {tab === "stats" ? (
+          <>
+            <ProfileHighlightsCard highlights={highlights} />
+            <div className="xl:hidden">
+              <NextGame />
+            </div>
+          </>
+        ) : tab === "takes" ? (
+          <section aria-labelledby="takes-history-heading" className="pt-2">
+            <SectionHeading id="takes-history-heading">Your takes</SectionHeading>
+            {takeHistory.length ? (
+              <ol className="mt-3 grid gap-3">
+                {takeHistory.map((take) => <TakeHistoryItem key={take.comment.id} {...take} avatarUrl={avatarUrl} />)}
+              </ol>
+            ) : (
+              <EmptyTakeHistory />
+            )}
+          </section>
+        ) : friendsFailed ? (
+          <EmptyState title="Couldn't load your friends">Try again in a moment.</EmptyState>
+        ) : (
+          <FriendsManager
+            initial={friendsDataFromRows(friends?.data ?? [], requests.data ?? [], blocked?.data ?? [])}
+            inviteCode={code?.error ? null : (code?.data ?? null)}
+          />
+        )}
       </PageShell>
     </>
+  );
+}
+
+const TAB_LABEL: Record<ProfileTab, string> = { stats: "Stats", takes: "Takes", friends: "Friends" };
+
+function ProfileTabs({ active, pendingRequests }: { active: ProfileTab; pendingRequests: number }) {
+  return (
+    <nav aria-label="Profile sections" className="flex border border-line">
+      {PROFILE_TABS.map((key) => (
+        <Link
+          key={key}
+          href={key === "stats" ? "/profile" : `/profile?tab=${key}`}
+          aria-current={key === active ? "page" : undefined}
+          className={`flex min-h-12 flex-1 items-center justify-center gap-2 font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel ${
+            key === active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
+          }`}
+        >
+          {TAB_LABEL[key]}
+          {key === "friends" && pendingRequests > 0 ? (
+            <span className="rounded-full bg-hidden px-1.5 font-mono text-[10px] leading-4 text-fg">
+              <span className="sr-only">{pendingRequests} pending requests </span>
+              <span aria-hidden="true">{pendingRequests}</span>
+            </span>
+          ) : null}
+        </Link>
+      ))}
+    </nav>
   );
 }
 

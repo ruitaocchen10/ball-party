@@ -64,7 +64,7 @@ export function FriendInviteCard({ code, owner }: { code: string; owner: InviteO
           </p>
         )}
         {error ? <p role="alert" className="text-sm text-hidden-text">{error}</p> : null}
-        <ButtonLink href="/friends" variant="ghost">
+        <ButtonLink href="/profile?tab=friends" variant="ghost">
           Go to friends
         </ButtonLink>
         <Link
