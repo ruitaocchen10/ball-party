@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AccountCredentials } from "@/components/foundation/identity/AccountCredentials";
 import { DeleteAccountSection } from "@/components/foundation/identity/DeleteAccountSection";
 import { GuestUpgrade } from "@/components/foundation/identity/GuestUpgrade";
+import { PrivateProfileToggle } from "@/components/foundation/identity/PrivateProfileToggle";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
@@ -11,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /** Account-level controls that don't belong on the public /profile page:
- *  credentials and account deletion. */
+ *  credentials, profile privacy, and account deletion. */
 export default async function SettingsPage() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
@@ -21,7 +22,7 @@ export default async function SettingsPage() {
   if (!canViewProfile(claims)) return <GuestSettings />;
 
   const [{ data: profile }, { data: userData }] = await Promise.all([
-    supabase.from("profiles").select("display_name, avatar_url").eq("id", claims.sub).single(),
+    supabase.from("profiles").select("display_name, avatar_url, is_private").eq("id", claims.sub).single(),
     // The only place in the app that needs provider identity rather than just
     // claims — getClaims() doesn't carry it, so this one call is a deliberate,
     // scoped exception to the getClaims()-only convention used everywhere else.
@@ -38,11 +39,15 @@ export default async function SettingsPage() {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <PageShell variant="dashboard">
-        <PageHeader eyebrow="Settings" title="Your settings" description="Credentials and your account." />
+        <PageHeader eyebrow="Settings" title="Your settings" description="Credentials, privacy, and your account." />
 
         <div className="mt-9 grid gap-6">
           <SettingsCard title="Account">
             <AccountCredentials email={email} providers={providers} />
+          </SettingsCard>
+
+          <SettingsCard title="Privacy">
+            <PrivateProfileToggle initialPrivate={profile?.is_private ?? false} />
           </SettingsCard>
 
           <SettingsCard title="Danger zone">
