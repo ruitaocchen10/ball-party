@@ -29,7 +29,7 @@ export default async function ProfilePage() {
   const [{ data: profile }, { data: historyRows }, { data: knowerRows }, { data: takeRows }, promptFeed] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name, avatar_url, created_at")
+      .select("display_name, avatar_url, created_at, username")
       .eq("id", claims.sub)
       .single(),
     supabase.rpc("my_match_history"),
@@ -74,7 +74,7 @@ export default async function ProfilePage() {
           displayName={displayName}
           avatarUrl={profile?.avatar_url ?? null}
           joinedLabel={`Playing since ${joinedMonth(profile?.created_at)}`}
-          action={<ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} userId={claims.sub} />}
+          action={<ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} userId={claims.sub} username={profile?.username ?? null} />}
         />
 
         <ProfileHighlightsCard highlights={highlights} />

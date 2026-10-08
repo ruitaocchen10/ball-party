@@ -5,10 +5,11 @@ import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { HuddleFeed } from "@/components/home/HuddleFeed";
 import { QuickActions } from "@/components/home/QuickActions";
 import { SearchQueryProvider } from "@/components/home/search-context";
+import { UsernamePrompt } from "@/components/foundation/identity/UsernamePrompt";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { createClient } from "@/lib/supabase/server";
-import { canAnswerPrompt, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { canAnswerPrompt, canViewProfile, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPromptFeed } from "@/lib/foundation/content/prompts/feed";
 import { fetchGameContexts } from "@/lib/foundation/content/nfl/schedule";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
@@ -38,7 +39,7 @@ export default async function Home(props: PageProps<"/">) {
   // feed and its optional schedule treatment always load.
   const [profileResult, room, { posts, gameContexts }] = await Promise.all([
     viewer
-      ? supabase.from("profiles").select("display_name, avatar_url").eq("id", claims!.sub).single()
+      ? supabase.from("profiles").select("display_name, avatar_url, username").eq("id", claims!.sub).single()
       : Promise.resolve({ data: null }),
     viewer ? currentRoom(supabase, claims!.sub) : Promise.resolve(null),
     fetchPromptFeed(supabase, viewer ? claims!.sub : null).then(async (feed) => ({
@@ -66,11 +67,24 @@ export default async function Home(props: PageProps<"/">) {
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
       <PageShell variant="dashboard" rail={<div className="hidden xl:block"><QuickActions room={room} /></div>}>
+        {canViewProfile(claims) && profileResult.data?.username ? (
+          <UsernamePrompt
+            userId={claims!.sub}
+            currentUsername={profileResult.data.username}
+            preferredUsername={preferredUsername(claims)}
+          />
+        ) : null}
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
         <HuddleFeed posts={pickPosts} canAnswer={canAnswerPrompt(claims)} gameContexts={gameContexts} />
       </PageShell>
     </SearchQueryProvider>
   );
+}
+
+/** The username typed at signup (kept in user metadata until the email is confirmed), if it differs from the assigned one. */
+function preferredUsername(claims: { user_metadata?: unknown } | undefined) {
+  const metadata = claims?.user_metadata as { username?: unknown } | undefined;
+  return typeof metadata?.username === "string" ? metadata.username : null;
 }
 
 /** Older single- and weekly-pick rows remain readable while their data is migrated to `picks`. */
