@@ -2867,6 +2867,7 @@ export type Database = {
           ranked_count: number
           scored_picks: number
           total_points: number
+          username: string
         }[]
       }
       block_user: { Args: { p_user_id: string }; Returns: boolean }

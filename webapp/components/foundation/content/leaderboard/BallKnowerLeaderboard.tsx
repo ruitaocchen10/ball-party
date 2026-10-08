@@ -21,9 +21,9 @@ export type LeaderboardRow = {
   displayName: string;
   avatarUrl: string | null;
   /**
-   * When present the row links to /u/<username>. The leaderboard RPC does not
-   * return usernames yet, so no row is tappable until it does (see the
-   * follow-up on ball_knower_leaderboard); absent means "not tappable".
+   * When present the row links to /u/<username>. The RPC returns null when
+   * either side has blocked the other, and the caller's own row is not linked;
+   * absent means "not tappable".
    */
   username?: string | null;
   totalPoints: number;

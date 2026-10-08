@@ -77,6 +77,7 @@ function toRow(row: {
   total_points: number;
   scored_picks: number;
   is_me: boolean;
+  username: string | null;
 }): LeaderboardRow {
   return {
     rank: row.rank,
@@ -86,6 +87,7 @@ function toRow(row: {
     totalPoints: row.total_points,
     scoredPicks: row.scored_picks,
     isMe: row.is_me,
+    username: row.is_me ? null : row.username,
   };
 }
 
