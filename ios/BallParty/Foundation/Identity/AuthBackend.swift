@@ -35,6 +35,10 @@ protocol AuthBackend: Sendable {
     /// never again after — so callers only reach this once per account, right
     /// after `handle_new_user` has inserted its fallback row.
     func setDisplayName(_ displayName: String, userId: UUID) async throws
+
+    /// `claim_username` for the signed-in user. Signup calls it right after
+    /// the session exists (the trigger has already generated a username).
+    func claimUsername(_ username: String) async throws -> String
 }
 
 struct SupabaseAuthBackend: AuthBackend {
@@ -99,5 +103,9 @@ struct SupabaseAuthBackend: AuthBackend {
             .update(["display_name": displayName])
             .eq("id", value: userId.uuidString)
             .execute()
+    }
+
+    func claimUsername(_ username: String) async throws -> String {
+        try await UsernameRPC.claim(username, client: client)
     }
 }

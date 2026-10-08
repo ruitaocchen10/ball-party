@@ -52,7 +52,8 @@ struct ProfileView: View {
                         editor = ProfileEditorViewModel(
                             client: profileClient, userId: viewerId,
                             displayName: viewModel.profile?.displayName ?? "",
-                            avatarURL: viewModel.avatarURL
+                            avatarURL: viewModel.avatarURL,
+                            username: viewModel.profile?.username
                         )
                     } label: {
                         Label("Edit profile", systemImage: "pencil")
@@ -122,6 +123,11 @@ struct ProfileView: View {
                     // Bebas Neue's line box includes generous space below its glyphs.
                     .padding(.bottom, -6)
                     .accessibilityAddTraits(.isHeader)
+                if let usernameLabel = viewModel.usernameLabel {
+                    Text(usernameLabel)
+                        .font(.sans(15))
+                        .foregroundStyle(Theme.fgMuted)
+                }
                 if let email = viewModel.email, viewModel.displayName != email {
                     Text(email)
                         .font(.sans(15))

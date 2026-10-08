@@ -18,7 +18,7 @@ final class ProfileEditorViewModelTests: XCTestCase {
         private(set) var updatedDisplayName: String?
         private(set) var updatedAvatarURL: URL?
 
-        func profile(userId: UUID) async throws -> ProfileSummary? { nil }
+        func profile(userId: UUID) async throws -> ProfileSummary? { profileResult }
         func matchHistory() async throws -> [ProfileMatchHistoryRow] { [] }
         func knowerHighlights() async throws -> [ProfileKnowerHighlightRow] { [] }
 
@@ -32,6 +32,22 @@ final class ProfileEditorViewModelTests: XCTestCase {
             updatedDisplayName = displayName
             updatedAvatarURL = avatarURL
             try updateResult.get()
+        }
+
+        var availableResult: Result<Bool, Error> = .success(true)
+        var claimResult: Result<String, Error>?
+        var profileResult: ProfileSummary?
+        private(set) var availabilityChecks: [String] = []
+        private(set) var claims: [String] = []
+
+        func usernameAvailable(_ username: String) async throws -> Bool {
+            availabilityChecks.append(username)
+            return try availableResult.get()
+        }
+
+        func claimUsername(_ username: String) async throws -> String {
+            claims.append(username)
+            return try (claimResult ?? .success(username)).get()
         }
     }
 
@@ -77,6 +93,215 @@ final class ProfileEditorViewModelTests: XCTestCase {
 
         XCTAssertFalse(viewModel.saved)
         XCTAssertNotNil(viewModel.notice)
+    }
+
+    // MARK: - Username
+
+    private func makeFieldModel(client: StubClient, username: String = "sam_k") -> UsernameFieldModel {
+        UsernameFieldModel(client: client, username: username, debounceNanoseconds: 1_000_000)
+    }
+
+    func test_usernameField_startsUnchanged() {
+        let field = makeFieldModel(client: StubClient())
+
+        XCTAssertEqual(field.status, .unchanged)
+        XCTAssertEqual(field.text, "sam_k")
+    }
+
+    func test_usernameField_aMalformedNameIsRejectedLocallyWithoutACheck() async {
+        let client = StubClient()
+        let field = makeFieldModel(client: client)
+
+        field.text = "sa"
+        field.textChanged()
+        await field.settle()
+
+        XCTAssertEqual(field.status, .rejected("Username must be 3–20 characters."))
+        XCTAssertTrue(client.availabilityChecks.isEmpty)
+    }
+
+    func test_usernameField_anAvailableNameIsReportedAfterTheDebounce() async {
+        let client = StubClient()
+        let field = makeFieldModel(client: client)
+
+        field.text = "sam_new"
+        field.textChanged()
+        XCTAssertEqual(field.status, .checking)
+        await field.settle()
+
+        XCTAssertEqual(field.status, .available)
+        XCTAssertEqual(client.availabilityChecks, ["sam_new"])
+    }
+
+    func test_usernameField_aTakenNameIsRejected() async {
+        let client = StubClient()
+        client.availableResult = .success(false)
+        let field = makeFieldModel(client: client)
+
+        field.text = "taken_one"
+        field.textChanged()
+        await field.settle()
+
+        XCTAssertEqual(field.status, .rejected("That username is taken or reserved."))
+    }
+
+    func test_usernameField_aFailedCheckDoesNotBlockSaving() async {
+        let client = StubClient()
+        client.availableResult = .failure(Offline())
+        let field = makeFieldModel(client: client)
+
+        field.text = "sam_new"
+        field.textChanged()
+        await field.settle()
+
+        XCTAssertEqual(field.status, .unchecked)
+    }
+
+    func test_usernameField_typingTheCurrentNameBackIsUnchangedWithoutACheck() async {
+        let client = StubClient()
+        let field = makeFieldModel(client: client)
+
+        field.text = "sam_k"
+        field.textChanged()
+        await field.settle()
+
+        XCTAssertEqual(field.status, .unchanged)
+        XCTAssertTrue(client.availabilityChecks.isEmpty)
+    }
+
+    func test_save_claimsAChangedUsernameBeforeWritingTheProfile() async {
+        let client = StubClient()
+        let viewModel = ProfileEditorViewModel(
+            client: client, userId: UUID(), displayName: "Sam", avatarURL: nil, username: "sam_k"
+        )
+        viewModel.usernameField?.text = "sam_new"
+
+        await viewModel.save()
+
+        XCTAssertEqual(client.claims, ["sam_new"])
+        XCTAssertEqual(client.updatedDisplayName, "Sam")
+        XCTAssertTrue(viewModel.saved)
+    }
+
+    func test_save_withAnUnchangedUsername_doesNotCallClaim() async {
+        let client = StubClient()
+        let viewModel = ProfileEditorViewModel(
+            client: client, userId: UUID(), displayName: "Sam", avatarURL: nil, username: "sam_k"
+        )
+
+        await viewModel.save()
+
+        XCTAssertTrue(client.claims.isEmpty)
+        XCTAssertTrue(viewModel.saved)
+    }
+
+    func test_save_aRefusedUsernameShowsTheReasonAndSavesNothing() async {
+        let client = StubClient()
+        client.claimResult = .failure(UsernameError.taken)
+        let viewModel = ProfileEditorViewModel(
+            client: client, userId: UUID(), displayName: "Sam", avatarURL: nil, username: "sam_k"
+        )
+        viewModel.usernameField?.text = "taken_one"
+
+        await viewModel.save()
+
+        XCTAssertEqual(viewModel.notice, "That username is taken.")
+        XCTAssertFalse(viewModel.saved)
+        XCTAssertNil(client.updatedDisplayName)
+    }
+
+    func test_save_aMalformedUsernameIsRefusedWithoutCallingClaim() async {
+        let client = StubClient()
+        let viewModel = ProfileEditorViewModel(
+            client: client, userId: UUID(), displayName: "Sam", avatarURL: nil, username: "sam_k"
+        )
+        viewModel.usernameField?.text = "no spaces"
+
+        await viewModel.save()
+
+        XCTAssertEqual(viewModel.notice, UsernameError.invalid.message)
+        XCTAssertTrue(client.claims.isEmpty)
+        XCTAssertFalse(viewModel.saved)
+    }
+
+    // MARK: - Confirm prompt
+
+    private func makeStore() -> (UsernameConfirmationStore, cleanup: () -> Void) {
+        let suite = "confirm-prompt-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        return (UsernameConfirmationStore(defaults: defaults), { defaults.removePersistentDomain(forName: suite) })
+    }
+
+    func test_confirmPrompt_appearsOnceForAUserWhoHasNotConfirmed() async {
+        let (store, cleanup) = makeStore()
+        defer { cleanup() }
+        let client = StubClient()
+        client.profileResult = ProfileSummary(displayName: "Sam", avatarURL: nil, joinedAt: nil, username: "sam_k")
+        let userId = UUID()
+
+        let prompt = await UsernameConfirmViewModel.make(client: client, userId: userId, store: store)
+        XCTAssertEqual(prompt?.field.text, "sam_k")
+
+        prompt?.dismissed()
+        let again = await UsernameConfirmViewModel.make(client: client, userId: userId, store: store)
+        XCTAssertNil(again)
+    }
+
+    func test_confirmPrompt_isSkippedWhenTheUsernameCannotBeRead() async {
+        let (store, cleanup) = makeStore()
+        defer { cleanup() }
+
+        let prompt = await UsernameConfirmViewModel.make(client: StubClient(), userId: UUID(), store: store)
+
+        XCTAssertNil(prompt)
+    }
+
+    func test_confirmPrompt_keepingItMarksItConfirmed() async {
+        let (store, cleanup) = makeStore()
+        defer { cleanup() }
+        let client = StubClient()
+        client.profileResult = ProfileSummary(displayName: "Sam", avatarURL: nil, joinedAt: nil, username: "sam_k")
+        let userId = UUID()
+        let prompt = await UsernameConfirmViewModel.make(client: client, userId: userId, store: store)
+
+        prompt?.keep()
+
+        XCTAssertEqual(prompt?.finished, true)
+        XCTAssertTrue(store.isConfirmed(userId))
+        XCTAssertTrue(client.claims.isEmpty)
+    }
+
+    func test_confirmPrompt_aRefusedChangeStaysOpenAndUnconfirmed() async {
+        let (store, cleanup) = makeStore()
+        defer { cleanup() }
+        let client = StubClient()
+        client.profileResult = ProfileSummary(displayName: "Sam", avatarURL: nil, joinedAt: nil, username: "sam_k")
+        client.claimResult = .failure(UsernameError.reserved)
+        let userId = UUID()
+        let prompt = await UsernameConfirmViewModel.make(client: client, userId: userId, store: store)
+        prompt?.field.text = "admin"
+
+        await prompt?.save()
+
+        XCTAssertEqual(prompt?.notice, UsernameError.reserved.message)
+        XCTAssertEqual(prompt?.finished, false)
+        XCTAssertFalse(store.isConfirmed(userId))
+    }
+
+    func test_confirmPrompt_aSuccessfulChangeFinishesAndMarksConfirmed() async {
+        let (store, cleanup) = makeStore()
+        defer { cleanup() }
+        let client = StubClient()
+        client.profileResult = ProfileSummary(displayName: "Sam", avatarURL: nil, joinedAt: nil, username: "sam_k")
+        let userId = UUID()
+        let prompt = await UsernameConfirmViewModel.make(client: client, userId: userId, store: store)
+        prompt?.field.text = "sam_new"
+
+        await prompt?.save()
+
+        XCTAssertEqual(client.claims, ["sam_new"])
+        XCTAssertEqual(prompt?.finished, true)
+        XCTAssertTrue(store.isConfirmed(userId))
     }
 
     // MARK: - Photo upload

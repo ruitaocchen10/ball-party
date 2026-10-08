@@ -6,6 +6,11 @@ struct ProfileSummary: Equatable, Sendable {
     let displayName: String?
     let avatarURL: URL?
     let joinedAt: Date?
+    /// `profiles.username` — always set for non-guest accounts (generated at
+    /// signup); `nil` only for a row we couldn't read it from.
+    var username: String? = nil
+    /// `profiles.is_private`: only friends can open the profile body.
+    var isPrivate: Bool = false
 }
 
 /// Where a player's avatar files live in Storage. The folder name must be the
@@ -42,6 +47,60 @@ protocol ProfileClient: Sendable {
     /// Persists `profiles.display_name` / `profiles.avatar_url` — the web's
     /// `updateProfile` server action.
     func updateProfile(displayName: String, avatarURL: URL?, for userId: UUID) async throws
+
+    /// `username_available` — whether the caller could claim `username` now.
+    /// `false` also covers a malformed or reserved name.
+    func usernameAvailable(_ username: String) async throws -> Bool
+    /// `claim_username` — authoritative. Returns the username as stored;
+    /// throws `UsernameError` for the refusals the RPC defines.
+    func claimUsername(_ username: String) async throws -> String
+}
+
+/// The two username RPCs, shared by the profile client and the auth backend
+/// (signup claims right after the session exists).
+enum UsernameRPC {
+    private struct Params: Encodable {
+        let p_username: String
+    }
+
+    static func available(_ username: String, client: SupabaseClient) async throws -> Bool {
+        do {
+            return try await client.rpc("username_available", params: Params(p_username: username))
+                .execute().value
+        } catch let error as PostgrestError {
+            throw UsernameError(message: error.message, code: error.code)
+        }
+    }
+
+    static func claim(_ username: String, client: SupabaseClient) async throws -> String {
+        do {
+            return try await client.rpc("claim_username", params: Params(p_username: username))
+                .execute().value
+        } catch let error as PostgrestError {
+            throw UsernameError(message: error.message, code: error.code)
+        }
+    }
+}
+
+/// Remembers, per user and on this device only, that the one-time "confirm
+/// your username" prompt has been dealt with (kept, changed or dismissed).
+/// Same client-side flag the web keeps in localStorage.
+struct UsernameConfirmationStore: @unchecked Sendable {
+    let defaults: UserDefaults
+
+    static let standard = UsernameConfirmationStore(defaults: .standard)
+
+    static func key(for userId: UUID) -> String {
+        "username-confirmed.\(userId.uuidString.lowercased())"
+    }
+
+    func isConfirmed(_ userId: UUID) -> Bool {
+        defaults.bool(forKey: Self.key(for: userId))
+    }
+
+    func markConfirmed(_ userId: UUID) {
+        defaults.set(true, forKey: Self.key(for: userId))
+    }
 }
 
 struct SupabaseProfileClient: ProfileClient {
@@ -51,17 +110,21 @@ struct SupabaseProfileClient: ProfileClient {
         let displayName: String?
         let avatarURL: String?
         let createdAt: String?
+        let username: String?
+        let isPrivate: Bool?
 
         enum CodingKeys: String, CodingKey {
             case displayName = "display_name"
             case avatarURL = "avatar_url"
             case createdAt = "created_at"
+            case username
+            case isPrivate = "is_private"
         }
     }
 
     func profile(userId: UUID) async throws -> ProfileSummary? {
         let rows: [Row] = try await client.from("profiles")
-            .select("display_name, avatar_url, created_at")
+            .select("display_name, avatar_url, created_at, username, is_private")
             .eq("id", value: userId.uuidString)
             .limit(1)
             .execute()
@@ -70,7 +133,9 @@ struct SupabaseProfileClient: ProfileClient {
         return ProfileSummary(
             displayName: row.displayName,
             avatarURL: row.avatarURL.flatMap(URL.init(string:)),
-            joinedAt: try row.createdAt.map(PostgresTimestamp.parse)
+            joinedAt: try row.createdAt.map(PostgresTimestamp.parse),
+            username: row.username,
+            isPrivate: row.isPrivate ?? false
         )
     }
 
@@ -105,6 +170,14 @@ struct SupabaseProfileClient: ProfileClient {
             .update(ProfileUpdate(displayName: displayName, avatarURL: avatarURL?.absoluteString))
             .eq("id", value: userId.uuidString)
             .execute()
+    }
+
+    func usernameAvailable(_ username: String) async throws -> Bool {
+        try await UsernameRPC.available(username, client: client)
+    }
+
+    func claimUsername(_ username: String) async throws -> String {
+        try await UsernameRPC.claim(username, client: client)
     }
 }
 
@@ -141,6 +214,9 @@ final class ProfileViewModel: ObservableObject {
     }
 
     var avatarURL: URL? { profile?.avatarURL }
+
+    /// "@sam_k", once the profile row has said.
+    var usernameLabel: String? { profile?.username.map { "@\($0)" } }
 
     /// "Playing since August 2026", once the profile row has said when.
     var joinedLabel: String? {
