@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ProfileEditor } from "@/components/foundation/identity/ProfileEditor";
 import { ProfileHeader } from "@/components/foundation/identity/ProfileHeader";
-import { ProfileHighlightsCard, type ProfileHighlights } from "@/components/foundation/identity/ProfileHighlights";
+import { ProfileHighlightsCard } from "@/components/foundation/identity/ProfileHighlights";
 import { SlotFaceC, YourCalls } from "@/components/foundation/content/prompts/SlotFaces";
 import { TakeCard } from "@/components/foundation/content/prompts/TakeCard";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
@@ -11,7 +11,8 @@ import { canViewProfile, isSignedInViewer } from "@/lib/foundation/identity/view
 import { GuestUpgrade } from "@/components/foundation/identity/GuestUpgrade";
 import { fetchPromptFeed } from "@/lib/foundation/content/prompts/feed";
 import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
-import { completedMatchesFromHistory, profileStatRanges, summarizeMultiplayerProfileRange, type CompletedMatchWithMode } from "@/lib/foundation/identity/summary";
+import { completedMatchesFromHistory } from "@/lib/foundation/identity/summary";
+import { joinedMonth, profileHighlights } from "@/lib/foundation/identity/highlights";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
@@ -73,6 +74,7 @@ export default async function ProfilePage() {
         <ProfileHeader
           displayName={displayName}
           avatarUrl={profile?.avatar_url ?? null}
+          username={profile?.username ?? null}
           joinedLabel={`Playing since ${joinedMonth(profile?.created_at)}`}
           action={<ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} userId={claims.sub} username={profile?.username ?? null} />}
         />
@@ -192,25 +194,4 @@ function TakeHistoryItem({
 
 function EmptyTakeHistory() {
   return <EmptyState className="mt-3">No takes yet. Your takes on prompt posts will show up here.</EmptyState>;
-}
-
-function joinedMonth(date?: string) { return date ? new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(new Date(date)) : "today"; }
-
-function profileHighlights(
-  matches: CompletedMatchWithMode[],
-  knowerRows: { window_key: string; total_points: number; percentile: number | null }[],
-): ProfileHighlights {
-  const knowerByRange = new Map(knowerRows.map((row) => [row.window_key, row]));
-  const now = new Date();
-
-  return {
-    knower: Object.fromEntries(profileStatRanges.map((range) => {
-      const row = knowerByRange.get(range);
-      return [range, { totalPoints: row?.total_points ?? 0, percentile: row?.percentile ?? null }];
-    })) as ProfileHighlights["knower"],
-    gamer: Object.fromEntries(profileStatRanges.map((range) => {
-      const summary = summarizeMultiplayerProfileRange(matches, range, now);
-      return [range, { gamesPlayed: summary.gamesPlayed, wins: summary.wins, winRate: summary.winRate }];
-    })) as ProfileHighlights["gamer"],
-  };
 }
