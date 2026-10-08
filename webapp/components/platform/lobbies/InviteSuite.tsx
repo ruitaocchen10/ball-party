@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/foundation/ui-kit/Button";
+import { InviteFriendsModal } from "@/components/platform/lobbies/InviteFriendsModal";
 
 const FOCUS =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
@@ -21,7 +22,8 @@ const FOCUS =
  * friend" is exactly what it is for. Everywhere else falls back to copying
  * the link to the clipboard.
  */
-export function InviteSuite({ code }: { code: string }) {
+export function InviteSuite({ code, lobbyId }: { code: string; lobbyId: string }) {
+  const [friendsOpen, setFriendsOpen] = useState(false);
   const [status, setStatus] = useState<"idle" | "copied-code" | "copied-link">("idle");
 
   function flash(next: "copied-code" | "copied-link") {
@@ -73,9 +75,16 @@ export function InviteSuite({ code }: { code: string }) {
         </span>
       </button>
 
-      <Button size="sm" fullWidth={false} type="button" onClick={invite}>
-        {status === "copied-link" ? "Link copied" : "Invite friends"}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button size="sm" fullWidth={false} type="button" onClick={() => setFriendsOpen(true)}>
+          Invite friends
+        </Button>
+        <Button size="sm" variant="ghost" fullWidth={false} type="button" onClick={invite}>
+          {status === "copied-link" ? "Link copied" : "Share link"}
+        </Button>
+      </div>
+
+      {friendsOpen ? <InviteFriendsModal lobbyId={lobbyId} onClose={() => setFriendsOpen(false)} /> : null}
     </div>
   );
 }
