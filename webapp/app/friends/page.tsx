@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActivityFeed } from "@/components/foundation/friends/ActivityFeed";
-import { FriendsManager, friendsDataFromRows } from "@/components/foundation/friends/FriendsManager";
+import { FriendsManager } from "@/components/foundation/friends/FriendsManager";
+import { friendsDataFromRows } from "@/lib/foundation/friends/friends";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";

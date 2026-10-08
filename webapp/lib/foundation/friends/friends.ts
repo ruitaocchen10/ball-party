@@ -127,3 +127,38 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
   if (days < 31) return `${days}d ago`;
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(iso));
 }
+
+// Plain module (no "use client") so server pages can call friendsDataFromRows.
+export type PlayerSummary = {
+  profileId: string;
+  username: string | null;
+  displayName: string;
+  avatarUrl: string | null;
+};
+
+export type FriendsData = {
+  friends: PlayerSummary[];
+  incoming: PlayerSummary[];
+  outgoing: PlayerSummary[];
+  blocked: PlayerSummary[];
+};
+
+type Row = { profile_id: string; username: string | null; display_name: string; avatar_url: string | null };
+
+function toPlayer(row: Row): PlayerSummary {
+  return { profileId: row.profile_id, username: row.username, displayName: row.display_name, avatarUrl: row.avatar_url };
+}
+
+/** The shape the page hands over, built from the three list RPCs. */
+export function friendsDataFromRows(
+  friends: Row[],
+  requests: (Row & { direction: string })[],
+  blocked: Row[],
+): FriendsData {
+  return {
+    friends: friends.map(toPlayer),
+    incoming: requests.filter((row) => row.direction === "incoming").map(toPlayer),
+    outgoing: requests.filter((row) => row.direction === "outgoing").map(toPlayer),
+    blocked: blocked.map(toPlayer),
+  };
+}
