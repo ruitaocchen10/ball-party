@@ -74,4 +74,44 @@ final class LeaderboardModelsTests: XCTestCase {
     func testWindowRawValuesAreWhatTheRpcAccepts() {
         XCTAssertEqual(LeaderboardWindow.allCases.map(\.rawValue), ["week", "month", "year", "lifetime"])
     }
+
+    func testFriendsCopyNamesTheRankOutOfTheFriendsBoard() {
+        let copy = LeaderboardStanding(status: .ranked, rank: 2, totalPoints: 30, scoredPicks: 4, rankedCount: 5)
+            .copy(for: .friends)
+        XCTAssertEqual(copy.headline, "#2")
+        XCTAssertEqual(copy.detail, "Ranked 2 of 5 on your friends board")
+    }
+
+    func testUnrankedCopyIsTheSameInEveryScope() {
+        let standing = LeaderboardStanding(status: .unranked, scoredPicks: 1)
+        XCTAssertEqual(standing.copy(for: .friends).detail, standing.copy(for: .all).detail)
+    }
+
+    func testScopeRawValuesAreWhatTheRpcAccepts() {
+        XCTAssertEqual(LeaderboardScope.allCases.map(\.rawValue), ["all", "friends"])
+    }
+
+    func testRowUsernameIsOptionalAndLinksOnlyOthers() throws {
+        let without = try decode(LeaderboardRow.self, """
+        {"rank":1,"profile_id":"00000000-0000-0000-0000-000000000001","display_name":"A",
+         "avatar_url":null,"total_points":6,"scored_picks":3,"is_me":false,"ranked_count":1}
+        """)
+        XCTAssertNil(without.username)
+        XCTAssertNil(without.profileUsername)
+
+        let nulled = try decode(LeaderboardRow.self, """
+        {"rank":1,"profile_id":"00000000-0000-0000-0000-000000000001","display_name":"A","username":null,
+         "avatar_url":null,"total_points":6,"scored_picks":3,"is_me":false,"ranked_count":1}
+        """)
+        XCTAssertNil(nulled.profileUsername)
+
+        let other = try decode(LeaderboardRow.self, """
+        {"rank":1,"profile_id":"00000000-0000-0000-0000-000000000001","display_name":"A","username":"a_a",
+         "avatar_url":null,"total_points":6,"scored_picks":3,"is_me":false,"ranked_count":1}
+        """)
+        XCTAssertEqual(other.profileUsername, "a_a")
+
+        let me = LeaderboardRow(rank: 1, displayName: "Me", totalPoints: 1, scoredPicks: 3, isMe: true, rankedCount: 1, username: "me_me")
+        XCTAssertNil(me.profileUsername)
+    }
 }

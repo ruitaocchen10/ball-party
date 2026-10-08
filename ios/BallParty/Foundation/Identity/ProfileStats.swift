@@ -64,6 +64,28 @@ struct KnowerHighlight: Equatable, Sendable {
     let percentile: Int?
 }
 
+extension KnowerHighlight {
+    /// "Rookie" through "Ball god", from a lifetime percentile: mirrors the
+    /// web's `KnowerStatus`. Only meaningful for the lifetime window.
+    var status: String {
+        guard let percentile else { return "Unranked" }
+        switch percentile {
+        case ..<20: return "Rookie"
+        case ..<40: return "Casual"
+        case ..<60: return "Fan"
+        case ..<80: return "Ball knower"
+        default: return "Ball god"
+        }
+    }
+
+    /// What sits under the status; `unrankedDetail` is the no-percentile
+    /// line, which differs between your own profile and someone else's.
+    func statusDetail(unrankedDetail: String) -> String {
+        guard let percentile else { return unrankedDetail }
+        return "Lifetime · \(percentile.ordinal) percentile"
+    }
+}
+
 /// Multiplayer results. The web only ever shows the lifetime window for this
 /// half of the card, so unlike `KnowerHighlight` there is no per-range table.
 struct GamerHighlight: Equatable, Sendable {
