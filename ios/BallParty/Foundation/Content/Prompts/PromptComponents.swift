@@ -47,7 +47,7 @@ struct OptionBadge: View {
             .minimumScaleFactor(0.5)
             .lineLimit(1)
             .frame(width: size, height: size)
-            .background(onPanel ? Theme.panelRule : Theme.panelShade, in: Circle())
+            .background(onPanel ? Theme.panelLine : Theme.panelShade, in: Circle())
     }
 }
 

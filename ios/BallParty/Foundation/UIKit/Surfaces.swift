@@ -226,7 +226,7 @@ struct LineRule: View {
 struct DashedRule: View {
     var body: some View {
         Line()
-            .stroke(Theme.panelRule, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            .stroke(Theme.panelLine, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
             .frame(height: 1)
             .accessibilityHidden(true)
     }

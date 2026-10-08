@@ -148,4 +148,35 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertEqual(backend.signOutCallCount, 1)
         XCTAssertNil(viewModel.session)
     }
+
+    // MARK: - Delete account
+
+    func test_deleteAccount_onSuccess_clearsTheSessionAndReturnsTrue() async {
+        let backend = FakeAuthBackend()
+        backend.currentSession = makeSession()
+        let viewModel = AuthViewModel(backend: backend)
+
+        let deleted = await viewModel.deleteAccount()
+
+        XCTAssertTrue(deleted)
+        XCTAssertEqual(backend.deleteAccountCallCount, 1)
+        XCTAssertNil(viewModel.session)
+        XCTAssertNil(viewModel.notice)
+    }
+
+    func test_deleteAccount_onFailure_keepsTheSessionAndReturnsFalse() async {
+        struct SomeError: Error {}
+        let backend = FakeAuthBackend()
+        backend.currentSession = makeSession()
+        backend.deleteAccountError = SomeError()
+        let viewModel = AuthViewModel(backend: backend)
+
+        let deleted = await viewModel.deleteAccount()
+
+        XCTAssertFalse(deleted)
+        XCTAssertNotNil(viewModel.session)
+        // A failure notice would resurface on the next sign-in screen.
+        XCTAssertNil(viewModel.notice)
+        XCTAssertFalse(viewModel.isBusy)
+    }
 }
