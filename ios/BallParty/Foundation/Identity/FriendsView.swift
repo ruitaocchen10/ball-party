@@ -7,11 +7,10 @@ import SwiftUI
 struct FriendsView: View {
     /// The screen's sections.
     enum Section: Hashable {
-        case friends, requests, add, activity
+        case friends, requests, add
     }
 
     @StateObject private var viewModel: FriendsViewModel
-    @StateObject private var activity: FriendActivityViewModel
     @State private var section: Section
     /// A removal or block waiting on the player's say-so.
     @State private var confirming: PendingConfirmation?
@@ -21,13 +20,11 @@ struct FriendsView: View {
 
     init(
         initialSection: Section = .friends,
-        client: FriendsClient = SupabaseFriendsClient(client: SupabaseConfig.client),
-        activityClient: FriendActivityClient = SupabaseFriendActivityClient(client: SupabaseConfig.client)
+        client: FriendsClient = SupabaseFriendsClient(client: SupabaseConfig.client)
     ) {
         self.client = client
         _section = State(initialValue: initialSection)
         _viewModel = StateObject(wrappedValue: FriendsViewModel(client: client))
-        _activity = StateObject(wrappedValue: FriendActivityViewModel(client: activityClient))
     }
 
     var body: some View {
@@ -41,7 +38,7 @@ struct FriendsView: View {
 
                 SegmentedChoice(
                     selection: $section,
-                    options: [.friends, .requests, .activity, .add],
+                    options: [.friends, .requests, .add],
                     title: title(for:),
                     accessibilityName: "Friends section"
                 )
@@ -58,10 +55,7 @@ struct FriendsView: View {
         .navigationTitle("Friends")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
-        .refreshable {
-            await viewModel.load()
-            if section == .activity { await activity.load() }
-        }
+        .refreshable { await viewModel.load() }
         .confirmationDialog(
             confirming?.title ?? "",
             isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }),
@@ -81,7 +75,6 @@ struct FriendsView: View {
         switch section {
         case .friends: "Friends"
         case .requests: viewModel.incoming.isEmpty ? "Requests" : "Requests (\(viewModel.incoming.count))"
-        case .activity: "Activity"
         case .add: "Add"
         }
     }
@@ -101,12 +94,6 @@ struct FriendsView: View {
             case .friends: friendsList
             case .requests: requestsList
             case .add: addSection
-            case .activity:
-                FriendActivitySection(
-                    viewModel: activity, hasFriends: !viewModel.friends.isEmpty, client: client,
-                    onFindFriends: { section = .add }
-                )
-                .task { await activity.load() }
             }
         }
     }
@@ -366,7 +353,7 @@ private enum PendingConfirmation: Equatable, Identifiable {
 
     var message: String {
         switch self {
-        case .remove: "You’ll stop seeing each other’s activity and friends rankings."
+        case .remove: "You’ll stop seeing each other’s friends rankings."
         case .block: "They won’t be able to find you or see your profile, and any friendship ends."
         }
     }
