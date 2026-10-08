@@ -208,7 +208,29 @@ private struct HighlightsCard: View {
                 HighlightTile(label: "Ball knower status", value: viewModel.knowerStatus, detail: viewModel.knowerStatusDetail)
             }
             standingTile
+            leaderboardLink
         }
+    }
+
+    /// Opens the leaderboard on whichever range the card is showing. Part of
+    /// `knowerTiles`, so the Gamer half never offers it.
+    private var leaderboardLink: some View {
+        NavigationLink {
+            LeaderboardView(initialWindow: LeaderboardWindow(viewModel.statsRange))
+        } label: {
+            HStack {
+                Text("View leaderboard").monoLabel(11, weight: .bold, tracking: 0.12, color: Theme.fg)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Theme.fgMuted)
+            }
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .well()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var standingTile: some View {

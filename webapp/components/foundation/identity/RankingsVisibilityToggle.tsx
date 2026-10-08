@@ -38,7 +38,7 @@ export function RankingsVisibilityToggle({ initialVisible }: { initialVisible: b
         <span>
           <span className="block text-sm font-semibold text-fg">Show me in Knower rankings</span>
           <span className="mt-1 block max-w-[48ch] text-sm leading-5 text-fg-muted">
-            Turn this off to leave the Ball Knower percentile comparison. Your own point total keeps counting — it just stops counting toward anyone else’s standing.
+            Turn this off to leave the Ball Knower leaderboard and percentile comparison. Your own point total keeps counting — it just stops counting toward anyone else’s standing.
           </span>
         </span>
       </label>
