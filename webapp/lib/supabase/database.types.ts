@@ -267,16 +267,13 @@ export type Database = {
       }
       bold_predictions_for_post: {
         Args: { p_post_id: string }
-        Returns: {
-          author_id: string
-          body: string
-          created_at: string
-          id: string
-          post_id: string
-          target_id: string
-          target_type: string
-          updated_at: string
-        }[]
+        Returns: Database["public"]["Tables"]["bold_predictions"]["Row"][]
+        SetofOptions: {
+          from: "*"
+          to: "bold_predictions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       create_post: {
         Args: {
@@ -296,16 +293,13 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       my_bold_predictions: {
         Args: { p_post_id: string }
-        Returns: {
-          author_id: string
-          body: string
-          created_at: string
-          id: string
-          post_id: string
-          target_id: string
-          target_type: string
-          updated_at: string
-        }[]
+        Returns: Database["public"]["Tables"]["bold_predictions"]["Row"][]
+        SetofOptions: {
+          from: "*"
+          to: "bold_predictions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       player_options: {
         Args: never
@@ -837,6 +831,48 @@ export type Database = {
           {
             foreignKeyName: "feedback_reporter_id_fkey"
             columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          responded_at?: string | null
+          status: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friendships_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_requester_id_fkey"
+            columns: ["requester_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1394,7 +1430,9 @@ export type Database = {
           display_name: string
           id: string
           is_guest: boolean
+          is_private: boolean
           updated_at: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1403,7 +1441,9 @@ export type Database = {
           display_name: string
           id: string
           is_guest?: boolean
+          is_private?: boolean
           updated_at?: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -1412,7 +1452,9 @@ export type Database = {
           display_name?: string
           id?: string
           is_guest?: boolean
+          is_private?: boolean
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -1839,6 +1881,58 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_invites: {
+        Row: {
+          created_at: string
+          id: string
+          lobby_id: string
+          recipient_id: string
+          responded_at: string | null
+          sender_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lobby_id: string
+          recipient_id: string
+          responded_at?: string | null
+          sender_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lobby_id?: string
+          recipient_id?: string
+          responded_at?: string | null
+          sender_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_invites_lobby_id_fkey"
+            columns: ["lobby_id"]
+            isOneToOne: false
+            referencedRelation: "lobbies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_invites_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_invites_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2744,10 +2838,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      ball_knower_leaderboard: {
-        Args: { p_limit?: number; p_window: string }
+      accept_friend_request: { Args: { p_user_id: string }; Returns: boolean }
+      accept_room_invite: {
+        Args: { p_invite_id: string }
         Returns: {
-          avatar_url: string | null
+          closed_at: string | null
+          code: string
+          created_at: string
+          host_id: string
+          id: string
+          selected_game: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lobbies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      ball_knower_leaderboard: {
+        Args: { p_limit?: number; p_scope?: string; p_window: string }
+        Returns: {
+          avatar_url: string
           display_name: string
           is_me: boolean
           profile_id: string
@@ -2757,6 +2869,8 @@ export type Database = {
           total_points: number
         }[]
       }
+      block_user: { Args: { p_user_id: string }; Returns: boolean }
+      cancel_friend_request: { Args: { p_user_id: string }; Returns: boolean }
       choose_post_game: {
         Args: {
           p_choice: Database["public"]["Enums"]["post_game_choice"]
@@ -2780,6 +2894,7 @@ export type Database = {
         }
       }
       claim_guest_identity: { Args: never; Returns: string }
+      claim_username: { Args: { p_username: string }; Returns: string }
       close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       create_lobby: {
         Args: never
@@ -2798,8 +2913,66 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      decline_friend_request: { Args: { p_user_id: string }; Returns: boolean }
+      decline_room_invite: { Args: { p_invite_id: string }; Returns: boolean }
       delete_own_account: { Args: never; Returns: undefined }
+      friend_activity: {
+        Args: { p_before?: string; p_limit?: number }
+        Returns: {
+          actor_id: string
+          avatar_url: string
+          display_name: string
+          event_type: string
+          game: string
+          match_id: string
+          occurred_at: string
+          placement: number
+          points: number
+          post_caption: string
+          post_id: string
+          raw_score: number
+          run_mode: string
+          username: string
+        }[]
+      }
+      get_my_friend_code: { Args: never; Returns: string }
+      get_profile: {
+        Args: { p_username: string }
+        Returns: {
+          avatar_url: string
+          can_view: boolean
+          display_name: string
+          is_private: boolean
+          member_since: string
+          profile_id: string
+          relationship: string
+          username: string
+        }[]
+      }
+      get_profile_knower_highlights: {
+        Args: { p_profile_id: string }
+        Returns: {
+          percentile: number
+          total_points: number
+          window_key: string
+        }[]
+      }
+      get_profile_match_history: {
+        Args: { p_profile_id: string }
+        Returns: {
+          ended_at: string
+          game: string
+          match_id: string
+          mode: Database["public"]["Enums"]["run_mode"]
+          placement: number
+          raw_score: number
+        }[]
+      }
       heartbeat_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
+      invite_friend_to_room: {
+        Args: { p_friend_id: string; p_lobby_id: string }
+        Returns: string
+      }
       join_lobby: {
         Args: { p_code: string }
         Returns: {
@@ -2818,6 +2991,51 @@ export type Database = {
         }
       }
       leave_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
+      list_blocked_users: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          blocked_at: string
+          display_name: string
+          profile_id: string
+          username: string
+        }[]
+      }
+      list_friend_requests: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          created_at: string
+          direction: string
+          display_name: string
+          profile_id: string
+          username: string
+        }[]
+      }
+      list_friends: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          display_name: string
+          profile_id: string
+          since: string
+          username: string
+        }[]
+      }
+      list_room_invites: {
+        Args: never
+        Returns: {
+          created_at: string
+          invite_id: string
+          lobby_id: string
+          member_count: number
+          selected_game: string
+          sender_avatar_url: string
+          sender_display_name: string
+          sender_id: string
+          sender_username: string
+        }[]
+      }
       lobby_member_match_history: {
         Args: { p_lobby_id: string }
         Returns: Database["public"]["CompositeTypes"]["match_history_row"][]
@@ -2828,11 +3046,21 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      lookup_friend_code: {
+        Args: { p_code: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          profile_id: string
+          relationship: string
+          username: string
+        }[]
+      }
       my_ball_knower_standing: {
-        Args: { p_window: string }
+        Args: { p_scope?: string; p_window: string }
         Returns: {
           min_picks: number
-          rank: number | null
+          rank: number
           ranked_count: number
           scored_picks: number
           status: string
@@ -2881,6 +3109,9 @@ export type Database = {
         Args: { p_nonce: string }
         Returns: undefined
       }
+      redeem_friend_code: { Args: { p_code: string }; Returns: string }
+      remove_friend: { Args: { p_user_id: string }; Returns: boolean }
+      reset_friend_code: { Args: never; Returns: string }
       resume_match: {
         Args: { p_match_id: string }
         Returns: {
@@ -2900,10 +3131,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      search_users_by_username: {
+        Args: { p_query: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          profile_id: string
+          relationship: string
+          username: string
+        }[]
+      }
       select_lobby_game: {
         Args: { p_game: string; p_lobby_id: string }
         Returns: undefined
       }
+      send_friend_request: { Args: { p_username: string }; Returns: string }
+      set_profile_private: { Args: { p_private: boolean }; Returns: boolean }
       start_run: {
         Args: {
           p_game: string
@@ -2946,6 +3189,8 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      unblock_user: { Args: { p_user_id: string }; Returns: boolean }
+      username_available: { Args: { p_username: string }; Returns: boolean }
     }
     Enums: {
       match_status: "setup" | "playing" | "complete" | "abandoned" | "paused"
