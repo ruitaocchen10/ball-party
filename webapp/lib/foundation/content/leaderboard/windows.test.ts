@@ -56,11 +56,4 @@ describe("standingCopy", () => {
     });
     expect(standingCopy({ ...base, status: "unranked", scoredPicks: 2 }).detail).toBe("1 more scored pick to join the board");
   });
-
-  it("points a hidden player to settings", () => {
-    expect(standingCopy({ ...base, status: "hidden", totalPoints: 90 })).toEqual({
-      headline: "You're hidden",
-      detail: "Turn rankings visibility back on in Settings to appear here",
-    });
-  });
 });

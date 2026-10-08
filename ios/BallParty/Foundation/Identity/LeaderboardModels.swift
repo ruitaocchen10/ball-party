@@ -92,10 +92,10 @@ struct LeaderboardRow: Decodable, Equatable, Sendable, Identifiable {
 
 /// Where the caller stands — the one row `my_ball_knower_standing` returns.
 struct LeaderboardStanding: Decodable, Equatable, Sendable {
-    /// `ranked` is on the board; `hidden` has rankings visibility off;
-    /// `unranked` is visible but under the pick floor (including no picks).
+    /// `ranked` is on the board; `unranked` is under the pick floor
+    /// (including no picks).
     enum Status: String, Equatable, Sendable {
-        case ranked, hidden, unranked
+        case ranked, unranked
     }
 
     let status: Status
@@ -141,12 +141,9 @@ struct LeaderboardStanding: Decodable, Equatable, Sendable {
     }
 
     /// What the caller's own row says, decided in one place — `standingCopy`
-    /// in the web's `windows.ts`. iOS has no settings screen for rankings
-    /// visibility yet (BPMO-10), so the hidden line points at the web.
+    /// in the web's `windows.ts`.
     var copy: (headline: String, detail: String) {
         switch status {
-        case .hidden:
-            return ("You're hidden", "Turn rankings visibility back on in Settings on the web to appear here")
         case .unranked:
             return unrankedCopy
         case .ranked:

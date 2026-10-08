@@ -24,7 +24,7 @@ Cards Against Humanity is not built: it has no catalog entry and no doc.
 
 **Profile (`/profile`).** Match history, stats, knower highlights and rankings, and the player's prompt takes.
 
-**Leaderboard (`/leaderboard`).** The Ball Knower leaderboard: resolved prompt points ranked over the week, month, year or all time, with the viewer's own row. Ranking, ties, the `rankings_visible` opt-out and the 3-scored-pick floor are all in SQL (`ball_knower_leaderboard`, `my_ball_knower_standing`, migration 0181). Accounts only, not guests or signed-out visitors. There is no Gamer leaderboard yet.
+**Leaderboard (`/leaderboard`).** The Ball Knower leaderboard: resolved prompt points ranked over the week, month, year or all time, with the viewer's own row. Ranking, ties and the 3-scored-pick floor are all in SQL (`ball_knower_leaderboard`, `my_ball_knower_standing`, migrations 0181 and 0182). Accounts only, not guests or signed-out visitors. There is no Gamer leaderboard yet.
 
 ## Accounts
 

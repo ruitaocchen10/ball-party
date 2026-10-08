@@ -91,7 +91,7 @@ function toStanding(row: {
   min_picks: number;
 }): Standing {
   return {
-    status: row.status === "ranked" || row.status === "hidden" ? row.status : "unranked",
+    status: row.status === "ranked" ? row.status : "unranked",
     rank: row.rank,
     totalPoints: row.total_points,
     scoredPicks: row.scored_picks,

@@ -64,12 +64,6 @@ final class LeaderboardModelsTests: XCTestCase {
         )
     }
 
-    func testHiddenCopyPointsToSettingsOnTheWeb() {
-        let copy = LeaderboardStanding(status: .hidden, totalPoints: 90).copy
-        XCTAssertEqual(copy.headline, "You're hidden")
-        XCTAssertTrue(copy.detail.contains("Settings on the web"))
-    }
-
     func testEveryProfileRangeMapsToTheMatchingWindow() {
         XCTAssertEqual(LeaderboardWindow(.week), .week)
         XCTAssertEqual(LeaderboardWindow(.month), .month)

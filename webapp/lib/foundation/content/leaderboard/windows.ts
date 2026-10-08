@@ -24,7 +24,7 @@ export function topPercent(rank: number, rankedCount: number): number | null {
 }
 
 export type Standing = {
-  status: "ranked" | "hidden" | "unranked";
+  status: "ranked" | "unranked";
   rank: number | null;
   totalPoints: number;
   scoredPicks: number;
@@ -34,9 +34,6 @@ export type Standing = {
 
 /** What the caller's own row says, decided in one place so web states stay consistent. */
 export function standingCopy(standing: Standing): { headline: string; detail: string } {
-  if (standing.status === "hidden") {
-    return { headline: "You're hidden", detail: "Turn rankings visibility back on in Settings to appear here" };
-  }
   if (standing.status === "unranked" || standing.rank === null) {
     const missing = Math.max(1, standing.minPicks - standing.scoredPicks);
     return {

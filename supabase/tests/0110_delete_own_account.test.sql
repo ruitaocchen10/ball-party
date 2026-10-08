@@ -1,5 +1,5 @@
 begin;
-select plan(7);
+select plan(6);
 
 \ir support/harness.psql
 
@@ -18,11 +18,6 @@ select is(
   (select display_name from public.profiles where id = (select v from tests.fx where k = 'a')),
   'Deleted player',
   'the caller''s display name is anonymized'
-);
-select is(
-  (select rankings_visible from public.profiles where id = (select v from tests.fx where k = 'a')),
-  false,
-  'the caller drops out of the rankings cohort'
 );
 select isnt(
   (select deleted_at from public.profiles where id = (select v from tests.fx where k = 'a')),

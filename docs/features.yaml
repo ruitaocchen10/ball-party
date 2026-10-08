@@ -86,12 +86,6 @@ features:
     ios: missing
     ticket: BPMO-10
     note: (unverified) no trace found on iOS
-  - id: account.rankings-visibility
-    summary: Toggle whether your rankings are visible
-    web: done
-    ios: missing
-    ticket: BPMO-10
-    note: (unverified) no trace found on iOS
   - id: account.delete
     summary: Delete your account in-app
     web: done

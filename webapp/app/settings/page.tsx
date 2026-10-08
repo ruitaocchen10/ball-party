@@ -3,7 +3,6 @@ import Link from "next/link";
 import { AccountCredentials } from "@/components/foundation/identity/AccountCredentials";
 import { DeleteAccountSection } from "@/components/foundation/identity/DeleteAccountSection";
 import { GuestUpgrade } from "@/components/foundation/identity/GuestUpgrade";
-import { RankingsVisibilityToggle } from "@/components/foundation/identity/RankingsVisibilityToggle";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
@@ -12,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /** Account-level controls that don't belong on the public /profile page:
- *  credentials, ranking visibility, and account deletion. */
+ *  credentials and account deletion. */
 export default async function SettingsPage() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
@@ -22,7 +21,7 @@ export default async function SettingsPage() {
   if (!canViewProfile(claims)) return <GuestSettings />;
 
   const [{ data: profile }, { data: userData }] = await Promise.all([
-    supabase.from("profiles").select("display_name, avatar_url, rankings_visible").eq("id", claims.sub).single(),
+    supabase.from("profiles").select("display_name, avatar_url").eq("id", claims.sub).single(),
     // The only place in the app that needs provider identity rather than just
     // claims — getClaims() doesn't carry it, so this one call is a deliberate,
     // scoped exception to the getClaims()-only convention used everywhere else.
@@ -39,15 +38,11 @@ export default async function SettingsPage() {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <PageShell variant="dashboard">
-        <PageHeader eyebrow="Settings" title="Your settings" description="Credentials, privacy, and your account." />
+        <PageHeader eyebrow="Settings" title="Your settings" description="Credentials and your account." />
 
         <div className="mt-9 grid gap-6">
           <SettingsCard title="Account">
             <AccountCredentials email={email} providers={providers} />
-          </SettingsCard>
-
-          <SettingsCard title="Privacy">
-            <RankingsVisibilityToggle initialVisible={profile?.rankings_visible ?? true} />
           </SettingsCard>
 
           <SettingsCard title="Danger zone">
@@ -77,7 +72,7 @@ function GuestSettings() {
         <section className="max-w-xl">
           <p className="type-label text-hidden-text">Settings</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Make it yours</h1>
-          <p className="mt-4 text-[15px] leading-6 text-fg-muted">Your name is just for the current game. Create an account to get settings for credentials, privacy, and more.</p>
+          <p className="mt-4 text-[15px] leading-6 text-fg-muted">Your name is just for the current game. Create an account to get settings for credentials and more.</p>
           <div className="mt-6"><GuestUpgrade /></div>
         </section>
       </PageShell>
