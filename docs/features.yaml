@@ -115,15 +115,11 @@ features:
   - id: rooms.create-join
     summary: Create a room, join by code, leave, close
     web: done
-    ios: partial
-    ticket: BPMO-11
-    note: LobbyScreen and client are built; the Party tab is a "coming soon" placeholder
+    ios: done
   - id: rooms.pick-game
     summary: Host picks the game and starts a run
     web: done
-    ios: partial
-    ticket: BPMO-11
-    note: same as rooms.create-join
+    ios: done
   - id: rooms.party-mode
     summary: Multi-game party with points and a target score
     web: missing
@@ -138,9 +134,7 @@ features:
   - id: game.higher-or-lower.room
     summary: Higher or Lower, live room match
     web: done
-    ios: partial
-    ticket: BPMO-11
-    note: MatchView is built but unreachable until rooms ship on iOS
+    ios: done
   - id: game.qb-season-builder.solo
     summary: QB Season Builder, solo, with result screen
     web: done

@@ -33,7 +33,6 @@ Multiplayer needs a real account; guests are refused at `join_lobby` and `start_
 ## Not built yet
 
 - **Party mode** (Mario Party style: a run of several minigames with points and a target score). The data model reserves a `party` run mode, but `start_run` raises `mode_not_supported` for anything except `arcade`. Orchestration of the party loop is unwritten (`orchestration.md` is a todo in architecture).
-- **Party on iOS.** `LobbyScreen` is built but the Party tab shows a "coming soon" placeholder (`ios/BallParty/MainTabView.swift`).
 
 ## iOS
 

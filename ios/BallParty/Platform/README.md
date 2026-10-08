@@ -3,8 +3,7 @@
 Mirrors `webapp/components/platform` (lobbies → orchestration).
 `Lobbies/` is the room: `LobbyClient` and its Supabase implementation, the
 models, `LobbyViewModel`, and the screens for hosting, joining, and waiting
-together. The screens are built, but the Party tab is still a "coming soon"
-placeholder (`MainTabView.swift`).
+together. `LobbyScreen` is the Party tab (`MainTabView.swift`).
 
 The room is also where a game gets started: the platform freezes the roster
 (`start_run`) and the game deals into the match it returns. So `LobbyViewModel`
