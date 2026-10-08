@@ -7,10 +7,11 @@ import SwiftUI
 struct FriendsView: View {
     /// The screen's sections.
     enum Section: Hashable {
-        case friends, requests, add
+        case friends, requests, add, activity
     }
 
     @StateObject private var viewModel: FriendsViewModel
+    @StateObject private var activity: FriendActivityViewModel
     @State private var section: Section
     /// A removal or block waiting on the player's say-so.
     @State private var confirming: PendingConfirmation?
@@ -20,11 +21,13 @@ struct FriendsView: View {
 
     init(
         initialSection: Section = .friends,
-        client: FriendsClient = SupabaseFriendsClient(client: SupabaseConfig.client)
+        client: FriendsClient = SupabaseFriendsClient(client: SupabaseConfig.client),
+        activityClient: FriendActivityClient = SupabaseFriendActivityClient(client: SupabaseConfig.client)
     ) {
         self.client = client
         _section = State(initialValue: initialSection)
         _viewModel = StateObject(wrappedValue: FriendsViewModel(client: client))
+        _activity = StateObject(wrappedValue: FriendActivityViewModel(client: activityClient))
     }
 
     var body: some View {
@@ -38,7 +41,7 @@ struct FriendsView: View {
 
                 SegmentedChoice(
                     selection: $section,
-                    options: [.friends, .requests, .add],
+                    options: [.friends, .requests, .activity, .add],
                     title: title(for:),
                     accessibilityName: "Friends section"
                 )
@@ -55,7 +58,10 @@ struct FriendsView: View {
         .navigationTitle("Friends")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
-        .refreshable { await viewModel.load() }
+        .refreshable {
+            await viewModel.load()
+            if section == .activity { await activity.load() }
+        }
         .confirmationDialog(
             confirming?.title ?? "",
             isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }),
@@ -75,6 +81,7 @@ struct FriendsView: View {
         switch section {
         case .friends: "Friends"
         case .requests: viewModel.incoming.isEmpty ? "Requests" : "Requests (\(viewModel.incoming.count))"
+        case .activity: "Activity"
         case .add: "Add"
         }
     }
@@ -82,9 +89,9 @@ struct FriendsView: View {
     @ViewBuilder
     private var content: some View {
         switch viewModel.phase {
-        case .loading where section != .add:
+        case .loading where section == .friends || section == .requests:
             ProgressView().frame(maxWidth: .infinity, minHeight: 160)
-        case .failed where section != .add:
+        case .failed where section == .friends || section == .requests:
             EmptyState(title: "Couldn’t load your friends", message: "Try again in a moment.") {
                 Button("Retry") { Task { await viewModel.load() } }
                     .buttonStyle(.quiet)
@@ -94,6 +101,12 @@ struct FriendsView: View {
             case .friends: friendsList
             case .requests: requestsList
             case .add: addSection
+            case .activity:
+                FriendActivitySection(
+                    viewModel: activity, hasFriends: !viewModel.friends.isEmpty, client: client,
+                    onFindFriends: { section = .add }
+                )
+                .task { await activity.load() }
             }
         }
     }

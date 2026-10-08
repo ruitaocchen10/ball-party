@@ -50,6 +50,7 @@
 		6FEB1D1D07DF8B21590DCF6E /* ProfileStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F963803C3E41D9DDFF08B1BF /* ProfileStatsTests.swift */; };
 		C0DE1EAD00000000000000B4 /* LeaderboardModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A4 /* LeaderboardModelsTests.swift */; };
 		C0DE1EAD00000000000000B5 /* LeaderboardViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A5 /* LeaderboardViewModelTests.swift */; };
+		F41E000000000000000B0017 /* FriendActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0017 /* FriendActivityTests.swift */; };
 		F41E000000000000000B0008 /* FakeFriendsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0008 /* FakeFriendsClient.swift */; };
 		F41E000000000000000B0009 /* FriendsModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0009 /* FriendsModelsTests.swift */; };
 		F41E000000000000000B000A /* FriendsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A000A /* FriendsViewModelTests.swift */; };
@@ -95,6 +96,9 @@
 		C0DE1EAD00000000000000B1 /* LeaderboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A1 /* LeaderboardModels.swift */; };
 		C0DE1EAD00000000000000B2 /* LeaderboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A2 /* LeaderboardViewModel.swift */; };
 		C0DE1EAD00000000000000B3 /* LeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A3 /* LeaderboardView.swift */; };
+		F41E000000000000000B0014 /* FriendActivityModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0014 /* FriendActivityModels.swift */; };
+		F41E000000000000000B0015 /* FriendActivityViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0015 /* FriendActivityViewModel.swift */; };
+		F41E000000000000000B0016 /* FriendActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0016 /* FriendActivityView.swift */; };
 		F41E000000000000000B0001 /* FriendsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0001 /* FriendsModels.swift */; };
 		F41E000000000000000B0002 /* FriendsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0002 /* FriendsClient.swift */; };
 		F41E000000000000000B0003 /* FriendsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0003 /* FriendsViewModel.swift */; };
@@ -181,6 +185,9 @@
 		C0DE1EAD00000000000000A1 /* LeaderboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardModels.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A2 /* LeaderboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardViewModel.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A3 /* LeaderboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardView.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0014 /* FriendActivityModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityModels.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0015 /* FriendActivityViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityViewModel.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0016 /* FriendActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityView.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0001 /* FriendsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsModels.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0002 /* FriendsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsClient.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0003 /* FriendsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsViewModel.swift; sourceTree = "<group>"; };
@@ -239,6 +246,7 @@
 		F963803C3E41D9DDFF08B1BF /* ProfileStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileStatsTests.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A4 /* LeaderboardModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardModelsTests.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A5 /* LeaderboardViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardViewModelTests.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0017 /* FriendActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityTests.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0008 /* FakeFriendsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeFriendsClient.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0009 /* FriendsModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsModelsTests.swift; sourceTree = "<group>"; };
 		F41E000000000000000A000A /* FriendsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsViewModelTests.swift; sourceTree = "<group>"; };
@@ -326,6 +334,7 @@
 				F963803C3E41D9DDFF08B1BF /* ProfileStatsTests.swift */,
 				C0DE1EAD00000000000000A4 /* LeaderboardModelsTests.swift */,
 				C0DE1EAD00000000000000A5 /* LeaderboardViewModelTests.swift */,
+				F41E000000000000000A0017 /* FriendActivityTests.swift */,
 				F41E000000000000000A0008 /* FakeFriendsClient.swift */,
 				F41E000000000000000A0009 /* FriendsModelsTests.swift */,
 				F41E000000000000000A000A /* FriendsViewModelTests.swift */,
@@ -408,6 +417,9 @@
 				C0DE1EAD00000000000000A1 /* LeaderboardModels.swift */,
 				C0DE1EAD00000000000000A2 /* LeaderboardViewModel.swift */,
 				C0DE1EAD00000000000000A3 /* LeaderboardView.swift */,
+				F41E000000000000000A0014 /* FriendActivityModels.swift */,
+				F41E000000000000000A0015 /* FriendActivityViewModel.swift */,
+				F41E000000000000000A0016 /* FriendActivityView.swift */,
 				F41E000000000000000A0001 /* FriendsModels.swift */,
 				F41E000000000000000A0002 /* FriendsClient.swift */,
 				F41E000000000000000A0003 /* FriendsViewModel.swift */,
@@ -676,6 +688,7 @@
 				6FEB1D1D07DF8B21590DCF6E /* ProfileStatsTests.swift in Sources */,
 				C0DE1EAD00000000000000B4 /* LeaderboardModelsTests.swift in Sources */,
 				C0DE1EAD00000000000000B5 /* LeaderboardViewModelTests.swift in Sources */,
+				F41E000000000000000B0017 /* FriendActivityTests.swift in Sources */,
 				F41E000000000000000B0008 /* FakeFriendsClient.swift in Sources */,
 				F41E000000000000000B0009 /* FriendsModelsTests.swift in Sources */,
 				F41E000000000000000B000A /* FriendsViewModelTests.swift in Sources */,
@@ -727,6 +740,9 @@
 				C0DE1EAD00000000000000B1 /* LeaderboardModels.swift in Sources */,
 				C0DE1EAD00000000000000B2 /* LeaderboardViewModel.swift in Sources */,
 				C0DE1EAD00000000000000B3 /* LeaderboardView.swift in Sources */,
+				F41E000000000000000B0014 /* FriendActivityModels.swift in Sources */,
+				F41E000000000000000B0015 /* FriendActivityViewModel.swift in Sources */,
+				F41E000000000000000B0016 /* FriendActivityView.swift in Sources */,
 				F41E000000000000000B0001 /* FriendsModels.swift in Sources */,
 				F41E000000000000000B0002 /* FriendsClient.swift in Sources */,
 				F41E000000000000000B0003 /* FriendsViewModel.swift in Sources */,
