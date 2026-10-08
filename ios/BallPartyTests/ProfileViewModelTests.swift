@@ -18,6 +18,9 @@ final class ProfileViewModelTests: XCTestCase {
             URL(string: "https://example.com/avatar.\(fileExtension)")!
         }
         func updateProfile(displayName: String, avatarURL: URL?, for userId: UUID) async throws {}
+        func usernameAvailable(_ username: String) async throws -> Bool { true }
+        func claimUsername(_ username: String) async throws -> String { username }
+        func setProfilePrivate(_ isPrivate: Bool) async throws -> Bool { isPrivate }
     }
 
     private struct Offline: Error {}

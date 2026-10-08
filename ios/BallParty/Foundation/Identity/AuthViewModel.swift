@@ -23,6 +23,7 @@ final class AuthViewModel: ObservableObject {
     @Published var notice: Notice?
 
     private let backend: AuthBackend
+    private let confirmations: UsernameConfirmationStore
     private var authStateTask: Task<Void, Never>?
 
     /// Set right before presenting the Apple sheet, consumed when it
@@ -31,8 +32,9 @@ final class AuthViewModel: ObservableObject {
     /// `nonce` claim against it.
     private var pendingAppleNonce: String?
 
-    init(backend: AuthBackend) {
+    init(backend: AuthBackend, confirmations: UsernameConfirmationStore = .standard) {
         self.backend = backend
+        self.confirmations = confirmations
         session = backend.currentSession
         authStateTask = Task { [backend] in
             for await (_, session) in backend.authStateChanges {
@@ -58,10 +60,21 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
-    func signUp(displayName: String, email: String, password: String) async {
+    /// `username` is optional: blank keeps the one the database generates from
+    /// the display name. Availability can't be checked before signing up
+    /// (`username_available` needs a session), so only the format is checked
+    /// here; the claim happens right after the session exists, and a refusal
+    /// (taken, reserved) leaves the generated name for the one-time confirm
+    /// prompt to offer changing.
+    func signUp(displayName: String, username: String = "", email: String, password: String) async {
         notice = nil
 
         guard let name = require(IdentityConstants.validateDisplayName(displayName)) else { return }
+        var chosenUsername: String?
+        if !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            guard let valid = require(IdentityConstants.validateUsername(username)) else { return }
+            chosenUsername = valid
+        }
         guard let normalizedEmail = require(IdentityConstants.validateEmail(email)) else { return }
         guard require(IdentityConstants.validateNewPassword(password)) != nil else { return }
 
@@ -71,6 +84,14 @@ final class AuthViewModel: ObservableObject {
         do {
             let response = try await backend.signUp(email: normalizedEmail, password: password, displayName: name)
             if let session = response.session {
+                // Claim before publishing the session so the confirm prompt,
+                // which appears with the signed-in UI, already knows the
+                // player picked their name.
+                // A blank field or a refused claim leaves the generated name
+                // and no flag, so the prompt shows it to the player.
+                if let chosenUsername, (try? await backend.claimUsername(chosenUsername)) != nil {
+                    confirmations.markConfirmed(session.user.id)
+                }
                 self.session = session
             } else {
                 // Email confirmations are on (see supabase/config.toml) — no

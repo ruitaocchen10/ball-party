@@ -74,6 +74,10 @@ struct ProfileEditorView: View {
                         .fieldStyle()
                 }
 
+                if let usernameField = viewModel.usernameField {
+                    UsernameFieldView(field: usernameField)
+                }
+
                 if let notice = viewModel.notice {
                     Text(notice).font(.sans(14)).foregroundStyle(Theme.hiddenText)
                 }
@@ -170,6 +174,85 @@ private struct AvatarPresetPicker: View {
                     .accessibilityLabel("Choose \(preset.label) avatar")
                 }
             }
+        }
+    }
+}
+
+/// The one-time "confirm your username" sheet, shown over the app after
+/// sign-in to accounts that were given a generated username.
+struct UsernameConfirmView: View {
+    @ObservedObject var viewModel: UsernameConfirmViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Pick your username").slabTitle(34)
+                .accessibilityAddTraits(.isHeader)
+            Text("Friends find you by your username. We picked one for you; keep it or change it now. You can change it later in Edit profile.")
+                .font(.sans(15))
+                .foregroundStyle(Theme.fgMuted)
+
+            UsernameFieldView(field: viewModel.field)
+
+            if let notice = viewModel.notice {
+                Text(notice).font(.sans(14)).foregroundStyle(Theme.hiddenText)
+            }
+
+            Button {
+                Task { await viewModel.save() }
+            } label: {
+                Text(viewModel.isSaving ? "Saving…" : "Save")
+            }
+            .buttonStyle(.solid)
+            .disabled(viewModel.isSaving)
+
+            Button("Keep current username") { viewModel.keep() }
+                .buttonStyle(.quiet)
+                .frame(maxWidth: .infinity)
+                .disabled(viewModel.isSaving)
+        }
+        .padding(24)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .screenBackground()
+        .presentationDetents([.medium, .large])
+        .onChange(of: viewModel.finished) { _, finished in
+            if finished { dismiss() }
+        }
+        .onDisappear { viewModel.dismissed() }
+    }
+}
+
+/// The username field with its live availability hint. Shared by the editor
+/// and the one-time confirm prompt.
+struct UsernameFieldView: View {
+    @ObservedObject var field: UsernameFieldModel
+
+    var body: some View {
+        let hint = self.hint
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Username").fieldLabel()
+            TextField("Username", text: $field.text)
+                .textContentType(.username)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .fieldStyle()
+                .onChange(of: field.text) { _, _ in field.textChanged() }
+            Text(hint.text).font(.sans(13)).foregroundStyle(hint.color)
+        }
+    }
+
+    private var hint: (text: String, color: Color) {
+        switch field.status {
+        case .idle, .unchanged:
+            return ("3–20 letters, numbers or underscores. Friends find you by this.", Theme.fgMuted)
+        case .checking:
+            return ("Checking…", Theme.fgMuted)
+        case .available:
+            return ("Available", Theme.fgMuted)
+        case .rejected(let message):
+            return (message, Theme.hiddenText)
+        case .unchecked:
+            return ("Couldn’t check availability. You can still try saving.", Theme.fgMuted)
         }
     }
 }

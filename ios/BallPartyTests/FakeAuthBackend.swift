@@ -72,4 +72,12 @@ final class FakeAuthBackend: AuthBackend, @unchecked Sendable {
     func setDisplayName(_ displayName: String, userId: UUID) async throws {
         setDisplayNameCalls.append(SetDisplayNameCall(displayName: displayName, userId: userId))
     }
+
+    var claimUsernameCalls: [String] = []
+    var claimUsernameResult: Result<String, Error>?
+
+    func claimUsername(_ username: String) async throws -> String {
+        claimUsernameCalls.append(username)
+        return try (claimUsernameResult ?? .success(username)).get()
+    }
 }

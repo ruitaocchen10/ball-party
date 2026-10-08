@@ -11,6 +11,8 @@ struct MainTabView: View {
     }
 
     @State private var selection: Tab = .home
+    /// The one-time "confirm your username" sheet; nil once dealt with.
+    @State private var usernamePrompt: UsernameConfirmViewModel?
 
     var body: some View {
         // `AuthGateView` only builds this with a session, but the session can
@@ -32,6 +34,15 @@ struct MainTabView: View {
                 NavigationStack { ProfileView(auth: viewModel, viewerId: user.id, email: user.email) }
                     .tabItem { Label("Profile", systemImage: "person.crop.circle") }
                     .tag(Tab.profile)
+            }
+            .task(id: user.id) {
+                usernamePrompt = await UsernameConfirmViewModel.make(
+                    client: SupabaseProfileClient(client: SupabaseConfig.client), userId: user.id
+                )
+            }
+            .sheet(item: $usernamePrompt) { prompt in
+                UsernameConfirmView(viewModel: prompt)
+                    .presentationBackground(Theme.surface)
             }
         }
     }
