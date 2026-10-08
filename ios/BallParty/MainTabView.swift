@@ -25,17 +25,9 @@ struct MainTabView: View {
                     .tabItem { Label("Games", systemImage: "gamecontroller") }
                     .tag(Tab.games)
 
-                // Party mode's real screen (`LobbyScreen`) is fully built but
-                // not turned on for mobile yet; this tab points at a
-                // placeholder until it is.
-                NavigationStack {
-                    ComingSoonView(
-                        title: "Party",
-                        message: "Playing with friends on mobile is on the way. In the meantime, play Games on your own."
-                    )
-                }
-                .tabItem { Label("Party", systemImage: "person.3") }
-                .tag(Tab.party)
+                NavigationStack { LobbyScreen(viewerId: user.id) }
+                    .tabItem { Label("Party", systemImage: "person.3") }
+                    .tag(Tab.party)
 
                 NavigationStack { ProfileView(auth: viewModel, viewerId: user.id, email: user.email) }
                     .tabItem { Label("Profile", systemImage: "person.crop.circle") }
