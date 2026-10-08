@@ -50,6 +50,11 @@
 		6FEB1D1D07DF8B21590DCF6E /* ProfileStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F963803C3E41D9DDFF08B1BF /* ProfileStatsTests.swift */; };
 		C0DE1EAD00000000000000B4 /* LeaderboardModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A4 /* LeaderboardModelsTests.swift */; };
 		C0DE1EAD00000000000000B5 /* LeaderboardViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A5 /* LeaderboardViewModelTests.swift */; };
+		F41E000000000000000B0017 /* FriendActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0017 /* FriendActivityTests.swift */; };
+		F41E000000000000000B0008 /* FakeFriendsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0008 /* FakeFriendsClient.swift */; };
+		F41E000000000000000B0009 /* FriendsModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0009 /* FriendsModelsTests.swift */; };
+		F41E000000000000000B000A /* FriendsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A000A /* FriendsViewModelTests.swift */; };
+		F41E000000000000000B000B /* OtherProfileViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A000B /* OtherProfileViewModelTests.swift */; };
 		72EFAA44994616FFFE3437CE /* FakeLobbyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A1732B29058D68EB0FDE32 /* FakeLobbyClient.swift */; };
 		751BA1859A029EA5C71C9616 /* OFL-Barlow.txt in Resources */ = {isa = PBXBuildFile; fileRef = 53802AC25628552A5AD509D7 /* OFL-Barlow.txt */; };
 		75476BEA2728BB02F0FBDC76 /* HigherOrLowerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F502B722BC00DD48CB5B6564 /* HigherOrLowerClient.swift */; };
@@ -91,6 +96,16 @@
 		C0DE1EAD00000000000000B1 /* LeaderboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A1 /* LeaderboardModels.swift */; };
 		C0DE1EAD00000000000000B2 /* LeaderboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A2 /* LeaderboardViewModel.swift */; };
 		C0DE1EAD00000000000000B3 /* LeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A3 /* LeaderboardView.swift */; };
+		F41E000000000000000B0014 /* FriendActivityModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0014 /* FriendActivityModels.swift */; };
+		F41E000000000000000B0015 /* FriendActivityViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0015 /* FriendActivityViewModel.swift */; };
+		F41E000000000000000B0016 /* FriendActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0016 /* FriendActivityView.swift */; };
+		F41E000000000000000B0001 /* FriendsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0001 /* FriendsModels.swift */; };
+		F41E000000000000000B0002 /* FriendsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0002 /* FriendsClient.swift */; };
+		F41E000000000000000B0003 /* FriendsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0003 /* FriendsViewModel.swift */; };
+		F41E000000000000000B0004 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0004 /* FriendsView.swift */; };
+		F41E000000000000000B0005 /* OtherProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0005 /* OtherProfileViewModel.swift */; };
+		F41E000000000000000B0006 /* OtherProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0006 /* OtherProfileView.swift */; };
+		F41E000000000000000B0007 /* StatsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0007 /* StatsCard.swift */; };
 		CAC5F136454928795283C382 /* TakeThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EF401B82882F0056E7A29B /* TakeThreadView.swift */; };
 		D954CFA4B4F65D4815B354CC /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 23F185FD6F85A3A67B64E719 /* Supabase */; };
 		DA697A93DFAE4A042F2B8E16 /* PromptDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E13C467022F862423E0B66 /* PromptDetailView.swift */; };
@@ -170,6 +185,16 @@
 		C0DE1EAD00000000000000A1 /* LeaderboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardModels.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A2 /* LeaderboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardViewModel.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A3 /* LeaderboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardView.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0014 /* FriendActivityModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityModels.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0015 /* FriendActivityViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityViewModel.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0016 /* FriendActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityView.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0001 /* FriendsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsModels.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0002 /* FriendsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsClient.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0003 /* FriendsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsViewModel.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0004 /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0005 /* OtherProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtherProfileViewModel.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0006 /* OtherProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtherProfileView.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0007 /* StatsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCard.swift; sourceTree = "<group>"; };
 		90C8A4302CFCA2351E5A6EC8 /* QbSeasonBuilderModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderModelsTests.swift; sourceTree = "<group>"; };
 		94F6295A7914445E51DB1E6D /* LobbyViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyViewModelTests.swift; sourceTree = "<group>"; };
 		98EF401B82882F0056E7A29B /* TakeThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakeThreadView.swift; sourceTree = "<group>"; };
@@ -221,6 +246,11 @@
 		F963803C3E41D9DDFF08B1BF /* ProfileStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileStatsTests.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A4 /* LeaderboardModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardModelsTests.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A5 /* LeaderboardViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardViewModelTests.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0017 /* FriendActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityTests.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0008 /* FakeFriendsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeFriendsClient.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0009 /* FriendsModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsModelsTests.swift; sourceTree = "<group>"; };
+		F41E000000000000000A000A /* FriendsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsViewModelTests.swift; sourceTree = "<group>"; };
+		F41E000000000000000A000B /* OtherProfileViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtherProfileViewModelTests.swift; sourceTree = "<group>"; };
 		FEBF9C390AB10C9BB64C5105 /* ComingSoonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComingSoonView.swift; sourceTree = "<group>"; };
 		FFC8A96142A0621FD8ABEA33 /* IdentityConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityConstants.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -304,6 +334,11 @@
 				F963803C3E41D9DDFF08B1BF /* ProfileStatsTests.swift */,
 				C0DE1EAD00000000000000A4 /* LeaderboardModelsTests.swift */,
 				C0DE1EAD00000000000000A5 /* LeaderboardViewModelTests.swift */,
+				F41E000000000000000A0017 /* FriendActivityTests.swift */,
+				F41E000000000000000A0008 /* FakeFriendsClient.swift */,
+				F41E000000000000000A0009 /* FriendsModelsTests.swift */,
+				F41E000000000000000A000A /* FriendsViewModelTests.swift */,
+				F41E000000000000000A000B /* OtherProfileViewModelTests.swift */,
 				654281683BBD84CF804F6ED6 /* BeamAvatarTests.swift */,
 				B0F3E3CD0F4677B1CC68FF26 /* ProfileEditorViewModelTests.swift */,
 				D946FF67E31EBD458E5E56AE /* HuddleViewModelTests.swift */,
@@ -382,6 +417,16 @@
 				C0DE1EAD00000000000000A1 /* LeaderboardModels.swift */,
 				C0DE1EAD00000000000000A2 /* LeaderboardViewModel.swift */,
 				C0DE1EAD00000000000000A3 /* LeaderboardView.swift */,
+				F41E000000000000000A0014 /* FriendActivityModels.swift */,
+				F41E000000000000000A0015 /* FriendActivityViewModel.swift */,
+				F41E000000000000000A0016 /* FriendActivityView.swift */,
+				F41E000000000000000A0001 /* FriendsModels.swift */,
+				F41E000000000000000A0002 /* FriendsClient.swift */,
+				F41E000000000000000A0003 /* FriendsViewModel.swift */,
+				F41E000000000000000A0004 /* FriendsView.swift */,
+				F41E000000000000000A0005 /* OtherProfileViewModel.swift */,
+				F41E000000000000000A0006 /* OtherProfileView.swift */,
+				F41E000000000000000A0007 /* StatsCard.swift */,
 				B2E592B8DEFA34ED2E6F42ED /* ProfileEditorViewModel.swift */,
 				55408824118074CC704619F5 /* ProfileEditorView.swift */,
 				3C58679A448DCF8DA55B4626 /* BeamAvatar.swift */,
@@ -643,6 +688,11 @@
 				6FEB1D1D07DF8B21590DCF6E /* ProfileStatsTests.swift in Sources */,
 				C0DE1EAD00000000000000B4 /* LeaderboardModelsTests.swift in Sources */,
 				C0DE1EAD00000000000000B5 /* LeaderboardViewModelTests.swift in Sources */,
+				F41E000000000000000B0017 /* FriendActivityTests.swift in Sources */,
+				F41E000000000000000B0008 /* FakeFriendsClient.swift in Sources */,
+				F41E000000000000000B0009 /* FriendsModelsTests.swift in Sources */,
+				F41E000000000000000B000A /* FriendsViewModelTests.swift in Sources */,
+				F41E000000000000000B000B /* OtherProfileViewModelTests.swift in Sources */,
 				7D9F3D2753A09525262CB6CE /* BeamAvatarTests.swift in Sources */,
 				1E658E143DDB30236B404160 /* ProfileEditorViewModelTests.swift in Sources */,
 				4E8CBCA8BAB0A4F864B0C5F3 /* HuddleViewModelTests.swift in Sources */,
@@ -690,6 +740,16 @@
 				C0DE1EAD00000000000000B1 /* LeaderboardModels.swift in Sources */,
 				C0DE1EAD00000000000000B2 /* LeaderboardViewModel.swift in Sources */,
 				C0DE1EAD00000000000000B3 /* LeaderboardView.swift in Sources */,
+				F41E000000000000000B0014 /* FriendActivityModels.swift in Sources */,
+				F41E000000000000000B0015 /* FriendActivityViewModel.swift in Sources */,
+				F41E000000000000000B0016 /* FriendActivityView.swift in Sources */,
+				F41E000000000000000B0001 /* FriendsModels.swift in Sources */,
+				F41E000000000000000B0002 /* FriendsClient.swift in Sources */,
+				F41E000000000000000B0003 /* FriendsViewModel.swift in Sources */,
+				F41E000000000000000B0004 /* FriendsView.swift in Sources */,
+				F41E000000000000000B0005 /* OtherProfileViewModel.swift in Sources */,
+				F41E000000000000000B0006 /* OtherProfileView.swift in Sources */,
+				F41E000000000000000B0007 /* StatsCard.swift in Sources */,
 				979ABEF8B06D0C1FAD4B1174 /* ComingSoonView.swift in Sources */,
 				A0D1F65F57265585AC256C6B /* BeamAvatar.swift in Sources */,
 				5AE7FA6561DEB71485B68350 /* BeamAvatarView.swift in Sources */,

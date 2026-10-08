@@ -197,7 +197,7 @@ struct SupabaseProfileClient: ProfileClient {
 @MainActor
 final class PrivacySettingsViewModel: ObservableObject, Identifiable {
     /// The line under the toggle. Keep identical to the web's setting.
-    static let explanation = "Only friends can see your profile body; you still appear on leaderboards."
+    static let explanation = "Only your friends can open your profile. Your name, username and photo still show in search, and you still appear in rankings."
 
     let id = UUID()
     @Published private(set) var isPrivate: Bool
@@ -280,23 +280,11 @@ final class ProfileViewModel: ObservableObject {
     private var lifetimeKnowerHighlight: KnowerHighlight { knowerHighlights[.lifetime] ?? .empty }
 
     /// "Rookie" through "Ball god", from the lifetime percentile — mirrors the web's `KnowerStatus`.
-    var knowerStatus: String {
-        guard let percentile = lifetimeKnowerHighlight.percentile else { return "Unranked" }
-        switch percentile {
-        case ..<20: return "Rookie"
-        case ..<40: return "Casual"
-        case ..<60: return "Fan"
-        case ..<80: return "Ball knower"
-        default: return "Ball god"
-        }
-    }
+    var knowerStatus: String { lifetimeKnowerHighlight.status }
 
     /// What sits under the status, mirroring `KnowerStatus`'s detail line.
     var knowerStatusDetail: String {
-        guard let percentile = lifetimeKnowerHighlight.percentile else {
-            return "Your lifetime score will set your status"
-        }
-        return "Lifetime · \(percentile.ordinal) percentile"
+        lifetimeKnowerHighlight.statusDetail(unrankedDetail: "Your lifetime score will set your status")
     }
 
     /// A failed read leaves whatever was already showing — the email

@@ -69,6 +69,7 @@ enum FieldValidation: Equatable {
 /// (`webapp/app/privacy`, `webapp/app/support`); the host mirrors `SITE_URL`
 /// in `webapp/lib/seo/site.ts`.
 enum SiteLinks {
+    static let home = URL(string: "https://ballparty.social")!
     static let privacyPolicy = URL(string: "https://ballparty.social/privacy")!
     static let support = URL(string: "https://ballparty.social/support")!
 }

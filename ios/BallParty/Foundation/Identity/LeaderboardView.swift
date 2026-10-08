@@ -9,9 +9,12 @@ struct LeaderboardView: View {
 
     init(
         initialWindow: LeaderboardWindow = .week,
+        initialScope: LeaderboardScope = .all,
         client: LeaderboardClient = SupabaseLeaderboardClient(client: SupabaseConfig.client)
     ) {
-        _viewModel = StateObject(wrappedValue: LeaderboardViewModel(client: client, window: initialWindow))
+        _viewModel = StateObject(
+            wrappedValue: LeaderboardViewModel(client: client, window: initialWindow, scope: initialScope)
+        )
     }
 
     var body: some View {
@@ -20,7 +23,14 @@ struct LeaderboardView: View {
                 PageHeader(
                     eyebrow: "Leaderboard",
                     title: "Ball Knower",
-                    description: "Points from your resolved picks, ranked against everyone who plays the weekly prompts."
+                    description: viewModel.scope.description
+                )
+
+                SegmentedChoice(
+                    selection: $viewModel.scope,
+                    options: LeaderboardScope.allCases,
+                    title: { $0.label },
+                    accessibilityName: "Board"
                 )
 
                 SegmentedChoice(
@@ -37,8 +47,8 @@ struct LeaderboardView: View {
         .screenBackground()
         .navigationTitle("Leaderboard")
         .navigationBarTitleDisplayMode(.inline)
-        // Restarts, and cancels the read in flight, whenever the window changes.
-        .task(id: viewModel.window) { await viewModel.load() }
+        // Restarts, and cancels the read in flight, whenever the window or scope changes.
+        .task(id: viewModel.selection) { await viewModel.load() }
     }
 
     @ViewBuilder
@@ -66,7 +76,7 @@ struct LeaderboardView: View {
             if standing.status == .ranked {
                 PanelCard(edge: false) { standingRow(standing) }
             } else {
-                StandingNotice(standing: standing)
+                StandingNotice(standing: standing, scope: viewModel.scope)
             }
 
             HStack {
@@ -75,11 +85,27 @@ struct LeaderboardView: View {
                 Text("\(standing.rankedCount.formatted()) ranked").monoLabel(10, tracking: 0.12)
             }
 
-            if viewModel.rows.isEmpty {
+            if viewModel.friendsBoardIsEmpty {
                 EmptyState(
-                    title: "No one is ranked yet",
-                    message: "Players appear after \(standing.minPicks) scored picks in this window."
-                )
+                    title: "No friends on the board yet",
+                    message: "Friends appear here after \(standing.minPicks) scored picks in this window."
+                ) {
+                    NavigationLink {
+                        FriendsView(initialSection: .add)
+                    } label: {
+                        Text("Find friends")
+                    }
+                    .buttonStyle(BPButtonStyle(variant: .solid, fullWidth: false))
+                }
+            }
+
+            if viewModel.rows.isEmpty {
+                if viewModel.scope == .all {
+                    EmptyState(
+                        title: "No one is ranked yet",
+                        message: "Players appear after \(standing.minPicks) scored picks in this window."
+                    )
+                }
             } else {
                 VStack(spacing: 0) {
                     ForEach(viewModel.rows) { row in
@@ -103,7 +129,7 @@ struct LeaderboardView: View {
                 .frame(minWidth: 36, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 Text("You").font(.sans(16, weight: .semibold)).foregroundStyle(Theme.panelFg)
-                Text(standing.copy.detail).monoLabel(9, tracking: 0.1, color: Theme.panelMuted)
+                Text(standing.copy(for: viewModel.scope).detail).monoLabel(9, tracking: 0.1, color: Theme.panelMuted)
             }
             Spacer(minLength: 8)
             Text(standing.totalPoints.formatted()).slabTitle(26, color: Theme.panelFg)
@@ -122,7 +148,18 @@ private struct LeaderboardRowView: View {
         } else {
             VStack(spacing: 0) {
                 LineRule()
-                content(onPanel: false).padding(.horizontal, 14).padding(.vertical, 12)
+                // Only a row the server gave a username for opens a profile.
+                if let username = row.profileUsername {
+                    NavigationLink {
+                        OtherProfileView(username: username)
+                    } label: {
+                        content(onPanel: false).padding(.horizontal, 14).padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    content(onPanel: false).padding(.horizontal, 14).padding(.vertical, 12)
+                }
             }
         }
     }
@@ -154,9 +191,10 @@ private struct LeaderboardRowView: View {
 /// Shown instead of a "you" row when the caller is not on the board, and why.
 private struct StandingNotice: View {
     let standing: LeaderboardStanding
+    let scope: LeaderboardScope
 
     var body: some View {
-        let copy = standing.copy
+        let copy = standing.copy(for: scope)
         VStack(alignment: .leading, spacing: 6) {
             Text(copy.headline).monoLabel(11, weight: .bold, tracking: 0.12, color: Theme.fg)
             Text(copy.detail)
