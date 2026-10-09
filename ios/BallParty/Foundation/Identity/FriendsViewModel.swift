@@ -46,8 +46,8 @@ final class FriendsViewModel: ObservableObject {
     enum SearchPhase: Equatable {
         case idle
         case searching
-        case found(UserSearchResult)
-        /// An exact match found nobody. Also what a blocked or missing player
+        case results([UserSearchResult])
+        /// The prefix matched nobody. Also what a blocked or missing player
         /// looks like, so it says nothing about why.
         case notFound
         case invalid(String)
@@ -68,9 +68,13 @@ final class FriendsViewModel: ObservableObject {
     @Published var query = ""
 
     private let client: FriendsClient
+    private let searchDelay: Duration
+    private var searchTask: Task<Void, Never>?
+    private var lastSearched: String?
 
-    init(client: FriendsClient) {
+    init(client: FriendsClient, searchDelay: Duration = .milliseconds(250)) {
         self.client = client
+        self.searchDelay = searchDelay
     }
 
     var incoming: [FriendRequest] { requests.filter { $0.direction == .incoming } }
@@ -105,16 +109,35 @@ final class FriendsViewModel: ObservableObject {
             notice = Self.genericFailure
         }
         await load()
-        if case .found(let result) = searchPhase, result.player.profileId == player.profileId {
-            await refreshSearch(username: result.player.username)
+        if case .results(let rows) = searchPhase, rows.contains(where: { $0.player.profileId == player.profileId }),
+           let lastSearched {
+            await refreshSearch(username: lastSearched)
         }
     }
 
     // MARK: Search
 
-    /// Exact-username lookup. Format is checked here first only to skip a
-    /// pointless call; the server stays authoritative.
+    /// Called as the query changes: suggests players once the text is a valid
+    /// username prefix, after a short pause so each keystroke isn't a request.
+    /// A short or malformed query just clears the list (no error while typing).
+    func queryChanged() {
+        searchTask?.cancel()
+        notice = nil
+        guard case .valid(let username) = IdentityConstants.validateUsername(query) else {
+            searchPhase = .idle
+            return
+        }
+        searchTask = Task { [searchDelay] in
+            try? await Task.sleep(for: searchDelay)
+            guard !Task.isCancelled else { return }
+            await refreshSearch(username: username)
+        }
+    }
+
+    /// Searches right now (the keyboard's search key). Format is checked here
+    /// first only to skip a pointless call; the server stays authoritative.
     func search() async {
+        searchTask?.cancel()
         notice = nil
         switch IdentityConstants.validateUsername(query) {
         case .invalid(let message):
@@ -126,13 +149,14 @@ final class FriendsViewModel: ObservableObject {
     }
 
     private func refreshSearch(username: String) async {
+        lastSearched = username
         do {
-            if let result = try await client.search(username: username) {
-                searchPhase = .found(result)
-            } else {
-                searchPhase = .notFound
-            }
+            let rows = try await client.search(username: username)
+            // A newer query may have replaced this one while it was in flight.
+            guard !Task.isCancelled else { return }
+            searchPhase = rows.isEmpty ? .notFound : .results(rows)
         } catch {
+            guard !Task.isCancelled else { return }
             searchPhase = .failed
         }
     }
