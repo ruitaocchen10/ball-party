@@ -68,6 +68,7 @@
 		7B5218E514D1DD9BF2F20B0C /* QbSeasonBuilderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FCA926760CBA12B82F27E93 /* QbSeasonBuilderViewModel.swift */; };
 		7C11EB614DE3A2B15C84C767 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 22E9476B19287E93B3829EFB /* Assets.xcassets */; };
 		7D9F3D2753A09525262CB6CE /* BeamAvatarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654281683BBD84CF804F6ED6 /* BeamAvatarTests.swift */; };
+		2F7D0A9C5E1B84363A6D91F0 /* GeneratedAvatarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6A3E82B4F1D0975E3B72A58 /* GeneratedAvatarTests.swift */; };
 		7EBFB2ED841ECE26E8B5BE49 /* MatchStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016E6BC6E0E39A918F04E15F /* MatchStatus.swift */; };
 		832A14E24DBEB5D4CE4F2ED4 /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0C56C197D1FA69D7407EC666 /* JetBrainsMono-Regular.ttf */; };
 		8564C4307DAC33C199CAE294 /* PromptModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA4DD01C8089C840287C3ADF /* PromptModels.swift */; };
@@ -83,6 +84,7 @@
 		9E15AFC0A523D03D45FEDF50 /* QbSeasonBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD72D72AA73FBDAE66723D0 /* QbSeasonBuilderView.swift */; };
 		9E20A42E7556F994025D5FF9 /* QbSeasonBuilderModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90C8A4302CFCA2351E5A6EC8 /* QbSeasonBuilderModelsTests.swift */; };
 		A0D1F65F57265585AC256C6B /* BeamAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C58679A448DCF8DA55B4626 /* BeamAvatar.swift */; };
+		5A1C9E0D7B3F4A2681D0C3E7 /* GeneratedAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E4B2F6A1D9C3075A2B8E146 /* GeneratedAvatar.swift */; };
 		A1B2C3D4E5F60718293A4B01 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B02 /* ProfileView.swift */; };
 		A1B2C3D4E5F60718293A4B03 /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B04 /* ProfileViewModel.swift */; };
 		A1B2C3D4E5F60718293A4B05 /* ProfileViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B06 /* ProfileViewModelTests.swift */; };
@@ -168,6 +170,7 @@
 		363E51962E6F169C7E3949F1 /* Barlow-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Barlow-Bold.ttf"; sourceTree = "<group>"; };
 		3975AEFB9DDAFAE3E5E1EB2E /* PostgresValues.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostgresValues.swift; sourceTree = "<group>"; };
 		3C58679A448DCF8DA55B4626 /* BeamAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeamAvatar.swift; sourceTree = "<group>"; };
+		8E4B2F6A1D9C3075A2B8E146 /* GeneratedAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratedAvatar.swift; sourceTree = "<group>"; };
 		3D318883C9DB837B2177EF1A /* PromptComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptComponents.swift; sourceTree = "<group>"; };
 		3FD826920DC17F0A393DE271 /* Ball Party.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Ball Party.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4200B45788AE681B1DD5A5C6 /* MatchClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchClock.swift; sourceTree = "<group>"; };
@@ -184,6 +187,7 @@
 		5A865AEEE5F77E725C7C0A7B /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 		5FCA926760CBA12B82F27E93 /* QbSeasonBuilderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderViewModel.swift; sourceTree = "<group>"; };
 		654281683BBD84CF804F6ED6 /* BeamAvatarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeamAvatarTests.swift; sourceTree = "<group>"; };
+		C6A3E82B4F1D0975E3B72A58 /* GeneratedAvatarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratedAvatarTests.swift; sourceTree = "<group>"; };
 		669C2A35E7839D1D31ECC38E /* LobbyClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyClient.swift; sourceTree = "<group>"; };
 		6812E2FCD76C3040E2D45B94 /* SoloRunViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoloRunViewModel.swift; sourceTree = "<group>"; };
 		6931E401827645B4B12716D2 /* MatchupViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupViews.swift; sourceTree = "<group>"; };
@@ -371,6 +375,7 @@
 				1A71C0DE0000000000000012 /* FriendInviteViewModelTests.swift */,
 				F41E000000000000000A000B /* OtherProfileViewModelTests.swift */,
 				654281683BBD84CF804F6ED6 /* BeamAvatarTests.swift */,
+				C6A3E82B4F1D0975E3B72A58 /* GeneratedAvatarTests.swift */,
 				B0F3E3CD0F4677B1CC68FF26 /* ProfileEditorViewModelTests.swift */,
 				D946FF67E31EBD458E5E56AE /* HuddleViewModelTests.swift */,
 				C204F0F834FDBB7C86EB1650 /* PromptModelsTests.swift */,
@@ -466,6 +471,7 @@
 				B2E592B8DEFA34ED2E6F42ED /* ProfileEditorViewModel.swift */,
 				55408824118074CC704619F5 /* ProfileEditorView.swift */,
 				3C58679A448DCF8DA55B4626 /* BeamAvatar.swift */,
+				8E4B2F6A1D9C3075A2B8E146 /* GeneratedAvatar.swift */,
 				4BC029C1C2EA489541067B8E /* BeamAvatarView.swift */,
 				C8216A7CE2D2C62774B54790 /* AuthView.swift */,
 				17FAE7FC496C6B37C6917E34 /* AuthViewModel.swift */,
@@ -738,6 +744,7 @@
 				1A71C0DE0000000000000022 /* FriendInviteViewModelTests.swift in Sources */,
 				F41E000000000000000B000B /* OtherProfileViewModelTests.swift in Sources */,
 				7D9F3D2753A09525262CB6CE /* BeamAvatarTests.swift in Sources */,
+				2F7D0A9C5E1B84363A6D91F0 /* GeneratedAvatarTests.swift in Sources */,
 				1E658E143DDB30236B404160 /* ProfileEditorViewModelTests.swift in Sources */,
 				4E8CBCA8BAB0A4F864B0C5F3 /* HuddleViewModelTests.swift in Sources */,
 				5E439B62812C03AC931340AB /* PromptModelsTests.swift in Sources */,
@@ -804,6 +811,7 @@
 				F41E000000000000000B0007 /* StatsCard.swift in Sources */,
 				979ABEF8B06D0C1FAD4B1174 /* ComingSoonView.swift in Sources */,
 				A0D1F65F57265585AC256C6B /* BeamAvatar.swift in Sources */,
+				5A1C9E0D7B3F4A2681D0C3E7 /* GeneratedAvatar.swift in Sources */,
 				5AE7FA6561DEB71485B68350 /* BeamAvatarView.swift in Sources */,
 				55D815DE872D873A0337115D /* ProfileEditorViewModel.swift in Sources */,
 				44FE4E9A179B13DD8151B513 /* ProfileEditorView.swift in Sources */,
