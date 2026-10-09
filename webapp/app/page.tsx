@@ -16,6 +16,7 @@ import { canAnswerPrompt, canViewProfile, chromeIdentity, isSignedInViewer } fro
 import { fetchPromptFeed } from "@/lib/foundation/content/prompts/feed";
 import { fetchGameContexts } from "@/lib/foundation/content/nfl/schedule";
 import { ACTIVITY_PAGE_SIZE, activityEvents } from "@/lib/foundation/friends/friends";
+import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 // The request-scoped client, carrying the generated Database types with it —
@@ -80,8 +81,6 @@ export default async function Home(props: PageProps<"/">) {
 
       <PageShell
         variant="dashboard"
-        // The tab bar adds 3rem under the top bar, so the page starts lower on md and up. Important, because .app-page is unlayered CSS and would otherwise win.
-        className={hasFriendsTab ? "md:pt-[9.75rem]!" : ""}
         rail={<div className="hidden xl:block"><QuickActions room={room} /></div>}
       >
         {canViewProfile(claims) && profileResult.data?.username ? (
@@ -92,6 +91,7 @@ export default async function Home(props: PageProps<"/">) {
           />
         ) : null}
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
+        <PageHeader eyebrow="Social" title={view === "friends" ? "Friends" : "The huddle"} />
         {hasFriendsTab ? <HomeTabs active={view} /> : null}
         {view === "friends" ? (
           friends?.error || activity?.error ? (
@@ -115,41 +115,20 @@ function HomeTabs({ active }: { active: HomeView }) {
     { key: "friends", label: "Friends", href: "/?view=friends" },
   ];
   return (
-    <>
-      {/* md and up: a bar under the fixed top bar, clear of the sidebar rail. */}
-      <nav
-        aria-label="Home sections"
-        className="fixed top-[68px] right-0 left-[var(--sidebar-w)] z-20 hidden h-12 items-stretch gap-2 border-b border-line bg-surface/95 px-5 backdrop-blur md:flex"
-      >
-        {tabs.map(({ key, label, href }) => (
-          <Link
-            key={key}
-            href={href}
-            aria-current={key === active ? "page" : undefined}
-            className={`flex items-center border-b-2 px-4 font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel ${
-              key === active ? "border-fg text-fg" : "border-transparent text-fg-muted hover:text-fg"
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
-      {/* Below md there is no top bar, so the tabs sit above the feed. */}
-      <nav aria-label="Home sections" className="mb-4 flex border border-line md:hidden">
-        {tabs.map(({ key, label, href }) => (
-          <Link
-            key={key}
-            href={href}
-            aria-current={key === active ? "page" : undefined}
-            className={`flex min-h-12 flex-1 items-center justify-center font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel ${
-              key === active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
-    </>
+    <nav aria-label="Home sections" className="mt-4 flex border border-line">
+      {tabs.map(({ key, label, href }) => (
+        <Link
+          key={key}
+          href={href}
+          aria-current={key === active ? "page" : undefined}
+          className={`flex min-h-12 flex-1 items-center justify-center font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel ${
+            key === active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
+          }`}
+        >
+          {label}
+        </Link>
+      ))}
+    </nav>
   );
 }
 

@@ -1,5 +1,4 @@
 import { PromptFeedShell } from "@/components/foundation/content/prompts/PromptFeedShell";
-import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import type { MatchupGameContext, Post } from "@/lib/foundation/content/prompts/types";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 
@@ -10,7 +9,7 @@ export function SocialFeed({ posts, canAnswer, gameContexts }: { posts: Post[]; 
       {posts.length ? (
         <PromptFeedShell initialPosts={posts} canAnswer={canAnswer} gameContexts={gameContexts} home />
       ) : (
-        <><PageHeader eyebrow="Social" title="The huddle" /><EmptyFeed /></>
+        <EmptyFeed />
       )}
     </section>
   );
