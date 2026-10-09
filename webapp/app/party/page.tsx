@@ -85,8 +85,6 @@ export default async function PartyPage(props: PageProps<"/party">) {
         ) : null}
         <RoomInvitesInbox invites={invites} hasRoom={room !== null} />
         <ActionStrip hasRoom={room !== null} canCreateLobby={canHost} />
-        {!room ? <div className="xl:hidden"><PartyGuide /></div> : null}
-
       </PageShell>
     </>
   );
