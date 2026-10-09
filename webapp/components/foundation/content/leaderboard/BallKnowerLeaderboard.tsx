@@ -3,10 +3,8 @@ import Link from "next/link";
 import { AuthorAvatar } from "@/components/foundation/content/prompts/AuthorIdentity";
 import { Card } from "@/components/foundation/ui-kit/Card";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
+import { ScopeNav, WindowNav } from "@/components/foundation/content/leaderboard/LeaderboardParts";
 import {
-  LEADERBOARD_SCOPES,
-  LEADERBOARD_SCOPE_LABEL,
-  LEADERBOARD_WINDOWS,
   LEADERBOARD_WINDOW_COPY,
   leaderboardHref,
   standingCopy,
@@ -53,41 +51,8 @@ export function BallKnowerLeaderboard({
 
   return (
     <div>
-      <nav aria-label="Leaderboard scope" className="mb-3 flex border border-line">
-        {LEADERBOARD_SCOPES.map((key) => {
-          const active = key === scope;
-          return (
-            <Link
-              key={key}
-              href={leaderboardHref(window, key)}
-              aria-current={active ? "page" : undefined}
-              className={`flex min-h-10 flex-1 items-center justify-center type-label-lg font-bold transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel ${
-                active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
-              }`}
-            >
-              {LEADERBOARD_SCOPE_LABEL[key]}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <nav aria-label="Time window" className="flex border border-line">
-        {LEADERBOARD_WINDOWS.map((key) => {
-          const active = key === window;
-          return (
-            <Link
-              key={key}
-              href={leaderboardHref(key, scope)}
-              aria-current={active ? "page" : undefined}
-              className={`flex min-h-12 flex-1 items-center justify-center font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel ${
-                active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
-              }`}
-            >
-              {LEADERBOARD_WINDOW_COPY[key].label}
-            </Link>
-          );
-        })}
-      </nav>
+      <ScopeNav scope={scope} hrefFor={(key) => leaderboardHref(window, key)} />
+      <WindowNav window={window} hrefFor={(key) => leaderboardHref(key, scope)} />
 
       <div className="mt-4">
         {standing.status === "ranked" ? (
@@ -135,13 +100,7 @@ export function BallKnowerLeaderboard({
         </div>
       )}
 
-      <p className="mt-5 text-sm leading-6 text-fg-muted">
-        You need at least {standing.minPicks} scored picks in a window to be ranked. Don&apos;t want to appear? Turn off rankings visibility in{" "}
-        <Link href="/settings" className="text-fg underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
-          Settings
-        </Link>
-        .
-      </p>
+      <p className="mt-5 text-sm leading-6 text-fg-muted">You need at least {standing.minPicks} scored picks in a window to be ranked.</p>
     </div>
   );
 }

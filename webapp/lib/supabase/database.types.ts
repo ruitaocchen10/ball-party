@@ -2936,6 +2936,20 @@ export type Database = {
           username: string
         }[]
       }
+      gamer_leaderboard: {
+        Args: { p_limit?: number; p_scope?: string; p_window: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          games_played: number
+          is_me: boolean
+          profile_id: string
+          rank: number
+          ranked_count: number
+          username: string
+          wins: number
+        }[]
+      }
       get_my_friend_code: { Args: never; Returns: string }
       get_profile: {
         Args: { p_username: string }
@@ -3068,6 +3082,17 @@ export type Database = {
           total_points: number
         }[]
       }
+      my_gamer_standing: {
+        Args: { p_scope?: string; p_window: string }
+        Returns: {
+          games_played: number
+          min_wins: number
+          rank: number
+          ranked_count: number
+          status: string
+          wins: number
+        }[]
+      }
       my_match_history: {
         Args: never
         Returns: {
@@ -3085,6 +3110,15 @@ export type Database = {
           percentile: number
           total_points: number
           window_key: string
+        }[]
+      }
+      my_solo_standing: {
+        Args: { p_game: string; p_mode?: string; p_scope?: string }
+        Returns: {
+          best_score: number
+          rank: number
+          ranked_count: number
+          status: string
         }[]
       }
       pause_match: {
@@ -3148,6 +3182,24 @@ export type Database = {
       }
       send_friend_request: { Args: { p_username: string }; Returns: string }
       set_profile_private: { Args: { p_private: boolean }; Returns: boolean }
+      solo_leaderboard: {
+        Args: {
+          p_game: string
+          p_limit?: number
+          p_mode?: string
+          p_scope?: string
+        }
+        Returns: {
+          avatar_url: string
+          best_score: number
+          display_name: string
+          is_me: boolean
+          profile_id: string
+          rank: number
+          ranked_count: number
+          username: string
+        }[]
+      }
       start_run: {
         Args: {
           p_game: string
