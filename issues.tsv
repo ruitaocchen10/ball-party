@@ -1,0 +1,20 @@
+124	Friends 1/20: Drop rankings_visible
+125	Friends 2/20: Unique usernames (schema and RPCs)
+126	Friends 3/20: is_private profile flag
+127	Friends 4/20: Friendships table, requests and search
+128	Friends 5/20: Profile read RPC with privacy rules
+129	Friends 6/20: Friends scope on the Ball Knower leaderboard
+130	Friends 7/20: Friends activity feed RPC
+131	Friends 8/20: Room invites (backend)
+132	Friends 9/20: Web: username in signup and edit-profile
+133	Friends 10/20: Web: private profile setting
+134	Friends 11/20: Web: friends page
+135	Friends 12/20: Web: view other profiles
+136	Friends 13/20: Web: friends leaderboard scope
+137	Friends 14/20: Web: activity feed
+138	Friends 15/20: Web: room invites
+139	Friends 16/20: iOS: username in signup and edit-profile
+140	Friends 17/20: iOS: private profile setting
+141	Friends 18/20: iOS: friends screen, profiles and leaderboard scope
+142	Friends 19/20: iOS: activity feed
+143	Friends 20/20: iOS: room invites (blocked on BPMO-11)
