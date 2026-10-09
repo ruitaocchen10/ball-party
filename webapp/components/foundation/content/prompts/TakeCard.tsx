@@ -7,6 +7,7 @@ import { type ReactNode, useState } from "react";
 import { AuthorIdentity } from "./AuthorIdentity";
 import { relativeTime } from "@/lib/foundation/content/prompts/logic";
 import type { Comment } from "@/lib/foundation/content/prompts/types";
+import { Badge } from "@/components/foundation/ui-kit/Badge";
 
 /**
  * A compact take preview. Discussion lives on its own take-thread route so
@@ -46,7 +47,7 @@ export function TakeCard({
     <article className="relative border border-line bg-surface-raised shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
       <div className="flex items-center gap-2.5 px-4 pt-4">
         <AuthorIdentity name={comment.author} avatarUrl={avatarUrl ?? comment.authorAvatarUrl ?? null} />
-        {isYou ? <span className="shrink-0 bg-panel px-1.5 py-0.5 font-mono text-[10px] tracking-[0.06em] text-panel-fg uppercase">You</span> : null}
+        {isYou ? <Badge>You</Badge> : null}
         <span className="ml-auto shrink-0 font-mono text-[10px] tracking-[0.04em] text-fg-muted">{relativeTime(comment.createdAt)}</span>
       </div>
       {comment.body ? <p className={`px-4 pt-4 text-lg leading-7 font-medium text-fg${hasBottomRow || children ? "" : " pb-4"}`}>{comment.body}</p> : null}
@@ -65,7 +66,7 @@ export function TakeCard({
               type="button"
               onClick={() => setTakeExpanded((expanded) => !expanded)}
               aria-expanded={takeExpanded}
-              className="ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase hover:text-fg"
+              className="ml-auto inline-flex items-center gap-1.5 type-label text-fg-muted hover:text-fg"
             >
               {takeExpanded ? "Hide take" : "View take"}
             </button>

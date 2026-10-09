@@ -60,7 +60,7 @@ export function LobbyTopStrip({
 
       {lobbyId ? (
         <div className="order-3 basis-full sm:order-2 sm:basis-auto sm:mx-auto">
-          <InviteSuite code={code} />
+          <InviteSuite code={code} lobbyId={lobbyId} />
         </div>
       ) : null}
 
@@ -80,12 +80,7 @@ export function LobbyTopStrip({
             <input type="hidden" name="code" value={code} />
             {/* Destructive, so it stays visually subordinate — red doubles as
                 the danger colour here, same as the buttons this replaced. */}
-            <Button
-              type="submit"
-              variant="ghost"
-              fullWidth={false}
-              className="min-h-9 px-3 text-[10px] text-hidden-text ring-hidden/40 hover:bg-hidden/10"
-            >
+            <Button type="submit" variant="danger" size="sm" fullWidth={false}>
               Close room
             </Button>
           </form>
@@ -96,7 +91,7 @@ export function LobbyTopStrip({
         ) : (
           <Link
             href="/login"
-            className={`font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase transition-colors hover:text-fg ${FOCUS}`}
+            className={`type-label text-fg-muted transition-colors hover:text-fg ${FOCUS}`}
           >
             Sign in
           </Link>

@@ -146,11 +146,12 @@ private struct EmailAuthSheet: View {
     }
 
     private enum Focus {
-        case displayName, email, password
+        case displayName, username, email, password
     }
 
     @State private var mode: Mode = .signIn
     @State private var displayName = ""
+    @State private var username = ""
     @State private var email = ""
     @State private var password = ""
     @State private var detent: PresentationDetent = .medium
@@ -166,6 +167,19 @@ private struct EmailAuthSheet: View {
                         TextField("Display name", text: $displayName)
                             .textContentType(.nickname)
                             .focused($focus, equals: .displayName)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        field("Username (optional)") {
+                            TextField("Username", text: $username)
+                                .textContentType(.username)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                                .focused($focus, equals: .username)
+                        }
+                        Text(usernameHint)
+                            .font(.sans(13))
+                            .foregroundStyle(Theme.fgMuted)
                     }
                 }
 
@@ -246,10 +260,22 @@ private struct EmailAuthSheet: View {
         }
     }
 
+    /// Local format feedback only: availability needs a session, so the
+    /// server decides right after the account exists.
+    private var usernameHint: String {
+        if username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "3–20 letters, numbers or underscores. Leave blank and we’ll pick one from your name."
+        }
+        switch IdentityConstants.validateUsername(username) {
+        case .valid: return "We’ll check it’s free when you create your account."
+        case .invalid(let message): return message
+        }
+    }
+
     private func submit() async {
         switch mode {
         case .signUp:
-            await viewModel.signUp(displayName: displayName, email: email, password: password)
+            await viewModel.signUp(displayName: displayName, username: username, email: email, password: password)
         case .signIn:
             await viewModel.signIn(email: email, password: password)
         }
@@ -292,7 +318,9 @@ private struct PreviewAuthBackend: AuthBackend {
         configure: @Sendable (ASWebAuthenticationSession) -> Void
     ) async throws -> Session { throw CancellationError() }
     func signOut() async throws {}
+    func deleteAccount() async throws {}
     func setDisplayName(_ displayName: String, userId: UUID) async throws {}
+    func claimUsername(_ username: String) async throws -> String { throw CancellationError() }
 }
 
 #Preview {

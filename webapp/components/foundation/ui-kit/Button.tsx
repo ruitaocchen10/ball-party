@@ -29,8 +29,14 @@ type NativeButtonProps = Omit<
   "onDrag" | "onDragStart" | "onDragEnd" | "onAnimationStart" | "onAnimationEnd" | "onAnimationIteration"
 >;
 
+type Variant = "solid" | "ghost" | "ink" | "text" | "danger";
+type Size = "md" | "sm";
+
 type Props = NativeButtonProps & {
-  variant?: "solid" | "ghost" | "ink";
+  variant?: Variant;
+  /** `sm` is the compact mono button for a card or dialog footer, where the
+   *  full slab button would out-shout what it sits beside. */
+  size?: Size;
   /** Full width is the common case; turn it off to sit inline beside a field. */
   fullWidth?: boolean;
   /** React 19 passes ref through props; it is spread onto the button below.
@@ -45,20 +51,31 @@ type Props = NativeButtonProps & {
 const PRESS = { whileTap: { scale: 0.97 }, transition: springSnappy };
 
 const BASE =
-  "min-h-12 px-4 font-slab text-[15px] tracking-[0.04em] uppercase " +
   "cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60 " +
   "focus-visible:outline-2 focus-visible:outline-offset-2";
 
+const SIZES = {
+  md: "min-h-12 px-4 font-slab text-[15px] tracking-[0.04em] uppercase",
+  sm: "min-h-9 px-3.5 type-label-lg font-bold",
+} as const;
+
 const VARIANTS = {
-  solid: "bg-panel text-panel-fg hover:bg-[#fffdf7] focus-visible:outline-panel",
+  solid: "bg-panel text-panel-fg hover:bg-panel-hover focus-visible:outline-panel",
   ghost:
     "bg-transparent text-fg ring-1 ring-line ring-inset hover:bg-surface-raised " +
     "focus-visible:outline-panel",
-  ink: "bg-panel-fg text-panel hover:bg-[#2c2921] focus-visible:outline-panel-fg",
+  ink: "bg-panel-fg text-panel hover:bg-panel-ink-hover focus-visible:outline-panel-fg",
+  /** A destructive action, kept subordinate: ghost in the concealed red. */
+  danger:
+    "bg-transparent text-hidden-text ring-1 ring-hidden/40 ring-inset hover:bg-hidden/10 " +
+    "focus-visible:outline-hidden",
+  /** No surface at all: "Cancel", "Back". Pair with `fullWidth={false}`. */
+  text: "bg-transparent text-fg-muted hover:text-fg focus-visible:outline-panel",
 } as const;
 
 export function Button({
   variant = "solid",
+  size = "md",
   fullWidth = true,
   className = "",
   children,
@@ -68,7 +85,7 @@ export function Button({
     <motion.button
       {...props}
       {...(props.disabled ? null : PRESS)}
-      className={`${BASE} ${VARIANTS[variant]} ${fullWidth ? "block w-full" : "shrink-0"} ${className}`}
+      className={`${BASE} ${SIZES[size]} ${VARIANTS[variant]} ${fullWidth ? "block w-full" : "shrink-0"} ${className}`}
     >
       {children}
     </motion.button>
@@ -83,12 +100,14 @@ export function Button({
 export function ButtonLink({
   href,
   variant = "solid",
+  size = "md",
   fullWidth = true,
   className = "",
   children,
 }: {
   href: string;
-  variant?: "solid" | "ghost" | "ink";
+  variant?: Variant;
+  size?: Size;
   fullWidth?: boolean;
   className?: string;
   children: ReactNode;
@@ -97,7 +116,7 @@ export function ButtonLink({
     <MotionLink
       href={href}
       {...PRESS}
-      className={`${BASE} ${VARIANTS[variant]} inline-flex items-center justify-center ${
+      className={`${BASE} ${SIZES[size]} ${VARIANTS[variant]} inline-flex items-center justify-center ${
         fullWidth ? "flex w-full" : "shrink-0"
       } ${className}`}
     >

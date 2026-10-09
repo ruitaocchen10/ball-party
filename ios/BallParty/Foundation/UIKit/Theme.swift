@@ -3,7 +3,8 @@ import UIKit
 
 // The Ball Party design system, ported from `webapp/app/globals.css` and
 // `webapp/components/foundation/ui-kit/`. Values here are the web's tokens
-// verbatim — when one changes there, change it here.
+// verbatim, kept in step by `webapp/lib/foundation/ui-kit/tokens.test.ts`:
+// when one changes there, change it here (and the other way round).
 //
 // Three rules the tokens exist to enforce (same as the web):
 //   1. The background is dark. Panels are the only light surfaces, so if
@@ -17,20 +18,22 @@ import UIKit
 enum Theme {
     // The background.
     static let surface = Color(hex: 0x111311)  // near-black with a faint green cast
-    static let surfaceRaised = Color(hex: 0x191C18)  // inset wells: inputs, clocks
+    static let surfaceRaised = Color(hex: 0x191C18)  // inset wells: inputs, bid bars
 
     // The panels.
     static let panel = Color(hex: 0xF4EFE4)
     static let panelShade = Color(hex: 0xE7E0CF)  // a subdued band inside a panel
     static let panelFg = Color(hex: 0x17150F)
     static let panelMuted = Color(hex: 0x6B665A)  // secondary text on a panel
-    static let panelBody = Color(hex: 0x4C4739)  // running text on a panel
-    static let panelRule = Color(hex: 0xC7BFAC)  // dashed rule inside a panel
+    static let panelSoft = Color(hex: 0x4C4739)  // body copy on a panel: darker than muted, softer than fg
+    static let panelLine = Color(hex: 0xC7BFAC)  // rules and borders on a panel
+    static let panelHover = Color(hex: 0xFFFDF7)  // a cream button's hover: the panel, one step lighter
+    static let panelInkHover = Color(hex: 0x2C2921)  // an ink button's hover
 
     // The one accent.
-    static let hidden = Color(hex: 0xC9382C)  // as a surface: concealed values
-    static let hiddenText = Color(hex: 0xE86759)  // lifted to stay legible on the background
-    static let hiddenInk = Color(hex: 0xA8291F)  // darkened to stay legible ON a cream panel
+    static let hidden = Color(hex: 0xC9382C)  // as a surface: concealed values, unfilled spots
+    static let hiddenText = Color(hex: 0xE86759)  // same red lifted to stay legible on the background
+    static let hiddenInk = Color(hex: 0xA8291F)  // same red darkened to stay legible ON a cream panel
 
     // Public feedback on a revealed result. These steer clear of red on
     // purpose: red means information is still concealed, a grade is public.

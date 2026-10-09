@@ -364,7 +364,7 @@ def check_headshot_coverage(rows, headshots):
 
 
 # One board, as the game deals it: 4 players x [QB, RB, WR, TE] base plus one
-# flex each, against a 7/8/5 tier quota. See docs/games/auction_team_builder.md.
+# flex each, against a 7/8/5 tier quota. See docs/games/auction_team_builder/rules.md.
 BASE_POSITIONS = {"QB": 4, "RB": 4, "WR": 4, "TE": 4}
 FLEX_POSITIONS = ("RB", "WR", "TE")
 FLEX_LOTS = 4

@@ -2,20 +2,21 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/app/profile/actions", () => ({ updateProfile: vi.fn() }));
+vi.mock("@/app/profile/actions", () => ({ updateProfile: vi.fn(), checkUsernameAvailable: vi.fn() }));
 
 import { ProfileEditor } from "./ProfileEditor";
 
 describe("ProfileEditor", () => {
   it("opens a dialog and returns focus to its trigger after Escape", async () => {
     const user = userEvent.setup();
-    render(<ProfileEditor displayName="Taylor" avatarUrl={null} userId="player-1" />);
+    render(<ProfileEditor displayName="Taylor" avatarUrl={null} userId="player-1" username="taylor_1" />);
 
     const trigger = screen.getByRole("button", { name: "Edit profile" });
     await user.click(trigger);
 
     expect(screen.getByRole("dialog", { name: "Edit profile" })).toBeInTheDocument();
     expect(screen.getByLabelText("Display name")).toHaveFocus();
+    expect(screen.getByLabelText(/^Username/)).toHaveValue("taylor_1");
     expect(screen.getByRole("button", { name: "Change profile photo" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Choose Captain avatar" })).not.toBeInTheDocument();
 

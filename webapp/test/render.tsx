@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 
 import { AuctionMatch } from "@/components/games/auction/AuctionMatch";
-import type { AuctionFormat, Bid, Lot, Player, Standing, Turn } from "@/lib/games/auction/board";
+import type { AuctionFormat, Bid, Lot, Player, ScoutHint, SealedBid, SealedBidStatus, Standing, Turn } from "@/lib/games/auction/board";
 
 import { MATCH, board, players, supabaseMock } from "./factories";
 
@@ -11,6 +11,9 @@ type Options = {
   seats?: Player[];
   bids?: Bid[];
   standings?: Standing[];
+  scoutHints?: ScoutHint[];
+  sealedBids?: SealedBid[];
+  sealedStatuses?: SealedBidStatus[];
   format?: AuctionFormat | null;
   /** Seat 0 by default; pass null to render as a non-participant spectator. */
   viewerId?: string | null;
@@ -44,6 +47,9 @@ export function renderMatch(options: Options) {
         players: options.seats ?? players(),
         bids: options.bids ?? [],
         standings: options.standings ?? [],
+        scoutHints: options.scoutHints ?? [],
+        sealedBids: options.sealedBids ?? [],
+        sealedStatuses: options.sealedStatuses ?? [],
         format: options.format ?? null,
       }}
     />,

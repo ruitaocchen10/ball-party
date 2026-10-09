@@ -46,10 +46,10 @@ export function Select({
   const focusClass = dark ? FOCUS_ON_DARK : FOCUS_ON_PANEL;
   const triggerClass = dark
     ? "border-line bg-surface text-fg"
-    : "border-[#c7bfac] bg-panel-shade text-panel-fg";
+    : "border-panel-line bg-panel-shade text-panel-fg";
   const contentClass = dark
     ? "border-line bg-surface-raised text-fg shadow-well"
-    : "border-[#c7bfac] bg-panel text-panel-fg shadow-card";
+    : "border-panel-line bg-panel text-panel-fg shadow-card";
   const itemClass = dark ? "data-[highlighted]:bg-surface" : "data-[highlighted]:bg-panel-shade";
   const mutedTextClass = dark ? "text-fg-muted" : "text-panel-muted";
 
@@ -63,7 +63,7 @@ export function Select({
     >
       <RadixSelect.Trigger
         aria-label={ariaLabel}
-        className={`flex h-10 items-center justify-between gap-2 rounded border px-2 font-mono text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass} ${focusClass}`}
+        className={`flex h-10 items-center justify-between gap-2 border px-2 font-mono text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass} ${focusClass}`}
       >
         <RadixSelect.Value />
         <RadixSelect.Icon>
@@ -75,7 +75,7 @@ export function Select({
         <RadixSelect.Content
           position="popper"
           sideOffset={4}
-          className={`z-50 w-[var(--radix-select-trigger-width)] overflow-hidden rounded border font-mono ${contentClass}`}
+          className={`z-50 w-[var(--radix-select-trigger-width)] overflow-hidden border font-mono ${contentClass}`}
         >
           <RadixSelect.ScrollUpButton className={`flex h-6 items-center justify-center ${dark ? "bg-surface-raised" : "bg-panel"}`}>
             <ChevronUp className={`h-4 w-4 ${mutedTextClass}`} strokeWidth={1.75} />

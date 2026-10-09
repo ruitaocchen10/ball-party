@@ -9,6 +9,7 @@ import { guestSessionFinishedHref } from "@/lib/foundation/identity/guest-lifecy
 import { lobbyErrorMessage } from "@/lib/platform/lobbies/messages";
 import { HOST_SIGN_UP_HREF } from "@/lib/platform/lobbies/hosting";
 import { soloGames, startableGames, type MatchGame } from "@/lib/platform/orchestration/catalog";
+import { isGameMode } from "@/lib/games/sabotage-draft/rounds";
 
 /**
  * The lobby RPCs raise short machine-readable strings — see
@@ -28,6 +29,24 @@ function normalizeCode(value: FormDataEntryValue | null): string {
 function validAuctionFormat(scoringMode: string, rosterPreset: string): boolean {
   return (scoringMode === "weekly" || scoringMode === "season_total")
     && ["standard", "full", "deep"].includes(rosterPreset);
+}
+
+function validWavelengthFormat(mode: string, preset: string): boolean {
+  return (mode === "versus" && preset === "")
+    || (mode === "coop" && ["short", "medium", "long"].includes(preset));
+}
+
+/**
+ * The token-count field, as the form submitted it, or null for the RPC's own
+ * default. Shallow on purpose, same as `auctionSeasonRange` below: whether
+ * 0-3 is actually the valid range is `auction.start`'s rule to enforce, not
+ * this action's to restate.
+ */
+function auctionTokenCount(formData: FormData): number | null {
+  const value = formData.get("token_count");
+  if (value === null) return null;
+  const count = Number(value);
+  return Number.isInteger(count) ? count : null;
 }
 
 /**
@@ -134,7 +153,17 @@ export async function startRun(formData: FormData) {
   if (game === "auction_team_builder" && !validAuctionFormat(scoringMode, rosterPreset)) {
     redirect(`/lobby/${code}?error=${encodeURIComponent("Choose a valid auction format.")}`);
   }
+  const draftMode = String(formData.get("draft_mode") ?? "full");
+  if (game === "sabotage_draft" && !isGameMode(draftMode)) {
+    redirect(`/lobby/${code}?error=${encodeURIComponent("Choose a valid draft mode.")}`);
+  }
+  const wavelengthMode = String(formData.get("wavelength_mode") ?? "");
+  const wavelengthPreset = String(formData.get("wavelength_preset") ?? "");
+  if (game === "wavelength_2v2" && !validWavelengthFormat(wavelengthMode, wavelengthPreset)) {
+    redirect(`/lobby/${code}?error=${encodeURIComponent("Choose a valid Wavelength format.")}`);
+  }
   const seasons = auctionSeasonRange(formData);
+  const tokenCount = auctionTokenCount(formData);
   const supabase = await createClient();
 
   const { data: match, error } = await supabase.rpc("start_run", {
@@ -153,12 +182,17 @@ export async function startRun(formData: FormData) {
       p_scoring_mode: scoringMode,
       p_roster_preset: rosterPreset,
       ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
+      ...(tokenCount !== null ? { p_token_count: tokenCount } : {}),
     })
     : game === "higher_or_lower" ? await supabase.schema("higher_or_lower").rpc("start", {
       p_match_id: match.id,
       p_scoring_mode: scoringMode,
       ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
-    }) : await supabase.schema("sabotage_draft" as never).rpc("start" as never, { p_match_id: match.id } as never);
+    }) : game === "wavelength_2v2" ? await supabase.schema("wavelength").rpc("start", {
+      p_match_id: match.id,
+      p_mode: wavelengthMode,
+      ...(wavelengthPreset ? { p_preset: wavelengthPreset } : {}),
+    }) : await supabase.schema("sabotage_draft" as never).rpc("start" as never, { p_match_id: match.id, p_mode: draftMode } as never);
   if (dealError) redirect(withError(`/lobby/${code}`, dealError));
 
   revalidatePath("/", "layout");

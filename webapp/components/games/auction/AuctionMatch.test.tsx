@@ -8,7 +8,7 @@ vi.mock("@/components/runtime/game-runtime/PostGameNavigation", () => ({
 
 import { AuctionMatch } from "@/components/games/auction/AuctionMatch";
 import { LOT_REVEAL_MS } from "@/lib/games/auction/useLotReveal";
-import { MATCH, bid, board, lot, players, standing, turn } from "@/test/factories";
+import { MATCH, bid, board, lot, players, scoutHint, sealedBid, sealedBidStatus, standing, turn } from "@/test/factories";
 import { renderMatch } from "@/test/render";
 
 /**
@@ -112,6 +112,7 @@ describe("the four phases", () => {
         purse: 50,
         seasonFrom: 2010,
         seasonTo: 2025,
+        tokenCount: 1,
       },
       lots: board([
         { winner_id: "u0", slot: "QB", display_name: "Patrick Mahomes", points: 35.9, price: 5 },
@@ -137,6 +138,7 @@ describe("the four phases", () => {
         purse: 20,
         seasonFrom: 2010,
         seasonTo: 2025,
+        tokenCount: 1,
       },
       lots: board([{ season: 2018, team: "NYG", week: null, opponent: null }]),
     });
@@ -199,6 +201,7 @@ describe("the four phases", () => {
         purse: 20,
         seasonFrom: 2010,
         seasonTo: 2025,
+        tokenCount: 1,
       },
       lots: board([{ week: null, opponent: null, winner_id: "u1", price: 12, slot: "RB", points: 312.4 }]),
     });
@@ -299,7 +302,7 @@ describe("the status line", () => {
   it("allows each configured slot before explaining that a deep position is full", () => {
     renderMatch({
       turn: turn("bidding", { turnSeat: 0 }),
-      format: { scoringMode: "weekly", rosterPreset: "deep", qbSlots: 2, rbSlots: 2, wrSlots: 3, teSlots: 1, flexSlots: 2, purse: 50, seasonFrom: 2010, seasonTo: 2025 },
+      format: { scoringMode: "weekly", rosterPreset: "deep", qbSlots: 2, rbSlots: 2, wrSlots: 3, teSlots: 1, flexSlots: 2, purse: 50, seasonFrom: 2010, seasonTo: 2025, tokenCount: 1 },
       lots: board([
         { position: "QB", winner_id: "u0", slot: "QB", points: 22, price: 2 },
         { position: "QB", winner_id: "u0", slot: "QB", points: 18, price: 1 },
@@ -326,6 +329,271 @@ describe("the status line", () => {
   it("keeps the line present even with nothing to say, so it reserves its space", () => {
     renderMatch({ turn: turn("lot_preview") });
     expect(screen.getByText(/This player enters the auction/)).toBeInTheDocument();
+  });
+});
+
+describe("the stuck seat", () => {
+  const stuckFormat = {
+    scoringMode: "weekly", rosterPreset: "standard", qbSlots: 1, rbSlots: 1, wrSlots: 1, teSlots: 1,
+    flexSlots: 1, purse: 25, seasonFrom: 2010, seasonTo: 2025, tokenCount: 1,
+  };
+
+  it("offers a free claim and a token decline when nobody else can bid and a token remains", () => {
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0, stuckSeat: 0 }),
+      format: stuckFormat,
+    });
+
+    expect(screen.getByText(/Take it free, or spend your Pass token/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Take for $0" })).toBeEnabled();
+    // The decline itself now lives in the token tray below the clock, not a
+    // second button inside the bid controls -- see "the token tray" below.
+    expect(screen.getByRole("button", { name: "Pass token" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Pass" })).not.toBeInTheDocument();
+  });
+
+  it("forces the free claim once the viewer's pass token is already spent", () => {
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0, stuckSeat: 0 }),
+      format: stuckFormat,
+      seats: players([{ used_pass_token: true }]),
+    });
+
+    expect(screen.getByText(/you're out of pass tokens — it's yours for \$0/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Take for $0" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Pass token" })).toBeDisabled();
+  });
+
+  it("forces the free claim when tokens are off for this match entirely", () => {
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0, stuckSeat: 0 }),
+      format: { ...stuckFormat, tokenCount: 0 },
+    });
+
+    expect(screen.getByRole("button", { name: "Take for $0" })).toBeEnabled();
+    // No tray at all once tokens are off for the match.
+    expect(screen.queryByRole("button", { name: "Pass token" })).not.toBeInTheDocument();
+  });
+});
+
+describe("the token tray", () => {
+  const trayFormat = {
+    scoringMode: "weekly", rosterPreset: "standard", qbSlots: 1, rbSlots: 1, wrSlots: 1, teSlots: 1,
+    flexSlots: 1, purse: 25, seasonFrom: 2010, seasonTo: 2025, tokenCount: 3,
+  };
+
+  it("keeps all three tokens visible even when only one is usable right now", () => {
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }), format: trayFormat });
+
+    // Ordinary bidding, before any bid: Scout and Seal are usable; Pass is
+    // not (nobody's stuck yet) but still shown, just inactive.
+    expect(screen.getByRole("button", { name: "Pass token" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Scout token" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Seal token" })).toBeEnabled();
+  });
+
+  it("shows each token's description on hover, via an accessible description", () => {
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }), format: trayFormat });
+
+    expect(screen.getByRole("button", { name: "Pass token" })).toHaveAccessibleDescription(
+      /Decline a lot you'd otherwise be stuck with/,
+    );
+    expect(screen.getByRole("button", { name: "Scout token" })).toHaveAccessibleDescription(
+      /Peek a rough performance tier/,
+    );
+    expect(screen.getByRole("button", { name: "Seal token" })).toHaveAccessibleDescription(
+      /simultaneous blind bid/,
+    );
+  });
+
+  it("marks a spent token used rather than removing it", () => {
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0 }),
+      format: trayFormat,
+      seats: players([{ used_scout_token: true }]),
+    });
+
+    const scoutButton = screen.getByRole("button", { name: "Scout token" });
+    expect(scoutButton).toBeDisabled();
+    expect(scoutButton).toHaveAccessibleDescription(/Already used this match/);
+  });
+});
+
+describe("the scout token", () => {
+  const weeklyFormat = {
+    scoringMode: "weekly", rosterPreset: "standard", qbSlots: 1, rbSlots: 1, wrSlots: 1, teSlots: 1,
+    flexSlots: 1, purse: 25, seasonFrom: 2010, seasonTo: 2025, tokenCount: 1,
+  };
+
+  it("offers a scout button on a weekly match with a token to spend", () => {
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }), format: weeklyFormat });
+    expect(screen.getByRole("button", { name: "Scout token" })).toBeEnabled();
+  });
+
+  it("offers a scout button on a season-total match too", () => {
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0 }),
+      format: { ...weeklyFormat, scoringMode: "season_total" },
+    });
+    expect(screen.getByRole("button", { name: "Scout token" })).toBeEnabled();
+  });
+
+  it("disables the control once the viewer's scout token is already spent", () => {
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0 }),
+      format: weeklyFormat,
+      seats: players([{ used_scout_token: true }]),
+    });
+    expect(screen.getByRole("button", { name: "Scout token" })).toBeDisabled();
+  });
+
+  it("disables the control once sold -- the points are already public by then", () => {
+    renderMatch({ turn: turn("sold"), format: weeklyFormat });
+    expect(screen.getByRole("button", { name: "Scout token" })).toBeDisabled();
+  });
+
+  it("reveals the scouted tier from the RPC's own response, without waiting on realtime", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderMatch({ turn: turn("bidding", { turnSeat: 0, currentLot: 1 }), format: weeklyFormat });
+    // A blanket mockResolvedValue would also answer the match clock's own
+    // background expire_turn call with this same payload, which applyTurn
+    // would then misread as a turn row and end the match. Scope the mock to
+    // the one RPC this test actually exercises.
+    supabase.rpc.mockImplementation(async (...args: unknown[]) =>
+      args[0] === "use_scout_token" ? { data: "great", error: null } : { data: null, error: null },
+    );
+
+    await user.click(screen.getByRole("button", { name: "Scout token" }));
+
+    expect(await screen.findByText("Scouted: great")).toBeInTheDocument();
+    // The hint arriving is itself the proof this token is spent -- the tray
+    // disables immediately, without waiting a round trip on the seat row.
+    expect(screen.getByRole("button", { name: "Scout token" })).toBeDisabled();
+    expect(supabase.schema).toHaveBeenCalledWith("auction");
+    expect(supabase.rpc).toHaveBeenCalledWith("use_scout_token", { p_match_id: MATCH });
+  });
+
+  it("surfaces a server refusal next to the control rather than silently failing", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderMatch({ turn: turn("bidding", { turnSeat: 0 }), format: weeklyFormat });
+    supabase.rpc.mockImplementation(async (...args: unknown[]) =>
+      args[0] === "use_scout_token" ? { data: null, error: { message: "no_scout_tokens" } } : { data: null, error: null },
+    );
+
+    await user.click(screen.getByRole("button", { name: "Scout token" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("You're out of scouting tokens.");
+  });
+
+  it("renders a hint already on record from initial load without a click", () => {
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0, currentLot: 1 }),
+      format: weeklyFormat,
+      scoutHints: [scoutHint({ seq: 1, user_id: "u0", tier: "rough" })],
+    });
+
+    expect(screen.getByText("Scouted: rough")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Scout token" })).toBeDisabled();
+  });
+});
+
+describe("the seal token", () => {
+  const sealFormat = {
+    scoringMode: "weekly", rosterPreset: "standard", qbSlots: 1, rbSlots: 1, wrSlots: 1, teSlots: 1,
+    flexSlots: 1, purse: 25, seasonFrom: 2010, seasonTo: 2025, tokenCount: 1,
+  };
+
+  it("offers a seal control before any bid, with a token to spend", () => {
+    renderMatch({ turn: turn("bidding", { turnSeat: 0 }), format: sealFormat });
+    expect(screen.getByRole("button", { name: "Seal token" })).toBeEnabled();
+  });
+
+  it("disables the control once a bid exists on the lot", () => {
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0 }),
+      format: sealFormat,
+      bids: [bid({ seq: 1 })],
+    });
+    expect(screen.getByRole("button", { name: "Seal token" })).toBeDisabled();
+  });
+
+  it("disables the control once the viewer's seal token is already spent", () => {
+    renderMatch({
+      turn: turn("bidding", { turnSeat: 0 }),
+      format: sealFormat,
+      seats: players([{ used_seal_token: true }]),
+    });
+    expect(screen.getByRole("button", { name: "Seal token" })).toBeDisabled();
+  });
+
+  it("disables the control once the lot is sealed or sold -- it's no longer available to invoke", () => {
+    const { unmount } = renderMatch({ turn: turn("sealed"), format: sealFormat });
+    expect(screen.getByRole("button", { name: "Seal token" })).toBeDisabled();
+    unmount();
+
+    renderMatch({ turn: turn("sold"), format: sealFormat });
+    expect(screen.getByRole("button", { name: "Seal token" })).toBeDisabled();
+  });
+
+  it("invoking it calls use_seal_token", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderMatch({ turn: turn("bidding", { turnSeat: 0 }), format: sealFormat });
+
+    await user.click(screen.getByRole("button", { name: "Seal token" }));
+
+    expect(supabase.schema).toHaveBeenCalledWith("auction");
+    expect(supabase.rpc).toHaveBeenCalledWith("use_seal_token", { p_match_id: MATCH });
+  });
+
+  it("swaps in the sealed-bid form once sealed, replacing the ascending controls entirely", () => {
+    renderMatch({ turn: turn("sealed"), format: sealFormat });
+
+    expect(screen.getByRole("button", { name: "Submit" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Amount")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "+$1" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pass" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Seal token" })).toBeDisabled();
+  });
+
+  it("submits the typed amount", async () => {
+    const user = userEvent.setup();
+    const { supabase } = renderMatch({ turn: turn("sealed"), format: sealFormat });
+
+    const input = screen.getByLabelText("Amount");
+    await user.clear(input);
+    await user.type(input, "6");
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+
+    expect(supabase.rpc).toHaveBeenCalledWith("submit_sealed_bid", { p_match_id: MATCH, p_amount: 6 });
+  });
+
+  it("shows the viewer's own bid and names who it's still waiting on, never anyone else's amount", () => {
+    renderMatch({
+      turn: turn("sealed"),
+      format: sealFormat,
+      sealedBids: [sealedBid({ seq: 1, user_id: "u0", amount: 6 })],
+      sealedStatuses: [sealedBidStatus({ seq: 1, user_id: "u0", submitted: true })],
+    });
+
+    // The default roster is four seats; only the viewer (u0) has a status
+    // row here, so the other three are all still "waiting on" -- the point
+    // being that this reads from presence, never from an amount this
+    // client was never given in the first place.
+    expect(screen.getByText("You bid $6")).toBeInTheDocument();
+    expect(screen.getByText("Waiting on Ben, Cleo, Dev.")).toBeInTheDocument();
+  });
+
+  it("says everyone's in once nobody's left to wait on", () => {
+    renderMatch({
+      turn: turn("sealed"),
+      format: sealFormat,
+      sealedBids: [sealedBid({ seq: 1, user_id: "u0", amount: 6 })],
+      sealedStatuses: players()
+        .filter((p) => p.user_id !== "u0")
+        .map((p) => sealedBidStatus({ seq: 1, user_id: p.user_id, submitted: true })),
+    });
+
+    expect(screen.getByText(/Everyone's in/)).toBeInTheDocument();
   });
 });
 
@@ -520,6 +788,18 @@ describe("the table", () => {
     expect(within(table).getByText("On the clock")).toBeInTheDocument();
     expect(within(table).getByText("High bid · $6")).toBeInTheDocument();
     expect(within(table).getByText("Ben").closest("details")).toHaveClass("bg-panel/5");
+  });
+
+  it("shows who has submitted a sealed bid rather than who is 'on the clock' -- nobody is", () => {
+    renderMatch({
+      turn: turn("sealed"),
+      sealedStatuses: [sealedBidStatus({ seq: 1, user_id: "u0", submitted: true })],
+    });
+
+    const table = screen.getByRole("complementary", { name: "The table" });
+    expect(within(table).getByText("You").closest("details")).toHaveTextContent("Submitted");
+    expect(within(table).getByText("Ben").closest("details")).toHaveTextContent("Deciding");
+    expect(within(table).queryByText("On the clock")).not.toBeInTheDocument();
   });
 
   it("marks a seat that has passed", () => {

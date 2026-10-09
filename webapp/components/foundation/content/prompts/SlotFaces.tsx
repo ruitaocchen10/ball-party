@@ -53,7 +53,7 @@ export function YourCalls({
   const hiddenCount = slots.length - visibleSlots.length;
   return (
     <section className="mt-4 px-4" aria-label="Your calls">
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      <div className={`grid gap-2 sm:gap-3 ${slots.length === 1 ? "" : "grid-cols-2"}`}>
         {visibleSlots.map((slot) => (
           <MatchupPicker key={slot.id} slot={slot} response={responses[slot.id] ?? []} variant="compact" mode="revealed" />
         ))}
@@ -62,7 +62,7 @@ export function YourCalls({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="mt-2 inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase hover:text-fg"
+          className="mt-2 inline-flex items-center gap-1.5 type-label text-fg-muted hover:text-fg"
         >
           <ChevronDown className="h-3.5 w-3.5" /> View all {slots.length} picks
         </button>
@@ -70,7 +70,7 @@ export function YourCalls({
         <button
           type="button"
           onClick={() => setExpanded(false)}
-          className="mt-2 inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase hover:text-fg"
+          className="mt-2 inline-flex items-center gap-1.5 type-label text-fg-muted hover:text-fg"
         >
           <ChevronUp className="h-3.5 w-3.5" /> Show fewer picks
         </button>
@@ -95,8 +95,8 @@ export function GamePickList({
   return (
     <section className="px-4 pt-5" aria-label="Weekly pick sheet">
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <p className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Make each call</p>
-        <p className="font-mono text-[10px] tracking-[0.08em] text-fg-muted tabular-nums uppercase">
+        <p className="type-label text-fg-muted">Make each call</p>
+        <p className="type-label text-fg-muted tabular-nums">
           {slots.filter((slot) => responses[slot.id]?.length).length}/{slots.length} picked
         </p>
       </div>
@@ -173,7 +173,7 @@ export function SlotFaceC({
                 key={option.id}
                 type="button"
                 onClick={() => onChange([...order, option.id])}
-                className="flex items-center gap-2 rounded border border-line bg-surface px-2 py-2 text-left"
+                className="flex items-center gap-2 border border-line bg-surface px-2 py-2 text-left"
               >
                 <OptionIcon option={option} className="h-5 w-5" />
                 <span className="min-w-0 truncate font-slab text-xs uppercase">{option.label}</span>
@@ -365,7 +365,7 @@ export function PowerRankingsSlot({
               className={`flex h-14 min-w-0 items-center gap-3 border border-dashed bg-surface-raised/50 px-3 text-fg-muted transition-colors ${dropTargetIndex === index && draggedId ? "border-panel ring-1 ring-panel" : "border-line"}`}
             >
               <span className="w-5 font-mono text-sm tabular-nums">{index + 1}</span>
-              <span className="font-mono text-[10px] tracking-[0.08em] uppercase">Choose a team</span>
+              <span className="type-label">Choose a team</span>
             </li>
           );
           const option = slot.options.find((item) => item.id === id)!;
@@ -411,7 +411,7 @@ export function PowerRankingsSlot({
 
       {!disabled ? (
         <div className="mt-4" onDragOver={(event) => event.preventDefault()} onDrop={returnToAvailable}>
-          <p className="mb-1.5 font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">{draggedId && placements.includes(draggedId) ? "Drop here to remove" : "Available teams"}</p>
+          <p className="mb-1.5 type-label text-fg-muted">{draggedId && placements.includes(draggedId) ? "Drop here to remove" : "Available teams"}</p>
           <div className={`grid grid-cols-2 gap-1.5 sm:grid-cols-4 ${draggedId && placements.includes(draggedId) ? "ring-1 ring-dashed ring-panel" : ""}`}>
             {unranked.map((option) => (
               <button
@@ -440,7 +440,7 @@ export function PowerRankingsSlot({
                 <span aria-hidden className="absolute right-2 bottom-0.5 font-mono text-xl leading-none font-black text-white/85 group-hover:text-white">+</span>
               </button>
             ))}
-            {!unranked.length ? <div className="col-span-full flex h-14 items-center justify-center border border-dashed border-line bg-surface-raised/50 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">Drop a team here to remove it</div> : null}
+            {!unranked.length ? <div className="col-span-full flex h-14 items-center justify-center border border-dashed border-line bg-surface-raised/50 type-label text-fg-muted">Drop a team here to remove it</div> : null}
           </div>
         </div>
       ) : null}

@@ -30,6 +30,7 @@ import {
 import { GuestNudge } from "@/components/games/qb-season-builder/GuestNudge";
 import { qbErrorMessage } from "@/lib/games/qb-season-builder/messages";
 import { createClient } from "@/lib/supabase/client";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /** What the player has picked out on the spin but not yet locked in. */
 type Choice = { slot: Slot; playerId: string | null };
@@ -58,7 +59,7 @@ const SLOT_ICONS: Record<Slot, LucideIcon> = {
  * null, so the concealed marks below are an honest rendering of an absent
  * value rather than a screen that knows something it is choosing not to say.
  * Nothing here is a rule; `pick` and `respin` refuse anything this screen
- * would let through. See docs/games/qb_season_builder.md.
+ * would let through. See docs/games/qb_season_builder/rules.md.
  *
  * Working title only — the game's name and visual design are not final.
  */
@@ -171,35 +172,33 @@ export function QbSeasonBuilderMatch({
   }, [board.phase]);
 
   return (
-    <main className="app-page flex-1">
-      <div className="grid w-full gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start xl:gap-12">
-        <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
-          <PageHeader
-            eyebrow="Solo challenge"
-            title="QB Season Builder"
-            description={`Round ${board.currentRound} of ${board.roundCount} · Grades ${board.mode} · Era ${board.era}`}
-          />
-          {board.spin === null ? (
-            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-              <FinishedPanel board={board} pending={pending} error={error} onFinish={finish} />
-              <BuildCard board={board} isGuest={isGuest} />
-            </div>
-          ) : (
-            <SpinPanel
-              board={board}
-              spin={board.spin}
-              choice={choice}
-              pending={pending}
-              error={error}
-              isGuest={isGuest}
-              onChoose={setChoice}
-              onPlay={play}
-            />
-          )}
+    <PageShell
+      variant="dashboard"
+      rail={<RunControlRail board={board} pending={pending} onRespin={() => play("respin")} startNewSeason={startNewSeason} />}
+    >
+      <PageHeader
+        eyebrow="Solo challenge"
+        title="QB Season Builder"
+        description={`Round ${board.currentRound} of ${board.roundCount} · Grades ${board.mode} · Era ${board.era}`}
+      />
+      {board.spin === null ? (
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          <FinishedPanel board={board} pending={pending} error={error} onFinish={finish} />
+          <BuildCard board={board} isGuest={isGuest} />
         </div>
-        <RunControlRail board={board} pending={pending} onRespin={() => play("respin")} startNewSeason={startNewSeason} />
-      </div>
-    </main>
+      ) : (
+        <SpinPanel
+          board={board}
+          spin={board.spin}
+          choice={choice}
+          pending={pending}
+          error={error}
+          isGuest={isGuest}
+          onChoose={setChoice}
+          onPlay={play}
+        />
+      )}
+    </PageShell>
   );
 }
 
@@ -241,7 +240,7 @@ function SpinPanel({
   }, [spin.franchiseCode, spinKey]);
 
   return (
-    <section aria-label="The spin" className="mt-5 flex w-full max-w-[760px] flex-col gap-4">
+    <section aria-label="The spin" className="mt-5 flex w-full flex-col gap-4">
       {revealed ? (
         <div className="flex items-center gap-3 border border-line bg-surface-raised p-4">
           <TeamSpinIdentity code={spin.franchiseCode} name={franchiseName(spin.franchiseCode)} season={spin.season} />
@@ -334,7 +333,7 @@ function TeamSpinIdentity({ code, name, season }: { code: string; name: string; 
       <TeamLogo code={code} className="h-12 w-12" />
       <div>
         <p className="font-slab text-[27px] leading-none uppercase">{name}</p>
-        <p className="mt-1 font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{season}</p>
+        <p className="mt-1 type-label-lg text-fg-muted">{season}</p>
       </div>
     </>
   );
@@ -391,10 +390,10 @@ function OptionRow({
       <span className="flex items-center gap-2.5">
         <input type="radio" name={name} className="sr-only" checked={checked} disabled={disabled} onChange={onChoose} />
         <Icon aria-hidden className={`h-4 w-4 ${active ? "text-panel-fg" : "text-fg-muted"}`} strokeWidth={active ? 2.25 : 1.5} />
-        <span className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase">{label}</span>
+        <span className="type-label-lg font-bold">{label}</span>
       </span>
       {taken ? (
-        <span className="font-mono text-[10px] tracking-[0.1em] text-fg-muted uppercase">Already picked</span>
+        <span className="type-label text-fg-muted">Already picked</span>
       ) : grade === null ? (
         <Concealed label="Grade hidden" compact className="h-4 w-9" />
       ) : (
@@ -421,7 +420,7 @@ function FinishedPanel({
   onFinish: () => void;
 }) {
   return (
-    <section aria-label="Your quarterback" className="mt-5 flex w-full max-w-[760px] flex-col gap-3 border border-line bg-surface-raised p-4">
+    <section aria-label="Your quarterback" className="mt-5 flex w-full flex-col gap-3 border border-line bg-surface-raised p-4">
       {board.phase === "complete" ? (
         <p className="font-slab text-[27px] leading-none uppercase">This run is finished.</p>
       ) : (
@@ -454,7 +453,7 @@ function FinishedPanel({
 function BuildCard({ board, isGuest }: { board: Board; isGuest: boolean }) {
   return (
     <section aria-labelledby="qb-build-heading" className="border border-line bg-surface-raised p-4 shadow-well">
-      <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-hidden-text uppercase">Your quarterback</p>
+      <p className="type-label font-semibold text-hidden-text">Your quarterback</p>
       <h2 id="qb-build-heading" className="mt-1 font-slab text-[27px] leading-none uppercase">Your build</h2>
       <ol aria-label="Your build" className="mt-4 divide-y divide-line border-t border-line">
         {SLOTS.map((slot) => (
@@ -481,7 +480,7 @@ function RunControlRail({
 }) {
   return (
     <DashboardRail headingId="qb-run-control-heading" eyebrow="Run control" title="Current run">
-      <p className="mt-4 font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{board.currentRound} / {board.roundCount} rounds · mode: {board.mode} · era: {board.era}</p>
+      <p className="mt-4 type-label text-fg-muted">{board.currentRound} / {board.roundCount} rounds · mode: {board.mode} · era: {board.era}</p>
       {board.spin !== null ? (
         <div className="mt-4 border-t border-line pt-3">
           <Button className="flex items-center justify-center" type="button" variant="ghost" disabled={board.respinUsed || pending} onClick={onRespin}>
@@ -519,7 +518,7 @@ function SlotRow({ slot, board }: { slot: Slot; board: Board }) {
 
   return (
     <li className="flex items-baseline justify-between gap-3 py-2.5">
-      <span className="font-mono text-[10px] font-bold tracking-[0.13em] uppercase">{SLOT_LABELS[slot]}</span>
+      <span className="type-label font-bold">{SLOT_LABELS[slot]}</span>
       {pick ? (
         <span className="flex items-start gap-2">
           {pick.displayName ? <PlayerPortrait name={pick.displayName} headshotUrl={pick.headshotUrl} className="h-7 w-7 text-[8px]" /> : null}
@@ -532,7 +531,7 @@ function SlotRow({ slot, board }: { slot: Slot; board: Board }) {
           </span>
         </span>
       ) : (
-        <span className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">Open</span>
+        <span className="type-label text-fg-muted">Open</span>
       )}
     </li>
   );

@@ -11,7 +11,7 @@ const matcher = new RegExp(`^${config.matcher[0]}$`);
 const runsProxy = (path: string) => matcher.test(path);
 
 describe("proxy matcher", () => {
-  it.each(["/robots.txt", "/sitemap.xml", "/manifest.webmanifest", "/opengraph-image", "/opengraph-image-1a2b3c", "/twitter-image"])(
+  it.each(["/robots.txt", "/sitemap.xml", "/manifest.webmanifest", "/opengraph-image", "/opengraph-image-1a2b3c", "/twitter-image", "/.well-known/apple-app-site-association"])(
     "leaves %s reachable to crawlers without a session",
     (path) => {
       expect(runsProxy(path)).toBe(false);

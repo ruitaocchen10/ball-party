@@ -1,0 +1,182 @@
+import SwiftUI
+
+/// The friend picker behind "Invite friends" in a room. Mirrors the web's
+/// `InviteFriendsModal`: each friend gets an Invite button, then the server's
+/// answer as a badge.
+struct InviteFriendsSheet: View {
+    @StateObject private var viewModel: InviteFriendsViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    init(
+        lobbyId: UUID,
+        friendsClient: FriendsClient = SupabaseFriendsClient(client: SupabaseConfig.client),
+        invitesClient: RoomInvitesClient = SupabaseRoomInvitesClient(client: SupabaseConfig.client)
+    ) {
+        _viewModel = StateObject(
+            wrappedValue: InviteFriendsViewModel(
+                lobbyId: lobbyId, friendsClient: friendsClient, invitesClient: invitesClient
+            )
+        )
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("They'll get the invite on their Party tab and can join straight from there.")
+                        .font(.sans(14))
+                        .foregroundStyle(Theme.fgMuted)
+                    content
+                }
+                .padding(16)
+            }
+            .screenBackground()
+            .navigationTitle("Invite friends")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+            .task { await viewModel.load() }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch viewModel.phase {
+        case .loading:
+            ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+        case .failed(let message):
+            EmptyState(title: "Couldn’t load your friends", message: message) {
+                Button("Retry") { Task { await viewModel.load() } }
+                    .buttonStyle(.quiet)
+            }
+        case .loaded where viewModel.friends.isEmpty:
+            EmptyState(
+                title: "No friends yet",
+                message: "Add friends from Profile, then Friends, and you can invite them here."
+            )
+        case .loaded:
+            VStack(spacing: 0) {
+                ForEach(viewModel.friends) { friend in
+                    VStack(spacing: 0) {
+                        LineRule()
+                        row(friend).padding(.vertical, 6)
+                    }
+                }
+            }
+        }
+    }
+
+    private func row(_ friend: Friend) -> some View {
+        let attempt = viewModel.attempts[friend.id]
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                PersonRow(player: friend.player)
+                switch attempt {
+                case .result(let result):
+                    Text(result.label)
+                        .monoLabel(10, weight: .bold, tracking: 0.08,
+                                   color: result == .invited ? Theme.fg : Theme.fgMuted)
+                        .accessibilityLabel("\(result.label). \(result.detail)")
+                default:
+                    EmptyView()
+                }
+                if !isSettled(attempt) {
+                    Button {
+                        Task { await viewModel.invite(friend) }
+                    } label: {
+                        Text(buttonTitle(attempt))
+                    }
+                    .buttonStyle(BPButtonStyle(variant: .solid, fullWidth: false))
+                    .disabled(attempt == .sending)
+                    .accessibilityLabel("Invite \(friend.player.displayName)")
+                }
+            }
+            if case .failed(let message) = attempt {
+                Text(message).font(.sans(12)).foregroundStyle(Theme.hiddenText)
+            }
+        }
+    }
+
+    private func isSettled(_ attempt: InviteFriendsViewModel.Attempt?) -> Bool {
+        if case .result(let result) = attempt { return result.isSettled }
+        return false
+    }
+
+    private func buttonTitle(_ attempt: InviteFriendsViewModel.Attempt?) -> String {
+        switch attempt {
+        case .sending: "Inviting…"
+        case .none: "Invite"
+        default: "Try again"
+        }
+    }
+}
+
+/// "Room invites": pending invites from friends, with Join and Decline.
+/// Renders nothing when there are none.
+struct RoomInvitesInboxSection: View {
+    @ObservedObject var viewModel: RoomInvitesInboxViewModel
+    /// Whether the player is already in a room: joining another leaves it.
+    var hasRoom: Bool
+    /// Called with the room an accepted invite put the player in.
+    var onJoined: (Lobby) -> Void
+
+    var body: some View {
+        if !viewModel.invites.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionTitle(text: "Room invites")
+                if hasRoom {
+                    Text("Heads up: joining an invite leaves the room you're in.")
+                        .font(.sans(14))
+                        .foregroundStyle(Theme.fgMuted)
+                }
+                ForEach(viewModel.invites) { invite in
+                    VStack(spacing: 0) {
+                        LineRule()
+                        row(invite).padding(.vertical, 8)
+                    }
+                }
+            }
+        }
+    }
+
+    private func row(_ invite: RoomInvite) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                Avatar(name: invite.senderName, url: invite.senderAvatarURL, size: 36)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(invite.senderName) invited you")
+                        .font(.sans(16, weight: .semibold))
+                        .foregroundStyle(Theme.fg)
+                        .lineLimit(1)
+                    Text(invite.summary)
+                        .font(.sans(14))
+                        .foregroundStyle(Theme.fgMuted)
+                }
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
+                Button("Decline") {
+                    Task { await viewModel.decline(invite) }
+                }
+                .buttonStyle(BPButtonStyle(variant: .ghost, fullWidth: false))
+                .disabled(viewModel.isBusy)
+                .accessibilityLabel("Decline invite from \(invite.senderName)")
+                Button {
+                    Task {
+                        if let lobby = await viewModel.accept(invite) { onJoined(lobby) }
+                    }
+                } label: {
+                    Text(viewModel.busyInviteId == invite.id && viewModel.busyAction == .accept ? "Joining…" : "Join")
+                }
+                .buttonStyle(BPButtonStyle(variant: .solid, fullWidth: false))
+                .disabled(viewModel.isBusy)
+                .accessibilityLabel("Join \(invite.senderName)'s room")
+            }
+            if let message = viewModel.errors[invite.id] {
+                Text(message).font(.sans(12)).foregroundStyle(Theme.hiddenText)
+            }
+        }
+    }
+}

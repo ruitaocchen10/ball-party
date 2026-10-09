@@ -22,6 +22,7 @@ describe("StartRun", () => {
 
     expect(screen.getByRole("combobox", { name: "Scoring" })).toHaveTextContent("Weekly");
     expect(screen.getByRole("combobox", { name: "Roster" })).toHaveTextContent("Standard · 20 lots");
+    expect(screen.getByRole("combobox", { name: "Tokens" })).toHaveTextContent("1 per player");
 
     await user.click(screen.getByRole("button", { name: "Start the auction" }));
 
@@ -30,6 +31,18 @@ describe("StartRun", () => {
     expect(submitted).toBeInstanceOf(FormData);
     expect(submitted.get("scoring_mode")).toBe("weekly");
     expect(submitted.get("roster_preset")).toBe("standard");
+    expect(submitted.get("token_count")).toBe("1");
+  });
+
+  it("offers 0-3 tokens per player and submits the host's selection", async () => {
+    const user = userEvent.setup();
+    render(<StartRun lobbyId="lobby" code="BLTZ" players={2} era={era} />);
+
+    await choose(user, "Tokens", "Off");
+    await user.click(screen.getByRole("button", { name: "Start the auction" }));
+
+    const submitted = vi.mocked(startRun).mock.calls.at(-1)![0];
+    expect(submitted.get("token_count")).toBe("0");
   });
 
   it("offers the longer roster presets and submits the host's selection", async () => {

@@ -109,7 +109,7 @@ export function StripCellTop({
   right: ReactNode;
 }) {
   return (
-    <p className="flex items-baseline justify-between gap-1 font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">
+    <p className="flex items-baseline justify-between gap-1 type-label-xs leading-none text-fg-muted">
       <span className="truncate">{left}</span>
       <span className="shrink-0 tabular-nums">{right}</span>
     </p>

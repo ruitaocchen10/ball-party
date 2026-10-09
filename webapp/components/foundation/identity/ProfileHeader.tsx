@@ -5,6 +5,8 @@ import { ProfileAvatar } from "@/components/foundation/identity/ProfileAvatar";
 type ProfileHeaderProps = {
   displayName: string;
   avatarUrl: string | null;
+  /** Shown as @username under the name when the player has one. */
+  username?: string | null;
   joinedLabel: string;
   /** A profile owner can supply an edit control; public profiles need not. */
   action?: ReactNode;
@@ -17,14 +19,15 @@ type ProfileHeaderProps = {
  * while owning the avatar-and-action layout that would make PageHeader's
  * otherwise compact interface profile-specific.
  */
-export function ProfileHeader({ displayName, avatarUrl, joinedLabel, action }: ProfileHeaderProps) {
+export function ProfileHeader({ displayName, avatarUrl, username = null, joinedLabel, action }: ProfileHeaderProps) {
   return (
-    <header className="w-full max-w-[760px] border-b border-line pb-5 sm:pb-6">
+    <header className="w-full border-b border-line pb-5 sm:pb-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
         <ProfileAvatar name={displayName} avatarUrl={avatarUrl} />
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[10px] font-semibold tracking-[0.16em] text-fg-muted uppercase">{joinedLabel}</p>
+          <p className="type-label font-semibold text-fg-muted">{joinedLabel}</p>
           <h1 className="mt-1 font-slab text-[34px] leading-none uppercase sm:text-[42px]">{displayName}</h1>
+          {username ? <p className="mt-1.5 type-label text-fg-muted">@{username}</p> : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>

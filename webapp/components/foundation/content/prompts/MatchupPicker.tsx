@@ -5,8 +5,8 @@ import { useState } from "react";
 
 import { teamPrimaryColor } from "@/lib/foundation/content/nfl/team-logos";
 import { PromptTeamLogo } from "./PromptTeamLogo";
-import { PromptTicket } from "./PromptTicket";
-import { isSlotGraded } from "@/lib/foundation/content/prompts/logic";
+import { PROMPT_TICKET_CUT_CORNERS, PromptTicket } from "./PromptTicket";
+import { isSlotGraded, isSlotNoContest } from "@/lib/foundation/content/prompts/logic";
 import type { MatchupGameContext, Option, Slot } from "@/lib/foundation/content/prompts/types";
 
 type Props = {
@@ -19,8 +19,12 @@ type Props = {
   testId?: string;
 };
 
-/** One matchup module for prompt previews, choices, and revealed calls. */
-export function MatchupPicker({ slot, variant, mode, response = [], onChange, context, testId }: Props) {
+/** One matchup module for prompt previews, choices, and revealed calls. A Game Picks slot (winner + margin) gets the four-choice layout. */
+export function MatchupPicker(props: Props) {
+  return props.slot.options.some((option) => option.margin) ? <MarginPicker {...props} /> : <WinnerPicker {...props} />;
+}
+
+function WinnerPicker({ slot, variant, mode, response = [], onChange, context, testId }: Props) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [away, home] = slot.options;
   if (!away || !home) return null;
@@ -30,6 +34,7 @@ export function MatchupPicker({ slot, variant, mode, response = [], onChange, co
   // post the Thursday game can be graded while Monday's is still pending.
   const graded = mode === "revealed" && isSlotGraded(slot);
   const correct = graded && selectedId === slot.correct?.[0];
+  const noContest = mode === "revealed" && isSlotNoContest(slot);
   const sideProps = (option: Option) => mode !== "picker" ? {} : {
     role: "button" as const,
     tabIndex: 0,
@@ -56,7 +61,7 @@ export function MatchupPicker({ slot, variant, mode, response = [], onChange, co
             <FeaturedSide option={home} selected={selectedId === home.id} active={activeId === home.id} interactive={mode === "picker"} sideProps={sideProps(home)} />
           </div>
         </div>
-        <div className="relative mx-3 flex flex-col items-center gap-1 border-t border-fg/20 pt-2.5 pb-3 font-mono text-[9px] tracking-[0.14em] text-fg/70 uppercase sm:mx-5 sm:pb-4"><span>{formatGameTime(context?.kickoff)}</span><span className="max-w-full truncate text-fg/50">{context?.stadium || "Venue TBD"}</span></div>
+        <div className="relative mx-3 flex flex-col items-center gap-1 border-t border-fg/20 pt-2.5 pb-3 type-label-xs text-fg/70 sm:mx-5 sm:pb-4"><span>{formatGameTime(context?.kickoff)}</span><span className="max-w-full truncate text-fg/50">{context?.stadium || "Venue TBD"}</span></div>
       </PromptTicket>
     </section>
   );
@@ -68,13 +73,13 @@ export function MatchupPicker({ slot, variant, mode, response = [], onChange, co
         <CompactSide option={home} selected={selectedId === home.id} hasSelection={selectedId !== null} active={activeId === home.id} interactive={mode === "picker"} revealed={graded} correct={correct} sideProps={sideProps(home)} />
         <div aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 z-10 flex -translate-x-1/2 items-center justify-center"><span className="absolute inset-y-2 left-1/2 w-px bg-line sm:inset-y-3" /><span className="relative flex h-6 w-6 items-center justify-center rounded-full border border-line bg-surface font-mono text-[10px] font-bold text-fg-muted sm:h-8 sm:w-8 sm:text-xs">@</span></div>
       </div>
-      <div aria-hidden className="mx-2 h-2 border-t border-line/70 sm:mx-3" />
+      {noContest ? <p className="border-t border-line/70 py-1 text-center type-label-xs text-fg-muted">No contest — game tied</p> : <div aria-hidden className="mx-2 h-2 border-t border-line/70 sm:mx-3" />}
     </PromptTicket>
   );
 }
 
 function PrimetimeChip() {
-  return <span aria-label="Primetime game" style={{ clipPath: "polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%)" }} className="inline-flex items-center gap-1.5 border border-fg/60 bg-fg px-3 py-1 font-mono text-[9px] font-bold tracking-[0.16em] text-surface uppercase shadow-[0_4px_10px_rgb(0_0_0/0.32)]"><MoonStar aria-hidden className="h-3 w-3" strokeWidth={2.2} /> Primetime</span>;
+  return <span aria-label="Primetime game" style={{ clipPath: "polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%)" }} className="inline-flex items-center gap-1.5 border border-fg/60 bg-fg px-3 py-1 type-label-xs font-bold text-surface shadow-[0_4px_10px_rgb(0_0_0/0.32)]"><MoonStar aria-hidden className="h-3 w-3" strokeWidth={2.2} /> Primetime</span>;
 }
 
 function surface(option: Option, active: boolean) {
@@ -83,7 +88,7 @@ function surface(option: Option, active: boolean) {
 }
 
 function FeaturedSide({ option, selected, active, interactive, sideProps }: { option: Option; selected: boolean; active: boolean; interactive: boolean; sideProps: Record<string, unknown> }) {
-  return <div {...sideProps} className={`flex min-h-32 min-w-0 flex-col items-center justify-center gap-1.5 px-3 py-2 text-center transition-all duration-150 sm:min-h-40 sm:px-5 sm:py-3 ${active ? "text-panel" : "text-fg"} ${interactive ? "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-panel" : ""}`}><OptionMark option={option} className="h-12 w-12 drop-shadow-[0_7px_8px_rgb(0_0_0/0.35)] sm:h-[4.5rem] sm:w-[4.5rem]" /><span className="font-slab text-lg leading-none uppercase sm:text-2xl">{option.label}</span>{interactive ? <span className="font-mono text-[9px] tracking-[0.12em] uppercase opacity-80">{selected ? "Your call" : "Pick winner"}</span> : null}</div>;
+  return <div {...sideProps} className={`flex min-h-32 min-w-0 flex-col items-center justify-center gap-1.5 px-3 py-2 text-center transition-all duration-150 sm:min-h-40 sm:px-5 sm:py-3 ${active ? "text-panel" : "text-fg"} ${interactive ? "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-panel" : ""}`}><OptionMark option={option} className="h-12 w-12 drop-shadow-[0_7px_8px_rgb(0_0_0/0.35)] sm:h-[4.5rem] sm:w-[4.5rem]" /><span className="font-slab text-lg leading-none uppercase sm:text-2xl">{option.label}</span>{interactive ? <span className="type-label-xs opacity-80">{selected ? "Your call" : "Pick winner"}</span> : null}</div>;
 }
 
 function CompactSide({ option, selected, hasSelection, active, interactive, revealed, correct, sideProps }: { option: Option; selected: boolean; hasSelection: boolean; active: boolean; interactive: boolean; revealed: boolean; correct: boolean; sideProps: Record<string, unknown> }) {
@@ -99,4 +104,63 @@ function OptionMark({ option, className }: { option: Option; className: string }
 function formatGameTime(kickoff: string | undefined) {
   if (!kickoff || Number.isNaN(new Date(kickoff).getTime())) return "Game time TBD";
   return new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(kickoff));
+}
+
+/**
+ * Game Picks: the usual matchup cover (featured only) with the four choices
+ * beneath it — each team's "by <7" and "by 7+" — in a column per team.
+ */
+function MarginPicker({ slot, variant, mode, response = [], onChange, context, testId }: Props) {
+  const selectedId = response[0] ?? null;
+  const graded = mode === "revealed" && isSlotGraded(slot);
+  const [awayShort, awayLong, homeShort, homeLong] = slot.options;
+  if (!awayShort || !awayLong || !homeShort || !homeLong) return null;
+  const cover: Slot = {
+    ...slot,
+    options: [awayShort, homeShort].map((option) => ({ id: option.id, label: option.label.replace(/ by .*$/, ""), teamCode: option.teamCode })),
+  };
+
+  // A feed teaser is just the game card; the four choices belong to the answer view.
+  if (mode === "preview") return (
+    <section data-testid={testId} aria-label={slot.label}>
+      <WinnerPicker slot={cover} variant="featured" mode="preview" context={context} />
+    </section>
+  );
+
+  const picking = mode === "picker";
+  return (
+    <section data-testid={testId} aria-label={slot.label} className={picking && variant === "featured" ? "mt-5 px-4" : undefined}>
+      {variant === "featured" ? <WinnerPicker slot={cover} variant="featured" mode="preview" context={context} /> : null}
+      {picking ? <p className="mt-4 type-label text-fg-muted">Pick the winner and margin</p> : null}
+      <div role={picking ? "radiogroup" : undefined} aria-label="Winner and margin" className={`grid grid-cols-2 gap-3 ${variant === "featured" ? (picking ? "mt-2" : "mt-3") : ""}`}>
+        {[awayShort, homeShort, awayLong, homeLong].map((option) => {
+          const selected = selectedId === option.id;
+          const isCorrect = graded && selected && option.id === slot.correct?.[0];
+          const isWrong = graded && selected && !isCorrect;
+          const choiceProps = mode !== "picker" ? {} : {
+            role: "radio" as const,
+            "aria-checked": selected,
+            tabIndex: 0,
+            onClick: () => onChange?.([option.id]),
+            onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
+              if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onChange?.([option.id]); }
+            },
+          };
+          return (
+            <div
+              key={option.id}
+              {...choiceProps}
+              data-testid={`margin-choice-${option.id}`}
+              style={{ ...PROMPT_TICKET_CUT_CORNERS, ...(selected ? surface(option, true) : {}) }}
+              className={`relative flex min-h-20 min-w-0 items-center gap-3 px-3 py-3 text-left ring-2 ring-inset transition-all duration-150 sm:min-h-24 sm:px-4 ${isCorrect ? "ring-grade-elite" : isWrong ? "ring-grade-rough" : selected ? "ring-fg/70" : "ring-line"} ${picking ? "cursor-pointer hover:ring-fg/50 hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-panel" : ""} ${selected ? "text-[#fffdf7]" : picking ? "bg-surface-raised text-fg" : "bg-surface-raised text-fg-muted"}`}
+            >
+              <OptionMark option={option} className={`h-10 w-10 shrink-0 sm:h-14 sm:w-14${selectedId && !selected ? " grayscale opacity-40" : ""}`} />
+              <span className="min-w-0"><span className={`block truncate font-slab leading-tight uppercase text-lg sm:text-xl`}>{option.label}</span>{option.sublabel ? <span className={`block truncate type-label opacity-70`}>{option.sublabel}</span> : null}</span>
+              {isCorrect ? <Check aria-label="Correct" className="absolute top-2 right-3 h-4 w-4 text-grade-elite" strokeWidth={3} /> : isWrong ? <X aria-label="Incorrect" className="absolute top-2 right-3 h-4 w-4 text-grade-rough" strokeWidth={3} /> : picking && selected ? <Check aria-hidden className="absolute top-2 right-3 h-4 w-4 text-white drop-shadow" strokeWidth={3} /> : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }

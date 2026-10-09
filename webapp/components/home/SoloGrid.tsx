@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { GAMES, type Game, type SoloMode } from "@/lib/platform/orchestration/catalog";
 import { playSolo } from "@/lib/platform/lobbies/actions";
 import { SoloSeasonRange } from "./SoloSeasonRange";
+import { Badge } from "@/components/foundation/ui-kit/Badge";
+import { Button } from "@/components/foundation/ui-kit/Button";
 
 /** The seasons on offer for Higher or Lower's era picker; absent when the bounds could not be read. */
 export type SoloEra = { seasonMin: number; seasonMax: number };
@@ -20,19 +22,15 @@ const HIGHER_OR_LOWER_SCORING: readonly SoloMode[] = [
 ];
 
 /**
- * The games a lone player can start right now — carved out of the shop
- * window (see GameGrid) rather than living as a tile's second control there.
- * "Start a room" and "play alone" are different promises, and folding them
- * into one tile made the lesser one read as a footnote on the other.
+ * The games a lone player can start right now. "Start a room" and "play
+ * alone" are different promises, so solo has its own page rather than a
+ * second control on a party tile.
  *
  * Cards read as a small games shelf — icon, a "1 player" tag, name, pitch,
- * then Play solo — rather than GameGrid's shop-window bento tiles: solo
- * needs none of that bidding-war framing, just "here's what you can play by
- * yourself right now."
+ * then Play solo: just "here's what you can play by yourself right now."
  *
  * Only a game with `solo: true` and `status: "live"` shows up here. No
- * account-gated fallback the way GameGrid's tiles have one: solo carries none
- * of hosting's account requirement. A visitor with no session at all plays as
+ * account-gated fallback: solo carries none of hosting's account requirement. A visitor with no session at all plays as
  * a guest — `playSolo` creates the session — so every card carries its Play
  * solo control.
  */
@@ -53,8 +51,7 @@ export function SoloGrid({ higherOrLowerEra = null }: { higherOrLowerEra?: SoloE
 }
 
 /**
- * The card itself isn't the control — same split GameGrid uses between a
- * tile and its button — but it still reacts to a hover anywhere on it
+ * The card itself isn't the control, but it still reacts to a hover anywhere on it
  * (`group` sits here, not just on the button) so the whole card reads as
  * live even though only the Play solo button at the bottom actually is.
  */
@@ -65,9 +62,7 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
         <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-surface text-fg-muted ring-1 ring-line ring-inset transition-colors group-hover:text-fg">
           <Gamepad2 aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.6} />
         </span>
-        <span className="bg-surface px-2 py-1 font-mono text-[9px] font-semibold tracking-[0.1em] text-fg-muted uppercase ring-1 ring-line ring-inset">
-          1 player
-        </span>
+        <Badge tone="muted" size="xs">1 player</Badge>
       </div>
 
       <h3 className="mt-4 font-slab text-xl leading-[1.04] uppercase">
@@ -93,12 +88,9 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
             {higherOrLowerEra ? <SoloSeasonRange era={higherOrLowerEra} /> : null}
           </SoloSettings>
         ) : null}
-        <button
-          type="submit"
-          className="inline-flex h-9 w-full cursor-pointer items-center justify-center bg-panel px-3.5 font-mono text-[11px] font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
-        >
+        <Button size="sm" type="submit">
           Play solo
-        </button>
+        </Button>
       </form>
     </article>
   );
@@ -114,7 +106,7 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
 function SoloSettings({ children }: { children: ReactNode }) {
   return (
     <details className="group/settings mb-3">
-      <summary className="flex cursor-pointer list-none items-center justify-between font-mono text-[9px] font-semibold tracking-[0.1em] text-fg-muted uppercase transition-colors marker:hidden hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between type-label-xs font-semibold text-fg-muted transition-colors marker:hidden hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel [&::-webkit-details-marker]:hidden">
         Settings
         <ChevronDown
           aria-hidden
@@ -138,7 +130,7 @@ function SoloSettings({ children }: { children: ReactNode }) {
 function RadioChoice({ name, legend, options }: { name: string; legend: string; options: readonly SoloMode[] }) {
   return (
     <fieldset className="mb-3 flex flex-col gap-1.5">
-      <legend className="mb-1.5 font-mono text-[9px] font-semibold tracking-[0.1em] text-fg-muted uppercase">
+      <legend className="mb-1.5 type-label-xs font-semibold text-fg-muted">
         {legend}
       </legend>
       {options.map((option, index) => (
@@ -154,7 +146,7 @@ function RadioChoice({ name, legend, options }: { name: string; legend: string; 
             className="mt-0.5 accent-current"
           />
           <span className="flex flex-col">
-            <span className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase">{option.label}</span>
+            <span className="type-label-lg font-bold">{option.label}</span>
             <span className="text-[12px] leading-4 text-fg-muted">{option.description}</span>
           </span>
         </label>

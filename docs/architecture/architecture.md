@@ -9,8 +9,8 @@ Game-specific rules live in their own docs. Session and lobby structure lives in
 Every game here is a **short-session, small-lobby, turn-based multiplayer game
 built on asymmetric information.** That combination is what drives the stack:
 
-- 4 players per lobby, sessions of 5–15 minutes
-- Hard per-action timers in every game
+- Up to 4 players per lobby, sessions of 5–15 minutes
+- Hard per-action timers in the timed games
 - **Hidden state that only some players may see** — the Wavelength target, the
   auction's fantasy points before reveal
 
@@ -62,7 +62,7 @@ falls out of that.
 foundation    identity · content · ui-kit
 platform      lobbies → orchestration
 runtime       realtime · game-runtime  (the contract)
-games         auction · wavelength · higher-or-lower · cah
+games         auction · wavelength · higher-or-lower · sabotage-draft · qb-season-builder
 ```
 
 **The rule that keeps this from turning to mush:** a game may depend on the
@@ -72,13 +72,13 @@ the contract is wrong.
 
 | Module | Doc | Owns |
 | --- | --- | --- |
-| Identity | `identity.md` *(todo)* | Accounts, profiles, display names, guest vs. authed play |
+| Identity | `webapp/lib/foundation/identity/` | Accounts, profiles, display names, guest vs. authed play |
 | Lobbies | [`lobbies/lobbies.md`](./lobbies/lobbies.md) | Room, join code, membership, the lobby→run→match records |
-| Orchestration | `orchestration.md` *(todo)* | The party loop: pick next game, launch match, take result, award points, decide the win. Arcade is the degenerate one-match case |
+| Orchestration | `webapp/lib/platform/orchestration/` | The game catalog today. The party loop (pick next game, award points, decide the win) is not built; arcade is the one-match case |
 | Game runtime | [`game-runtime.md`](./game-runtime.md) | **The contract.** Match state, action validation, per-action deadlines, hidden-state projection |
 | Realtime | [`realtime.md`](./realtime.md) | Subscription lifecycle, presence, reconnect and mid-match rejoin, connection state in the UI |
-| Content | [`../../scripts/player_pool/`](../../scripts/player_pool/README.md) | Sports data: players, stats, decks, prompts. Ingestion, caching, freshness, licensing. The auction's player-week pool is built and loaded; decks and prompts are untouched |
-| UI kit | `ui-kit.md` *(todo)* | Primitives (`Card`, `Button`) plus the shared **game shell**: timer bar, player rail, reveal |
+| Content | [`../../scripts/player_pool/`](../../scripts/player_pool/README.md) | Sports data: players, stats, decks, prompts. Ingestion, caching, freshness, licensing. Pools for the auction, Higher or Lower, Sabotage Draft and QB Season Builder are built and loaded as migrations; the Huddle's prompts are authored in-app |
+| UI kit | `webapp/components/foundation/ui-kit/` | Primitives (`Card`, `Button`) plus the shared **game shell**: timer bar, player rail, reveal |
 | Games | [`../games/`](../games/) | Rules for one game, and nothing else. One doc each |
 
 ### Notes on the non-obvious ones
@@ -92,8 +92,9 @@ both land here, so this is where the design risk concentrates — get the
 projection wrong and information leaks through the Realtime payload, not through
 the UI. Per-action timers live here too: a deadline the client owns isn't a
 rule, so a deadline is a column and expiry is an RPC any participant may call.
-The auction settles that shape first — see its pacing section — and the other
-timer-driven games should lift it rather than reinvent it.
+The auction settled that shape first (see its pacing section); the other
+timer-driven games reuse it.
 
-**Content is the sleeper.** All four games consume sports data and none of them
-own it. Untouched so far and likely the longest pole.
+**Content is the sleeper.** Every game consumes sports data and none of them
+own it. It ships as migrations, so a fresh clone is playable after
+`npm --prefix webapp run db:reset`.

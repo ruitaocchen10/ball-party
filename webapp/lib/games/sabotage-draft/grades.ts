@@ -13,12 +13,13 @@
  * computed.
  */
 
-/** Round 8-13's slot labels fold onto the AV pool's own (broader) category
- * the same way `sabotage_draft_private.pool_categories` folds RB1/RB2 and
- * WR1/WR2/WR3 server-side -- a pick's grade is read off its position's own
- * distribution, and the pool only has ten position buckets, not thirteen
- * slot labels. */
-function categoryFor(slot: string): string {
+/** Slot labels fold onto the AV pool's own (broader) category the same way
+ * `sabotage_draft_private.pool_categories` folds RB1/RB2 and WR1/WR2/WR3
+ * server-side -- a pick's grade is read off its position's own distribution.
+ * FLEX and DEF are the exception: a slot there says nothing about the
+ * player's position, so the pick's own category (from `pick_avs`) is used. */
+function categoryFor(slot: string, pickCategory?: string): string {
+  if ((slot === "FLEX" || slot === "DEF") && pickCategory) return pickCategory;
   if (slot.startsWith("RB")) return "RB";
   if (slot.startsWith("WR")) return "WR";
   return slot;
@@ -80,8 +81,8 @@ function letterFor(av: number, cutoffs: number[]): Grade {
 
 /** A single drafted player's grade, relative to real players at their own
  * position (`slot` is the round's label -- "RB1", "WR2", "ST", etc). */
-export function gradeForPick(slot: string, av: number): Grade {
-  const cutoffs = POSITION_CUTOFFS[categoryFor(slot)];
+export function gradeForPick(slot: string, av: number, pickCategory?: string): Grade {
+  const cutoffs = POSITION_CUTOFFS[categoryFor(slot, pickCategory)];
   return letterFor(av, cutoffs ?? POSITION_CUTOFFS.QB);
 }
 
@@ -117,6 +118,15 @@ export function gradeForPick(slot: string, av: number): Grade {
  */
 const TEAM_CUTOFFS = [60, 69, 72, 82, 93, 102, 110, 114, 120, 126, 130, 136];
 
-export function gradeForTeam(rosterStrength: number): Grade {
-  return letterFor(rosterStrength, TEAM_CUTOFFS);
+/** Fixed season baselines per mode, mirroring
+ * `sabotage_draft_private.baseline_roster_strength(mode)`. */
+const MODE_BASELINES: Record<string, number> = { full: 93, standard: 62, quick: 52 };
+
+/** Cutoffs are written for a full 13-card roster (baseline 93). A smaller
+ * mode's roster is stretched onto that scale by the ratio of baselines, so
+ * a roster sitting at its own mode's baseline grades the same as a full
+ * roster sitting at 93. */
+export function gradeForTeam(rosterStrength: number, mode = "full"): Grade {
+  const baseline = MODE_BASELINES[mode] ?? MODE_BASELINES.full;
+  return letterFor(rosterStrength * (MODE_BASELINES.full / baseline), TEAM_CUTOFFS);
 }

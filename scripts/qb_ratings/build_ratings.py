@@ -25,7 +25,7 @@ Inputs, all cached under `.cache/` (gitignored) or the AV pool's own cache:
 - the Madden ratings snapshot: `--madden-dir`, a folder of one CSV per edition
   (`2006.csv` ... `2025.csv`, the dataset's `data/madden/processed/`). NEVER
   fetched or mirrored by this script — see
-  docs/games/qb_season_builder_madden_data.md, condition 4.
+  docs/games/qb_season_builder/madden_data.md, condition 4.
 - the AV roster pool's caches (`../av_roster_pool/.cache/`), for who was on
   which roster and what each was worth in Approximate Value.
 
@@ -199,7 +199,7 @@ def read_madden(directory, people):
                 f"missing Madden edition file: {path}\n"
                 "Point --madden-dir at a folder of one CSV per edition (the "
                 "dataset's data/madden/processed/). This script never fetches "
-                "it: see docs/games/qb_season_builder_madden_data.md."
+                "it: see docs/games/qb_season_builder/madden_data.md."
             )
         for r in read_csv(path):
             overall = float_or_none(r.get("overallrating"))
@@ -395,7 +395,7 @@ def emit_sql(ratings, madden_rows, overrides):
         "--\n"
         "-- THIS FILE CARRIES THIRD-PARTY RATINGS (qb_season_builder_private.madden_ratings).\n"
         "-- It must never reach a public repository: see\n"
-        "-- docs/games/qb_season_builder_madden_data.md, condition 2.\n"
+        "-- docs/games/qb_season_builder/madden_data.md, condition 2.\n"
         "--\n"
         "-- The tables it fills are created by 0120 and 0123. Every generated file\n"
         "-- replaces all four outright, so a retune is just a newer file: the deletes\n"

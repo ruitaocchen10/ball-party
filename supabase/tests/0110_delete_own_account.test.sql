@@ -1,5 +1,5 @@
 begin;
-select plan(5);
+select plan(6);
 
 \ir support/harness.psql
 
@@ -19,11 +19,6 @@ select is(
   'Deleted player',
   'the caller''s display name is anonymized'
 );
-select is(
-  (select rankings_visible from public.profiles where id = (select v from tests.fx where k = 'a')),
-  false,
-  'the caller drops out of the rankings cohort'
-);
 select isnt(
   (select deleted_at from public.profiles where id = (select v from tests.fx where k = 'a')),
   null,
@@ -37,6 +32,18 @@ select is(
   (select display_name from public.profiles where id = (select v from tests.fx where k = 'b')),
   'Bo',
   'another player''s profile is untouched'
+);
+
+-- Sign-in is blocked for the caller only. GoTrue refuses a banned user, so this
+-- is what actually stops the old credentials from working.
+select ok(
+  (select banned_until > now() + interval '50 years' from auth.users where id = (select v from tests.fx where k = 'a')),
+  'the caller is banned from signing in'
+);
+select is(
+  (select banned_until from auth.users where id = (select v from tests.fx where k = 'b')),
+  null,
+  'another player can still sign in'
 );
 
 select * from finish();

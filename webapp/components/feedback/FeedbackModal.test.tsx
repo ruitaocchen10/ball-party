@@ -17,7 +17,7 @@ describe("FeedbackModal", () => {
     const onClose = vi.fn();
     render(<FeedbackModal route="/party" onClose={onClose} />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Close feedback" })[1]!);
+    fireEvent.click(screen.getByRole("button", { name: "Close feedback" }));
 
     expect(onClose).toHaveBeenCalledOnce();
   });

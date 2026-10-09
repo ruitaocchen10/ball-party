@@ -14,7 +14,7 @@ function Button({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 rounded border border-line px-4 text-sm font-medium text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 border border-line px-4 text-sm font-medium text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel disabled:cursor-not-allowed disabled:opacity-60"
     >
       <GoogleMark />
       {pending ? "Redirecting…" : label}

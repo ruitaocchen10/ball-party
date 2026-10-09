@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 export const metadata = { title: "Privacy Policy" };
 
@@ -8,7 +9,7 @@ const LAST_UPDATED = "September 28, 2026";
  *  logged-out visitors both need to reach this without an account. */
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-16 text-fg">
+    <PageShell variant="prose">
       <p className="text-sm text-fg-muted">Last updated {LAST_UPDATED}</p>
       <h1 className="mt-2 text-3xl font-semibold text-panel">Privacy Policy</h1>
 
@@ -75,9 +76,11 @@ export default function PrivacyPage() {
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>Edit your display name and profile at any time from Settings.</li>
             <li>
-              Delete your account from Settings, which removes your profile and account credentials. Contact us at
-              the address below if you&rsquo;d like copies of your data first, or have questions about what a
-              deletion removes.
+              Delete your account from Settings, which removes your display name and profile photo and permanently
+              blocks the account from signing in. Your past match results and takes stay on record under
+              &ldquo;Deleted player,&rdquo; and the email you signed up with stays on file but can no longer be used
+              to sign in. Contact us at the address below if you&rsquo;d like copies of your data first, or have
+              questions about what a deletion removes.
             </li>
           </ul>
         </section>
@@ -109,6 +112,6 @@ export default function PrivacyPage() {
           </p>
         </section>
       </div>
-    </main>
+    </PageShell>
   );
 }

@@ -180,6 +180,17 @@ begin
   perform auction_private.deal_board(match_id, p_seed, p_scoring_mode, p_roster_preset);
 end $$;
 
+-- The token-budget overload (0158): a suite exercising Pass/Scout/Seal needs
+-- to pick 0-3 explicitly rather than take deal_board's own default of 1.
+create function tests.deal(p_n int, p_seed double precision, p_scoring_mode text, p_roster_preset text, p_token_count smallint, out match_id uuid)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.mkmatch(p_n);
+  perform tests.act_as_admin();
+  perform auction_private.deal_board(match_id, p_seed, p_scoring_mode, p_roster_preset, null, null, p_token_count);
+end $$;
+
 -- A dealt board with its first lot opened, ready to be bid on.
 create function tests.deal_and_open(p_n int, p_seed double precision, out match_id uuid)
 returns uuid
@@ -199,6 +210,18 @@ returns uuid
 language plpgsql as $$
 begin
   match_id := tests.deal(p_n, p_seed, p_roster_preset);
+  perform tests.act_as_admin();
+  update public.matches set status = 'playing', started_at = now() where id = match_id;
+  perform auction_private.advance(match_id);
+  update public.auction_matches am set phase_deadline = now() - interval '1 second' where am.match_id = deal_and_open.match_id;
+  perform auction_private.expire(match_id);
+end $$;
+
+create function tests.deal_and_open(p_n int, p_seed double precision, p_roster_preset text, p_token_count smallint, out match_id uuid)
+returns uuid
+language plpgsql as $$
+begin
+  match_id := tests.deal(p_n, p_seed, 'weekly', p_roster_preset, p_token_count);
   perform tests.act_as_admin();
   update public.matches set status = 'playing', started_at = now() where id = match_id;
   perform auction_private.advance(match_id);
@@ -246,13 +269,14 @@ create function tests.play_out(p_match_id uuid, p_strategy text, p_seed int defa
 returns int
 language plpgsql as $$
 declare
-  v_seat   smallint;
-  v_actor  uuid;
-  v_budget int;
-  v_price  int;
-  v_moves  int := 0;
-  v_raise  boolean;
-  v_phase  text;
+  v_seat       smallint;
+  v_actor      uuid;
+  v_budget     int;
+  v_price      int;
+  v_moves      int := 0;
+  v_raise      boolean;
+  v_phase      text;
+  v_must_claim boolean;
 begin
   loop
     perform tests.act_as_admin();
@@ -293,6 +317,19 @@ begin
 
     v_price := tests.price(p_match_id);
 
+    -- A stuck seat (0158) is only free to decline while a pass token is
+    -- actually available; without one the board still finishes it the
+    -- player's way -- a free $0 claim -- but "pass" the action is refused.
+    -- A strategy that always passes has to become "claim when forced to"
+    -- rather than throw, the same accommodation a real client's UI makes by
+    -- hiding the decline button once `passTokenAvailable` is false.
+    select (am.stuck_seat is not null and am.stuck_seat = v_seat)
+       and (ap.used_pass_token or auction_private.tokens_used(p_match_id, v_actor) >= am.token_count)
+      into v_must_claim
+      from public.auction_matches am
+      join public.auction_players ap on ap.match_id = am.match_id and ap.user_id = v_actor
+     where am.match_id = p_match_id;
+
     if p_strategy = 'pass' then
       v_raise := false;
     elsif p_strategy = 'raise' then
@@ -305,7 +342,11 @@ begin
     end if;
 
     perform tests.act_as(v_actor);
-    if v_raise then
+    if v_must_claim and not v_raise then
+      -- The free claim, not a `v_price + 1` raise: a forced claim only ever
+      -- happens on a stuck seat, where the standing price is always $0.
+      perform auction.place_bid(p_match_id, 0);
+    elsif v_raise then
       perform auction.place_bid(p_match_id, v_price + 1);
     else
       perform auction.pass_lot(p_match_id);

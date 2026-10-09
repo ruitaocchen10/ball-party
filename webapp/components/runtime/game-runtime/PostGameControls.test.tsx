@@ -18,6 +18,7 @@ const format = {
   purse: 25,
   seasonFrom: 2010,
   seasonTo: 2025,
+  tokenCount: 1,
 };
 
 describe("PostGameControls", () => {

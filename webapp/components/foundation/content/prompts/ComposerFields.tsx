@@ -8,7 +8,7 @@ import { PlayerPortrait } from "./PlayerPortrait";
 import { PromptTeamLogo } from "./PromptTeamLogo";
 import { Select } from "@/components/foundation/ui-kit/Select";
 import { COVER_OPTION_LIMIT } from "@/lib/foundation/content/prompts/logic";
-import type { Option, Player, Slot, TemplateKind } from "@/lib/foundation/content/prompts/types";
+import type { Option, OptionMargin, Player, Slot, TemplateKind } from "@/lib/foundation/content/prompts/types";
 
 /**
  * Field editors and slot builders shared by every variant's composer.
@@ -17,15 +17,73 @@ import type { Option, Player, Slot, TemplateKind } from "@/lib/foundation/conten
  * still free to arrange these controls however its own structure calls for.
  */
 
-export const TEMPLATE_DEFS: { kind: TemplateKind; name: string; blurb: string }[] = [
-  { kind: "picks", name: "Picks", blurb: "Pick winners for one game or a set of games." },
+/** Kinds the composer can author. `picks` and `custom_multi` exist on old posts but can no longer be created. */
+export type ComposerKind = Exclude<TemplateKind, "picks" | "custom_multi">;
+
+/** Kinds that are always opinion prompts — the composer hides the toggle and never grades them. */
+export const OPINION_ONLY_KINDS: ComposerKind[] = ["power_rankings", "weekly_awards", "bold_predictions"];
+
+export const TEMPLATE_DEFS: { kind: ComposerKind; name: string; blurb: string }[] = [
+  { kind: "game_pick", name: "Game Picks", blurb: "Pick the winner of one game and the margin." },
+  { kind: "weekly_picks", name: "Weekly Picks", blurb: "Pick winners for a week's slate of games." },
+  { kind: "weekly_awards", name: "Weekly Awards", blurb: "Six awards for the week: best and worst teams, best game, and three players." },
   { kind: "stat_leader", name: "Pick one out of these", blurb: "Choose from a pool — a season stat leader, an award." },
   { kind: "ranking", name: "Rankings", blurb: "Order a pool of teams or players." },
   { kind: "power_rankings", name: "Power rankings", blurb: "Let each person rank their NFL top 5, 10, or 32." },
-  { kind: "custom_multi", name: "Preseason playoff picks", blurb: "4 division winners + 3 wildcards, one prompt." },
+  { kind: "bold_predictions", name: "Bold Predictions", blurb: "Write up to five tagged calls for the week and lock them in as one response to see everyone else's." },
 ];
 
+/** How long before a week's first kickoff a Bold Predictions post locks by default. */
+const BOLD_LOCK_LEAD_MS = 3600_000;
+
+/**
+ * Where a Bold Predictions post's lock time may fall. A post is about the week
+ * whose first kickoff follows its lock (0171), so it must lock before this
+ * week's first kickoff and after the previous week's last one — otherwise
+ * matchup tags would be offered for, and validated against, the wrong week.
+ */
+export function boldLockBounds(games: NflScheduleGame[], season: number, week: number): { firstKickoff: Date | null; previousEnd: Date | null } {
+  const kickoffs = (wanted: number) => games.filter((game) => game.season === season && game.week === wanted).map((game) => new Date(game.kickoff).getTime());
+  const thisWeek = kickoffs(week);
+  const lastWeek = kickoffs(week - 1);
+  return {
+    firstKickoff: thisWeek.length ? new Date(Math.min(...thisWeek)) : null,
+    previousEnd: lastWeek.length ? new Date(Math.max(...lastWeek)) : null,
+  };
+}
+
+/** The suggested lock for a week's Bold Predictions: an hour before its first kickoff. */
+export function defaultBoldLockAt(games: NflScheduleGame[], season: number, week: number): Date | null {
+  const { firstKickoff } = boldLockBounds(games, season, week);
+  return firstKickoff ? new Date(firstKickoff.getTime() - BOLD_LOCK_LEAD_MS) : null;
+}
+
+/** Default value of a Game Picks post; a Weekly Picks game stays at 10. */
+export const GAME_PICK_POINTS = 20;
+
+/** One game, one pick: the winner and whether they win by under 7 or by 7+ (exactly 7 is 7+). */
 export function buildGamePickSlots(game: NflScheduleGame): Slot[] {
+  const option = (code: string, margin: OptionMargin): Option => ({
+    id: `${code}-${margin}`,
+    label: `${nflTeamName(code)} by ${margin === "under_7" ? "<7" : "7+"}`,
+    sublabel: margin === "under_7" ? "Wins by 1–6" : "Wins by 7 or more",
+    teamCode: code,
+    margin,
+  });
+  return [
+    {
+      id: `slot-${game.id}`,
+      label: `${game.label} — winner and margin`,
+      shape: "pick",
+      points: GAME_PICK_POINTS,
+      options: [option(game.away, "under_7"), option(game.away, "7_plus"), option(game.home, "under_7"), option(game.home, "7_plus")],
+      sourceGameId: game.id,
+    },
+  ];
+}
+
+/** One winner-only slot per game of a Weekly Picks slate. */
+export function buildWeeklyPickSlots(game: NflScheduleGame): Slot[] {
   return [
     {
       id: `slot-${game.id}`,
@@ -79,6 +137,36 @@ export function buildRankingSlots(selected: Option[], rankCount: number): Slot[]
   ];
 }
 
+export const AWARD_LABELS = {
+  winner: "Biggest winner",
+  loser: "Biggest loser",
+  game: "Best game",
+  offense: "Offensive player of the week",
+  defense: "Defensive player of the week",
+  lvp: "LVP (least valuable player)",
+} as const;
+
+/**
+ * Weekly Awards: always the same six required slots, in this order. The team
+ * slots offer the whole league and the game slot that week's schedule; the
+ * three player slots carry no options — respondents search the directory, and
+ * an option is created for a player the first time someone picks them.
+ */
+export function buildWeeklyAwardsSlots(games: NflScheduleGame[]): Slot[] {
+  const teams = (): Option[] => TEAMS.map((team) => ({ id: team.code, label: team.name, sublabel: team.division, teamCode: team.code }));
+  const slot = (id: string, label: string, options: Option[], playerSearch = false): Slot => ({
+    id: `slot-${id}`, label, shape: "pick", points: 1, options, ...(playerSearch ? { playerSearch: true } : {}),
+  });
+  return [
+    slot("winner", AWARD_LABELS.winner, teams()),
+    slot("loser", AWARD_LABELS.loser, teams()),
+    slot("game", AWARD_LABELS.game, games.map((game) => ({ id: game.id, label: game.label, sublabel: `${game.away} @ ${game.home}`, teamCodes: [game.away, game.home] }))),
+    slot("offense", AWARD_LABELS.offense, [], true),
+    slot("defense", AWARD_LABELS.defense, [], true),
+    slot("lvp", AWARD_LABELS.lvp, [], true),
+  ];
+}
+
 /** A Power Rankings post always publishes the full league; the respondent chooses their own top-N. */
 export function buildPowerRankingSlots(): Slot[] {
   return [{
@@ -91,69 +179,43 @@ export function buildPowerRankingSlots(): Slot[] {
   }];
 }
 
-export function buildCustomMultiSlots(): Slot[] {
-  const divisionSlot = (division: string, id: string, label: string): Slot => ({
-    id,
-    label,
-    shape: "pick",
-    points: 15,
-    options: TEAMS.filter((t) => t.division === division).map((t) => ({ id: t.code, label: t.name, teamCode: t.code })),
-  });
+const OPINION_AWARDS_CRITERIA = "Opinion only — there are no right answers and no points. Pick all six, then see how everyone else voted.";
 
-  return [
-    divisionSlot("AFC East", "slot-afc-east", "AFC East winner"),
-    divisionSlot("AFC West", "slot-afc-west", "AFC West winner"),
-    divisionSlot("NFC East", "slot-nfc-east", "NFC East winner"),
-    divisionSlot("NFC West", "slot-nfc-west", "NFC West winner"),
-    {
-      id: "slot-wildcards",
-      label: "Wildcard teams (pick 3)",
-      shape: "pick_set",
-      pickCount: 3,
-      points: 30,
-      excludesSlotIds: ["slot-afc-east", "slot-afc-west", "slot-nfc-east", "slot-nfc-west"],
-      options: TEAMS.map((t) => ({ id: t.code, label: t.name, sublabel: t.division, teamCode: t.code })),
-    },
-  ];
-}
-
-export function defaultPromptText(kind: TemplateKind, game?: NflScheduleGame, picksMode: "single" | "set" = "single"): string {
+export function defaultPromptText(kind: ComposerKind, game?: NflScheduleGame): string {
   switch (kind) {
-    case "picks":
-      return picksMode === "set"
-        ? game ? `Week ${game.week} picks: who wins?` : "Choose a season and week to start this prompt."
-        : game ? `${game.label}: who wins?` : "Choose a game to start this prompt.";
     case "game_pick":
-      return game ? `${game.label}: who wins?` : "Choose a game to start this prompt.";
+      return game ? `${game.label}: who wins, and by how much?` : "Choose a game to start this prompt.";
     case "weekly_picks":
       return game ? `Week ${game.week} picks: who wins?` : "Choose a season and week to start this prompt.";
     case "stat_leader":
       return "Who leads the NFL in rushing yards this season?";
     case "ranking":
       return "Rank the top candidates, best to worst.";
+    case "weekly_awards":
+      return game ? `Week ${game.week} awards: who earned them?` : "Choose a season and week to start this prompt.";
     case "power_rankings":
       return "Set your NFL power rankings.";
-    case "custom_multi":
-      return "Pick your 4 division winners, then 3 wildcard teams.";
+    case "bold_predictions":
+      return game ? `Week ${game.week} Bold Predictions` : "Choose a season and week to start this prompt.";
   }
 }
 
-export function defaultCriteria(kind: TemplateKind): string {
+export function defaultCriteria(kind: ComposerKind): string {
   switch (kind) {
-    case "picks":
-      return "Each game resolves to whichever team wins the final score. Overtime counts.";
     case "game_pick":
-      return "Resolves to whichever team wins the final score. Overtime counts.";
+      return "Pick the winner and the margin: under 7 points, or 7 or more (exactly 7 counts as 7+). All or nothing. Overtime counts. A tie voids the prompt.";
     case "weekly_picks":
       return "Each game resolves to whichever team wins the final score. Overtime counts.";
     case "stat_leader":
       return "Resolves to whoever leads the stat after Week 18. Ties split the points.";
     case "ranking":
       return "Rank the stated top number in order. Points are awarded for every position that matches the final order.";
+    case "weekly_awards":
+      return OPINION_AWARDS_CRITERIA;
     case "power_rankings":
       return "Rank your NFL top 5, top 10, or all 32 teams. Your movement is compared with your most recent Power Rankings.";
-    case "custom_multi":
-      return "Each correct division winner is worth 15 points. Each wildcard team that makes the playoffs is worth 10 points, independent of order. A team already picked as a division winner can't also score as a wildcard.";
+    case "bold_predictions":
+      return "Opinion only — there's no correct answer, so no points are awarded. Make up to five predictions, each tagged to a matchup, team or player. Lock them in as one response to see everyone else's — it can't be changed after.";
   }
 }
 
@@ -206,7 +268,7 @@ export function CheckboxPoolField<T extends { id: string; label: string; sublabe
             className={`flex items-center rounded border text-left font-mono text-[11px] uppercase transition-colors ${roomyTeams ? "gap-2.5 px-3 py-3" : "gap-1.5 px-2.5 py-2"} ${
               selected
                 ? "border-panel-fg bg-panel-fg text-panel"
-                : "border-[#c7bfac] bg-panel-shade text-panel-fg disabled:opacity-40"
+                : "border-panel-line bg-panel-shade text-panel-fg disabled:opacity-40"
             }`}
           >
             {option.headshotUrl ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import Link from "next/link";
 
 import { FinalStandings, type FinalStandingsRow } from "@/components/runtime/game-runtime/FinalStandings";
@@ -23,30 +23,41 @@ import {
   blockedReason,
   byPlacement,
   canAfford,
+  eligibleFor,
   filledSlots,
   hasPassed,
+  hasSubmittedSealedBid,
   highBidder,
   lotAt,
+  upsertLot,
+  myScoutHint,
+  mySealedBid,
   revealedTotal,
   rosterSlots,
   standingPrice,
   targetSlotFor,
+  tokensRemaining,
   viewerPhase,
   weeklyRevealTier,
   type Bid,
   type AuctionFormat,
   type Lot,
   type Player,
+  type ScoutHint,
+  type SealedBid,
+  type SealedBidStatus,
   type Seat,
   type Standing,
   type Slot,
   type Turn,
+  type AuctionPhase,
 } from "@/lib/games/auction/board";
 import { auctionLogoCode } from "@/lib/games/auction/teams";
 import { LOT_REVEAL_MS, useLotReveal } from "@/lib/games/auction/useLotReveal";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/runtime/realtime/client";
 import { TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/runtime/game-runtime/useMatchClock";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /**
  * The whole game, on one screen.
@@ -82,6 +93,7 @@ const DURATION_MS: Record<Turn["phase"], number> = {
   lot_preview: 5_000,
   bidding: 20_000,
   sold: 5_000,
+  sealed: 20_000,
 };
 
 /** Match Sabotage Draft's shot-clock convention once a bid window is tight. */
@@ -101,6 +113,15 @@ const MESSAGES: Record<string, string> = {
   bid_not_whole: "Bids are in whole dollars.",
   bid_not_increasing: "Your bid must be higher than the current price.",
   bidding_not_open: "Bidding has not opened yet.",
+  no_pass_tokens: "You're out of pass tokens, so this one's yours.",
+  no_scout_tokens: "You're out of scouting tokens.",
+  lot_already_resolved: "This lot's points are already revealed.",
+  no_seal_tokens: "You're out of sealed-bid tokens.",
+  sealing_not_available: "This lot can't be sealed right now.",
+  bidding_already_underway: "Someone's already bid on this lot, so it can't be sealed.",
+  seal_needs_two_bidders: "Nobody else can bid on this lot, so sealing it wouldn't change anything.",
+  sealed_bidding_not_open: "Sealed bidding on this lot has already closed.",
+  already_submitted: "You've already submitted your sealed bid.",
   match_not_playing: "This game isn't accepting moves right now.",
   not_a_participant: "You're not in this game.",
   not_authenticated: "Sign in first.",
@@ -115,6 +136,12 @@ type Initial = {
   standings: Standing[];
   format: AuctionFormat | null;
   era?: { seasonMin: number; seasonMax: number; minSpan: number } | null;
+  /** Only ever the viewer's own rows -- see ScoutHint's own doc comment. */
+  scoutHints?: ScoutHint[];
+  /** Only ever the viewer's own rows -- see SealedBid's own doc comment. */
+  sealedBids?: SealedBid[];
+  /** Presence, readable for every match member -- see SealedBidStatus. */
+  sealedStatuses?: SealedBidStatus[];
 };
 
 export function AuctionMatch({
@@ -148,9 +175,18 @@ export function AuctionMatch({
   const [players, setPlayers] = useState<Player[]>(initial.players);
   const [bids, setBids] = useState<Bid[]>(initial.bids);
   const [standings, setStandings] = useState<Standing[]>(initial.standings);
+  const [scoutHints, setScoutHints] = useState<ScoutHint[]>(initial.scoutHints ?? []);
+  const [sealedBids, setSealedBids] = useState<SealedBid[]>(initial.sealedBids ?? []);
+  const [sealedStatuses, setSealedStatuses] = useState<SealedBidStatus[]>(initial.sealedStatuses ?? []);
   const format = initial.format;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Scouting isn't a bidding action -- it has no turn to wait for -- so it
+  // gets its own pending/error pair rather than sharing BidBar's, which
+  // would otherwise disable raise/pass while a scout call is in flight and
+  // show a scouting error in a status line about something else entirely.
+  const [scoutPending, setScoutPending] = useState(false);
+  const [scoutError, setScoutError] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(paused);
   // Since 0090, the board can end before current_lot ever reaches lot_count
   // -- a match is over the moment every roster is full, not only when the
@@ -174,6 +210,7 @@ export function AuctionMatch({
       turnSeat: state.turn_seat,
       openerSeat: state.opener_seat ?? 0,
       freeFallbackSeat: state.free_fallback_seat ?? null,
+      stuckSeat: state.stuck_seat ?? null,
       turnDeadline: state.turn_deadline,
       phase: (state.phase ?? "lot_preview") as Turn["phase"],
       phaseDeadline: state.phase_deadline ?? null,
@@ -191,7 +228,7 @@ export function AuctionMatch({
    */
   const refetch = useCallback(async () => {
     const supabase = getClient();
-    const [state, lotRows, seatRows, bidRows, standingRows] = await Promise.all([
+    const [state, lotRows, seatRows, bidRows, standingRows, hintRows, sealedBidRows, sealedStatusRows] = await Promise.all([
       supabase.schema("auction").rpc("state", { p_match_id: matchId }),
       supabase.from("auction_lots").select("*").eq("match_id", matchId).order("seq"),
       supabase
@@ -201,12 +238,21 @@ export function AuctionMatch({
         .order("seat"),
       supabase.from("auction_bids").select("*").eq("match_id", matchId).order("bid_seq"),
       supabase.from("match_players").select("*").eq("match_id", matchId),
+      // RLS scopes this to the viewer's own rows -- see ScoutHint's doc comment.
+      supabase.from("auction_scouting_hints").select("*").eq("match_id", matchId),
+      // Also viewer-own only -- see SealedBid's doc comment.
+      supabase.from("auction_sealed_bids").select("*").eq("match_id", matchId),
+      // Presence, readable for every match member -- see SealedBidStatus.
+      supabase.from("auction_sealed_bid_statuses").select("*").eq("match_id", matchId),
     ]);
 
     if (state.data) applyTurn(state.data as AuctionTurnRow);
     if (lotRows.data) setLots(lotRows.data);
     if (bidRows.data) setBids(bidRows.data);
     if (standingRows.data) setStandings(standingRows.data);
+    if (hintRows.data) setScoutHints(hintRows.data);
+    if (sealedBidRows.data) setSealedBids(sealedBidRows.data);
+    if (sealedStatusRows.data) setSealedStatuses(sealedStatusRows.data);
     if (seatRows.data) {
       setPlayers(
         seatRows.data.map(({ profiles, ...seat }) => ({
@@ -260,6 +306,14 @@ export function AuctionMatch({
     reconcile: refetch,
   });
 
+  // The final screen is built from `lots`, so make sure it is the server's
+  // full list at the moment the match ends rather than whatever realtime
+  // happened to deliver.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch's setState happens after an await, once the match-end snapshot comes back, not synchronously in this effect body.
+    if (finished) void refetch();
+  }, [finished, refetch]);
+
   // Realtime applies payloads to client state directly rather than refreshing
   // the server render — see LobbyRealtime for why the lobby does the opposite.
   useEffect(() => {
@@ -287,7 +341,10 @@ export function AuctionMatch({
           { event: "*", schema: "public", table: "auction_lots", filter: `match_id=eq.${matchId}` },
           (payload) => {
             const lot = payload.new as Lot;
-            setLots((prev) => prev.map((l) => (l.seq === lot.seq ? lot : l)));
+            // Upsert, not just replace: a declined lot (Pass token) appends a
+            // brand-new lot to the deck mid-match, and dropping that INSERT
+            // left the board with no lot to show once play reached it.
+            setLots((prev) => upsertLot(prev, lot));
           },
         )
         .on(
@@ -319,6 +376,65 @@ export function AuctionMatch({
               prev.some((b) => b.seq === bid.seq && b.bid_seq === bid.bid_seq)
                 ? prev
                 : [...prev, bid],
+            );
+          },
+        )
+        .on(
+          // RLS already scoped this row to the viewer's own before it ever
+          // reached the socket (0159) -- an opponent's hint never arrives
+          // here to filter out, there is simply no payload for it.
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "auction_scouting_hints",
+            filter: `match_id=eq.${matchId}`,
+          },
+          (payload) => {
+            const hint = payload.new as ScoutHint;
+            setScoutHints((prev) =>
+              prev.some((h) => h.seq === hint.seq && h.user_id === hint.user_id)
+                ? prev
+                : [...prev, hint],
+            );
+          },
+        )
+        .on(
+          // Same shape as scouting hints above: RLS already scoped this to
+          // the viewer's own bid before it reached the socket (0160).
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "auction_sealed_bids",
+            filter: `match_id=eq.${matchId}`,
+          },
+          (payload) => {
+            const sealedBid = payload.new as SealedBid;
+            setSealedBids((prev) =>
+              prev.some((b) => b.seq === sealedBid.seq && b.user_id === sealedBid.user_id)
+                ? prev
+                : [...prev, sealedBid],
+            );
+          },
+        )
+        .on(
+          // Every match member receives this one -- it's presence, not the
+          // amount (0160) -- so event:"*" covers the upsert this table's
+          // one write path (`submit_sealed_bid`) uses.
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "auction_sealed_bid_statuses",
+            filter: `match_id=eq.${matchId}`,
+          },
+          (payload) => {
+            const status = payload.new as SealedBidStatus;
+            setSealedStatuses((prev) =>
+              prev.some((s) => s.seq === status.seq && s.user_id === status.user_id)
+                ? prev.map((s) => (s.seq === status.seq && s.user_id === status.user_id ? status : s))
+                : [...prev, status],
             );
           },
         )
@@ -375,9 +491,49 @@ export function AuctionMatch({
     [applyTurn],
   );
 
+  const scoutLot = useCallback(async () => {
+    setScoutPending(true);
+    setScoutError(null);
+    const { data, error: rpcError } = await getClient()
+      .schema("auction")
+      .rpc("use_scout_token", { p_match_id: matchId });
+    if (rpcError) setScoutError(MESSAGES[rpcError.message] ?? rpcError.message);
+    // The realtime INSERT subscription would eventually deliver the same
+    // row, but the RPC already hands back the tier it just wrote -- no
+    // reason to make the viewer wait a round trip to see their own answer.
+    else if (typeof data === "string") {
+      setScoutHints((prev) => [
+        ...prev,
+        { match_id: matchId, seq: turn.currentLot, user_id: viewerId, tier: data, created_at: new Date().toISOString() },
+      ]);
+    }
+    setScoutPending(false);
+  }, [getClient, matchId, turn.currentLot, viewerId]);
+
+  // Both of these change turn state the same way a raise or a pass does
+  // (phase moves to 'sealed', then eventually to 'sold'), so they share
+  // `act`'s pending/error plumbing rather than getting their own the way
+  // scoutLot above needed to -- scouting is the odd one out because it
+  // never touches `turn` at all.
+  const sealLot = useCallback(
+    () => act(getClient().schema("auction").rpc("use_seal_token", { p_match_id: matchId })),
+    [act, getClient, matchId],
+  );
+  const submitSealedBid = useCallback(
+    (amount: number) => act(getClient().schema("auction").rpc("submit_sealed_bid", { p_match_id: matchId, p_amount: amount })),
+    [act, getClient, matchId],
+  );
+  // Shared by BidBar's ordinary ghost Pass button and the pass token in the
+  // token tray below -- a stuck decline is the same RPC as an ordinary pass,
+  // just reached from a different control once the token moves there.
+  const passLot = useCallback(
+    () => act(getClient().schema("auction").rpc("pass_lot", { p_match_id: matchId })),
+    [act, getClient, matchId],
+  );
+
   if (finished) {
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-8">
+      <PageShell variant="narrow">
         <FinalScreen
           lots={lots}
           players={players}
@@ -389,15 +545,15 @@ export function AuctionMatch({
           format={format}
           era={initial.era ?? null}
         />
-      </main>
+      </PageShell>
     );
   }
 
   if (!lot) {
     return (
-      <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
+      <PageShell variant="game" locked>
         <p className="text-sm text-fg-muted">Waiting for the next lot…</p>
-      </main>
+      </PageShell>
     );
   }
 
@@ -412,9 +568,36 @@ export function AuctionMatch({
   const blocked = me
     ? blockedReason({ lot, me, lots, players, turnSeat: turn.turnSeat, format, passed, price })
     : "not_your_turn";
+  const myHint = me ? myScoutHint(scoutHints, lot.seq, me.user_id) : null;
+  const scoutAvailable = !!me && phase !== "sold" && !me.used_scout_token && tokensRemaining(format, me) > 0;
+  const noBidsYet = !bids.some((b) => b.seq === lot.seq);
+  // Sealing only makes sense pre-bid and with a real contest on the other
+  // side -- the server re-checks both (0160), this just keeps the button
+  // from inviting a refusal it could have predicted.
+  const sealAvailable =
+    !!me &&
+    (phase === "bidding_self" || phase === "bidding_other") &&
+    noBidsYet &&
+    !me.used_seal_token &&
+    tokensRemaining(format, me) > 0 &&
+    players.filter((p) => eligibleFor(lot, lots, players, p.user_id, format)).length >= 2;
+  const mySeal = me ? mySealedBid(sealedBids, lot.seq, me.user_id) : null;
+  // Nobody else is live on this lot -- the board would hand it to the viewer
+  // for $0 the moment they act. Declining it is what the pass token is for.
+  const stuck = !!me && turn.stuckSeat === me.seat && price === 0;
+  const passTokenAvailable = !!me && !me.used_pass_token && tokensRemaining(format, me) > 0;
+  // A token's tray state is "used" the moment this screen has its own proof
+  // of that -- a seat-row update can lag a beat behind the action that
+  // caused it, the same reason the old Scout control kept its own hint
+  // check instead of waiting on `used_scout_token` to come back over
+  // realtime. Seal doesn't need the same guard: sealAvailable already drops
+  // out the instant the phase itself moves to 'sealed'.
+  const passState: TokenState = me?.used_pass_token ? "used" : stuck && passTokenAvailable ? "usable" : "inactive";
+  const scoutState: TokenState = me?.used_scout_token || myHint ? "used" : scoutAvailable ? "usable" : "inactive";
+  const sealState: TokenState = me?.used_seal_token ? "used" : sealAvailable ? "usable" : "inactive";
 
   return (
-    <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
+    <PageShell variant="game" locked>
       {isHost || isPaused ? (
         <div className="flex items-start justify-between gap-3">
           {isPaused ? <PauseBanner /> : <div />}
@@ -465,6 +648,16 @@ export function AuctionMatch({
                 <div className="relative flex flex-col items-center gap-1 text-center">
                   <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel uppercase">Fantasy points</span>
                   <span className="font-slab text-4xl leading-none text-panel">? ? ?</span>
+                  {/* This player's own scouted tier only -- the row behind it
+                      never reaches a client it doesn't belong to (0159), so
+                      there's no cross-viewer leak to guard against here. The
+                      control that produces this now lives in the token tray
+                      below the clock, alongside Pass and Seal. */}
+                  {myHint ? (
+                    <span role="img" aria-label={`Scouted: a ${myHint.tier} performance`} className="type-label font-bold text-panel-muted">
+                      Scouted: {myHint.tier}
+                    </span>
+                  ) : null}
                 </div>
               </Concealed>
             }
@@ -491,23 +684,76 @@ export function AuctionMatch({
       <section className="flex min-h-0 flex-col gap-3 lg:col-start-1 lg:row-start-1" aria-label="The controls">
         {me ? (
           <>
-            <BidBar
-              phase={phase}
-              price={price}
-              budget={me.budget}
-              onClock={onClock}
-              isMine={phase === "bidding_self"}
-              blocked={blocked}
-              pending={pending}
-              paused={isPaused}
-              error={error}
-              position={lot.position}
-              targetSlot={targetSlotFor(lot, filled, format)}
-              freeFallback={turn.freeFallbackSeat != null && price === 0}
-              onRaise={(amount) => act(getClient().schema("auction").rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
-              onPass={() => act(getClient().schema("auction").rpc("pass_lot", { p_match_id: matchId }))}
-            />
+            {phase === "sealed" ? (
+              <SealedBidBar
+                budget={me.budget}
+                pending={pending}
+                paused={isPaused}
+                error={error}
+                mine={mySeal}
+                waitingOn={players
+                  .filter((p) => p.user_id !== me.user_id && eligibleFor(lot, lots, players, p.user_id, format))
+                  .filter((p) => !hasSubmittedSealedBid(sealedStatuses, lot.seq, p.user_id))
+                  .map((p) => p.display_name)}
+                onSubmit={submitSealedBid}
+              />
+            ) : (
+              <BidBar
+                phase={phase}
+                price={price}
+                budget={me.budget}
+                onClock={onClock}
+                isMine={phase === "bidding_self"}
+                blocked={blocked}
+                pending={pending}
+                paused={isPaused}
+                error={error}
+                position={lot.position}
+                targetSlot={targetSlotFor(lot, filled, format)}
+                freeFallback={turn.freeFallbackSeat != null && price === 0}
+                stuck={stuck}
+                passTokenAvailable={passTokenAvailable}
+                onRaise={(amount) => act(getClient().schema("auction").rpc("place_bid", { p_match_id: matchId, p_amount: amount }))}
+                onPass={passLot}
+              />
+            )}
             <AuctionClock phase={phase} remainingMs={remainingMs} onClock={onClock} isMine={phase === "bidding_self"} />
+            {format && format.tokenCount > 0 ? (
+              <TokenTray
+                remaining={tokensRemaining(format, me)}
+                total={format.tokenCount}
+                tokens={[
+                  {
+                    key: "pass",
+                    label: "Pass",
+                    description: "Decline a lot you'd otherwise be stuck with, for free. Usable only when you're the only bidder left on it.",
+                    icon: <PassTokenIcon className="h-5 w-5" />,
+                    state: passState,
+                    onUse: passState === "usable" ? passLot : undefined,
+                    pending,
+                  },
+                  {
+                    key: "scout",
+                    label: "Scout",
+                    description: "Peek a rough performance tier for the current lot before it sells. Only you see it; on a season-total match it compares the lot against that position across every season.",
+                    icon: <ScoutTokenIcon className="h-5 w-5" />,
+                    state: scoutState,
+                    onUse: scoutState === "usable" ? scoutLot : undefined,
+                    pending: scoutPending,
+                  },
+                  {
+                    key: "seal",
+                    label: "Seal",
+                    description: "Force this lot into a simultaneous blind bid instead of back-and-forth raising.",
+                    icon: <SealTokenIcon className="h-5 w-5" />,
+                    state: sealState,
+                    onUse: sealState === "usable" ? sealLot : undefined,
+                    pending,
+                  },
+                ]}
+              />
+            ) : null}
+            {scoutError ? <p role="alert" className="text-xs text-hidden-text">{scoutError}</p> : null}
           </>
         ) : <p className="min-h-17 text-sm text-fg-muted">You&apos;re watching this one.</p>}
       </section>
@@ -525,11 +771,25 @@ export function AuctionMatch({
         soldLot={phase === "sold" ? lot : null}
         format={format}
         price={price}
+        sealed={phase === "sealed"}
+        submittedSeats={phase === "sealed"
+          ? players.filter((p) => hasSubmittedSealedBid(sealedStatuses, lot.seq, p.user_id)).map((p) => p.seat)
+          : []}
       />
       </aside></div>
-    </main>
+    </PageShell>
   );
 }
+
+/**
+ * A token's state in the tray below the clock: usable right now, used up
+ * for the rest of the match, or simply not applicable to this moment (a
+ * budget of zero, a spent token, or a game state the ability doesn't reach
+ * -- Pass outside a stuck turn, Scout once a lot is sold, Seal once a
+ * bid already exists). All three stay visible either way, so the tray never
+ * has to explain a control that's simply gone.
+ */
+type TokenState = "usable" | "inactive" | "used";
 
 /** The shape auction_turn arrives in, from an RPC or from a replicated row. */
 type AuctionTurnRow = {
@@ -538,6 +798,7 @@ type AuctionTurnRow = {
   turn_seat: number | null;
   opener_seat: number | null;
   free_fallback_seat?: number | null;
+  stuck_seat?: number | null;
   turn_deadline: string | null;
   phase?: string | null;
   phase_deadline?: string | null;
@@ -627,7 +888,7 @@ function CurrentBoardCell({
       {onClock ? <StripCellAvatar name={onClock.display_name} big /> : null}
       <StripCellTextColumn>
         <StripCellTitle meta={`/ ${lotCount}`}>Lot {seq}</StripCellTitle>
-        <StripCellCaption>{phase === "lot_preview" ? "Coming up" : phase === "sold" ? "Sold" : "On the clock"}</StripCellCaption>
+        <StripCellCaption>{phase === "lot_preview" ? "Coming up" : phase === "sold" ? "Sold" : phase === "sealed" ? "Sealed bidding" : "On the clock"}</StripCellCaption>
         {onClock ? <StripCellCaption>{onClock.display_name}</StripCellCaption> : null}
       </StripCellTextColumn>
     </StripCell>
@@ -731,11 +992,11 @@ function AuctionMatchup({ lot }: { lot: Lot }) {
   const weekly = lot.week !== null && lot.opponent !== null;
   return (
     <div className="mt-4 w-full border-t border-line pt-3" aria-label={weekly ? `${lot.season}, week ${lot.week}, ${lot.team} versus ${lot.opponent}` : `${lot.season} season, ${lot.team}`}>
-      <p className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">{weekly ? `${lot.season} · week ${lot.week}` : `${lot.season} season`}</p>
+      <p className="type-label text-fg-muted">{weekly ? `${lot.season} · week ${lot.week}` : `${lot.season} season`}</p>
       {weekly ? (
         <div className="mt-2 flex items-center gap-3">
           <AuctionTeam code={lot.team} />
-          <span className="font-mono text-[10px] tracking-[0.12em] text-fg-muted uppercase">vs</span>
+          <span className="type-label text-fg-muted">vs</span>
           <AuctionTeam code={lot.opponent!} />
         </div>
       ) : <div className="mt-2 flex justify-center"><AuctionTeam code={lot.team} /></div>}
@@ -753,15 +1014,15 @@ function SoldHeadline({ lot, players }: { lot: Lot; players: Player[] }) {
 
   if (!lot.winner_id) {
     return (
-      <p className="rounded bg-surface-raised px-3.5 py-2 font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase shadow-well">
+      <p className="bg-surface-raised px-3.5 py-2 type-label-lg text-fg-muted shadow-well">
         No sale
       </p>
     );
   }
 
   return (
-    <div aria-hidden className="animate-sold-headline rounded border border-panel bg-panel px-3.5 py-2.5 text-panel-fg shadow-card">
-      <p className="font-mono text-[10px] tracking-[0.15em] text-panel-muted uppercase">Sold to</p>
+    <div aria-hidden className="animate-sold-headline border border-panel bg-panel px-3.5 py-2.5 text-panel-fg shadow-card">
+      <p className="type-label text-panel-muted">Sold to</p>
       <p className="mt-1 flex items-baseline justify-between gap-3 font-slab text-xl leading-none uppercase">
         <span className="truncate">{winner?.display_name ?? "Unknown buyer"}</span>
         <span className="shrink-0 font-mono text-sm tabular-nums">${lot.price ?? 0}</span>
@@ -780,7 +1041,7 @@ function PointsReveal({ lot, tier }: { lot: Lot; tier: ReturnType<typeof weeklyR
       <span className={`min-w-0 font-slab text-4xl leading-none tabular-nums ${tier === "rough" ? "text-grade-rough" : tier === "solid" ? "text-grade-strong" : tier === "great" ? "text-grade-elite" : ""}`}>
         {fmt(lot.points)}
       </span>
-      {copy ? <span className="font-mono text-[10px] font-bold tracking-[0.12em] text-panel-muted uppercase">{copy}</span> : null}
+      {copy ? <span className="type-label font-bold text-panel-muted">{copy}</span> : null}
     </div>
   );
 }
@@ -800,6 +1061,8 @@ function PlayerRail({
   soldLot,
   format,
   price,
+  sealed = false,
+  submittedSeats = [],
 }: {
   players: Player[];
   lots: Lot[];
@@ -810,6 +1073,10 @@ function PlayerRail({
   soldLot: Lot | null;
   format: AuctionFormat | null;
   price: number;
+  /** True during a sealed round -- there's no single acting seat to show,
+   *  just who's locked in (0160). */
+  sealed?: boolean;
+  submittedSeats?: number[];
 }) {
   return (
     <div className="auction-roster-board mt-2 flex flex-col divide-y divide-line border border-line bg-surface-raised">
@@ -821,13 +1088,15 @@ function PlayerRail({
         const highlightLot = soldLot?.winner_id === player.user_id ? soldLot : null;
         const filled = lots.filter((lot) => lot.winner_id === player.user_id && lot.slot !== null).length;
         const slotCount = rosterSlots(format).length;
-        const status = holding
+        const status = sealed
+          ? (submittedSeats.includes(player.seat) ? "Submitted" : "Deciding")
+          : holding
           ? `High bid · $${price}`
-          : acting
-            ? "On the clock"
-            : passedSeats.includes(player.seat)
-              ? "Passed"
-              : `${filled}/${slotCount} filled`;
+            : acting
+              ? "On the clock"
+              : passedSeats.includes(player.seat)
+                ? "Passed"
+                : `${filled}/${slotCount} filled`;
 
         return (
           <details
@@ -856,6 +1125,16 @@ function PlayerRail({
               </span>
               <span className="flex items-center gap-2 whitespace-nowrap font-mono text-[11px] tabular-nums">
                 <span className="text-fg-muted">${player.budget}</span>
+                {format && format.tokenCount > 0 ? (
+                  <span
+                    role="img"
+                    aria-label={`${tokensRemaining(format, player)} of ${format.tokenCount} tokens left`}
+                    className="text-fg-muted"
+                    title="Tokens left"
+                  >
+                    🎫{tokensRemaining(format, player)}
+                  </span>
+                ) : null}
                 <span role="img" aria-label={`${fmt(total)} points`} className="text-lg font-bold leading-none text-fg">{fmt(total)}</span>
               </span>
               <Chevron className="roster-chev h-4 w-4 shrink-0 text-fg-muted transition-transform" />
@@ -895,7 +1174,7 @@ function Roster({ lots, userId, format, highlightLot = null }: { lots: Lot[]; us
 
         return (
           <div key={`${slot}-${index}`} className={`flex min-h-10 items-center justify-between gap-3 rounded border px-2.5 py-2 ${tone} ${justAdded ? "ring-2 ring-panel motion-safe:animate-player-to-roster" : ""}`}>
-            <span className="shrink-0 font-mono text-[10px] tracking-[0.07em] text-panel-muted uppercase">{label}</span>
+            <span className="shrink-0 type-label text-panel-muted">{label}</span>
             {won ? (
               <span role="img" aria-label={`${label} slot, ${won.display_name}, ${fmt(won.points)} points`} className="flex min-w-0 items-center gap-2 text-sm">
                 {won.headshot_url ? <img src={won.headshot_url} alt="" className="h-6 w-6 shrink-0 rounded-full bg-panel-shade object-cover object-top" /> : <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-hidden font-slab text-[9px] text-panel">{won.display_name.slice(0, 1)}</span>}
@@ -921,26 +1200,239 @@ function Roster({ lots, userId, format, highlightLot = null }: { lots: Lot[]; us
  * indistinguishable from a broken app is the difference between a rule and a
  * bug.
  */
-function AuctionClock({ phase, remainingMs, onClock, isMine }: { phase: "lot_preview" | "bidding_self" | "bidding_other" | "sold"; remainingMs: number | null; onClock: Player | null; isMine: boolean }) {
+function AuctionClock({ phase, remainingMs, onClock, isMine }: { phase: AuctionPhase; remainingMs: number | null; onClock: Player | null; isMine: boolean }) {
   const seconds = remainingMs === null ? null : Math.ceil(remainingMs / 1000);
-  const live = phase === "bidding_self" || phase === "bidding_other";
-  const fraction = remainingMs === null
-    ? 0
-    : Math.min(1, remainingMs / (live ? DURATION_MS.bidding - VISIBLE_SLACK_MS : DURATION_MS[phase === "sold" ? "sold" : "lot_preview"]));
+  const live = phase === "bidding_self" || phase === "bidding_other" || phase === "sealed";
+  const duration = phase === "sealed" ? DURATION_MS.sealed : live ? DURATION_MS.bidding : DURATION_MS[phase === "sold" ? "sold" : "lot_preview"];
+  const fraction = remainingMs === null ? 0 : Math.min(1, remainingMs / (live ? duration - VISIBLE_SLACK_MS : duration));
   const urgent = remainingMs !== null && remainingMs <= 3_000 && live;
   const display = remainingMs === null ? "—" : remainingMs < TENTHS_THRESHOLD_MS ? (remainingMs / 1000).toFixed(1) : `${seconds}`;
   const announcement = live && seconds !== null && [10, 5, 3].includes(seconds) ? `${seconds} seconds left` : "";
   const tone = urgent ? "border-hidden bg-hidden/10 text-hidden-text" : "border-line bg-surface-raised text-fg";
-  const label = phase === "lot_preview" ? "Bidding has not started" : phase === "sold" ? "Sold" : isMine ? "Your turn" : `${onClock?.display_name ?? "Someone"} is deciding`;
+  const label = phase === "lot_preview" ? "Bidding has not started"
+    : phase === "sold" ? "Sold"
+    : phase === "sealed" ? "Sealed bidding — everyone decides at once"
+    : isMine ? "Your turn" : `${onClock?.display_name ?? "Someone"} is deciding`;
 
   return (
-    <section aria-label="Clock" className={`rounded border p-3 transition-colors ${tone}`}>
-      <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{label}</p>
+    <section aria-label="Clock" className={`border p-3 transition-colors ${tone}`}>
+      <p className="type-label-lg text-fg-muted">{label}</p>
       <p className={`mt-1 font-mono text-5xl leading-none tabular-nums ${urgent ? "text-hidden-text" : ""}`} aria-hidden>{display}</p>
       <p aria-live="polite" className="sr-only">{announcement}</p>
       <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-current/20">
         <div className="h-full bg-current" style={{ width: `${fraction * 100}%`, transition: `width ${TICK_MS}ms linear` }} />
       </div>
+    </section>
+  );
+}
+
+/**
+ * The three single-use abilities, always shown together below the clock once
+ * tokens are on for this match (0158/0159/0160) -- a token never disappears
+ * from the tray, it only changes state, so a player always knows all three
+ * exist even on a match where they've spent two of them already.
+ */
+type TokenDef = { key: string; label: string; description: string; icon: ReactNode; state: TokenState; onUse?: () => void; pending?: boolean };
+
+function TokenTray({ remaining, total, tokens }: { remaining: number; total: number; tokens: TokenDef[] }) {
+  // One shared tooltip, left-aligned to the tray, rather than one per
+  // button -- the leftmost token's own popover would otherwise render off
+  // the left edge of the screen. Which token's copy it shows is just local
+  // hover/focus state; the description text itself still lives on each
+  // button (sr-only) so a screen reader announces it without this state at
+  // all.
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const active = tokens.find((token) => token.key === activeKey) ?? null;
+
+  return (
+    // Mirrors AuctionClock's own section/label pairing just above it, so the
+    // two controls under the clock read as a matched set rather than one
+    // titled area and one unlabeled row of icons.
+    <section aria-label={`Tokens, ${remaining} of ${total} left`}>
+      <p aria-hidden className="type-label-lg text-fg-muted">
+        Tokens · {remaining} of {total} left
+      </p>
+      <div className="relative mt-2 flex items-center gap-2.5">
+        {tokens.map(({ key, ...token }) => (
+          <TokenButton
+            key={key}
+            tokenKey={key}
+            {...token}
+            onHoverChange={(hovering) => setActiveKey((current) => (hovering ? key : current === key ? null : current))}
+          />
+        ))}
+        {active ? (
+          <div
+            role="tooltip"
+            className="pointer-events-none absolute top-full left-0 z-20 mt-1.5 w-48 bg-panel px-2.5 py-2 text-left font-sans text-[11px] leading-snug font-normal normal-case tracking-normal text-panel-fg shadow-card"
+          >
+            <span className="block type-label-xs font-bold text-panel-muted">{active.label} · {TOKEN_STATE_TEXT[active.state]}</span>
+            {active.description}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+const TOKEN_STATE_TEXT: Record<TokenState, string> = {
+  usable: "Ready to use.",
+  used: "Already used this match.",
+  inactive: "Not usable right now.",
+};
+
+const TOKEN_TONE: Record<TokenState, string> = {
+  usable: "border-panel bg-panel text-panel-fg shadow-card",
+  used: "border-line bg-surface text-fg-muted/35",
+  inactive: "border-line bg-surface text-fg-muted/70",
+};
+
+function TokenButton({
+  tokenKey,
+  label,
+  description,
+  icon,
+  state,
+  onUse,
+  pending,
+  onHoverChange,
+}: {
+  tokenKey: string;
+  label: string;
+  description: string;
+  icon: ReactNode;
+  state: TokenState;
+  onUse?: () => void;
+  pending?: boolean;
+  onHoverChange: (hovering: boolean) => void;
+}) {
+  const usable = state === "usable";
+  const describedBy = `token-${tokenKey}-description`;
+
+  return (
+    // The hover handlers live on this wrapper, not the button: a disabled
+    // button doesn't fire mouseenter/mouseleave in Chrome or Firefox (the
+    // browser treats a disabled form control as non-interactive for pointer
+    // events), which is why hovering an inactive or used token previously
+    // showed nothing. A plain div has no such restriction.
+    <div className="relative" onMouseEnter={() => onHoverChange(true)} onMouseLeave={() => onHoverChange(false)}>
+      <button
+        type="button"
+        onClick={onUse}
+        disabled={!usable || !!pending}
+        aria-label={`${label} token`}
+        aria-describedby={describedBy}
+        onFocus={() => onHoverChange(true)}
+        onBlur={() => onHoverChange(false)}
+        className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-default ${TOKEN_TONE[state]}`}
+      >
+        {icon}
+        {state === "used" ? (
+          <span aria-hidden className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-surface-raised text-[9px] leading-none text-fg-muted ring-1 ring-line">✓</span>
+        ) : null}
+        <span id={describedBy} className="sr-only">
+          {label} · {TOKEN_STATE_TEXT[state]}. {description}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function PassTokenIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 16 16" fill="none" className={className}>
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M4.2 4.2 11.8 11.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ScoutTokenIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 16 16" fill="none" className={className}>
+      <circle cx="6.75" cy="6.75" r="4" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M9.75 9.75 13 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SealTokenIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 16 16" fill="none" className={className}>
+      <rect x="3.5" y="7" width="9" height="6" rx="1.1" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * The sealed phase's own control: unlike BidBar, there is no turn to wait
+ * for -- every live player sees this at once. Before submitting, a single
+ * exact-amount field (first price, same mental model as BidBar's own
+ * "Custom" input, just not an increment off a standing price that does not
+ * exist here). After submitting, nothing left to decide -- just who the
+ * engine is still waiting on, by name, never by amount (0160).
+ */
+function SealedBidBar({
+  budget,
+  pending,
+  paused,
+  error,
+  mine,
+  waitingOn,
+  onSubmit,
+}: {
+  budget: number;
+  pending: boolean;
+  paused: boolean;
+  error: string | null;
+  /** The viewer's own submission, once made -- RLS means this can only ever be their own. */
+  mine: SealedBid | null;
+  /** Display names of live players who haven't submitted yet. */
+  waitingOn: string[];
+  onSubmit: (amount: number) => void;
+}) {
+  const [amount, setAmount] = useState("0");
+  const invalid = !Number.isInteger(Number(amount)) || Number(amount) < 0 || Number(amount) > budget;
+
+  return (
+    <section aria-label="Sealed bid" className="border border-line bg-surface px-3 py-3">
+      <p className="type-label-lg text-fg-muted">Sealed bid</p>
+      <p className="mt-1 font-mono text-[11px] text-fg-muted tabular-nums">Your budget · ${budget} left</p>
+      {mine ? (
+        <div className="mt-3">
+          <p className="font-slab text-2xl leading-none tabular-nums">You bid ${mine.amount}</p>
+          <p className="mt-2 text-xs text-fg-muted">
+            {waitingOn.length === 0
+              ? "Everyone's in -- resolving…"
+              : `Waiting on ${waitingOn.join(", ")}.`}
+          </p>
+        </div>
+      ) : (
+        <form
+          className="mt-3 flex items-end gap-2"
+          onSubmit={(event) => { event.preventDefault(); if (!invalid) onSubmit(Number(amount)); }}
+        >
+          <label className="flex-1 type-label-lg text-fg-muted">
+            Amount
+            <input
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              type="number"
+              min={0}
+              max={budget}
+              step="1"
+              inputMode="numeric"
+              disabled={pending || paused}
+              className="mt-1 block w-full border border-line bg-surface-raised px-2 py-2 font-mono text-lg font-bold"
+            />
+          </label>
+          <Button type="submit" disabled={invalid || pending || paused} fullWidth={false}>Submit</Button>
+        </form>
+      )}
+      <p role={error ? "alert" : undefined} className="mt-3 min-h-5 text-xs leading-5 text-fg-muted">
+        {error ?? (mine ? "" : "Nobody sees this but you until the lot resolves.")}
+      </p>
     </section>
   );
 }
@@ -960,6 +1452,8 @@ function BidBar({
   onRaise,
   onPass,
   freeFallback,
+  stuck,
+  passTokenAvailable,
 }: {
   price: number;
   budget: number;
@@ -971,6 +1465,12 @@ function BidBar({
   onRaise: (amount: number) => void;
   onPass: () => void;
   freeFallback: boolean;
+  /** Nobody else is live on this lot -- the board would hand it to the
+   * viewer for $0 the moment they act. Take it free, or spend a pass token
+   * to let it go unsold instead. See migration 0158. */
+  stuck: boolean;
+  /** Whether the viewer still has an unspent pass token to decline with. */
+  passTokenAvailable: boolean;
   phase: "lot_preview" | "bidding_self" | "bidding_other" | "sold";
   error: string | null;
   /** The lot's own position — what "full" refers to when it's fully blocked. */
@@ -983,7 +1483,8 @@ function BidBar({
   const input = useRef<HTMLInputElement>(null);
   const customButton = useRef<HTMLButtonElement>(null);
   const surface = useRef<HTMLDivElement>(null);
-  const minimum = freeFallback ? 0 : price + 1;
+  const claimable = freeFallback || stuck;
+  const minimum = claimable ? 0 : price + 1;
   // Keying the popover to the interaction rather than to a boolean is what
   // closes it on a turn change, a new price or a sale: the key it was opened
   // against simply stops being the current one.
@@ -1016,6 +1517,10 @@ function BidBar({
         ? blocked === "no_slot"
           ? `Your ${position} slots are full.`
           : BLOCKED_TEXT[blocked]
+        : stuck
+          ? passTokenAvailable
+            ? "Nobody else can bid on this one. Take it free, or spend your Pass token below to let it go unsold."
+            : "Nobody else can bid on this one, and you're out of pass tokens — it's yours for $0."
         : freeFallback
           ? "Take this lot free, or pass it back to the original opener."
         : !canAfford(price, budget, INCREMENTS[1])
@@ -1027,15 +1532,15 @@ function BidBar({
       ref={surface}
       tabIndex={-1}
       aria-label="Bid controls"
-      className="relative rounded border border-line bg-surface px-3 py-3 outline-none"
+      className="relative border border-line bg-surface px-3 py-3 outline-none"
     >
       <div className="flex items-baseline justify-between gap-3">
-        <span className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">Standing bid</span>
+        <span className="type-label-lg text-fg-muted">Standing bid</span>
         <span className="font-slab text-2xl leading-none tabular-nums">{phase === "lot_preview" ? "—" : `$${price}`}</span>
       </div>
       <p className="mt-1 font-mono text-[11px] text-fg-muted tabular-nums">Your budget · ${budget} left</p>
-      {freeFallback && actionable ? <div className="mt-3 flex gap-2"><Button type="button" onClick={() => onRaise(0)}>Take for $0</Button></div> : null}
-      {!freeFallback ? <div className="mt-3 flex gap-2">
+      {claimable && actionable ? <div className="mt-3 flex gap-2"><Button type="button" onClick={() => onRaise(0)}>Take for $0</Button></div> : null}
+      {!claimable ? <div className="mt-3 flex gap-2">
         {INCREMENTS.map((increment) => (
           <Button
             key={increment}
@@ -1055,12 +1560,16 @@ function BidBar({
           thumb-sized target of its own. Ghost keeps Raise as the primary
           action while the divider prevents a hurried bid from becoming a
           pass. The button remains in place while disabled so the controls
-          never shift during a turn change. */}
-      <div className="mt-3 border-t border-line pt-3">
-        <Button type="button" variant="ghost" disabled={!actionable} onClick={onPass}>
-          {freeFallback ? "Pass to opener" : "Pass"}
-        </Button>
-      </div>
+          never shift during a turn change. Stuck is the one case with no
+          free pass at all -- declining there spends the Pass token in the
+          tray below instead, so there is nothing for this button to do. */}
+      {!stuck ? (
+        <div className="mt-3 border-t border-line pt-3">
+          <Button type="button" variant="ghost" disabled={!actionable} onClick={onPass}>
+            {freeFallback ? "Pass to opener" : "Pass"}
+          </Button>
+        </div>
+      ) : null}
       <AnimatePresence>
         {custom && (
           <motion.form
@@ -1075,8 +1584,8 @@ function BidBar({
             onSubmit={(event) => { event.preventDefault(); if (!invalid) onRaise(Number(amount)); }}
             onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeCustom(); } }}
           >
-            <label className="block font-mono text-[11px] tracking-[.13em] text-panel-muted uppercase">Custom bid
-              <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full rounded border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
+            <label className="block type-label-lg text-panel-muted">Custom bid
+              <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
             </label>
             <p className="mt-1 text-xs text-panel-muted">Minimum is ${minimum}. Your maximum is ${budget}.</p>
             {error ? <p role="alert" className="mt-1 text-xs text-hidden-ink">{error}</p> : null}
@@ -1165,7 +1674,7 @@ function RosterFinal({ lots, userId, format }: { lots: Lot[]; userId: string; fo
         const tier = lot ? weeklyRevealTier(lot) : null;
         return (
           <div key={`${slot}-${index}`} className="flex min-w-0 items-center gap-2.5">
-            <dt className="w-9 shrink-0 font-mono text-[10px] tracking-[0.05em] text-panel-muted uppercase">{label}</dt>
+            <dt className="w-9 shrink-0 type-label text-panel-muted">{label}</dt>
             {lot ? (
               <>
                 <LotPortrait name={lot.display_name} headshotUrl={lot.headshot_url} className="h-7 w-7 text-xs" />

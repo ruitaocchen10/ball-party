@@ -1,0 +1,223 @@
+# Feature manifest: what the product does, and where each client stands.
+#
+# Read docs/parity.md for how this file is used. Status values per platform:
+#   done      built and reachable by a player
+#   partial   built but incomplete or not reachable; say why in `note`
+#   missing   not built, and it should be (this is a gap)
+#   no        deliberately absent on this platform; `note` must say why
+#
+# Gaps carry a `ticket:` key from Jira (mobile gaps live in BPMO, under the iOS App epic BPMO-2).
+#
+# Baseline from the 2026-10 parity audit. Statuses marked (unverified) came from
+# a code search rather than running the app.
+
+features:
+  # --- Huddle (home feed) ---------------------------------------------------
+  - id: huddle.feed-picks
+    summary: Feed of picks, game picks, weekly picks
+    web: done
+    ios: done
+  - id: huddle.power-rankings
+    summary: Power Rankings ballot and consensus top five
+    web: done
+    ios: done
+  - id: huddle.weekly-awards
+    summary: Weekly Awards prompts
+    web: done
+    ios: missing
+    ticket: BPMO-15
+    note: iOS shows an "update the app" placeholder
+  - id: huddle.bold-predictions
+    summary: Bold Predictions prompts
+    web: done
+    ios: missing
+    ticket: BPMO-16
+    note: iOS shows an "update the app" placeholder
+  - id: huddle.answer
+    summary: Submit an answer to a prompt
+    web: done
+    ios: done
+  - id: huddle.takes
+    summary: Post takes and replies, take thread
+    web: done
+    ios: done
+  - id: huddle.search
+    summary: Search the feed
+    web: done
+    ios: missing
+    ticket: BPMO-17
+  - id: huddle.share-image
+    summary: Share picks, takes and power rankings as an image
+    web: done
+    ios: missing
+    ticket: BPMO-18
+  - id: huddle.signed-out-read
+    summary: Read the feed without an account
+    web: done
+    ios: no
+    note: iOS is behind an auth gate by design
+
+  # --- Accounts --------------------------------------------------------------
+  - id: auth.email
+    summary: Sign up and sign in with email and password
+    web: done
+    ios: done
+  - id: auth.google
+    summary: Continue with Google
+    web: done
+    ios: done
+  - id: auth.apple
+    summary: Sign in with Apple
+    web: missing
+    ios: done
+    note: (unverified) no Apple button found on web
+  - id: auth.guest
+    summary: Guest session for solo play
+    web: done
+    ios: no
+    note: docs/app.md, "iOS never carries a guest session"
+  - id: account.edit-profile
+    summary: Edit display name, username and avatar
+    web: done
+    ios: done
+  - id: account.username
+    summary: Unique username (3-20 letters, digits, underscore), optional at signup, editable in edit-profile with a live availability check; existing accounts confirm their generated name once
+    web: done
+    ios: done
+    note: Signup cannot check availability (no session until the email is confirmed), so the chosen name is claimed at first sign-in. The confirm prompt is remembered per device, not on the server.
+  - id: account.private-profile
+    summary: Private profile setting (only friends can open your profile; you stay searchable and ranked)
+    web: done
+    ios: done
+    note: Web is in Settings; iOS is Privacy in the Profile menu.
+  - id: account.change-credentials
+    summary: Change email or password
+    web: done
+    ios: missing
+    ticket: BPMO-10
+    note: (unverified) no trace found on iOS
+  - id: account.delete
+    summary: Delete your account in-app
+    web: done
+    ios: done
+
+  # --- Profile ---------------------------------------------------------------
+  - id: profile.highlights
+    summary: Ball Knower and Gamer highlights
+    web: done
+    ios: done
+  - id: profile.match-history
+    summary: Match history and stats
+    web: done
+    ios: done
+  - id: profile.takes-history
+    summary: Your takes
+    web: done
+    ios: done
+
+  # --- Friends ---------------------------------------------------------------
+  - id: friends.list
+    summary: Friends list, remove, block and unblock
+    web: done
+    ios: done
+    note: Web is the Friends tab on Profile; iOS is Friends in the Profile menu.
+  - id: friends.requests-search-invite
+    summary: Friend requests, username typeahead (prefix match, 3+ characters) and a shareable invite link
+    web: done
+    ios: done
+    note: iOS opens https://ballparty.social/friends/invite/<code> as a Universal Link. That works only once the apple-app-site-association file (webapp/public/.well-known) is deployed and the Associated Domains capability is enabled for com.ballparty.app; not yet tested on a device.
+  - id: friends.profiles
+    summary: View another player's profile (public, friends-only and not-found states) with friend actions
+    web: done
+    ios: done
+  - id: friends.activity-feed
+    summary: Friends' recent picks (never which options), pick results and match results from the last 30 days
+    web: done
+    ios: done
+    note: The Friends tab on Home, next to Huddle (web /?view=friends). Real accounts only; guests and signed-out visitors see just the Huddle.
+
+  # --- Leaderboard -----------------------------------------------------------
+  - id: leaderboard.ball-knower
+    summary: Ball Knower leaderboard by week, month, year and all time
+    web: done
+    ios: done
+  - id: leaderboard.gamer
+    summary: Multiplayer wins leaderboard by week, month, year and all time
+    web: done
+    ios: done
+  - id: leaderboard.solo-higher-or-lower
+    summary: Higher or Lower leaderboard of best solo streaks, all time (in the solo games area)
+    web: done
+    ios: done
+  - id: leaderboard.solo-qb-season-builder
+    summary: QB Season Builder leaderboard of best season scores, all time, with a Visible / Hidden toggle (in the solo games area)
+    web: done
+    ios: done
+  - id: friends.leaderboard-scope
+    summary: Switch the leaderboard between Everyone and Friends; rows link to the player's profile
+    web: done
+    ios: done
+
+  # --- Rooms -----------------------------------------------------------------
+  - id: rooms.create-join
+    summary: Create a room, join by code, leave, close
+    web: done
+    ios: done
+  - id: friends.room-invites
+    summary: Invite friends into a room from the lobby; accept or decline from the Party page
+    web: done
+    ios: done
+  - id: rooms.pick-game
+    summary: Host picks the game and starts a run
+    web: done
+    ios: done
+  - id: rooms.party-mode
+    summary: Multi-game party with points and a target score
+    web: missing
+    ios: missing
+    note: not built anywhere; start_run only supports arcade
+
+  # --- Games -----------------------------------------------------------------
+  - id: game.higher-or-lower.solo
+    summary: Higher or Lower, solo
+    web: done
+    ios: done
+  - id: game.higher-or-lower.room
+    summary: Higher or Lower, live room match
+    web: done
+    ios: done
+  - id: game.qb-season-builder.solo
+    summary: QB Season Builder, solo, with result screen
+    web: done
+    ios: done
+  - id: game.auction-team-builder
+    summary: Auction Team Builder (room, 2-4)
+    web: done
+    ios: missing
+    ticket: BPMO-12
+  - id: game.sabotage-draft
+    summary: Sabotage Draft (room, 2-4)
+    web: done
+    ios: missing
+    ticket: BPMO-13
+  - id: game.wavelength
+    summary: 2v2 Wavelength (room, 2 or 4)
+    web: done
+    ios: missing
+    ticket: BPMO-14
+
+  # --- Platform and support --------------------------------------------------
+  - id: support.feedback
+    summary: Send feedback from the app
+    web: done
+    ios: missing
+    ticket: BPMO-19
+  - id: support.privacy-support-pages
+    summary: Privacy policy and support pages
+    web: done
+    ios: done
+  - id: admin.prompts
+    summary: Author, resolve and void prompts
+    web: done
+    ios: no
+    note: admin tooling is web only by design

@@ -20,6 +20,8 @@ export const LOBBY_MESSAGES: Record<string, string> = {
   post_game_choice_already_made: "The next game has already been chosen.",
   not_match_participant: "Only a player in this match can choose what’s next.",
   invalid_mode: "Choose visible or hidden ratings.",
+  invalid_preset: "Choose a valid Wavelength game length.",
+  player_count_mismatch: "That Wavelength mode doesn't match the number of players in the room.",
   replay_not_supported: "This game can’t be replayed yet.",
 };
 

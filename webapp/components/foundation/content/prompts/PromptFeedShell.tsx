@@ -26,5 +26,5 @@ import { PromptPostFeed } from "./PromptPostUI";
  */
 export function PromptFeedShell({ initialPosts, canAnswer, gameContexts, home = false }: { initialPosts: Post[]; canAnswer: boolean; gameContexts: MatchupGameContext[]; home?: boolean }) {
   const router = useRouter();
-  return <><PageHeader eyebrow="Social" title="The huddle" /><PromptPostFeed posts={initialPosts} viewerCanAnswer={canAnswer} onSelectPost={(postId) => router.push(`/prompts/${postId}`)} gameContexts={gameContexts} home={home} /></>;
+  return <>{home ? null : <PageHeader eyebrow="Social" title="The huddle" />}<PromptPostFeed posts={initialPosts} viewerCanAnswer={canAnswer} onSelectPost={(postId) => router.push(`/prompts/${postId}`)} gameContexts={gameContexts} home={home} /></>;
 }

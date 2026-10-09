@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-import type { Bid, Lot, Player, Standing, Turn } from "@/lib/games/auction/board";
+import type { Bid, Lot, Player, ScoutHint, SealedBid, SealedBidStatus, Standing, Turn } from "@/lib/games/auction/board";
 
 export const MATCH = "11111111-1111-1111-1111-111111111111";
 
@@ -21,6 +21,9 @@ export function players(over: Partial<Player>[] = []): Player[] {
     user_id: seat.user_id,
     seat: seat.seat,
     budget: 20,
+    used_pass_token: false,
+    used_scout_token: false,
+    used_seal_token: false,
     display_name: seat.display_name,
     avatar_url: null,
     ...over[i],
@@ -89,6 +92,41 @@ export function standing(over: Partial<Standing> = {}): Standing {
   };
 }
 
+/** Always the viewer's own sealed bid -- RLS never hands this client an opponent's amount. */
+export function sealedBid(over: Partial<SealedBid> = {}): SealedBid {
+  return {
+    match_id: MATCH,
+    seq: 1,
+    user_id: "u0",
+    amount: 5,
+    submitted_at: new Date().toISOString(),
+    ...over,
+  };
+}
+
+/** Presence only -- readable for any match member, whoever it belongs to. */
+export function sealedBidStatus(over: Partial<SealedBidStatus> = {}): SealedBidStatus {
+  return {
+    match_id: MATCH,
+    seq: 1,
+    user_id: "u0",
+    submitted: true,
+    ...over,
+  };
+}
+
+/** Always the viewer's own row -- RLS never hands this client an opponent's. */
+export function scoutHint(over: Partial<ScoutHint> = {}): ScoutHint {
+  return {
+    match_id: MATCH,
+    seq: 1,
+    user_id: "u0",
+    tier: "solid",
+    created_at: new Date().toISOString(),
+    ...over,
+  };
+}
+
 /**
  * A turn in one of the four shared phases. `deadlineMs` is how far the live
  * clock is from running out, which is what the countdown assertions turn on.
@@ -99,15 +137,20 @@ export function turn(
 ): Turn {
   const { deadlineMs = 10_000, ...rest } = over;
   const at = new Date(Date.now() + deadlineMs).toISOString();
+  // A shared sealed-round clock lives in turnDeadline, same as an ordinary
+  // bidding turn's -- phaseDeadline is only for the two timer-only phases
+  // (lot_preview/sold) that have no actor at all (0160).
+  const live = phase === "bidding" || phase === "sealed";
   return {
     lotCount: 4,
     currentLot: 1,
     turnSeat: phase === "bidding" ? 0 : null,
     openerSeat: 0,
     freeFallbackSeat: null,
-    turnDeadline: phase === "bidding" ? at : null,
+    stuckSeat: null,
+    turnDeadline: live ? at : null,
     phase,
-    phaseDeadline: phase === "bidding" ? null : at,
+    phaseDeadline: live ? null : at,
     ...rest,
   };
 }
@@ -146,6 +189,7 @@ export function supabaseMock() {
   // payload through the same handler the component subscribed with — the
   // way `channel.emit` below is called.
   const handlers = new Map<string, (payload: { new: unknown }) => void>();
+  let broadcastHandler: ((payload: { payload: unknown }) => void) | undefined;
   const client = {
     rpc,
     from,
@@ -154,18 +198,21 @@ export function supabaseMock() {
     // same client keeps `rpc` a single spy for suites that override it, and
     // leaves the schema name assertable through the mock's calls.
     schema: vi.fn(() => client),
-    channel: () => client,
+    channel: vi.fn(() => client),
     on: (
-      _event: string,
-      filter: { table: string },
-      callback: (payload: { new: unknown }) => void,
+      event: string,
+      filter: { table?: string },
+      callback: (payload: { new: unknown; payload?: unknown }) => void,
     ) => {
-      handlers.set(filter.table, callback);
+      if (event === "broadcast") broadcastHandler = callback as (payload: { payload: unknown }) => void;
+      else if (filter.table) handlers.set(filter.table, callback as (payload: { new: unknown }) => void);
       return client;
     },
     // Plays a row through whichever handler subscribed to that table, the
     // way Realtime would deliver an INSERT/UPDATE/DELETE payload.
     emit: (table: string, row: unknown) => handlers.get(table)?.({ new: row }),
+    emitBroadcast: (payload: unknown) => broadcastHandler?.({ payload }),
+    send: vi.fn(() => Promise.resolve("ok")),
     // The component passes a status callback; SUBSCRIBED triggers its refetch.
     subscribe: (onStatus?: (status: string) => void) => {
       onStatus?.("SUBSCRIBED");

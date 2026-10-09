@@ -26,12 +26,15 @@ final class ProfileEditorViewModel: ObservableObject, Identifiable {
     @Published private(set) var isUploadingAvatar = false
     @Published var notice: String?
     @Published private(set) var saved = false
+    /// Present when the profile has a username to edit (every non-guest one does).
+    let usernameField: UsernameFieldModel?
 
     private let client: ProfileClient
     private let userId: UUID
 
-    init(client: ProfileClient, userId: UUID, displayName: String, avatarURL: URL?) {
+    init(client: ProfileClient, userId: UUID, displayName: String, avatarURL: URL?, username: String? = nil) {
         self.client = client
+        self.usernameField = username.map { UsernameFieldModel(client: client, username: $0) }
         self.userId = userId
         self.displayName = displayName
         self.avatarURL = avatarURL
@@ -100,6 +103,22 @@ final class ProfileEditorViewModel: ObservableObject, Identifiable {
 
         isSaving = true
         defer { isSaving = false }
+
+        // The username goes first: it is the write that can be refused (taken,
+        // reserved), and a refusal should leave the sheet open with nothing
+        // else half-saved.
+        if let usernameField {
+            do {
+                _ = try await usernameField.claimIfChanged()
+            } catch let error as UsernameError {
+                notice = error.message
+                return
+            } catch {
+                notice = UsernameError.other.message
+                return
+            }
+        }
+
         do {
             try await client.updateProfile(displayName: name, avatarURL: avatarURL, for: userId)
             saved = true
@@ -120,5 +139,166 @@ private extension URL {
         items.append(URLQueryItem(name: name, value: value))
         components.queryItems = items
         return components.url ?? self
+    }
+}
+
+/// The one-time "this is your username" prompt for accounts that were given a
+/// generated one. Keeping, changing or dismissing it all count as dealt with:
+/// the flag is per user and per device (`UsernameConfirmationStore`), the
+/// same client-side dismissal the web keeps in localStorage.
+@MainActor
+final class UsernameConfirmViewModel: ObservableObject, Identifiable {
+    let id = UUID()
+    let field: UsernameFieldModel
+    @Published private(set) var isSaving = false
+    @Published private(set) var finished = false
+    @Published var notice: String?
+
+    private let userId: UUID
+    private let store: UsernameConfirmationStore
+
+    init(field: UsernameFieldModel, userId: UUID, store: UsernameConfirmationStore) {
+        self.field = field
+        self.userId = userId
+        self.store = store
+    }
+
+    /// The prompt to show this user, or `nil` when they already dealt with it
+    /// or the username couldn't be read (a failed read must not nag).
+    static func make(
+        client: ProfileClient, userId: UUID, store: UsernameConfirmationStore = .standard
+    ) async -> UsernameConfirmViewModel? {
+        guard !store.isConfirmed(userId) else { return nil }
+        guard let username = (try? await client.profile(userId: userId))?.username else { return nil }
+        return UsernameConfirmViewModel(
+            field: UsernameFieldModel(client: client, username: username), userId: userId, store: store
+        )
+    }
+
+    /// "Keep it" — accepts the username as it is.
+    func keep() {
+        store.markConfirmed(userId)
+        finished = true
+    }
+
+    /// "Save" — claims whatever is typed (nothing to do if unchanged).
+    func save() async {
+        notice = nil
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await field.claimIfChanged()
+            store.markConfirmed(userId)
+            finished = true
+        } catch let error as UsernameError {
+            notice = error.message
+        } catch {
+            notice = UsernameError.other.message
+        }
+    }
+
+    /// The sheet went away (swipe or buttons). Seen once is enough.
+    func dismissed() {
+        store.markConfirmed(userId)
+    }
+}
+
+/// A username text field with a debounced availability check. Shared by the
+/// edit-profile sheet and the one-time confirm prompt. The check
+/// (`username_available`) is advisory, so a failed or stale one never blocks a
+/// save; `claim_username` is authoritative and its refusal is what the player
+/// finally sees.
+@MainActor
+final class UsernameFieldModel: ObservableObject {
+    enum Status: Equatable {
+        /// Nothing worth saying yet (empty field).
+        case idle
+        /// The text matches the current username.
+        case unchanged
+        case checking
+        case available
+        /// Malformed (local rule) or taken/reserved (server said no).
+        case rejected(String)
+        /// The availability call itself failed; saving may still work.
+        case unchecked
+    }
+
+    @Published var text: String
+    @Published private(set) var status: Status
+    /// The username as last stored; what "unchanged" is measured against.
+    private(set) var current: String
+
+    private let client: ProfileClient
+    private let debounceNanoseconds: UInt64
+    private var checkTask: Task<Void, Never>?
+
+    init(client: ProfileClient, username: String, debounceNanoseconds: UInt64 = 400_000_000) {
+        self.client = client
+        self.current = username
+        self.text = username
+        self.debounceNanoseconds = debounceNanoseconds
+        self.status = .unchanged
+    }
+
+    /// Call whenever `text` changes (the view's `.onChange`).
+    func textChanged() {
+        checkTask?.cancel()
+        checkTask = nil
+
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            status = .idle
+            return
+        }
+        switch IdentityConstants.validateUsername(text) {
+        case .invalid(let message):
+            status = .rejected(message)
+        case .valid(let name):
+            if name == current {
+                status = .unchanged
+                return
+            }
+            status = .checking
+            checkTask = Task { [client, debounceNanoseconds] in
+                try? await Task.sleep(nanoseconds: debounceNanoseconds)
+                guard !Task.isCancelled else { return }
+                let result: Result<Bool, Error>
+                do { result = .success(try await client.usernameAvailable(name)) } catch { result = .failure(error) }
+                // A newer keystroke cancelled this check; its answer is stale.
+                guard !Task.isCancelled else { return }
+                switch result {
+                case .success(true): self.status = .available
+                case .success(false): self.status = .rejected("That username is taken or reserved.")
+                case .failure: self.status = .unchecked
+                }
+            }
+        }
+    }
+
+    /// Waits for the in-flight availability check, if any (tests).
+    func settle() async {
+        await checkTask?.value
+    }
+
+    /// Claims the typed username when it differs from the stored one.
+    /// Returns the stored value, or `nil` when there was nothing to change.
+    /// Throws `UsernameError` (local format failures included).
+    func claimIfChanged() async throws -> String? {
+        checkTask?.cancel()
+        guard case .valid(let name) = IdentityConstants.validateUsername(text) else {
+            throw UsernameError.invalid
+        }
+        if name == current { return nil }
+        let stored: String
+        do {
+            stored = try await client.claimUsername(name)
+        } catch let error as UsernameError {
+            throw error
+        } catch {
+            throw UsernameError.other
+        }
+        current = stored
+        text = stored
+        status = .unchanged
+        return stored
     }
 }

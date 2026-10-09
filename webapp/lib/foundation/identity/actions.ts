@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 
 import { safeNextPath } from "@/lib/foundation/identity/next";
 import { createClient } from "@/lib/supabase/server";
+import { usernameFormatHint } from "@/lib/foundation/identity/username";
 import {
   DISPLAY_NAME_MAX,
   DISPLAY_NAME_MIN,
@@ -83,6 +84,7 @@ export async function signUpWithEmail(
   formData: FormData,
 ): Promise<AuthState> {
   const displayName = String(formData.get("display_name") ?? "").trim();
+  const username = String(formData.get("username") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const next = safeNextPath(formData.get("next"));
@@ -92,6 +94,10 @@ export async function signUpWithEmail(
       error: `Display name must be ${DISPLAY_NAME_MIN}–${DISPLAY_NAME_MAX} characters.`,
     };
   }
+  // Only the shape is checked here. Whether the name is free or reserved is
+  // decided by claim_username once the player has a session.
+  const usernameHint = username ? usernameFormatHint(username) : null;
+  if (usernameHint) return { error: usernameHint };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return { error: "Enter a valid email address." };
   }
@@ -105,7 +111,9 @@ export async function signUpWithEmail(
     password,
     options: {
       // Read by the handle_new_user trigger to seed public.profiles.
-      data: { display_name: displayName },
+      // `username` is only the player's preference: no session exists to claim
+      // it with until the email is confirmed, so the home page claims it then.
+      data: { display_name: displayName, ...(username ? { username } : {}) },
       // The destination, not the confirm route. Supabase renders this as
       // `{{ .RedirectTo }}` in the email template, and /auth/confirm reduces it
       // back to a path after verifying the token. Sending the confirm route

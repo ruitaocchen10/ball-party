@@ -42,7 +42,7 @@ export function StartHigherOrLower({
       <input type="hidden" name="lobby_id" value={lobbyId} />
       <input type="hidden" name="code" value={code} />
       <input type="hidden" name="game" value="higher_or_lower" />
-      <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+      <label className="flex flex-col gap-1 type-label text-panel-muted">
         Scoring
         <Select
           ariaLabel="Scoring"
@@ -62,12 +62,12 @@ export function StartHigherOrLower({
         Start higher or lower
       </Button>
       {short ? (
-        <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
+        <p className="type-label text-fg-muted">
           Waiting for one more player
         </p>
       ) : null}
       {backwards ? (
-        <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">
+        <p className="type-label text-fg-muted">
           The last season has to come after the first
         </p>
       ) : null}
@@ -77,7 +77,7 @@ export function StartHigherOrLower({
 
 function Season({ label, name, value, era, onChange }: { label: string; name: string; value: number; era: { seasonMin: number; seasonMax: number }; onChange: (value: number) => void }) {
   const seasons = Array.from({ length: era.seasonMax - era.seasonMin + 1 }, (_, index) => era.seasonMin + index);
-  return <label className="flex flex-1 flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">{label}
+  return <label className="flex flex-1 flex-col gap-1 type-label text-panel-muted">{label}
     <Select
       ariaLabel={label}
       name={name}

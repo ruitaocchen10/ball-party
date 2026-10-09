@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 
 import { DashboardHeader } from "@/components/home/DashboardHeader";
+import { SoloBestScores, type SoloBestScore } from "@/components/home/SoloBestScores";
 import { SoloGrid } from "@/components/home/SoloGrid";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
+import { formatSoloScore, SOLO_BOARD_COPY, soloBoardHref, type QbMode, type SoloBoard } from "@/lib/foundation/content/leaderboard/boards";
 import { createClient } from "@/lib/supabase/server";
-import { chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { chromeIdentity, isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 // A place to pick settings rather than a landing page (see below), so it stays
 // out of the index until it earns its own content.
@@ -51,6 +54,10 @@ export default async function SoloPage(props: PageProps<"/solo">) {
     ? { seasonMin: era.season_min, seasonMax: era.season_max }
     : null;
 
+  // Best scores are an account feature: RLS refuses a guest these rows, so
+  // they are not even asked for.
+  const scores = viewer && !isGuestViewer(claims) ? await fetchBestScores(supabase) : null;
+
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
 
@@ -59,21 +66,49 @@ export default async function SoloPage(props: PageProps<"/solo">) {
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard" rail={<SoloBestScores scores={scores} />}>
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
 
-        <div className="mx-auto w-full max-w-[1080px]">
-          <PageHeader
-            eyebrow="Solo"
-            title="Play on your own"
-            description="Pick a game and jump in whenever you’re ready."
-          />
+        <PageHeader
+          eyebrow="Solo"
+          title="Play on your own"
+          description="Pick a game and jump in whenever you’re ready."
+        />
 
-          <section className="mt-9" aria-label="Solo games">
-            <SoloGrid higherOrLowerEra={higherOrLowerEra} />
-          </section>
-        </div>
-      </main>
+        <section className="mt-9" aria-label="Solo games">
+          <SoloGrid higherOrLowerEra={higherOrLowerEra} />
+        </section>
+      </PageShell>
     </>
+  );
+}
+
+type Client = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * One row per solo game (per mode where a game keeps one best each): the viewer's
+ * best and their place on the all-time board. null means no finished run yet.
+ * `my_solo_standing` gives both in one read and returns the best even when the
+ * viewer is not ranked.
+ */
+async function fetchBestScores(supabase: Client): Promise<SoloBestScore[]> {
+  const rows: { game: string; detail?: string; board: SoloBoard; mode?: QbMode }[] = [
+    { game: "Higher or lower", detail: "All-time high", board: "higher-or-lower" },
+    { game: "QB Season Builder", detail: "Grades visible", board: "qb-season-builder", mode: "visible" },
+    { game: "QB Season Builder", detail: "Grades hidden", board: "qb-season-builder", mode: "hidden" },
+  ];
+  return Promise.all(
+    rows.map(async ({ game, detail, board, mode }) => {
+      const { data } = await supabase.rpc("my_solo_standing", { p_game: SOLO_BOARD_COPY[board].game, p_mode: mode });
+      const standing = data?.[0];
+      return {
+        game,
+        detail,
+        value: standing?.best_score == null ? null : formatSoloScore(Number(standing.best_score), board),
+        rank: standing?.status === "ranked" ? standing.rank : null,
+        rankedCount: standing?.ranked_count ?? 0,
+        href: soloBoardHref({ board, mode }),
+      };
+    }),
   );
 }

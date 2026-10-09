@@ -64,7 +64,7 @@ export function StartRun({
       {/* Which game the room is starting. The action dispatches on it rather
           than assuming, now that there is more than one. */}
       <input type="hidden" name="game" value="auction_team_builder" />
-      <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+      <label className="flex flex-col gap-1 type-label text-panel-muted">
         Scoring
         <Select
           ariaLabel="Scoring"
@@ -76,7 +76,7 @@ export function StartRun({
           ]}
         />
       </label>
-      <label className="flex flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+      <label className="flex flex-col gap-1 type-label text-panel-muted">
         Roster
         <Select
           ariaLabel="Roster"
@@ -89,9 +89,23 @@ export function StartRun({
           ]}
         />
       </label>
+      <label className="flex flex-col gap-1 type-label text-panel-muted">
+        Tokens
+        <Select
+          ariaLabel="Tokens"
+          name="token_count"
+          defaultValue="1"
+          options={[
+            { value: "0", label: "Off" },
+            { value: "1", label: "1 per player" },
+            { value: "2", label: "2 per player" },
+            { value: "3", label: "3 per player" },
+          ]}
+        />
+      </label>
       {era ? (
         <div className="flex gap-2">
-          <label className="flex flex-1 flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+          <label className="flex flex-1 flex-col gap-1 type-label text-panel-muted">
             First season
             <Select
               ariaLabel="First season"
@@ -101,7 +115,7 @@ export function StartRun({
               options={seasons(era).map((season) => ({ value: String(season), label: season }))}
             />
           </label>
-          <label className="flex flex-1 flex-col gap-1 font-mono text-[10px] tracking-[0.13em] text-panel-muted uppercase">
+          <label className="flex flex-1 flex-col gap-1 type-label text-panel-muted">
             Last season
             <Select
               ariaLabel="Last season"
@@ -117,7 +131,7 @@ export function StartRun({
         Start the auction
       </Button>
       {reason ? (
-        <p className="font-mono text-[10px] tracking-[0.13em] text-fg-muted uppercase">{reason}</p>
+        <p className="type-label text-fg-muted">{reason}</p>
       ) : null}
     </form>
   );

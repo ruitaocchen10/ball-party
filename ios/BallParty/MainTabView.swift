@@ -11,6 +11,8 @@ struct MainTabView: View {
     }
 
     @State private var selection: Tab = .home
+    /// The one-time "confirm your username" sheet; nil once dealt with.
+    @State private var usernamePrompt: UsernameConfirmViewModel?
 
     var body: some View {
         // `AuthGateView` only builds this with a session, but the session can
@@ -25,21 +27,22 @@ struct MainTabView: View {
                     .tabItem { Label("Games", systemImage: "gamecontroller") }
                     .tag(Tab.games)
 
-                // Party mode's real screen (`LobbyScreen`) is fully built but
-                // not turned on for mobile yet; this tab points at a
-                // placeholder until it is.
-                NavigationStack {
-                    ComingSoonView(
-                        title: "Party",
-                        message: "Playing with friends on mobile is on the way. In the meantime, play Games on your own."
-                    )
-                }
-                .tabItem { Label("Party", systemImage: "person.3") }
-                .tag(Tab.party)
+                NavigationStack { LobbyScreen(viewerId: user.id) }
+                    .tabItem { Label("Party", systemImage: "person.3") }
+                    .tag(Tab.party)
 
                 NavigationStack { ProfileView(auth: viewModel, viewerId: user.id, email: user.email) }
                     .tabItem { Label("Profile", systemImage: "person.crop.circle") }
                     .tag(Tab.profile)
+            }
+            .task(id: user.id) {
+                usernamePrompt = await UsernameConfirmViewModel.make(
+                    client: SupabaseProfileClient(client: SupabaseConfig.client), userId: user.id
+                )
+            }
+            .sheet(item: $usernamePrompt) { prompt in
+                UsernameConfirmView(viewModel: prompt)
+                    .presentationBackground(Theme.surface)
             }
         }
     }
@@ -73,6 +76,7 @@ private struct GamesScreen: View {
                 } destination: {
                     QbSeasonBuilderScreen(viewerId: viewerId, mode: qbMode, era: qbEra)
                 }
+                .leaderboard(.qbSeasonBuilder, mode: qbMode)
 
                 SoloGameCard(
                     name: ["Higher", "or lower"],
@@ -95,6 +99,7 @@ private struct GamesScreen: View {
                         era: higherOrLowerFormat.era
                     )
                 }
+                .leaderboard(.higherOrLower)
             }
             .padding(16)
         }
@@ -121,6 +126,11 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
     /// parent's state, so shutting this keeps what was picked and the run
     /// still starts with it.
     @State private var settingsOpen = false
+
+    /// The game's all-time best-run board, offered beside Play solo when set.
+    fileprivate var leaderboardBoard: SoloBoard?
+    /// The mode the board opens on, where the game keeps one best per mode.
+    fileprivate var leaderboardMode: QbRatingMode = .visible
 
     fileprivate init(
         name: [String],
@@ -191,6 +201,14 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
                     Text("Play solo")
                 }
                 .buttonStyle(.solid)
+                if let board = leaderboardBoard {
+                    NavigationLink {
+                        SoloLeaderboardScreen(board: board, mode: leaderboardMode)
+                    } label: {
+                        Text("Leaderboard")
+                    }
+                    .buttonStyle(.ghost)
+                }
             }
             .padding(.top, 12)
             .overlay(alignment: .top) { LineRule() }
@@ -204,6 +222,15 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
 }
 
 extension SoloGameCard {
+    /// Offers the game's leaderboard under Play solo. A QB Season Builder card
+    /// opens it on the ratings mode picked on the card.
+    func leaderboard(_ board: SoloBoard, mode: QbRatingMode = .visible) -> Self {
+        var card = self
+        card.leaderboardBoard = board
+        card.leaderboardMode = mode
+        return card
+    }
+
     /// The Settings row and, when open, the card's choices.
     @ViewBuilder fileprivate var settingsDisclosure: some View {
         VStack(alignment: .leading, spacing: 12) {

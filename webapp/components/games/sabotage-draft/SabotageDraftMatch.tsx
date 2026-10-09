@@ -2,14 +2,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Supabase types are regenerated after this migration lands. */
 
 import { motion } from "motion/react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from "react";
 
 import { FinalStandings, type FinalStandingsRow } from "@/components/runtime/game-runtime/FinalStandings";
 import { PauseBanner } from "@/components/runtime/game-runtime/PauseBanner";
 import { PauseButton } from "@/components/runtime/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/runtime/game-runtime/PostGameControls";
 import { PostGameNavigation } from "@/components/runtime/game-runtime/PostGameNavigation";
+import { AnchoredList } from "@/components/foundation/ui-kit/AnchoredList";
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
 import { SlotReel } from "@/components/foundation/ui-kit/SlotReel";
 import { TeamLogo } from "@/components/foundation/ui-kit/TeamLogo";
@@ -23,12 +23,13 @@ import { HEARTBEAT_MS, TICK_MS, VISIBLE_SLACK_MS, useMatchClock } from "@/lib/ru
 import { dropdownUp, springSnappy, tiebreakBoardReveal, tiebreakMatchReveal, tiebreakRoundReveal } from "@/lib/foundation/ui-kit/motion";
 import { FRANCHISE_NAMES, franchiseName } from "@/lib/foundation/content/nfl/franchises";
 import { gradeForPick, gradeForTeam } from "@/lib/games/sabotage-draft/grades";
-import { ROUND_SLOTS, X_FACTOR_ROUND, slotForRound } from "@/lib/games/sabotage-draft/rounds";
+import { chooseLabel, modeForRoundCount, rosterSlots, slotForRound, slotLabel, xFactorRound, xFactorTargets } from "@/lib/games/sabotage-draft/rounds";
 import { TURN_REVEAL_MS, useTurnReveal } from "@/lib/games/sabotage-draft/useTurnReveal";
 import { createClient } from "@/lib/supabase/client";
 import { createRealtimeClient } from "@/lib/runtime/realtime/client";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
-// One shared clock per turn (see docs/games/sabotage_draft.md): the active
+// One shared clock per turn (see docs/games/sabotage_draft/rules.md): the active
 // seat may lock a pick any time within turn_deadline, and every other seat
 // may lock in one guess or one pass any time within that same window,
 // including before the pick exists. A guess's `result` is therefore nullable
@@ -46,7 +47,7 @@ type Pass = { match_id: string; round_number: number; target_user_id: string; us
 type Option = { player_id: string; display_name: string; season: number; slot_category: string; headshot_url: string | null };
 type Decision = { match_id: string; user_id: string; replace_slot: string | null };
 type Standing = { user_id: string; roster_strength: number; wins: number; losses: number; tiebreak_rank: number };
-type PickAv = { user_id: string; round_number: number; av: number };
+type PickAv = { user_id: string; round_number: number; av: number; slot_category?: string };
 // A snapshot of what a turn resolved to, captured once (see the effect in
 // SabotageDraftMatch that builds this) the instant the board moves on to the
 // next one. `pick` is only ever populated when the turn was the viewer's own
@@ -55,7 +56,7 @@ type PickAv = { user_id: string; round_number: number; av: number };
 // watching someone else's turn resolve gets `spin`/`slot` instead: the same
 // franchise-and-slot, name-withheld shape RosterBoard's own concealed rows
 // already show for a still-open pick.
-type TurnResultData = { round: number; userId: string; playerName: string; mine: boolean; pick: Pick | null; spin: Spin | null; slot: string; outcome: "kept" | "respun" | "sabotaged"; actorName: string | null };
+type TurnResultData = { round: number; userId: string; playerName: string; mine: boolean; pick: Pick | null; spin: Spin | null; slot: string; outcome: "kept" | "respun" | "sabotaged"; actorName: string | null; swappedOut: Pick | null };
 type Tiebreak = { record_wins: number; bracket_round: number; game_number: number; player_a: string; player_b: string | null; winner_user_id: string; player_a_score: number | null; player_b_score: number | null };
 
 const MESSAGE: Record<string, string> = { already_picked: "Your pick is already locked.", already_acted: "You have already guessed or passed on this turn.", turn_closed: "This turn has closed.", invalid_pick: "Choose a player from this round's pool.", invalid_guess: "Choose a player from this round's pool.", x_factor_position_mismatch: "Your X-Factor can only replace a slot at the same position.", match_not_playing: "This match isn't accepting moves right now.", not_your_turn: "It isn't your turn right now." };
@@ -149,11 +150,30 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
   // starts null on mount for the same reason useTurnReveal's own lastKey
   // does -- a viewer landing mid-turn has no "previous" turn to report on.
   const prevTurnRef = useRef<{ round: number; userId: string } | null>(null);
+  const resolvedTurnRef = useRef<{ round: number; userId: string } | null>(null);
   const [lastTurnResult, setLastTurnResult] = useState<TurnResultData | null>(null);
+  // The viewer's own pick the first time it was seen, per round. A sabotage
+  // overwrites the pick row in place (see resolve_turn), so the card that
+  // shows the swap can only know who got replaced if the client held on to
+  // what it saw before. First-seen is the right "before": it is the pick as
+  // drafted, ahead of any respin or sabotage. A viewer who loads the page
+  // after the swap never saw the original and simply gets no swap animation.
+  const originalPicksRef = useRef(new Map<number, Pick>());
   useEffect(() => {
-    const prev = prevTurnRef.current;
+    for (const p of picks) {
+      if (p.user_id === viewerId && !originalPicksRef.current.has(p.round_number)) originalPicksRef.current.set(p.round_number, p);
+    }
+  }, [picks, viewerId]);
+  useEffect(() => {
+    const before = prevTurnRef.current;
     prevTurnRef.current = { round: board.current_round, userId: board.active_user_id };
-    if (!prev || (prev.round === board.current_round && prev.userId === board.active_user_id)) return;
+    // The board and the hit rows arrive in separate requests, so the board
+    // can move on a beat before the sabotage that ended the turn is visible
+    // (the card would read "kept" and never recover). Remember which turn
+    // just resolved and rebuild its card whenever more data lands for it.
+    if (before && (before.round !== board.current_round || before.userId !== board.active_user_id)) resolvedTurnRef.current = before;
+    const prev = resolvedTurnRef.current;
+    if (!prev) return;
     const mine = prev.userId === viewerId;
     const pick = mine ? (picks.find(p => p.round_number === prev.round && p.user_id === prev.userId) ?? null) : null;
     const spin = spins.find(s => s.round_number === prev.round && s.user_id === prev.userId) ?? null;
@@ -167,19 +187,22 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
     const respun = !sabotaged && roundHits.some(h => h.kind === "respin");
     const outcome: TurnResultData["outcome"] = sabotaged ? "sabotaged" : respun ? "respun" : "kept";
     const actorGuess = outcome !== "kept" ? guesses.find(g => g.round_number === prev.round && g.target_user_id === prev.userId && g.result === outcome) : undefined;
+    const original = mine && sabotaged ? (originalPicksRef.current.get(prev.round) ?? null) : null;
+    const swappedOut = original && pick && (original.player_id !== pick.player_id || original.season !== pick.season) ? original : null;
     setLastTurnResult({
+      swappedOut,
       round: prev.round,
       userId: prev.userId,
       playerName: players.find(p => p.user_id === prev.userId)?.display_name ?? "Someone",
       mine,
       pick,
       spin,
-      slot: slotForRound(prev.round),
+      slot: slotForRound(prev.round, board.round_count),
       outcome,
       actorName: actorGuess ? (players.find(p => p.user_id === actorGuess.user_id)?.display_name ?? null) : null,
     });
-  }, [board.current_round, board.active_user_id, picks, spins, hits, guesses, players, viewerId]);
-  if (standings.length) return <Final matchId={matchId} roomCode={roomCode} isHost={isHost} viewerId={viewerId} standings={standings} players={players} tiebreaks={tiebreaks} picks={picks} decisions={decisions} pickAvs={pickAvs} />;
+  }, [board.current_round, board.round_count, board.active_user_id, picks, spins, hits, guesses, players, viewerId]);
+  if (standings.length) return <Final roundCount={board.round_count} matchId={matchId} roomCode={roomCode} isHost={isHost} viewerId={viewerId} standings={standings} players={players} tiebreaks={tiebreaks} picks={picks} decisions={decisions} pickAvs={pickAvs} />;
   const disabled = pending || isPaused;
   // The turn clock's status label. Computed once here, where isActive and
   // activePlayer already live, rather than inside TurnClock -- it's handed
@@ -197,10 +220,10 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
   // actually applies to the viewer right now, and a quiet waiting state
   // otherwise.
   return (
-    <main className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pt-3 pb-4">
+    <PageShell variant="game" locked>
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="flex items-center gap-1.5 font-mono text-xs tracking-[.14em] text-fg-muted uppercase">
-          Round {board.current_round} of {board.round_count} · {board.slot.replace("_", " ")}
+          Round {board.current_round} of {board.round_count} · {slotLabel(board.slot)}
           <SlotInfo />
         </p>
         {isHost ? <PauseButton matchId={matchId} paused={isPaused} /> : null}
@@ -222,7 +245,7 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
           {board.turn_deadline && !turnRevealed ? (lastTurnResult ? <TurnResultCard result={lastTurnResult} /> : <Card edge={false}><CardTitle>Spinning…</CardTitle><CardMeta>The board is picking {isActive ? "your" : `${activePlayer?.display_name ?? "their"}`} team</CardMeta></Card>) : null}
           {board.turn_deadline && turnRevealed && isActive ? <PickForm options={options} mine={myPick} pending={disabled} onSubmit={(o) => call("submit_pick", { p_match_id: matchId, p_player_id: o.player_id, p_season: o.season })} /> : null}
           {board.turn_deadline && turnRevealed && !isActive ? <GuessForm targetName={activePlayer?.display_name ?? "them"} status={myGuess ? "guessed" : myPass ? "passed" : "open"} pending={disabled} loadOptions={loadActiveOptions} onSubmit={(choice, exact, replacement) => call("submit_guess", { p_match_id: matchId, p_player_id: choice.player_id, p_season: exact ? choice.season : null, p_replacement_player_id: exact ? replacement?.player_id : null, p_replacement_season: exact ? replacement?.season : null })} onPass={() => call("submit_pass", { p_match_id: matchId })} /> : null}
-          {board.x_factor_open && isActive ? <Decision mine={myDecision} pending={disabled} replacementSlots={xFactorReplacementSlots(picks.find(p => p.round_number === 14 && p.user_id === viewerId), options)} onSubmit={(slot) => call("submit_x_factor_decision", { p_match_id: matchId, p_replace_slot: slot })} /> : null}
+          {board.x_factor_open && isActive ? <Decision mine={myDecision} pending={disabled} replacementSlots={xFactorReplacementSlots(picks.find(p => p.round_number === xFactorRound(board.round_count) && p.user_id === viewerId), options, board.round_count)} onSubmit={(slot) => call("submit_x_factor_decision", { p_match_id: matchId, p_replace_slot: slot })} /> : null}
           {board.x_factor_open && !isActive ? <Card edge={false}><CardTitle>{activePlayer?.display_name ?? "…"}&apos;s X-Factor</CardTitle><CardMeta>Waiting on their decision</CardMeta></Card> : null}
           {!board.turn_deadline && !board.x_factor_open ? <Card edge={false}><CardTitle>Between turns</CardTitle><CardMeta>Waiting on the next turn to open</CardMeta></Card> : null}
         </section>
@@ -230,7 +253,7 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
           <RosterBoard board={board} players={players} spins={spins} picks={picks} statuses={statuses} hits={hits} viewerId={viewerId} justResolved={!turnRevealed ? lastTurnResult : null} />
         </aside>
       </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -305,7 +328,7 @@ function shuffle<T>(items: T[]): T[] {
 /**
  * "The turn" — what's publicly true right now, whether or not it's the
  * viewer's own action. A round's franchises are all dealt at once when the
- * round opens (see docs/games/sabotage_draft.md), so the reel isn't
+ * round opens (see docs/games/sabotage_draft/rules.md), so the reel isn't
  * revealing new information on every turn — it's re-announcing the turn
  * that's now current, the same instinct as a scoreboard calling out
  * possession rather than only silently changing a number.
@@ -393,8 +416,8 @@ function TurnSpinner({ board, players, spins, revealed }: { board: Board; player
       </div>
       <div className="px-3 pt-3 pb-3">
         <p className="font-slab text-2xl leading-none uppercase">{activePlayer?.display_name ?? "…"} is picking</p>
-        <p className="mt-1 font-mono text-[11px] tracking-[0.11em] text-panel-muted uppercase">
-          {revealed && landedName ? `Spun the ${landedName}` : "Spinning…"} · choosing {board.slot === "X_FACTOR" ? "any offensive skill player" : `a ${board.slot.replace(/[0-9]/g, "")}`}
+        <p className="mt-1 type-label-lg text-panel-muted">
+          {revealed && landedName ? `Spun the ${landedName}` : "Spinning…"} · choosing {chooseLabel(board.slot)}
         </p>
       </div>
     </Card>
@@ -448,8 +471,8 @@ function TurnClock({ label, remainingMs }: { label: string; remainingMs: number 
   const announcement = wholeSeconds !== null && [10, 5, 3].includes(wholeSeconds) ? `${wholeSeconds} seconds left` : "";
 
   return (
-    <section aria-label="Clock" className={`rounded border p-3 transition-colors ${tone}`}>
-      <p className="font-mono text-[11px] tracking-[0.15em] text-fg-muted uppercase">{label || "Locked"}</p>
+    <section aria-label="Clock" className={`border p-3 transition-colors ${tone}`}>
+      <p className="type-label-lg text-fg-muted">{label || "Locked"}</p>
       <p className={`mt-1 font-mono text-5xl leading-none tabular-nums ${urgent ? "text-hidden-text" : ""}`} aria-hidden>
         {display}
       </p>
@@ -469,7 +492,7 @@ function TurnClock({ label, remainingMs }: { label: string; remainingMs: number 
  *
  * Unlike the auction's LotStrip, there is no undealt cell here: every
  * franchise for every round is dealt up front and is public the whole game
- * (see docs/games/sabotage_draft.md), so even a turn nobody has reached yet
+ * (see docs/games/sabotage_draft/rules.md), so even a turn nobody has reached yet
  * already has a real slot and franchise to show. What a cell withholds is
  * only ever the pick's own content -- identity and year -- exactly what
  * Table's concealed weave already withholds for the current round.
@@ -483,7 +506,7 @@ function TurnStrip({ board, players, spins, picks, statuses, hits, viewerId }: {
   return (
     <MatchStrip ariaLabel="Draft order">
       {Array.from({ length: board.round_count }, (_, i) => i + 1).flatMap(round => {
-        const slot = slotForRound(round);
+        const slot = slotForRound(round, board.round_count);
         return seated.map((player, seatIndex) => {
           const key = `${round}-${player.user_id}`;
           const spin = spins.find(s => s.round_number === round && s.user_id === player.user_id) ?? null;
@@ -516,7 +539,7 @@ function PastTurnCell({ round, slot, player, pick, locked, hits, mine }: { round
   // call RosterBoard already makes for its own round rows).
   return (
     <StripCell tone="settled" width={92} ariaLabel={`Round ${round}, ${player.display_name}, ${slot.replace("_", " ")}, ${pick ? `${pick.display_name} · ${pick.season}` : locked ? "Locked" : "not yet drafted"}${badge ? `, ${badge}` : ""}`}>
-      <p className="truncate text-center font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">{player.display_name}</p>
+      <p className="truncate text-center type-label-xs leading-none text-fg-muted">{player.display_name}</p>
       <div className="relative w-fit mx-auto mb-1">
         {pick ? (
           <PlayerPortrait name={pick.display_name} headshotUrl={pick.headshot_url} className="mt-1 h-8 w-8" />
@@ -547,7 +570,7 @@ function CurrentTurnCell({ round, slot, player, spin, ref }: { round: number; sl
 function FutureTurnCell({ round, slot, player, spin }: { round: number; slot: string; player: Player; spin: Spin | null }) {
   return (
     <StripCell tone="upcoming" width={92} ariaLabel={`Round ${round}, ${player.display_name}, ${slot.replace("_", " ")}, not yet drafted`}>
-      <p className="w-full truncate text-center font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">R{round} · {slot.replace("_", " ")}</p>
+      <p className="w-full truncate text-center type-label-xs leading-none text-fg-muted">R{round} · {slot.replace("_", " ")}</p>
       <StripCellAvatar name={player.display_name} avatarUrl={player.avatar_url} muted />
       <StripCellName center>{player.display_name}</StripCellName>
       {spin ? <StripCellCaption center icon={<TeamLogo code={spin.franchise_code} className="h-2.5 w-2.5" />}><span className="text-fg-muted/70">{franchiseName(spin.franchise_code)}</span></StripCellCaption> : null}
@@ -566,12 +589,40 @@ function FutureTurnCell({ round, slot, player, spin }: { round: number; slot: st
  * same "a result just landed" beat.
  */
 function TurnResultCard({ result }: { result: TurnResultData }) {
-  const { playerName, mine, pick, spin, slot, outcome, actorName } = result;
+  const { playerName, mine, pick, spin, slot, outcome, actorName, swappedOut } = result;
   const headline = outcome === "kept"
     ? mine ? "You kept the pick" : `${playerName} kept the pick`
     : outcome === "respun"
     ? `${actorName ?? "Someone"} forced a respin on ${mine ? "you" : playerName}`
     : `${actorName ?? "Someone"} sabotaged ${mine ? "you" : playerName}`;
+  // Sabotaged and the viewer saw what they had drafted: show it leaving and
+  // the replacement arriving, rather than only saying it happened.
+  if (mine && pick && swappedOut) {
+    return (
+      <Card className="animate-sold-headline" edge={false}>
+        <div className="flex flex-col gap-2 p-3">
+          <p className="type-label text-panel-muted">{headline}</p>
+          <div className="relative flex items-center gap-2.5">
+            <div className="animate-swap-out flex min-w-0 flex-1 items-center gap-2.5">
+              <PlayerPortrait name={swappedOut.display_name} headshotUrl={swappedOut.headshot_url} className="h-10 w-10 shrink-0" />
+              <div className="min-w-0">
+                <p className="type-label-xs text-panel-muted">Removed</p>
+                <p className="truncate font-slab text-base leading-none uppercase line-through decoration-hidden-text">{swappedOut.display_name} · {swappedOut.season}</p>
+              </div>
+            </div>
+            <span aria-hidden className="animate-swap-arrow shrink-0 font-mono text-lg text-hidden-text">→</span>
+            <div className="animate-swap-in flex min-w-0 flex-1 items-center gap-2.5">
+              <PlayerPortrait name={pick.display_name} headshotUrl={pick.headshot_url} className="h-10 w-10 shrink-0" />
+              <div className="min-w-0">
+                <p className="type-label-xs text-hidden-text">Now your {slotLabel(slot)}</p>
+                <p className="truncate font-slab text-base leading-none uppercase">{pick.display_name} · {pick.season}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
   return (
     <Card className="animate-sold-headline" edge={!mine}>
       <div className="flex items-center gap-2.5 p-3">
@@ -581,7 +632,7 @@ function TurnResultCard({ result }: { result: TurnResultData }) {
           <TeamLogo code={spin.franchise_code} className="h-10 w-10 shrink-0" />
         ) : null}
         <div className="min-w-0">
-          <p className="font-mono text-[10px] tracking-[0.14em] text-panel-muted uppercase">{headline}</p>
+          <p className="type-label text-panel-muted">{headline}</p>
           <p className="truncate font-slab text-xl leading-none uppercase">
             {mine && pick ? `${pick.display_name} · ${pick.season}` : `${slot.replace("_", " ")}${spin ? ` · ${franchiseName(spin.franchise_code)}` : ""}`}
           </p>
@@ -664,18 +715,18 @@ function RosterBoard({ board, players, spins, picks, statuses, hits, viewerId, j
                   reads the number. Zero stays plain text; there's nothing to
                   call out. */}
               {hitCount ? (
-                <span className="whitespace-nowrap rounded-full bg-hidden/15 px-2 py-0.5 font-mono text-[9px] tracking-[0.06em] text-hidden-text uppercase">
+                <span className="whitespace-nowrap rounded-full bg-hidden/15 px-2 py-0.5 type-label-xs text-hidden-text">
                   {hitCount} hit{hitCount === 1 ? "" : "s"}
                 </span>
               ) : (
-                <span className="whitespace-nowrap font-mono text-[9px] tracking-[0.06em] text-fg-muted uppercase">No hits</span>
+                <span className="whitespace-nowrap type-label-xs text-fg-muted">No hits</span>
               )}
               <Chevron className="roster-chev h-4 w-4 shrink-0 text-fg-muted transition-transform" />
             </summary>
             <div className="px-2.5 pb-2.5">
               <div className="flex flex-col gap-1.5 bg-panel p-1.5 text-panel-fg">
                 {rounds.map(round => {
-                  const slot = slotForRound(round);
+                  const slot = slotForRound(round, board.round_count);
                   const filled = statuses.some(s => s.round_number === round && s.user_id === player.user_id);
                   const roundHits = hits.filter(h => h.round_number === round && h.target_user_id === player.user_id);
                   const respun = roundHits.some(h => h.kind === "respin");
@@ -699,14 +750,14 @@ function RosterBoard({ board, players, spins, picks, statuses, hits, viewerId, j
                     ? "border-hidden-ink/50 bg-hidden-ink/10"
                     : "border-dashed border-panel-fg/10";
                   return (
-                    <div key={round} className={`flex items-center justify-between gap-2 rounded border px-2.5 py-2 ${rowTone}`}>
+                    <div key={round} className={`flex items-center justify-between gap-2 border px-2.5 py-2 ${rowTone}`}>
                       {/* Round number dropped: slotForRound (see
                           lib/sabotage-draft/rounds.ts) is a fixed 1:1
                           round<->slot mapping, and these rows are already
                           rendered in round order, so "R{round}" was a third
                           label for information the slot and the row's own
                           position already carry. */}
-                      <span className="shrink-0 font-mono text-[10px] tracking-[0.07em] text-panel-muted uppercase">{slot.replace("_", " ")}</span>
+                      <span className="shrink-0 type-label text-panel-muted">{slot.replace("_", " ")}</span>
                       <span className="flex min-w-0 items-center gap-2 text-sm">
                         {/* `pick` is already scoped by RLS to exactly what this
                             viewer may see -- their own any time, or anyone's
@@ -724,12 +775,12 @@ function RosterBoard({ board, players, spins, picks, statuses, hits, viewerId, j
                         ) : filled && mine ? (
                           <span className="truncate font-semibold">Locked</span>
                         ) : filled ? (
-                          <Concealed label={`${player.display_name}'s concealed pick`} className="inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 font-mono text-[9px] tracking-[0.06em] uppercase">
+                          <Concealed label={`${player.display_name}'s concealed pick`} className="inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 type-label-xs">
                             {spin ? <TeamLogo code={spin.franchise_code} className="h-3 w-3" /> : null}
                             {spin ? franchiseName(spin.franchise_code) : "Locked"}
                           </Concealed>
                         ) : choosing ? (
-                          <span className="font-mono text-[10px] tracking-[0.07em] text-hidden-ink uppercase">Choosing…</span>
+                          <span className="type-label text-hidden-ink">Choosing…</span>
                         ) : upNext ? (
                           <span className="font-mono text-[10px] text-panel-muted">— up next —</span>
                         ) : (
@@ -851,28 +902,7 @@ function PlayerPicker({ options, needsSeason, value, onChange, pending }: { opti
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [expanded, setExpanded] = useState<Tenured | null>(null);
-  // The dropdown is portaled to <body> (see below) so it isn't clipped by
-  // whichever `Card` it's sitting inside — Card is `overflow-hidden` by
-  // design (it clips the top edge strip to the card's rounded corners), and
-  // this list needs to float above that, not be cropped by it. A portal
-  // needs its own coordinates, since it's no longer a normal document-flow
-  // child of the input it belongs to.
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
-  const positionDropdown = useCallback(() => {
-    const rect = searchInputRef.current?.getBoundingClientRect();
-    if (rect) setDropdownRect({ top: rect.bottom, left: rect.left, width: rect.width });
-  }, []);
-  // Recomputed for as long as the dropdown is open, not just once on open —
-  // a scroll or resize while it's up would otherwise leave it floating over
-  // the wrong spot.
-  useLayoutEffect(() => {
-    if (!searchOpen) return;
-    positionDropdown();
-    window.addEventListener("resize", positionDropdown);
-    window.addEventListener("scroll", positionDropdown, true);
-    return () => { window.removeEventListener("resize", positionDropdown); window.removeEventListener("scroll", positionDropdown, true); };
-  }, [searchOpen, positionDropdown]);
   // Rank badges track tenure, not screen position, so they're captured
   // before the expanded card gets pulled to the front of the row below.
   const rankByPlayer = useMemo(() => new Map(tenured.map((g, i) => [g.player_id, i + 1])), [tenured]);
@@ -913,7 +943,7 @@ function PlayerPicker({ options, needsSeason, value, onChange, pending }: { opti
           <PlayerPortrait name={value.display_name} headshotUrl={value.headshot_url} className="h-7 w-7" />
           <span className="truncate"><span className="font-semibold">{value.display_name}</span> <span className="font-mono text-xs text-fg-muted">· {value.season}</span></span>
         </span>
-        <button type="button" disabled={pending} onClick={() => { onChange(null); setExpanded(null); }} className="cursor-pointer shrink-0 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase underline underline-offset-2">Change</button>
+        <button type="button" disabled={pending} onClick={() => { onChange(null); setExpanded(null); }} className="cursor-pointer shrink-0 type-label text-fg-muted underline underline-offset-2">Change</button>
       </div>
     );
   }
@@ -961,12 +991,7 @@ function PlayerPicker({ options, needsSeason, value, onChange, pending }: { opti
               field that's secretly a dropdown reads as one at a glance. */}
           <Chevron className={`pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-fg-muted transition-transform ${searchOpen ? "-rotate-90" : "rotate-90"}`} />
         </div>
-        {searchOpen && dropdownRect
-          ? createPortal(
-              <ul
-                style={{ position: "fixed", top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width }}
-                className="z-50 mt-1 max-h-56 overflow-y-auto border border-line bg-surface-raised shadow-card"
-              >
+        <AnchoredList anchor={searchInputRef} open={searchOpen}>
                 {filteredRows.length ? filteredRows.map(row => (
                   <li key={row.key}>
                     <button
@@ -986,10 +1011,7 @@ function PlayerPicker({ options, needsSeason, value, onChange, pending }: { opti
                 )) : (
                   <li className="px-3 py-2 font-mono text-xs text-fg-muted uppercase">No matches</li>
                 )}
-              </ul>,
-              document.body,
-            )
-          : null}
+        </AnchoredList>
       </div>
     </div>
   );
@@ -1003,7 +1025,7 @@ function PickForm({ options, mine, pending, onSubmit }: { options: Option[]; min
         <PlayerPortrait name={mine.display_name} headshotUrl={mine.headshot_url} className="h-9 w-9" />
         <div className="min-w-0">
           <p className="font-slab text-2xl leading-none uppercase">Your pick is locked</p>
-          <p className="mt-1 truncate font-mono text-[11px] tracking-[0.11em] text-panel-muted uppercase">{mine.display_name} · {mine.season} · waiting on the rest of the table</p>
+          <p className="mt-1 truncate type-label-lg text-panel-muted">{mine.display_name} · {mine.season} · waiting on the rest of the table</p>
         </div>
       </div>
       <div className="pb-3" />
@@ -1027,7 +1049,7 @@ function PickForm({ options, mine, pending, onSubmit }: { options: Option[]; min
 function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass }: { targetName: string; status: "open" | "guessed" | "passed"; pending: boolean; loadOptions: () => Promise<Option[]>; onSubmit: (choice: Option, exact: boolean, replacement?: Option) => void; onPass: () => void }) {
   const [options, setOptions] = useState<Option[]>([]);
   // Which of the two guess types this turn spends (see docs/games/
-  // sabotage_draft.md's "Two guesses, two different weapons"): a name-only
+  // docs/games/sabotage_draft/rules.md's "Two guesses, two different weapons"): a name-only
   // guess is cheap, uncontrolled chaos -- right, and the same player is
   // respun to a random *different year*, no choice for anyone, and no
   // erasing who they picked. Naming the exact year is the harder guess, and
@@ -1055,11 +1077,11 @@ function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass 
       <div className="flex flex-col gap-2 p-3 pt-0">
         <button type="button" disabled={pending} onClick={() => chooseMode("name")} className="flex w-full flex-col items-start gap-0.5 border border-line bg-surface-raised px-3 py-2.5 text-left hover:border-hidden-text">
           <span className="text-sm font-semibold text-fg">Guess the player</span>
-          <span className="font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">Right? Same player, a random different year — you don&apos;t choose it</span>
+          <span className="type-label text-fg-muted">Right? Same player, a random different year — you don&apos;t choose it</span>
         </button>
         <button type="button" disabled={pending} onClick={() => chooseMode("exact")} className="flex w-full flex-col items-start gap-0.5 border border-line bg-surface-raised px-3 py-2.5 text-left hover:border-hidden-text">
           <span className="text-sm font-semibold text-fg">Guess the player and year</span>
-          <span className="font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase">Right? You choose exactly what replaces it</span>
+          <span className="type-label text-fg-muted">Right? You choose exactly what replaces it</span>
         </button>
         <Button variant="ghost" className="!bg-surface-raised" disabled={pending} onClick={onPass}>Pass</Button>
       </div>
@@ -1079,15 +1101,15 @@ function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass 
       <div className="flex flex-col gap-3 p-3 pt-0">
         <div className="flex items-center justify-between gap-2 bg-surface-raised px-3 py-2 text-sm text-fg">
           <span>{exact ? "Guessing the player and year" : "Guessing the player"}</span>
-          <button type="button" disabled={pending} onClick={() => chooseMode(null)} className="cursor-pointer shrink-0 font-mono text-[10px] tracking-[0.08em] text-fg-muted uppercase underline underline-offset-2">Change</button>
+          <button type="button" disabled={pending} onClick={() => chooseMode(null)} className="cursor-pointer shrink-0 type-label text-fg-muted underline underline-offset-2">Change</button>
         </div>
         <div className="flex flex-col gap-1.5">
-          {exact ? <p className="font-mono text-[10px] tracking-[0.08em] text-panel-muted uppercase">Step 1 of 2 — guess the player</p> : null}
+          {exact ? <p className="type-label text-panel-muted">Step 1 of 2 — guess the player</p> : null}
           <PlayerPicker options={options} needsSeason={exact} value={guess} onChange={chooseGuess} pending={pending} />
         </div>
         {showReplacementStep ? (
           <div className="flex flex-col gap-1.5">
-            <p className="font-mono text-[10px] tracking-[0.08em] text-panel-muted uppercase">Step 2 of 2 — choose their replacement</p>
+            <p className="type-label text-panel-muted">Step 2 of 2 — choose their replacement</p>
             <PlayerPicker options={options} needsSeason value={replacement} onChange={setReplacement} pending={pending} />
           </div>
         ) : null}
@@ -1099,12 +1121,9 @@ function GuessForm({ targetName, status, pending, loadOptions, onSubmit, onPass 
     </Card>
   );
 }
-export function xFactorReplacementSlots(pick: Pick | undefined, options: Option[]): string[] {
+export function xFactorReplacementSlots(pick: Pick | undefined, options: Option[], roundCount = 14): string[] {
   const category = pick && options.find(option => option.player_id === pick.player_id && option.season === pick.season)?.slot_category;
-  if (category === "QB" || category === "TE") return [category];
-  if (category === "RB") return ["RB1", "RB2"];
-  if (category === "WR") return ["WR1", "WR2", "WR3"];
-  return [];
+  return xFactorTargets(category, roundCount);
 }
 
 function Decision({ mine, pending, replacementSlots, onSubmit }: { mine?: Decision; pending: boolean; replacementSlots: string[]; onSubmit: (slot: string | null) => void }) { if (mine) return <Card><CardTitle>X-Factor decision locked</CardTitle><CardMeta>{mine.replace_slot ? `Replaces ${mine.replace_slot}` : "Discarded"}</CardMeta></Card>; return <Card><CardTitle>Assign or discard your X-Factor</CardTitle><div className="grid grid-cols-2 gap-2 p-3 pt-0">{replacementSlots.map(slot => <Button key={slot} variant="ink" disabled={pending} onClick={() => onSubmit(slot)}>Replace {slot}</Button>)}<Button className="col-span-2" disabled={pending} onClick={() => onSubmit(null)}>Discard X-Factor</Button></div></Card>; }
@@ -1128,7 +1147,7 @@ function Decision({ mine, pending, replacementSlots, onSubmit }: { mine?: Decisi
  * total order: no two players ever land on the same position, and there is
  * always exactly one winner.
  */
-function Final({ matchId, roomCode, isHost, viewerId, standings, players, tiebreaks, picks, decisions, pickAvs }: { matchId: string; roomCode: string | null; isHost: boolean; viewerId: string; standings: Standing[]; players: Player[]; tiebreaks: Tiebreak[]; picks: Pick[]; decisions: Decision[]; pickAvs: PickAv[] }) {
+function Final({ roundCount, matchId, roomCode, isHost, viewerId, standings, players, tiebreaks, picks, decisions, pickAvs }: { roundCount: number; matchId: string; roomCode: string | null; isHost: boolean; viewerId: string; standings: Standing[]; players: Player[]; tiebreaks: Tiebreak[]; picks: Pick[]; decisions: Decision[]; pickAvs: PickAv[] }) {
   const name = (id: string) => players.find(p => p.user_id === id)?.display_name ?? "Unknown";
   const avatarOf = (id: string) => players.find(p => p.user_id === id)?.avatar_url ?? null;
   const ranked = [...standings].sort((a, b) => b.wins - a.wins || a.tiebreak_rank - b.tiebreak_rank);
@@ -1144,19 +1163,19 @@ function Final({ matchId, roomCode, isHost, viewerId, standings, players, tiebre
     endMetric: (
       <span className="flex min-w-[4.75rem] flex-col items-end gap-2">
         <span className="font-mono text-[8px] leading-none tracking-[0.12em] text-panel-muted uppercase">Draft grade</span>
-        <GradeBadge grade={gradeForTeam(s.roster_strength)} emphasis="standings" />
+        <GradeBadge grade={gradeForTeam(s.roster_strength, modeForRoundCount(roundCount))} emphasis="standings" />
       </span>
     ),
-    roster: <SabotageRosterFinal userId={s.user_id} picks={picks} decisions={decisions} pickAvs={pickAvs} />,
+    roster: <SabotageRosterFinal roundCount={roundCount} userId={s.user_id} picks={picks} decisions={decisions} pickAvs={pickAvs} />,
   }));
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-8">
+    <PageShell variant="narrow">
       <FinalStandings headline={headline} rows={rows} />
       {tiebreaks.length ? <TiebreakBracket tiebreaks={tiebreaks} players={players} viewerId={viewerId} /> : null}
       {roomCode ? <PostGameNavigation matchId={matchId} roomCode={roomCode} /> : null}
       {roomCode ? <PostGameControls matchId={matchId} roomCode={roomCode} isHost={isHost} /> : null}
-    </main>
+    </PageShell>
   );
 }
 
@@ -1185,13 +1204,13 @@ function TiebreakBracket({ tiebreaks, players, viewerId }: { tiebreaks: Tiebreak
             <section key={wins} aria-labelledby={`tiebreak-${wins}`}>
               <header className="mb-2 flex items-baseline justify-between border-b border-panel-shade pb-2">
                 <h3 id={`tiebreak-${wins}`} className="font-slab text-xl leading-none uppercase">{record} tiebreak</h3>
-                <span className="font-mono text-[9px] tracking-[0.13em] text-panel-muted uppercase">One-game playoff</span>
+                <span className="type-label-xs text-panel-muted">One-game playoff</span>
               </header>
               <motion.div variants={tiebreakBoardReveal} initial="initial" animate="animate" className="overflow-x-auto pb-1">
-                <div className="flex min-w-max gap-5 rounded-sm bg-surface p-3 shadow-well">
+                <div className="flex min-w-max gap-5 bg-surface p-3 shadow-well">
                   {orderedRounds.map(([round, roundGames], roundIndex) => (
                     <motion.div key={round} variants={tiebreakRoundReveal(roundIndex)} initial="initial" animate="animate" className="flex w-48 flex-col gap-2">
-                      <p className="font-mono text-[9px] tracking-[0.13em] text-fg-muted uppercase">
+                      <p className="type-label-xs text-fg-muted">
                         {orderedRounds.length === 1 ? "Final" : roundIndex === orderedRounds.length - 1 ? "Final" : `Round ${round}`}
                       </p>
                       <div className={`flex min-h-24 flex-1 flex-col gap-3 ${roundIndex === 0 ? "justify-start" : "justify-around"}`}>
@@ -1229,9 +1248,9 @@ function BracketMatch({ game, playerA, playerB, viewerId, reveal, revealDelay }:
         <div className="flex items-center gap-2 text-sm text-fg">
           <RosterAvatar name={playerName(playerA)} avatarUrl={playerA?.avatar_url ?? null} mine={playerA?.user_id === viewerId} />
           <span className="min-w-0 flex-1 truncate font-slab text-base uppercase">{playerName(playerA)}</span>
-          <span className="font-mono text-[9px] tracking-[0.1em] text-fg-muted uppercase">Bye</span>
+          <span className="type-label-xs text-fg-muted">Bye</span>
         </div>
-        <p className="mt-1 pl-9 font-mono text-[9px] tracking-[0.08em] text-fg-muted uppercase">Advances</p>
+        <p className="mt-1 pl-9 type-label-xs text-fg-muted">Advances</p>
       </motion.article>
     );
   }
@@ -1268,9 +1287,8 @@ function BracketCompetitor({ player, score, winner, viewerId, revealDelay }: { p
 }
 
 /**
- * One table's final roster: all thirteen picks in round order — the seven
- * offensive skill slots and the six defense/OL/ST slots ROUND_SLOTS deals
- * right after them, not just the first seven — plus, when accepted, the
+ * One table's final roster: every pick but the X-Factor, in round order,
+ * for whichever mode the match was played in (`rosterSlots`) — plus, when accepted, the
  * X-Factor swap replacing whichever (offense-only, per 0055's own check)
  * slot it targeted, shown as a strikeout of the discarded card's name
  * rather than just disappearing it. Each player gets their own photo
@@ -1282,15 +1300,16 @@ function BracketCompetitor({ player, score, winner, viewerId, revealDelay }: { p
  * still-live table reaching this screen mid-round would be the only way,
  * and even then a viewer's own picks always resolve).
  */
-function SabotageRosterFinal({ userId, picks, decisions, pickAvs }: { userId: string; picks: Pick[]; decisions: Decision[]; pickAvs: PickAv[] }) {
+function SabotageRosterFinal({ roundCount, userId, picks, decisions, pickAvs }: { roundCount: number; userId: string; picks: Pick[]; decisions: Decision[]; pickAvs: PickAv[] }) {
   const avFor = (round: number) => pickAvs.find(a => a.round_number === round && a.user_id === userId)?.av ?? null;
   const decision = decisions.find(d => d.user_id === userId);
-  const xFactorPick = decision?.replace_slot ? (picks.find(p => p.round_number === X_FACTOR_ROUND && p.user_id === userId) ?? null) : null;
-  const xFactorAv = xFactorPick ? avFor(X_FACTOR_ROUND) : null;
+  const categoryFor = (round: number) => pickAvs.find(a => a.round_number === round && a.user_id === userId)?.slot_category;
+  const xFactorPick = decision?.replace_slot ? (picks.find(p => p.round_number === xFactorRound(roundCount) && p.user_id === userId) ?? null) : null;
+  const xFactorAv = xFactorPick ? avFor(xFactorRound(roundCount)) : null;
 
   return (
     <dl className="flex flex-col gap-2">
-      {ROUND_SLOTS.map((slot, i) => {
+      {rosterSlots(roundCount).map((slot, i) => {
         const round = i + 1;
         const pick = picks.find(p => p.round_number === round && p.user_id === userId);
         const replaced = decision?.replace_slot === slot;
@@ -1298,7 +1317,7 @@ function SabotageRosterFinal({ userId, picks, decisions, pickAvs }: { userId: st
         const av = replaced && xFactorPick ? xFactorAv : avFor(round);
         return (
           <div key={slot} className="flex items-center gap-2.5">
-            <dt className="w-9 shrink-0 font-mono text-[10px] tracking-[0.05em] text-panel-muted uppercase">{slot.replace("_", " ")}</dt>
+            <dt className="w-9 shrink-0 type-label text-panel-muted">{slot.replace("_", " ")}</dt>
             <PlayerPortrait name={shown?.display_name ?? "?"} headshotUrl={shown?.headshot_url} className="h-7 w-7" />
             <dd className="min-w-0 flex-1 truncate text-[11px] text-panel-fg normal-case">
               {shown ? (
@@ -1310,7 +1329,7 @@ function SabotageRosterFinal({ userId, picks, decisions, pickAvs }: { userId: st
                 <span className="text-panel-muted">—</span>
               )}
             </dd>
-            <GradeBadge grade={shown && av !== null ? gradeForPick(slot, av) : null} />
+            <GradeBadge grade={shown && av !== null ? gradeForPick(slot, av, replaced && xFactorPick ? categoryFor(xFactorRound(roundCount)) : categoryFor(round)) : null} />
           </div>
         );
       })}

@@ -1,5 +1,6 @@
 import { AuthForm } from "@/components/foundation/identity/AuthForm";
 import { safeNextPath } from "@/lib/foundation/identity/next";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 export const metadata = { title: "Sign in", robots: { index: false } };
 
@@ -12,8 +13,8 @@ export default async function LoginPage({
   const safeNext = safeNextPath(next);
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-6 py-16">
+    <PageShell variant="form">
       <AuthForm mode="login" next={safeNext} />
-    </main>
+    </PageShell>
   );
 }

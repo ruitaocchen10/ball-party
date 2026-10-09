@@ -7,10 +7,12 @@ import { PostHeroHeader } from "@/components/foundation/content/prompts/PostHero
 import { PromptContext } from "@/components/foundation/content/prompts/PromptContext";
 import { PromptThread } from "@/components/foundation/content/prompts/PromptThread";
 import { canAnswerPrompt, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { fetchBoldPredictionBoard } from "@/lib/foundation/content/prompts/boldFeed";
 import { fetchPromptById } from "@/lib/foundation/content/prompts/feed";
 import { fetchPromptMeta } from "@/lib/foundation/content/prompts/meta";
 import { SITE_NAME } from "@/lib/seo/site";
 import { createClient } from "@/lib/supabase/server";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /**
  * What a search result or a shared link shows for this prompt. Reads only the
@@ -47,6 +49,7 @@ export default async function PromptDetailPage(props: PageProps<"/prompts/[id]">
     fetchPromptById(supabase, viewer ? claims.sub : null, id),
   ]);
   if (!post) notFound();
+  const boldPredictions = post.templateKind === "bold_predictions" ? await fetchBoldPredictionBoard(supabase, post, viewer ? claims.sub : null) : undefined;
 
   // The thread composes as the viewer, so it keeps the name and avatar a
   // guest's placeholder profile has; the header and sidebar do not (see
@@ -59,15 +62,10 @@ export default async function PromptDetailPage(props: PageProps<"/prompts/[id]">
     <>
       <Sidebar displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
       <DashboardHeader displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
-      <main data-prompt-detail className="app-page flex-1">
-        <div data-prompt-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
-          <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
-            <PostHeroHeader post={post} />
-            <PromptThread post={post} displayName={displayName} avatarUrl={avatarUrl} viewerCanAnswer={canAnswerPrompt(claims)} />
-          </div>
-          <PromptContext post={post} />
-        </div>
-      </main>
+      <PageShell variant="dashboard" rail={<PromptContext post={post} />}>
+        <PostHeroHeader post={post} />
+        <PromptThread post={post} displayName={displayName} avatarUrl={avatarUrl} viewerCanAnswer={canAnswerPrompt(claims)} boldPredictions={boldPredictions} />
+      </PageShell>
     </>
   );
 }

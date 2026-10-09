@@ -1,10 +1,10 @@
 # Team logos
 
-Sabotage draft's franchise logos: one PNG per franchise code, uploaded once
+NFL franchise logos (used by Sabotage Draft, QB Season Builder and the Huddle): one PNG per franchise code, uploaded once
 into the `team-logos` Supabase Storage bucket (see
 [`supabase/migrations/*_sabotage_draft_team_logos_bucket.sql`](../../supabase/migrations)),
 under `{franchise_code}.png` — the same PFR code
-[`franchises.ts`](../../webapp/lib/sabotage-draft/franchises.ts) already
+[`franchises.ts`](../../webapp/lib/foundation/content/nfl/franchises.ts) already
 keys franchise identity on everywhere else in the app.
 
 ## Running it
@@ -70,8 +70,7 @@ build_logos.mjs   fetch (ESPN CDN) + upload (Storage REST), no dependencies
 
 No transform step and nothing to unit test here, unlike the roster pool:
 there's no parsing, folding, or identity-reconciliation logic — just a fixed
-32-entry crosswalk, a fetch, and an upload. `webapp/components/sabotage-
-draft/TeamLogo.tsx` is what's actually exercised by tests; it's written to
+32-entry crosswalk, a fetch, and an upload. `webapp/components/foundation/ui-kit/TeamLogo.tsx` is what's actually exercised by tests; it's written to
 degrade to text-only for any code this script hasn't (yet, or ever)
 succeeded for, so a partial or never-run upload is never a hard failure for
 the app itself.

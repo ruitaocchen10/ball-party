@@ -30,7 +30,7 @@ export function DashboardHeader({
         <div className="flex shrink-0 items-center gap-1.5">
           <Link
             href="/party"
-            className="flex h-10 items-center gap-2 bg-panel px-3.5 font-mono text-[10px] font-bold tracking-[0.12em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+            className="flex h-10 items-center gap-2 bg-panel px-3.5 type-label font-bold text-panel-fg transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
           >
             <Plus aria-hidden className="h-4 w-4" strokeWidth={2} />
             <span className="hidden lg:inline">Start a party</span>
@@ -48,7 +48,7 @@ export function DashboardHeader({
           ) : (
             <Link
               href="/login"
-              className="ml-1 font-mono text-[10px] font-semibold tracking-[0.12em] text-fg-muted uppercase transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+              className="ml-1 type-label font-semibold text-fg-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
             >
               Sign in
             </Link>

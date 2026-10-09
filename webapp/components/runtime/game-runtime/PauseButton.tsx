@@ -47,7 +47,7 @@ export function PauseButton({ matchId, paused }: { matchId: string; paused: bool
       >
         {paused ? "Resume" : "Pause"}
       </Button>
-      <AnimatedMessage role="alert" className="text-right font-mono text-[10px] tracking-[0.13em] text-hidden-text uppercase">
+      <AnimatedMessage role="alert" className="text-right type-label text-hidden-text">
         {error}
       </AnimatedMessage>
     </div>

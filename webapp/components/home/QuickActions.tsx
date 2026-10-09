@@ -26,7 +26,7 @@ function Action({ href, icon: Icon, label, detail, featured = false }: { href: s
     <Link href={href} className={`group flex items-center gap-3 border-b border-line px-1 py-3.5 transition-colors last:border-b-0 hover:bg-surface ${featured ? "text-fg" : "text-fg-muted hover:text-fg"} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel`}>
       <span className={`flex h-8 w-8 shrink-0 items-center justify-center ${featured ? "bg-panel text-panel-fg" : "bg-surface text-fg-muted ring-1 ring-line ring-inset"}`}><Icon aria-hidden className="h-4 w-4" strokeWidth={1.7} /></span>
       <span className="min-w-0 flex-1">
-        <span className="block font-mono text-[10px] font-semibold tracking-[0.08em] uppercase">{label}</span>
+        <span className="block type-label font-semibold">{label}</span>
         <span className="mt-0.5 block truncate text-xs text-fg-muted">{detail}</span>
       </span>
       <ArrowRight aria-hidden className="h-4 w-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={1.8} />

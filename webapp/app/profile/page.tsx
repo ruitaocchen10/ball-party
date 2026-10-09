@@ -1,8 +1,9 @@
 import Link from "next/link";
 
+import { FriendsManager } from "@/components/foundation/friends/FriendsManager";
 import { ProfileEditor } from "@/components/foundation/identity/ProfileEditor";
 import { ProfileHeader } from "@/components/foundation/identity/ProfileHeader";
-import { ProfileHighlightsCard, type ProfileHighlights } from "@/components/foundation/identity/ProfileHighlights";
+import { ProfileHighlightsCard } from "@/components/foundation/identity/ProfileHighlights";
 import { SlotFaceC, YourCalls } from "@/components/foundation/content/prompts/SlotFaces";
 import { TakeCard } from "@/components/foundation/content/prompts/TakeCard";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
@@ -11,12 +12,17 @@ import { canViewProfile, isSignedInViewer } from "@/lib/foundation/identity/view
 import { GuestUpgrade } from "@/components/foundation/identity/GuestUpgrade";
 import { fetchPromptFeed } from "@/lib/foundation/content/prompts/feed";
 import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
-import { completedMatchesFromHistory, profileStatRanges, summarizeMultiplayerProfileRange, type CompletedMatchWithMode } from "@/lib/foundation/identity/summary";
+import { completedMatchesFromHistory } from "@/lib/foundation/identity/summary";
+import { joinedMonth, profileHighlights } from "@/lib/foundation/identity/highlights";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
+import { friendsDataFromRows } from "@/lib/foundation/friends/friends";
+import { PROFILE_TABS, parseProfileTab, type ProfileTab } from "@/lib/foundation/identity/profileTabs";
 import { createClient } from "@/lib/supabase/server";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
+import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 
 /** A player's durable record, kept deliberately separate from a live room. */
-export default async function ProfilePage() {
+export default async function ProfilePage(props: PageProps<"/profile">) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
@@ -24,32 +30,44 @@ export default async function ProfilePage() {
   if (!isSignedInViewer(claims)) return <SignedOutProfile />;
   if (!canViewProfile(claims)) return <GuestProfile />;
 
-  const [{ data: profile }, { data: historyRows }, { data: knowerRows }, { data: takeRows }, promptFeed] = await Promise.all([
+  const tab = parseProfileTab((await props.searchParams).tab);
+
+  // Each tab fetches only what it shows. Pending requests are read on every tab
+  // because the Friends tab label counts them.
+  const [{ data: profile }, historyRows, knowerRows, takeRows, promptFeed, friends, requests, blocked, code] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name, avatar_url, created_at")
+      .select("display_name, avatar_url, created_at, username")
       .eq("id", claims.sub)
       .single(),
-    supabase.rpc("my_match_history"),
-    supabase.rpc("my_profile_knower_highlights"),
+    tab === "stats" ? supabase.rpc("my_match_history") : null,
+    tab === "stats" ? supabase.rpc("my_profile_knower_highlights") : null,
     // A take starts a prompt discussion; replies live on its detail page and
     // don't belong in the profile's take history.
-    supabase
-      .from("prompt_comments")
-      .select("id, post_id, body, created_at")
-      .eq("author_id", claims.sub)
-      .is("parent_comment_id", null)
-      .order("created_at", { ascending: false }),
-    fetchPromptFeed(supabase, claims.sub),
+    tab === "takes"
+      ? supabase
+          .from("prompt_comments")
+          .select("id, post_id, body, created_at")
+          .eq("author_id", claims.sub)
+          .is("parent_comment_id", null)
+          .order("created_at", { ascending: false })
+      : null,
+    tab === "takes" ? fetchPromptFeed(supabase, claims.sub) : null,
+    tab === "friends" ? supabase.rpc("list_friends") : null,
+    supabase.rpc("list_friend_requests"),
+    tab === "friends" ? supabase.rpc("list_blocked_users") : null,
+    tab === "friends" ? supabase.rpc("get_my_friend_code") : null,
   ]);
 
-  const matches = completedMatchesFromHistory(historyRows ?? []);
-  const highlights = profileHighlights(matches, knowerRows ?? []);
-  const takeHistory = (takeRows ?? []).flatMap((take) => {
-    const post = promptFeed.find((candidate) => candidate.id === take.post_id);
+  const matches = completedMatchesFromHistory(historyRows?.data ?? []);
+  const highlights = profileHighlights(matches, knowerRows?.data ?? []);
+  const takeHistory = (takeRows?.data ?? []).flatMap((take) => {
+    const post = promptFeed?.find((candidate) => candidate.id === take.post_id);
     const comment = post?.comments.find((candidate) => candidate.id === take.id);
     return post && comment ? [{ post, comment }] : [];
   });
+  const pendingRequests = (requests.data ?? []).filter((row) => row.direction === "incoming").length;
+  const friendsFailed = friends?.error || blocked?.error || requests.error;
   const displayName = profile?.display_name ?? (claims.email as string | undefined) ?? "Player";
   const email = (claims.email as string | undefined) ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
@@ -58,44 +76,81 @@ export default async function ProfilePage() {
     <>
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
-      <main className="app-page flex-1">
-        <div data-profile-layout className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-12">
-          <div className="mx-auto w-full max-w-[1080px] xl:mx-0">
-            <div className="max-w-[760px]">
-              <ProfileHeader
-                displayName={displayName}
-                avatarUrl={profile?.avatar_url ?? null}
-                joinedLabel={`Playing since ${joinedMonth(profile?.created_at)}`}
-                action={<ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} userId={claims.sub} />}
-              />
-
-              <ProfileHighlightsCard highlights={highlights} />
-
-              <div className="xl:hidden">
-                <NextGame />
-              </div>
-
-              <section aria-labelledby="takes-history-heading" className="pt-7">
-                <SectionHeading id="takes-history-heading">Your takes</SectionHeading>
-                {takeHistory.length ? (
-                  <ol className="mt-3 grid gap-3">
-                    {takeHistory.map((take) => <TakeHistoryItem key={take.comment.id} {...take} avatarUrl={avatarUrl} />)}
-                  </ol>
-                ) : (
-                  <EmptyTakeHistory />
-                )}
-              </section>
-            </div>
-          </div>
-
+      <PageShell
+        variant="dashboard"
+        rail={
           <aside className="hidden xl:block">
             <div className="sticky top-[92px]">
               <NextGame />
             </div>
           </aside>
-        </div>
-      </main>
+        }
+      >
+        <ProfileHeader
+          displayName={displayName}
+          avatarUrl={profile?.avatar_url ?? null}
+          username={profile?.username ?? null}
+          joinedLabel={`Playing since ${joinedMonth(profile?.created_at)}`}
+          action={<ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} userId={claims.sub} username={profile?.username ?? null} />}
+        />
+
+        <ProfileTabs active={tab} pendingRequests={pendingRequests} />
+
+        {tab === "stats" ? (
+          <>
+            <ProfileHighlightsCard highlights={highlights} />
+            <div className="xl:hidden">
+              <NextGame />
+            </div>
+          </>
+        ) : tab === "takes" ? (
+          <section aria-labelledby="takes-history-heading" className="pt-2">
+            <SectionHeading id="takes-history-heading">Your takes</SectionHeading>
+            {takeHistory.length ? (
+              <ol className="mt-3 grid gap-3">
+                {takeHistory.map((take) => <TakeHistoryItem key={take.comment.id} {...take} avatarUrl={avatarUrl} />)}
+              </ol>
+            ) : (
+              <EmptyTakeHistory />
+            )}
+          </section>
+        ) : friendsFailed ? (
+          <EmptyState title="Couldn't load your friends">Try again in a moment.</EmptyState>
+        ) : (
+          <FriendsManager
+            initial={friendsDataFromRows(friends?.data ?? [], requests.data ?? [], blocked?.data ?? [])}
+            inviteCode={code?.error ? null : (code?.data ?? null)}
+          />
+        )}
+      </PageShell>
     </>
+  );
+}
+
+const TAB_LABEL: Record<ProfileTab, string> = { stats: "Stats", takes: "Takes", friends: "Friends" };
+
+function ProfileTabs({ active, pendingRequests }: { active: ProfileTab; pendingRequests: number }) {
+  return (
+    <nav aria-label="Profile sections" className="flex border border-line">
+      {PROFILE_TABS.map((key) => (
+        <Link
+          key={key}
+          href={key === "stats" ? "/profile" : `/profile?tab=${key}`}
+          aria-current={key === active ? "page" : undefined}
+          className={`flex min-h-12 flex-1 items-center justify-center gap-2 font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel ${
+            key === active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
+          }`}
+        >
+          {TAB_LABEL[key]}
+          {key === "friends" && pendingRequests > 0 ? (
+            <span className="rounded-full bg-hidden px-1.5 font-mono text-[10px] leading-4 text-fg">
+              <span className="sr-only">{pendingRequests} pending requests </span>
+              <span aria-hidden="true">{pendingRequests}</span>
+            </span>
+          ) : null}
+        </Link>
+      ))}
+    </nav>
   );
 }
 
@@ -104,14 +159,14 @@ function GuestProfile() {
     <>
       <Sidebar />
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <section className="max-w-xl">
-          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Current game</p>
+          <p className="type-label text-hidden-text">Current game</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Make your record yours</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Your name is just for the current game. Create an account to save a profile and keep your results.</p>
           <div className="mt-6"><GuestUpgrade /></div>
         </section>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -121,14 +176,14 @@ function SignedOutProfile() {
     <>
       <Sidebar />
       <DashboardHeader displayName={null} email={null} avatarUrl={null} />
-      <main className="app-page flex-1">
+      <PageShell variant="dashboard">
         <section className="max-w-xl">
-          <p className="font-mono text-[10px] tracking-[0.15em] text-hidden-text uppercase">Player profile</p>
+          <p className="type-label text-hidden-text">Player profile</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Your record starts here</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Sign in to keep a record of your games, wins, and streaks.</p>
-          <Link href="/login?next=/profile" className="mt-6 inline-flex bg-panel px-4 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
+          <Link href="/login?next=/profile" className="mt-6 inline-flex bg-panel px-4 py-3 type-label font-bold text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
         </section>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -136,14 +191,14 @@ function SignedOutProfile() {
 function NextGame() {
   return (
     <section className="rounded-card border border-line bg-surface-raised p-5 text-fg shadow-well sm:p-6">
-      <p className="font-mono text-[10px] tracking-[0.15em] text-fg-muted uppercase">Your next game</p>
+      <p className="type-label text-fg-muted">Your next game</p>
       <h2 className="mt-2 font-slab text-[25px] leading-[.98] uppercase">Make the record</h2>
       <p className="mt-3 max-w-[32ch] text-sm leading-6 text-fg-muted">
         Every completed game lands here — play with friends, chase a streak, and leave a mark.
       </p>
       <Link
         href="/"
-        className="mt-5 inline-flex bg-panel px-3.5 py-3 font-mono text-[10px] font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-panel-shade focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        className="mt-5 inline-flex bg-panel px-3.5 py-3 type-label font-bold text-panel-fg transition-colors hover:bg-panel-shade focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
       >
         Find a game
       </Link>
@@ -152,7 +207,7 @@ function NextGame() {
 }
 
 function SectionHeading({ id, children }: { id: string; children: React.ReactNode }) {
-  return <h2 id={id} className="font-mono text-[10px] font-bold tracking-[0.15em] text-fg-muted uppercase">{children}</h2>;
+  return <h2 id={id} className="type-label font-bold text-fg-muted">{children}</h2>;
 }
 
 function TakeHistoryItem({
@@ -192,26 +247,5 @@ function TakeHistoryItem({
 }
 
 function EmptyTakeHistory() {
-  return <div className="mt-3 rounded-card bg-surface-raised px-5 py-6 text-sm leading-6 text-fg-muted shadow-well">No takes yet. Your takes on prompt posts will show up here.</div>;
-}
-
-function joinedMonth(date?: string) { return date ? new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(new Date(date)) : "today"; }
-
-function profileHighlights(
-  matches: CompletedMatchWithMode[],
-  knowerRows: { window_key: string; total_points: number; percentile: number | null }[],
-): ProfileHighlights {
-  const knowerByRange = new Map(knowerRows.map((row) => [row.window_key, row]));
-  const now = new Date();
-
-  return {
-    knower: Object.fromEntries(profileStatRanges.map((range) => {
-      const row = knowerByRange.get(range);
-      return [range, { totalPoints: row?.total_points ?? 0, percentile: row?.percentile ?? null }];
-    })) as ProfileHighlights["knower"],
-    gamer: Object.fromEntries(profileStatRanges.map((range) => {
-      const summary = summarizeMultiplayerProfileRange(matches, range, now);
-      return [range, { gamesPlayed: summary.gamesPlayed, wins: summary.wins, winRate: summary.winRate }];
-    })) as ProfileHighlights["gamer"],
-  };
+  return <EmptyState className="mt-3">No takes yet. Your takes on prompt posts will show up here.</EmptyState>;
 }

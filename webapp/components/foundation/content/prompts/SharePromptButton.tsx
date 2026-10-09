@@ -44,7 +44,7 @@ export function SharePromptButton({ promptText, options }: { promptText: string;
           {share.phase === "rendering" ? "Making image…" : "Share image"}
         </span>
       </Button>
-      {hint ? <p className="mt-1.5 text-center font-mono text-[9px] tracking-[0.1em] text-fg-muted uppercase">{hint}</p> : null}
+      {hint ? <p className="mt-1.5 text-center type-label-xs text-fg-muted">{hint}</p> : null}
 
       {share.phase === "rendering" ? (
         <div style={{ position: "fixed", top: 0, left: -9999, pointerEvents: "none" }} aria-hidden>

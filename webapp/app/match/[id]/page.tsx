@@ -7,16 +7,19 @@ import { MatchSetup } from "@/components/games/auction/MatchSetup";
 import { HigherOrLowerMatch } from "@/components/games/higher-or-lower/HigherOrLowerMatch";
 import { QbSeasonBuilderMatch } from "@/components/games/qb-season-builder/QbSeasonBuilderMatch";
 import { SabotageDraftMatch } from "@/components/games/sabotage-draft/SabotageDraftMatch";
+import { WavelengthMatch } from "@/components/games/wavelength/WavelengthMatch";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import type { AuctionFormat, Player, Turn } from "@/lib/games/auction/board";
 import type { Board } from "@/lib/games/higher-or-lower/board";
 import { QbSeasonBuilderResult } from "@/components/games/qb-season-builder/QbSeasonBuilderResult";
 import { boardFromRow } from "@/lib/games/qb-season-builder/board";
+import { boardFromState as wavelengthBoardFromState } from "@/lib/games/wavelength/board";
 import { fetchPersonalBest, fetchResult } from "@/lib/games/qb-season-builder/read";
 import { playSolo } from "@/lib/platform/lobbies/actions";
 import { createClient } from "@/lib/supabase/server";
 import { chromeIdentity, isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
+import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 /**
  * The match screen.
@@ -105,7 +108,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // yet. Normally a blink. If it sticks, the janitor abandons the match.
   if (match.status === "setup") {
     return (
-      <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}>
+      <Shell displayName={displayName} email={email} avatarUrl={avatarUrl} sidebar={false}>
         <MatchSetup matchId={match.id} />
       </Shell>
     );
@@ -150,6 +153,30 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
       spins: spinsResult.data ?? [],
       picks: picksResult.data ?? [], statuses: statusesResult.data ?? [], hits: hitsResult.data ?? [], guesses: guessesResult.data ?? [], passes: passesResult.data ?? [],
       decisions: decisionsResult.data ?? [], standings: standingsResult.data ?? [], tiebreaks: tiebreaksResult.data ?? [], pickAvs: avResult.data ?? [],
+    }} />;
+  }
+
+  if (match.game === "wavelength_2v2") {
+    // Do not fetch wavelength_targets: that table is psychic-only, and a
+    // match screen must never receive hidden state merely to conceal it later.
+    const wavelength = supabase as any;
+    const [stateResult, playersResult, roundsResult, cardsResult, cluesResult, statusesResult, resultResult] = await Promise.all([
+      wavelength.schema("wavelength").rpc("state", { p_match_id: id }),
+      wavelength.from("wavelength_players").select("*, profiles(display_name, avatar_url)").eq("match_id", id).order("seat"),
+      wavelength.from("wavelength_rounds").select("*").eq("match_id", id).order("round"),
+      wavelength.from("wavelength_cards").select("*").eq("match_id", id).order("round"),
+      wavelength.from("wavelength_clues").select("*").eq("match_id", id).order("round"),
+      wavelength.from("wavelength_clue_statuses").select("*").eq("match_id", id),
+      wavelength.from("wavelength_results").select("*").eq("match_id", id).maybeSingle(),
+    ]);
+    const board = wavelengthBoardFromState(stateResult.data);
+    if (!board) {
+      return <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
+    }
+    return <WavelengthMatch matchId={id} viewerId={claims.sub} roomCode={code} isHost={isHost} paused={match.status === "paused"} initial={{
+      board,
+      players: (playersResult.data ?? []).map(({ profiles, ...player }: any) => ({ ...player, display_name: profiles?.display_name ?? "Unknown player", avatar_url: profiles?.avatar_url ?? null })),
+      rounds: roundsResult.data ?? [], cards: cardsResult.data ?? [], clues: cluesResult.data ?? [], clueStatuses: statusesResult.data ?? [], result: resultResult.data ?? null,
     }} />;
   }
 
@@ -274,7 +301,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     );
   }
 
-  const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult, formatResult, eraResult] = await Promise.all([
+  const [turnResult, lotsResult, seatsResult, bidsResult, standingsResult, formatResult, eraResult, scoutHintsResult, sealedBidsResult, sealedStatusesResult] = await Promise.all([
     supabase.schema("auction").rpc("state", { p_match_id: id }),
     supabase.from("auction_lots").select("*").eq("match_id", id).order("seq"),
     supabase
@@ -286,10 +313,16 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     supabase.from("match_players").select("*").eq("match_id", id),
     supabase
       .from("auction_matches")
-      .select("scoring_mode, roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse, season_from, season_to")
+      .select("scoring_mode, roster_preset, qb_slots, rb_slots, wr_slots, te_slots, flex_slots, purse, season_from, season_to, token_count")
       .eq("match_id", id)
       .maybeSingle(),
     isHost ? supabase.schema("auction").rpc("season_bounds") : Promise.resolve({ data: null }),
+    // RLS scopes this to the viewer's own rows -- see ScoutHint's doc comment.
+    supabase.from("auction_scouting_hints").select("*").eq("match_id", id),
+    // Also viewer-own only -- see SealedBid's doc comment.
+    supabase.from("auction_sealed_bids").select("*").eq("match_id", id),
+    // Presence, readable for every match member -- see SealedBidStatus.
+    supabase.from("auction_sealed_bid_statuses").select("*").eq("match_id", id),
   ]);
 
   const state = turnResult.data;
@@ -308,6 +341,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     turnSeat: state.turn_seat,
     openerSeat: state.opener_seat ?? 0,
     freeFallbackSeat: state.free_fallback_seat ?? null,
+    stuckSeat: state.stuck_seat ?? null,
     turnDeadline: state.turn_deadline,
     phase: (state.phase ?? "lot_preview") as Turn["phase"],
     phaseDeadline: state.phase_deadline,
@@ -338,6 +372,9 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
         players,
         bids: bidsResult.data ?? [],
         standings: standingsResult.data ?? [],
+        scoutHints: scoutHintsResult.data ?? [],
+        sealedBids: sealedBidsResult.data ?? [],
+        sealedStatuses: sealedStatusesResult.data ?? [],
         format,
         era: eraResult.data?.season_min != null && eraResult.data.season_max != null && eraResult.data.min_span != null
           ? { seasonMin: eraResult.data.season_min, seasonMax: eraResult.data.season_max, minSpan: eraResult.data.min_span }
@@ -358,6 +395,10 @@ function auctionFormat(row: {
   purse: number | null;
   season_from: number | null;
   season_to: number | null;
+  // Not part of the null-guard below: unlike the other format columns, this
+  // one has a hard NOT NULL DEFAULT and exists on every match row, including
+  // ones dealt before this column existed.
+  token_count: number;
 } | null): AuctionFormat | null {
   if (
     !row ||
@@ -377,6 +418,7 @@ function auctionFormat(row: {
     purse: row.purse,
     seasonFrom: row.season_from,
     seasonTo: row.season_to,
+    tokenCount: row.token_count,
   };
 }
 
@@ -384,19 +426,22 @@ function Shell({
   displayName,
   email = null,
   avatarUrl = null,
+  sidebar = true,
   children,
 }: {
   displayName: string | null;
   email?: string | null;
   avatarUrl?: string | null;
+  /** A match that is about to be played is a game screen, not a dashboard page. */
+  sidebar?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <>
-      <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-6 py-14">
+      {sidebar && <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />}
+      <PageShell variant="form" size="md">
         {children}
-      </main>
+      </PageShell>
     </>
   );
 }

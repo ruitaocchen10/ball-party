@@ -7,7 +7,7 @@ import { isObject, numbers } from "@/lib/games/qb-season-builder/json";
  * The jsonb arrives untyped, so this parses it once into something a screen can
  * draw without re-checking. It is only ever grades — the API never returns a
  * blended value, a source rating or the seed, so there is nothing here to strip. See
- * docs/games/qb_season_builder.md.
+ * docs/games/qb_season_builder/rules.md.
  */
 
 export const AWARDS = ["mvp", "opoy", "all_pro", "pro_bowl", "sb_mvp"] as const;

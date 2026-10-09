@@ -8,6 +8,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Play,
+  Trophy,
   Users,
   X,
 } from "lucide-react";
@@ -170,6 +171,7 @@ function FeedbackButton({ compact, onOpen }: { compact: boolean; onOpen: () => v
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: House },
   { href: "/party", label: "Party", Icon: Users },
+  { href: "/leaderboard", label: "Leaderboard", Icon: Trophy },
 ];
 
 /**
@@ -314,7 +316,7 @@ function SignedOutAccount({ compact }: { compact: boolean }) {
     <div className="flex flex-col gap-2">
       <Link
         href="/signup"
-        className={`flex h-9 items-center justify-center bg-panel px-3.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-[#fffdf7] ${FOCUS}`}
+        className={`flex h-9 items-center justify-center bg-panel px-3.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-panel-hover ${FOCUS}`}
       >
         Sign up
       </Link>
