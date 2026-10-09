@@ -56,7 +56,8 @@ For any PR that changes player-facing behavior:
 
 ## Status and what's still manual
 
-`features.yaml` is currently checked by people. The next steps, in order of
-value, are a test that every `done` entry has a marker in that platform's code,
-iOS tests running in CI, and contract tests between RPC shapes and the iOS
+`features.yaml` is currently checked by people. iOS tests run in CI (the `ios`
+job in `.github/workflows/ci.yml`), so the existing unit tests gate merges. The
+next steps, in order of value, are a test that every `done` entry has a marker
+in that platform's code, and contract tests between RPC shapes and the iOS
 models. Until those exist, the checklist above is the enforcement.
