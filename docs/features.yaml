@@ -24,15 +24,11 @@ features:
   - id: huddle.weekly-awards
     summary: Weekly Awards prompts
     web: done
-    ios: missing
-    ticket: BPMO-15
-    note: iOS shows an "update the app" placeholder
+    ios: done
   - id: huddle.bold-predictions
     summary: Bold Predictions prompts
     web: done
-    ios: missing
-    ticket: BPMO-16
-    note: iOS shows an "update the app" placeholder
+    ios: done
   - id: huddle.answer
     summary: Submit an answer to a prompt
     web: done

@@ -31,6 +31,12 @@ struct HuddleServerError: Error, Equatable, Sendable {
         "option_already_used": "You've already used that team in another pick on this prompt.",
         "parent_not_found": "That take isn't available anymore. Refresh and try again.",
         "nested_reply": "You can only reply to a take, not to another reply.",
+        "too_many_predictions": "A response holds at most five predictions.",
+        "no_predictions": "Add at least one prediction before you lock in.",
+        "already_answered": "You've already locked in your predictions.",
+        "invalid_target": "That tag isn't valid for this post anymore. Pick another.",
+        "not_bold_predictions": "This post doesn't take predictions.",
+        "not_authorized": "Sign in to search for players.",
     ]
 }
 
@@ -68,8 +74,33 @@ protocol HuddleClient: Sendable {
     func revealedResponses(postId: UUID) async throws -> [PromptRevealedResponseRow]
 
     /// `prompts.submit_response` — answers every slot on a post at once, and
-    /// posts `comment` as the author's take in the same call.
-    func submitResponse(postId: UUID, choices: [UUID: [UUID]], comment: String?) async throws
+    /// posts `comment` as the author's take in the same call. A Weekly Awards
+    /// player slot is answered with a directory player id (`players`, by slot)
+    /// instead of an option id; the server makes the option.
+    func submitResponse(postId: UUID, choices: [UUID: [UUID]], players: [UUID: String], comment: String?) async throws
+
+    /// `prompts.bold_predictions_for_post` — the predictions this viewer may read
+    /// (their own before they answer; everyone's once they have or the post has
+    /// locked), with the people who wrote them.
+    func boldPredictions(postId: UUID) async throws -> BoldPredictionRows
+
+    /// `prompts.bold_prediction_counts` — how many predictions each post has.
+    /// Safe before lock: a count is not the text.
+    func boldPredictionCounts(postIds: [UUID]) async throws -> [UUID: Int]
+
+    /// `prompts.submit_bold_predictions` — locks in the whole response at once.
+    func submitBoldPredictions(postId: UUID, predictions: [BoldDraft]) async throws
+
+    /// The games of the week that begins after `lockAt`: the matchups a
+    /// prediction may be tagged with. Empty once the schedule has nothing after.
+    func weekGames(after lockAt: Date) async throws -> [NFLScheduleGame]
+
+    /// `prompts.search_players` — the directory, searched by name. A blank query
+    /// is answered without a round trip.
+    func searchPlayers(query: String) async throws -> [NFLPlayer]
+
+    /// `prompts.players_by_ids` — directory rows for ids already known.
+    func players(ids: [String]) async throws -> [NFLPlayer]
 
     /// `prompts.post_comment` — a reply when `parentCommentId` is given.
     func postComment(postId: UUID, body: String, parentCommentId: UUID?) async throws
@@ -90,7 +121,7 @@ struct SupabaseHuddleClient: HuddleClient {
             let postIds = posts.map(\.id)
 
             async let slots: [PromptSlotRow] = client.from("prompt_slots")
-                .select("id, post_id, label, shape, pick_count, points, sort_order, correct_option_ids, source_game_id")
+                .select("id, post_id, label, shape, pick_count, points, sort_order, correct_option_ids, source_game_id, player_search")
                 .in("post_id", values: postIds)
                 .execute().value
             // Own rows only: `prompt_responses` is `profile_id = auth.uid()`
@@ -109,7 +140,7 @@ struct SupabaseHuddleClient: HuddleClient {
             let slotRows = try await slots
             let slotIds = slotRows.map(\.id)
             async let options: [PromptOptionRow] = slotIds.isEmpty ? [] : client.from("prompt_slot_options")
-                .select("id, slot_id, label, sublabel, team_code, headshot_url, sort_order")
+                .select("id, slot_id, label, sublabel, team_code, headshot_url, sort_order, margin")
                 .in("slot_id", values: slotIds)
                 .execute().value
 
@@ -147,12 +178,102 @@ struct SupabaseHuddleClient: HuddleClient {
         }
     }
 
-    func submitResponse(postId: UUID, choices: [UUID: [UUID]], comment: String?) async throws {
+    func submitResponse(postId: UUID, choices: [UUID: [UUID]], players: [UUID: String], comment: String?) async throws {
         try await wrapped {
             _ = try await prompts.rpc(
                 "submit_response",
-                params: SubmitResponseParams(postId: postId, choices: choices, comment: comment)
+                params: SubmitResponseParams(postId: postId, choices: choices, players: players, comment: comment)
             ).execute()
+        }
+    }
+
+    func boldPredictions(postId: UUID) async throws -> BoldPredictionRows {
+        try await wrapped {
+            let predictions: [BoldPredictionRow] = try await prompts.rpc("bold_predictions_for_post", params: PostParam(p_post_id: postId))
+                .execute().value
+            let authorIds = Array(Set(predictions.map(\.authorId)))
+            guard !authorIds.isEmpty else { return BoldPredictionRows() }
+            let profiles: [PromptProfileRow] = try await client.from("profiles")
+                .select("id, display_name, avatar_url, username")
+                .in("id", values: authorIds)
+                .execute().value
+            return BoldPredictionRows(predictions: predictions, profiles: profiles)
+        }
+    }
+
+    func boldPredictionCounts(postIds: [UUID]) async throws -> [UUID: Int] {
+        guard !postIds.isEmpty else { return [:] }
+        struct Params: Encodable, Sendable { let p_post_ids: [UUID] }
+        return try await wrapped {
+            let rows: [BoldPredictionCountRow] = try await prompts.rpc("bold_prediction_counts", params: Params(p_post_ids: postIds))
+                .execute().value
+            return Dictionary(rows.map { ($0.postId, $0.predictionCount) }, uniquingKeysWith: { first, _ in first })
+        }
+    }
+
+    func submitBoldPredictions(postId: UUID, predictions: [BoldDraft]) async throws {
+        struct Item: Encodable, Sendable {
+            let body: String
+            let target_type: String
+            let target_id: String
+        }
+        struct Params: Encodable, Sendable {
+            let p_post_id: UUID
+            let p_predictions: [Item]
+        }
+        try await wrapped {
+            _ = try await prompts.rpc(
+                "submit_bold_predictions",
+                params: Params(
+                    p_post_id: postId,
+                    p_predictions: predictions.map { Item(body: $0.body, target_type: $0.target.type.rawValue, target_id: $0.target.id) }
+                )
+            ).execute()
+        }
+    }
+
+    func weekGames(after lockAt: Date) async throws -> [NFLScheduleGame] {
+        struct Week: Decodable, Sendable {
+            let season: Int
+            let week: Int
+        }
+        let since = ISO8601DateFormatter().string(from: lockAt)
+        return try await wrapped {
+            // The week a post is about is the one whose first kickoff follows its
+            // lock time, which is how `validate_bold_target` (0171) decides too.
+            let first: [Week] = try await client.from("nfl_games")
+                .select("season, week")
+                .gte("kickoff", value: since)
+                .order("kickoff")
+                .limit(1)
+                .execute().value
+            guard let week = first.first else { return [] }
+            return try await client.from("nfl_games")
+                .select("id, kickoff, away_team, home_team")
+                .eq("season", value: week.season)
+                .eq("week", value: week.week)
+                .order("kickoff")
+                .order("id")
+                .execute().value
+        }
+    }
+
+    func searchPlayers(query: String) async throws -> [NFLPlayer] {
+        struct Params: Encodable, Sendable {
+            let p_query: String
+            let p_limit: Int
+        }
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return [] }
+        return try await wrapped {
+            try await prompts.rpc("search_players", params: Params(p_query: query, p_limit: 20)).execute().value
+        }
+    }
+
+    func players(ids: [String]) async throws -> [NFLPlayer] {
+        struct Params: Encodable, Sendable { let p_ids: [String] }
+        guard !ids.isEmpty else { return [] }
+        return try await wrapped {
+            try await prompts.rpc("players_by_ids", params: Params(p_ids: ids)).execute().value
         }
     }
 
@@ -208,19 +329,25 @@ struct SupabaseHuddleClient: HuddleClient {
 /// unanswered (`incomplete_slot`). The uuid *values* are cast by Postgres and
 /// are case-insensitive.
 ///
+/// A Weekly Awards player slot's answer is one directory player id, not an
+/// option uuid — `submit_response` (0175) turns it into an option — so its
+/// value in `p_choices` is that id as a string.
+///
 /// A nil `p_comment` is left out of the JSON rather than sent as null, as the
 /// web does; the function treats both as "no comment".
 struct SubmitResponseParams: Encodable, Sendable {
     let p_post_id: UUID
-    let p_choices: [String: [UUID]]
+    let p_choices: [String: [String]]
     let p_comment: String?
 
-    init(postId: UUID, choices: [UUID: [UUID]], comment: String?) {
+    init(postId: UUID, choices: [UUID: [UUID]], players: [UUID: String] = [:], comment: String?) {
         p_post_id = postId
-        p_choices = Dictionary(
-            choices.map { ($0.key.uuidString.lowercased(), $0.value) },
+        var byKey = Dictionary(
+            choices.map { ($0.key.uuidString.lowercased(), $0.value.map(\.uuidString)) },
             uniquingKeysWith: { first, _ in first }
         )
+        for (slot, player) in players { byKey[slot.uuidString.lowercased()] = [player] }
+        p_choices = byKey
         p_comment = comment
     }
 }

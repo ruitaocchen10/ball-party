@@ -201,6 +201,8 @@ struct TicketView: View {
     var body: some View {
         if post.isPowerRankings {
             PowerRankingTicket(post: post, response: response)
+        } else if post.isWeeklyAwards {
+            WeeklyAwardsBallot(post: post, response: response)
         } else if post.isMatchupPost {
             matchups
         } else {
@@ -213,9 +215,11 @@ struct TicketView: View {
         let shown = folds && !showsAll ? Array(post.slots.prefix(Self.collapsedGames)) : post.slots
         return VStack(alignment: .leading, spacing: 8) {
             // Two to a row, like the web's "Your calls" grid — or one, for one game.
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: min(2, post.slots.count)), spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: post.hasMarginGames ? 1 : min(2, post.slots.count)), spacing: 8) {
                 ForEach(shown) { slot in
-                    if let matchup = slot.matchup {
+                    if let game = slot.marginGame {
+                        MarginChoices(slot: slot, game: game, selected: response[slot.id]?.first, reveals: slot.correctOptionIds != nil)
+                    } else if let matchup = slot.matchup {
                         MatchupTile(away: matchup.away, home: matchup.home, selected: response[slot.id]?.first, winner: slot.winnerId)
                     }
                 }

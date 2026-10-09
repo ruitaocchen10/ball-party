@@ -30,6 +30,26 @@ enum NFLTeams {
         "STL": 0x003594, "TB": 0xD50A0A, "TEN": 0x0C2340, "WAS": 0x5A1414,
     ]
 
+    /// The thirty-two clubs by division, as the web's `TEAMS` lists them
+    /// (`staticOptionPools.ts`) — what a prediction's team tag offers.
+    static let all: [(code: String, name: String)] = [
+        ("BUF", "Bills"), ("MIA", "Dolphins"), ("NE", "Patriots"), ("NYJ", "Jets"),
+        ("KC", "Chiefs"), ("LV", "Raiders"), ("LAC", "Chargers"), ("DEN", "Broncos"),
+        ("BAL", "Ravens"), ("CIN", "Bengals"), ("CLE", "Browns"), ("PIT", "Steelers"),
+        ("HOU", "Texans"), ("IND", "Colts"), ("JAX", "Jaguars"), ("TEN", "Titans"),
+        ("SEA", "Seahawks"), ("SF", "49ers"), ("LA", "Rams"), ("ARI", "Cardinals"),
+        ("PHI", "Eagles"), ("DAL", "Cowboys"), ("NYG", "Giants"), ("WAS", "Commanders"),
+        ("CHI", "Bears"), ("DET", "Lions"), ("GB", "Packers"), ("MIN", "Vikings"),
+        ("ATL", "Falcons"), ("CAR", "Panthers"), ("NO", "Saints"), ("TB", "Buccaneers"),
+    ]
+
+    /// A club's name without its city, or the code itself for one this list
+    /// doesn't know (`nflTeamName` on the web).
+    static func name(for code: String) -> String {
+        let upper = code.uppercased()
+        return all.first { $0.code == upper }?.name ?? (upper == "LAR" ? "Rams" : code)
+    }
+
     /// `nil` for a code the bucket has no file for, so a caller can fall back
     /// to text rather than show a broken image.
     static func logoCode(for team: String) -> String? {

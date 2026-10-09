@@ -17,6 +17,8 @@ struct PromptDetailView: View {
                         }
                         if post.isUnsupported {
                             UpdateAppNotice(compact: false)
+                        } else if post.isBoldPredictions {
+                            BoldPredictionsView(viewModel: viewModel, post: post)
                         } else if viewModel.canAnswer(postId) {
                             AnswerForm(viewModel: viewModel, post: post)
                         } else {
@@ -79,7 +81,7 @@ struct PromptDetailView: View {
             if post.isMatchupPost {
                 SectionTitle(text: "The games")
                 MatchupCalls(post: post)
-            } else if !post.isPowerRankings {
+            } else if !post.isPowerRankings && !post.isWeeklyAwards {
                 ForEach(post.slots) { slot in
                     SlotResultsView(post: post, slot: slot)
                 }
@@ -87,6 +89,9 @@ struct PromptDetailView: View {
         }
         if post.isPowerRankings {
             PowerRankingsResults(post: post)
+        }
+        if post.isWeeklyAwards {
+            WeeklyAwardsResults(post: post)
         }
     }
 
@@ -175,6 +180,8 @@ private struct YourCard: View {
     private var picks: some View {
         if post.isPowerRankings {
             PowerRankingsBoard(post: post)
+        } else if post.isWeeklyAwards {
+            WeeklyAwardsBallot(post: post, response: post.viewerResponse ?? [:])
         } else if post.isMatchupPost {
             MatchupCalls(post: post)
         } else {
@@ -208,7 +215,7 @@ private struct MatchupCalls: View {
 
     var body: some View {
         LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: min(2, post.slots.count)),
+            columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: post.hasMarginGames ? 1 : min(2, post.slots.count)),
             spacing: 10
         ) {
             ForEach(post.slots) { slot in
@@ -229,6 +236,8 @@ private struct AnswerForm: View {
         VStack(alignment: .leading, spacing: 24) {
             if post.isPowerRankings {
                 PowerRankingsPicker(viewModel: viewModel, post: post)
+            } else if post.isWeeklyAwards {
+                WeeklyAwardsPicker(viewModel: viewModel, post: post)
             } else if post.isMatchupPost {
                 MatchupPicks(viewModel: viewModel, post: post)
             } else {
@@ -273,7 +282,17 @@ private struct MatchupPicks: View {
     let post: PromptPost
 
     var body: some View {
-        if post.slots.count == 1, let slot = post.slots.first, let matchup = slot.matchup {
+        if post.slots.count == 1, let slot = post.slots.first, let game = slot.marginGame {
+            // Winner and margin: the cover is just the game; the call is one of the four below it.
+            VStack(alignment: .leading, spacing: 12) {
+                MatchupPoster(away: game.cover.away, home: game.cover.home, game: slot.game)
+                Text("Pick the winner and margin").monoLabel(10, tracking: 0.1)
+                MarginChoices(
+                    slot: slot, game: game, selected: viewModel.selection(in: slot.id, of: post.id).first,
+                    onSelect: { viewModel.toggle($0, in: slot.id, of: post.id) }
+                )
+            }
+        } else if post.slots.count == 1, let slot = post.slots.first, let matchup = slot.matchup {
             MatchupPoster(
                 away: matchup.away, home: matchup.home, game: slot.game,
                 selected: viewModel.selection(in: slot.id, of: post.id).first,
@@ -287,11 +306,16 @@ private struct MatchupPicks: View {
                     Text("\(picked)/\(post.slots.count) picked").monoLabel(10, tracking: 0.08)
                 }
                 LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 2),
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: post.hasMarginGames ? 1 : 2),
                     spacing: 10
                 ) {
                     ForEach(post.slots) { slot in
-                        if let matchup = slot.matchup {
+                        if let game = slot.marginGame {
+                            MarginChoices(
+                                slot: slot, game: game, selected: viewModel.selection(in: slot.id, of: post.id).first,
+                                onSelect: { viewModel.toggle($0, in: slot.id, of: post.id) }
+                            )
+                        } else if let matchup = slot.matchup {
                             MatchupTile(
                                 away: matchup.away, home: matchup.home,
                                 selected: viewModel.selection(in: slot.id, of: post.id).first,
@@ -310,7 +334,7 @@ private struct MatchupPicks: View {
     }
 }
 
-private struct SlotPicker: View {
+struct SlotPicker: View {
     @ObservedObject var viewModel: HuddleViewModel
     let post: PromptPost
     let slot: PromptSlot
@@ -384,18 +408,38 @@ private struct SlotResultsView: View {
     /// A game: the strip with the viewer's call on it, and how the crowd split.
     private func matchupResult(_ matchup: (away: PromptOption, home: PromptOption)) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            MatchupTile(
-                away: matchup.away, home: matchup.home,
-                selected: post.viewerResponse?[slot.id]?.first, winner: slot.winnerId
-            )
+            if let game = slot.marginGame {
+                MarginChoices(
+                    slot: slot, game: game, selected: post.viewerResponse?[slot.id]?.first,
+                    reveals: slot.correctOptionIds != nil
+                )
+            } else {
+                MatchupTile(
+                    away: matchup.away, home: matchup.home,
+                    selected: post.viewerResponse?[slot.id]?.first, winner: slot.winnerId
+                )
+            }
             crowd(matchup)
         }
     }
 
+    /// How the crowd split between the two clubs. On a winner-and-margin game a
+    /// club's share is both of its margin choices together.
+    private var crowdSplit: (away: Double, home: Double)? {
+        guard let split = post.aggregate?[slot.id] else { return nil }
+        if let game = slot.marginGame {
+            return (
+                (split[game.awayShort.id] ?? 0) + (split[game.awayLong.id] ?? 0),
+                (split[game.homeShort.id] ?? 0) + (split[game.homeLong.id] ?? 0)
+            )
+        }
+        guard let matchup = slot.matchup, let away = split[matchup.away.id], let home = split[matchup.home.id] else { return nil }
+        return (away, home)
+    }
+
     @ViewBuilder
     private func crowd(_ matchup: (away: PromptOption, home: PromptOption)) -> some View {
-        let split = post.aggregate?[slot.id]
-        if let away = split?[matchup.away.id], let home = split?[matchup.home.id] {
+        if let (away, home) = crowdSplit {
             VStack(spacing: 6) {
                 HStack {
                     Text("\(matchup.away.teamCode ?? matchup.away.label) \(Int(away.rounded()))%")

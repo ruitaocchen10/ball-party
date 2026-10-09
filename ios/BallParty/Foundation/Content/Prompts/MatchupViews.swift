@@ -454,6 +454,107 @@ struct MatchupCarousel: View {
     }
 }
 
+// MARK: - Winner and margin
+
+/// A Game Picks game's four choices — each team "by <7" and "by 7+" — in a grid
+/// of two: the web's `MarginPicker`. The same view makes the call (`onSelect`),
+/// shows one, and — once the server has graded the slot — marks it right or
+/// wrong. The cover above it is `MatchupPoster`'s.
+struct MarginChoices: View {
+    let slot: PromptSlot
+    let game: MarginGame
+    /// The viewer's call.
+    var selected: UUID?
+    /// Whether to mark the call right or wrong; only once the slot is graded.
+    var reveals = false
+    var onSelect: ((UUID) -> Void)?
+
+    /// A graded slot with no right answer: a tied game on a weekly slate. It
+    /// voids the pick for everyone.
+    private var isNoContest: Bool { reveals && slot.correctOptionIds?.isEmpty == true }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
+                ForEach(game.choices) { choice in
+                    tile(choice)
+                }
+            }
+            if isNoContest {
+                Text("No contest — game tied").monoLabel(9, tracking: 0.1)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tile(_ choice: PromptOption) -> some View {
+        let isSelected = selected == choice.id
+        let passed = selected != nil && !isSelected
+        let verdict: Bool? = reveals && isSelected ? slot.isCorrect(choice.id) : nil
+        let color = choice.teamCode.flatMap(NFLTeams.primaryColor(for:))
+        let ink: Color = isSelected ? Color(hex: 0xFFFDF7) : Theme.fg
+        let face = HStack(spacing: 8) {
+            if let code = choice.teamCode {
+                TeamLogo(code: code, size: 36)
+                    .grayscale(passed ? 1 : 0)
+                    .opacity(passed ? 0.4 : 1)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(choice.label)
+                    .font(.slab(17, relativeTo: .body))
+                    .textCase(.uppercase)
+                    .foregroundStyle(ink)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                if let sublabel = choice.sublabel {
+                    Text(sublabel).monoLabel(8, tracking: 0.06, color: ink.opacity(0.7)).lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        .background {
+            if isSelected, let color {
+                LinearGradient(colors: [color, Theme.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
+            } else {
+                Theme.surfaceRaised.opacity(passed ? 0.85 : 1)
+            }
+        }
+        .clipShape(TicketShape(cutX: 12, cutY: 8))
+        .overlay {
+            TicketShape(cutX: 12, cutY: 8)
+                .stroke(ring(verdict: verdict, selected: isSelected), lineWidth: 2)
+        }
+        .overlay(alignment: .topTrailing) {
+            if let verdict {
+                Image(systemName: verdict ? "checkmark" : "xmark")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(verdict ? Theme.gradeElite : Theme.gradeRough)
+                    .padding(6)
+                    .accessibilityHidden(true)
+            }
+        }
+
+        if let onSelect {
+            Button { onSelect(choice.id) } label: { face.contentShape(Rectangle()) }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(choice.label). \(choice.sublabel ?? "")")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+        } else {
+            face
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(choice.label)\(isSelected ? ", your call" : "")")
+        }
+    }
+
+    private func ring(verdict: Bool?, selected: Bool) -> Color {
+        if let verdict { return verdict ? Theme.gradeElite : Theme.gradeRough }
+        return selected ? Theme.fg.opacity(0.7) : Theme.line
+    }
+}
+
 // MARK: - Everything else
 
 /// The candidates of a prompt that isn't a set of matchups, as a short strip of

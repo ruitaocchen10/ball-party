@@ -38,7 +38,7 @@ final class PromptModelsTests: XCTestCase {
         XCTAssertNil(without.avatarUrl)
     }
 
-    func test_postRow_decodesAnUnknownTemplateKindAndSelectsThePlaceholder() throws {
+    func test_postRow_decodesAWeeklyAwardsPostAsAKindThisBuildPlays() throws {
         let row = try decode(PromptPostRow.self, """
         {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "template_kind": "weekly_awards", "template_name": "Weekly Awards",
          "author_id": "1A2B3C4D-0000-4000-8000-000000000001", "caption": "", "prompt_text": "Hand out the hardware",
@@ -47,13 +47,15 @@ final class PromptModelsTests: XCTestCase {
         """)
 
         XCTAssertEqual(row.templateKind, "weekly_awards")
-        XCTAssertTrue(PromptPost.isUnsupportedKind("weekly_awards"))
-        XCTAssertTrue(PromptPost.isUnsupportedKind("bold_predictions"))
+        XCTAssertFalse(PromptPost.isUnsupportedKind("weekly_awards"))
+        XCTAssertFalse(PromptPost.isUnsupportedKind("bold_predictions"))
         XCTAssertTrue(PromptPost.isFeedKind("bold_predictions"))
+        XCTAssertTrue(PromptPost.isUnsupportedKind("hot_takes_2027"))
+        XCTAssertTrue(PromptPost.isFeedKind("hot_takes_2027"))
     }
 
     func test_kinds_knownOnesAreNeverPlaceholdersAndAdminOnlyOnesStayOffTheFeed() {
-        for kind in ["picks", "game_pick", "weekly_picks", "power_rankings"] {
+        for kind in ["picks", "game_pick", "weekly_picks", "power_rankings", "weekly_awards", "bold_predictions"] {
             XCTAssertFalse(PromptPost.isUnsupportedKind(kind), kind)
             XCTAssertTrue(PromptPost.isFeedKind(kind), kind)
         }
@@ -236,4 +238,143 @@ final class PromptModelsTests: XCTestCase {
 
         XCTAssertEqual(json["p_comment"] as? String, "Chiefs")
     }
+
+    // MARK: - Weekly Awards and Bold Predictions
+
+    func test_slotRow_readsWhetherASlotIsAPlayerSearch() throws {
+        let search = try decode(PromptSlotRow.self, """
+        {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "post_id": "1A2B3C4D-0000-4000-8000-000000000001",
+         "label": "Offensive player", "shape": "pick", "pick_count": null, "points": 10, "sort_order": 3,
+         "correct_option_ids": null, "source_game_id": null, "player_search": true}
+        """)
+        let plain = try decode(PromptSlotRow.self, """
+        {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A12", "post_id": "1A2B3C4D-0000-4000-8000-000000000001",
+         "label": "Game 1", "shape": "pick", "pick_count": null, "points": 10, "sort_order": 0,
+         "correct_option_ids": null, "source_game_id": "2026_03_KC_BUF"}
+        """)
+
+        XCTAssertTrue(search.playerSearch)
+        XCTAssertFalse(plain.playerSearch, "a payload from before 0175 has no such column")
+    }
+
+    func test_option_aBestGameKeepsItsClubsInTheSublabel() {
+        let game = PromptOption(id: UUID(), label: "Chiefs @ Bills", sublabel: "KC @ BUF", teamCode: nil, headshotURL: nil)
+        XCTAssertEqual(game.gameTeamCodes?.away, "KC")
+        XCTAssertEqual(game.gameTeamCodes?.home, "BUF")
+
+        for sublabel in [nil, "QB · KC", "kc @ buf", "KC @ BUF @ DAL", "KC @ "] as [String?] {
+            let other = PromptOption(id: UUID(), label: "Patrick Mahomes", sublabel: sublabel, teamCode: "KC", headshotURL: nil)
+            XCTAssertNil(other.gameTeamCodes, sublabel ?? "nil")
+        }
+    }
+
+    func test_player_decodesADirectoryRowAndNamesAnInactiveStatus() throws {
+        let player = try decode(NFLPlayer.self, """
+        {"player_id": "00-0033873", "display_name": "Patrick Mahomes", "position": "QB", "team": "KC",
+         "headshot_url": "https://example.com/mahomes.png", "status": "ACT"}
+        """)
+        XCTAssertEqual(player.id, "00-0033873")
+        XCTAssertEqual(player.name, "Patrick Mahomes")
+        XCTAssertEqual(player.summary, "QB · KC")
+        XCTAssertEqual(player.headshotURL, URL(string: "https://example.com/mahomes.png"))
+        XCTAssertNil(player.statusLabel)
+
+        let reserve = try decode(NFLPlayer.self, """
+        {"player_id": "00-0000001", "display_name": "Some Player", "position": "WR", "team": "BUF",
+         "headshot_url": null, "status": "RES"}
+        """)
+        XCTAssertNil(reserve.headshotURL)
+        XCTAssertEqual(reserve.statusLabel, "Reserve list")
+    }
+
+    func test_submitResponseParams_answerAPlayerSlotWithTheDirectoryId() throws {
+        let teamSlot = UUID(uuidString: "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11")!
+        let playerSlot = UUID(uuidString: "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A12")!
+        let option = UUID(uuidString: "2B3C4D5E-0000-4000-8000-000000000002")!
+
+        let params = SubmitResponseParams(
+            postId: UUID(), choices: [teamSlot: [option]], players: [playerSlot: "00-0033873"], comment: nil
+        )
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(params)) as? [String: Any])
+        let choices = try XCTUnwrap(json["p_choices"] as? [String: [String]])
+
+        XCTAssertEqual(choices["8e0f2c3a-6b57-4e10-a8b1-6d0e5b6c7a12"], ["00-0033873"], "the id itself, under a lowercase slot key")
+        XCTAssertEqual(choices["8e0f2c3a-6b57-4e10-a8b1-6d0e5b6c7a11"]?.map { $0.lowercased() }, ["2b3c4d5e-0000-4000-8000-000000000002"])
+    }
+
+    func test_boldPredictionRow_decodesWhatTheRpcReturns() throws {
+        let row = try decode(BoldPredictionRow.self, """
+        {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "post_id": "1A2B3C4D-0000-4000-8000-000000000001",
+         "author_id": "1A2B3C4D-0000-4000-8000-000000000002", "body": "Bills go 17-0",
+         "target_type": "team", "target_id": "BUF", "created_at": "2026-09-17T12:00:00.123456+00:00"}
+        """)
+        XCTAssertEqual(row.body, "Bills go 17-0")
+        XCTAssertEqual(row.targetType, "team")
+        XCTAssertEqual(row.targetId, "BUF")
+    }
+
+    func test_boldPredictionCount_aBigintMayArriveAsAString() throws {
+        let rows = try decode([BoldPredictionCountRow].self, """
+        [{"post_id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "prediction_count": 12, "author_count": 4},
+         {"post_id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A12", "prediction_count": "7", "author_count": "3"}]
+        """)
+        XCTAssertEqual(rows.map(\.predictionCount), [12, 7])
+    }
+
+    func test_boldTarget_isDescribedByItsKind() {
+        let mahomes = NFLPlayer(id: "00-0033873", name: "Patrick Mahomes", position: "QB", team: "KC")
+        let board = BoldBoardData(
+            weekGames: [NFLScheduleGame(id: "2026_03_KC_BUF", away: "KC", home: "BUF")],
+            players: [mahomes.id: mahomes]
+        )
+
+        let team = BoldTargetDescription(BoldTarget(type: .team, id: "BUF"), board: board)
+        XCTAssertEqual(team.label, "Bills")
+        XCTAssertEqual(team.teamCodes, ["BUF"])
+
+        let game = BoldTargetDescription(BoldTarget(type: .matchup, id: "2026_03_KC_BUF"), board: board)
+        XCTAssertEqual(game.label, "Chiefs @ Bills")
+        XCTAssertEqual(game.teamCodes, ["KC", "BUF"])
+
+        let player = BoldTargetDescription(BoldTarget(type: .player, id: mahomes.id), board: board)
+        XCTAssertEqual(player.label, "Patrick Mahomes")
+        XCTAssertEqual(player.player, mahomes)
+
+        // A tag it can't resolve still reads as something.
+        XCTAssertEqual(BoldTargetDescription(BoldTarget(type: .matchup, id: "gone"), board: board).label, "Matchup")
+        XCTAssertEqual(BoldTargetDescription(BoldTarget(type: .player, id: "gone"), board: board).label, "Player")
+    }
+
+    func test_weeklyAwardsResults_listTheLeadersHighestShareFirst() {
+        func option(_ label: String) -> PromptOption { PromptOption(id: UUID(), label: label, sublabel: nil, teamCode: nil, headshotURL: nil) }
+        let (a, b, c, d, e) = (option("Bills"), option("Chiefs"), option("Eagles"), option("Ravens"), option("Jets"))
+        let slot = PromptSlot(
+            id: UUID(), label: "Biggest winner", shape: .pick, pickCount: nil, points: 10, correctOptionIds: nil,
+            options: [a, b, c, d, e]
+        )
+
+        let leaders = WeeklyAwardsResults.topPicks(
+            in: slot, shares: [a.id: 20, b.id: 40, c.id: 20, d.id: 15, e.id: 0]
+        )
+
+        XCTAssertEqual(leaders.map(\.option.label), ["Chiefs", "Bills", "Eagles"], "three at most, ties alphabetical, no zeros")
+        XCTAssertEqual(leaders.map(\.percent), [40, 20, 20])
+        XCTAssertTrue(WeeklyAwardsResults.topPicks(in: slot, shares: nil).isEmpty)
+    }
+
+    func test_optionRow_readsAGamePicksMarginAndTreatsAnOlderRowAsHavingNone() throws {
+        let withMargin = try decode(PromptOptionRow.self, """
+        {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "slot_id": "1A2B3C4D-0000-4000-8000-000000000001",
+         "label": "Chiefs by 7+", "sublabel": "Wins by 7 or more", "team_code": "KC", "headshot_url": null,
+         "sort_order": 1, "margin": "7_plus"}
+        """)
+        let without = try decode(PromptOptionRow.self, """
+        {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A12", "slot_id": "1A2B3C4D-0000-4000-8000-000000000001",
+         "label": "Chiefs", "sublabel": "Away", "team_code": "KC", "headshot_url": null, "sort_order": 0, "margin": null}
+        """)
+
+        XCTAssertEqual(withMargin.margin, "7_plus")
+        XCTAssertNil(without.margin)
+    }
 }
+
