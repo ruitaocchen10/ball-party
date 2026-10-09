@@ -14,7 +14,7 @@ enum LeaderboardBoard: String, CaseIterable, Equatable, Hashable, Sendable {
     var label: String {
         switch self {
         case .ballKnower: "Ball Knower"
-        case .gamer: "Wins"
+        case .gamer: "Gamer"
         }
     }
 

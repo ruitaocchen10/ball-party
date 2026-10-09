@@ -13,7 +13,7 @@ export const DEFAULT_LEADERBOARD_BOARD: LeaderboardBoard = "ball-knower";
 
 export const LEADERBOARD_BOARD_COPY: Record<LeaderboardBoard, { label: string; title: string }> = {
   "ball-knower": { label: "Ball Knower", title: "Ball Knower" },
-  gamer: { label: "Wins", title: "Multiplayer wins" },
+  gamer: { label: "Gamer", title: "Multiplayer wins" },
 };
 
 /** The `?board=` param: anything unknown falls back to the default. */
