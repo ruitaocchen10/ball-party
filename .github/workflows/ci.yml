@@ -2,7 +2,7 @@ name: CI
 
 # Vercel's own git integration already builds and deploys every push and PR
 # preview. This workflow is the gate Vercel doesn't provide: it runs the
-# actual test suites (frontend + database) so a broken test shows up as a
+# actual test suites (frontend + database + iOS) so a broken test shows up as a
 # failed check on the PR instead of silently shipping.
 on:
   pull_request:
@@ -89,6 +89,50 @@ jobs:
           python-version: "3.12"
 
       - run: python3 -m unittest discover scripts/qb_season_model
+
+  ios:
+    name: iOS (build, test)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create placeholder Secrets.xcconfig
+        # The Debug config reads this gitignored file for SUPABASE_URL and
+        # SUPABASE_ANON_KEY. The unit tests run against fakes and never reach
+        # the network, so placeholders are enough; no real keys in CI.
+        run: |
+          cat > Secrets.xcconfig <<'EOF2'
+          SUPABASE_URL = https:/$()/ci-placeholder.invalid
+          SUPABASE_ANON_KEY = ci-placeholder
+          EOF2
+
+      - name: Pick an iPhone simulator
+        # Runner images ship different Xcode/simulator versions, so take
+        # whichever iPhone the runner has instead of naming one.
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          for runtime, devices in json.load(sys.stdin)['devices'].items():
+              if 'iOS' not in runtime:
+                  continue
+              for d in devices:
+                  if d['name'].startswith('iPhone') and d['isAvailable']:
+                      print(d['udid']); sys.exit(0)
+          sys.exit('no iPhone simulator available')
+          ")
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Build and test
+        run: |
+          xcodebuild test \
+            -project BallParty.xcodeproj \
+            -scheme BallParty \
+            -destination "id=$SIM_UDID" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO
 
   deploy-migrations:
     name: Push migrations to prod
