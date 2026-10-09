@@ -217,7 +217,7 @@ features:
     web: done
     ios: done
   - id: admin.prompts
-    summary: Author, resolve and void prompts
+    summary: Author, resolve, void and delete prompts
     web: done
     ios: no
     note: admin tooling is web only by design

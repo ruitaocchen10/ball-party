@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { resolvePromptPost, voidPromptPost } from "@/lib/foundation/content/prompts/client";
+import { deletePromptPost, resolvePromptPost, voidPromptPost } from "@/lib/foundation/content/prompts/client";
 import { createClient } from "@/lib/supabase/client";
 
 export type AdminSlot = {
@@ -14,7 +14,7 @@ export type AdminSlot = {
   options: { id: string; label: string; sublabel: string | null }[];
 };
 
-type Mode = "resolve" | "void" | null;
+type Mode = "resolve" | "void" | "delete" | null;
 
 const BUTTON =
   "border px-3 py-2 type-label font-bold transition-colors disabled:opacity-40";
@@ -25,24 +25,28 @@ function requiredCount(slot: AdminSlot) {
 }
 
 /**
- * Resolve / void controls for one open or locked post. Nothing here decides
+ * Resolve / void / delete controls for one post (delete works at any status). Nothing here decides
  * anything — prompts.resolve_post and prompts.void_post re-check the admin
  * and the post's state themselves — so this only collects the answers and
  * shows the RPC's own error if it refuses.
  *
  * Each action opens its own panel and only commits from the button inside
- * it: both are irreversible (resolve grades every response, void closes the
- * post for good), so there's no one-click path.
+ * it: all are irreversible (resolve grades every response, void closes the
+ * post for good, delete removes it and everything under it), so there's no
+ * one-click path.
  */
 export function PostActions({
   postId,
   slots,
   canResolve,
+  canClose = true,
 }: {
   postId: string;
   slots: AdminSlot[];
   /** False until the post's lock time has passed — resolving while people can still answer would grade a moving target. */
   canResolve: boolean;
+  /** False once the post is resolved or void: there's nothing left to resolve or void, only delete. */
+  canClose?: boolean;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(null);
@@ -79,7 +83,9 @@ export function PostActions({
     const { error: rpcError } =
       mode === "resolve"
         ? await resolvePromptPost(supabase, { postId, answers })
-        : await voidPromptPost(supabase, { postId, reason });
+        : mode === "void"
+          ? await voidPromptPost(supabase, { postId, reason })
+          : await deletePromptPost(supabase, { postId });
     setBusy(false);
     if (rpcError) {
       setError(rpcError);
@@ -91,7 +97,7 @@ export function PostActions({
   return (
     <div className="sm:col-span-2">
       <div className="flex gap-2">
-        {canResolve ? (
+        {canClose && canResolve ? (
           <button
             type="button"
             onClick={() => open(mode === "resolve" ? null : "resolve")}
@@ -101,13 +107,23 @@ export function PostActions({
             Resolve
           </button>
         ) : null}
+        {canClose ? (
+          <button
+            type="button"
+            onClick={() => open(mode === "void" ? null : "void")}
+            aria-expanded={mode === "void"}
+            className={`${BUTTON} border-line text-fg-muted hover:border-fg hover:text-fg`}
+          >
+            Void
+          </button>
+        ) : null}
         <button
           type="button"
-          onClick={() => open(mode === "void" ? null : "void")}
-          aria-expanded={mode === "void"}
+          onClick={() => open(mode === "delete" ? null : "delete")}
+          aria-expanded={mode === "delete"}
           className={`${BUTTON} border-line text-fg-muted hover:border-fg hover:text-fg`}
         >
-          Void
+          Delete
         </button>
       </div>
 
@@ -184,6 +200,18 @@ export function PostActions({
             className={`${BUTTON} border-fg bg-fg text-surface`}
           >
             {busy ? "Voiding…" : "Confirm void"}
+          </button>
+        </div>
+      ) : null}
+
+      {mode === "delete" ? (
+        <div className="mt-4 space-y-3 border border-line p-4">
+          <p className="text-sm text-fg-muted">
+            Deleting permanently removes this post along with every response, comment and prediction on it. Any points it
+            awarded leave the standings. This can&apos;t be undone.
+          </p>
+          <button type="button" disabled={busy} onClick={submit} className={`${BUTTON} border-fg bg-fg text-surface`}>
+            {busy ? "Deleting…" : "Confirm delete"}
           </button>
         </div>
       ) : null}
