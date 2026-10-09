@@ -111,17 +111,17 @@ final class FriendsViewModelTests: XCTestCase {
     func testSearchFindsAPlayerAndSendingARequestRefreshesTheirRelationship() async {
         let client = FakeFriendsClient()
         let sam = PlayerIdentity.fixture("sam_k")
-        client.searchResult = UserSearchResult(player: sam, relationship: .none)
+        client.searchResults = [UserSearchResult(player: sam, relationship: .none)]
         let viewModel = FriendsViewModel(client: client)
         viewModel.query = "sam_k"
         await viewModel.search()
-        XCTAssertEqual(viewModel.searchPhase, .found(UserSearchResult(player: sam, relationship: .none)))
+        XCTAssertEqual(viewModel.searchPhase, .results([UserSearchResult(player: sam, relationship: .none)]))
 
-        client.searchResult = UserSearchResult(player: sam, relationship: .outgoing)
+        client.searchResults = [UserSearchResult(player: sam, relationship: .outgoing)]
         await viewModel.perform(.send, on: sam)
 
         XCTAssertEqual(viewModel.notice, "Friend request sent.")
-        XCTAssertEqual(viewModel.searchPhase, .found(UserSearchResult(player: sam, relationship: .outgoing)))
+        XCTAssertEqual(viewModel.searchPhase, .results([UserSearchResult(player: sam, relationship: .outgoing)]))
     }
 
     func testAnUnavailableSendIsShownNeutrally() async {
@@ -132,6 +132,38 @@ final class FriendsViewModelTests: XCTestCase {
         await viewModel.perform(.send, on: .fixture())
 
         XCTAssertEqual(viewModel.notice, SendRequestResult.unavailable.message)
+    }
+
+    func testTypingSuggestsPlayersAfterAPauseAndStaysQuietWhileTheQueryIsShort() async throws {
+        let client = FakeFriendsClient()
+        let sam = PlayerIdentity.fixture("sam_k")
+        client.searchResults = [UserSearchResult(player: sam, relationship: .none)]
+        let viewModel = FriendsViewModel(client: client, searchDelay: .milliseconds(10))
+
+        viewModel.query = "sa"
+        viewModel.queryChanged()
+        try await Task.sleep(for: .milliseconds(80))
+        XCTAssertEqual(viewModel.searchPhase, .idle)
+        XCTAssertTrue(client.calls.isEmpty)
+
+        viewModel.query = "sam"
+        viewModel.queryChanged()
+        try await Task.sleep(for: .milliseconds(150))
+        XCTAssertEqual(client.calls, ["search:sam"])
+        XCTAssertEqual(viewModel.searchPhase, .results([UserSearchResult(player: sam, relationship: .none)]))
+    }
+
+    func testOnlyTheLatestKeystrokeSearches() async throws {
+        let client = FakeFriendsClient()
+        let viewModel = FriendsViewModel(client: client, searchDelay: .milliseconds(40))
+
+        for text in ["sam", "sam_", "sam_k"] {
+            viewModel.query = text
+            viewModel.queryChanged()
+        }
+        try await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertEqual(client.calls, ["search:sam_k"])
     }
 
     func testASearchErrorIsFailedNotNotFound() async {

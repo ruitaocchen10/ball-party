@@ -24,7 +24,7 @@ Cards Against Humanity is not built: it has no catalog entry and no doc.
 
 **Profile (`/profile`).** Three tabs (`?tab=`): **Stats** (match history, knower highlights and rankings), **Takes** (the player's prompt takes) and **Friends** (see below). Edit profile also sets the player's unique **username**.
 
-**Friends (the Friends tab on `/profile`).** Accounts only; guests are asked to sign up. Friends list, incoming and outgoing requests, blocked players, exact-username search and a shareable invite link (`/friends/invite/<code>`, which stays its own page and opens in the iOS app via a Universal Link). The tab label shows a count of pending requests. `/friends` redirects to the tab. Rules live in SQL (migrations 0183 to 0190).
+**Friends (the Friends tab on `/profile`).** Accounts only; guests are asked to sign up. Friends list, incoming and outgoing requests, blocked players, username search-as-you-type (prefix match from 3 characters, at most 8 suggestions) and a shareable invite link (`/friends/invite/<code>`, which stays its own page and opens in the iOS app via a Universal Link). The tab label shows a count of pending requests. `/friends` redirects to the tab. Rules live in SQL (migrations 0183 to 0191).
 
 **Other players' profiles (`/u/<username>`).** Another player's highlights and match history. A private profile shows only its header to non-friends; unknown, guest and blocking users all look like not found (`get_profile`, migration 0186). Leaderboard rows link here.
 

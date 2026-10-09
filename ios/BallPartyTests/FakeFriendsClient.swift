@@ -9,7 +9,7 @@ final class FakeFriendsClient: FriendsClient, @unchecked Sendable {
     var friendRows: [Friend] = []
     var requestRows: [FriendRequest] = []
     var blockedRows: [BlockedUser] = []
-    var searchResult: UserSearchResult?
+    var searchResults: [UserSearchResult] = []
     var sendResult: SendRequestResult = .requested
     var code = "ABC123DEF456"
     var resetCode = "NEWCODE00000"
@@ -40,10 +40,10 @@ final class FakeFriendsClient: FriendsClient, @unchecked Sendable {
         return blockedRows
     }
 
-    func search(username: String) async throws -> UserSearchResult? {
+    func search(username: String) async throws -> [UserSearchResult] {
         record("search:\(username)")
         if failing { throw Offline() }
-        return searchResult
+        return searchResults
     }
 
     func sendRequest(username: String) async throws -> SendRequestResult {

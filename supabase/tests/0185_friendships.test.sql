@@ -1,5 +1,5 @@
 begin;
-select plan(80);
+select plan(81);
 
 \ir support/harness.psql
 
@@ -81,8 +81,15 @@ select is(
   '(FzAnn,none)',
   'exact search (any case) finds a player'
 );
-select is((select count(*)::integer from public.search_users_by_username('FzA')), 0, 'prefix search returns nothing');
-select is((select count(*)::integer from public.search_users_by_username('Fz%')), 0, 'wildcards return nothing');
+select is((select count(*)::integer from public.search_users_by_username('Fz')), 0, 'a two-character query returns nothing');
+select is(
+  (select array_agg(username order by username) from public.search_users_by_username('FzA%')),
+  null, 'wildcards return nothing'
+);
+select is(
+  (select array_agg(username order by username) from public.search_users_by_username('fzan')),
+  array['FzAnn'], 'a prefix (any case) finds players'
+);
 select is((select count(*)::integer from public.search_users_by_username('FzCy')), 0, 'you do not find yourself');
 select is((select count(*)::integer from public.search_users_by_username('ab')), 0, 'a too-short query returns nothing');
 select is(
@@ -194,13 +201,13 @@ select is(
 
 select tests.act_as((select v from tests.fx where k = 'rate'));
 select lives_ok(
-  $$ select public.search_users_by_username('FzAnn') from generate_series(1, 30) $$,
-  'thirty searches a minute are allowed'
+  $$ select public.search_users_by_username('FzAnn') from generate_series(1, 120) $$,
+  'a typing burst of searches is allowed'
 );
 select throws_ok(
   $$ select public.search_users_by_username('FzAnn') $$,
   '54000', 'rate_limited',
-  'the thirty-first search in a minute is refused'
+  'the 121st search in a minute is refused'
 );
 select lives_ok(
   $$ select public.send_friend_request('nobody_fz') from generate_series(1, 30) $$,

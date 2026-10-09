@@ -220,14 +220,13 @@ struct FriendsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 SectionTitle(text: "Find by username")
                 HStack(spacing: 8) {
-                    TextField("Username", text: $viewModel.query)
+                    TextField("Start typing a username", text: $viewModel.query)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .submitLabel(.search)
                         .onSubmit { Task { await viewModel.search() } }
+                        .onChange(of: viewModel.query) { viewModel.queryChanged() }
                         .fieldStyle()
-                    Button("Search") { Task { await viewModel.search() } }
-                        .buttonStyle(BPButtonStyle(variant: .solid, fullWidth: false))
                 }
                 searchResult
             }
@@ -247,25 +246,30 @@ struct FriendsView: View {
         case .failed:
             Text(FriendsViewModel.genericFailure).font(.sans(14)).foregroundStyle(Theme.hiddenText)
         case .notFound:
-            Text("No player with that exact username.")
+            Text("No players found.")
                 .font(.sans(14)).foregroundStyle(Theme.fgMuted)
-        case .found(let result):
-            VStack(alignment: .leading, spacing: 10) {
-                NavigationLink {
-                    OtherProfileView(username: result.player.username, client: client)
-                } label: {
-                    PersonRow(player: result.player)
-                }
-                .buttonStyle(.plain)
-                if let primary = RelationshipAction.primary(for: result.relationship) {
-                    Button(primary.title) { Task { await viewModel.perform(primary.action, on: result.player) } }
-                        .buttonStyle(BPButtonStyle(variant: .solid, fullWidth: false))
-                } else if result.relationship == .friends {
-                    Text("You’re already friends.").monoLabel(10, tracking: 0.12)
+        case .results(let rows):
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(rows) { result in
+                    VStack(alignment: .leading, spacing: 10) {
+                        NavigationLink {
+                            OtherProfileView(username: result.player.username, client: client)
+                        } label: {
+                            PersonRow(player: result.player)
+                        }
+                        .buttonStyle(.plain)
+                        if let primary = RelationshipAction.primary(for: result.relationship) {
+                            Button(primary.title) { Task { await viewModel.perform(primary.action, on: result.player) } }
+                                .buttonStyle(BPButtonStyle(variant: .solid, fullWidth: false))
+                        } else if result.relationship == .friends {
+                            Text("You’re already friends.").monoLabel(10, tracking: 0.12)
+                        }
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    if result.id != rows.last?.id { Divider() }
                 }
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
             .well()
         }
     }

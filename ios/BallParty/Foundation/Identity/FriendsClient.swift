@@ -9,8 +9,9 @@ protocol FriendsClient: Sendable {
     func friends() async throws -> [Friend]
     func requests() async throws -> [FriendRequest]
     func blocked() async throws -> [BlockedUser]
-    /// `search_users_by_username`: an exact match, or `nil`.
-    func search(username: String) async throws -> UserSearchResult?
+    /// `search_users_by_username`: players whose username starts with the
+    /// query (at least 3 characters, at most 8 rows, exact match first).
+    func search(username: String) async throws -> [UserSearchResult]
     func sendRequest(username: String) async throws -> SendRequestResult
     func accept(_ userId: UUID) async throws -> Bool
     func decline(_ userId: UUID) async throws -> Bool
@@ -56,11 +57,10 @@ struct SupabaseFriendsClient: FriendsClient {
         try await client.rpc("list_blocked_users").execute().value
     }
 
-    func search(username: String) async throws -> UserSearchResult? {
-        let rows: [UserSearchResult] = try await client
+    func search(username: String) async throws -> [UserSearchResult] {
+        try await client
             .rpc("search_users_by_username", params: QueryParams(p_query: username))
             .execute().value
-        return rows.first
     }
 
     func sendRequest(username: String) async throws -> SendRequestResult {
