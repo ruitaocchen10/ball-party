@@ -44,7 +44,7 @@ export default async function PromptDetailPage(props: PageProps<"/prompts/[id]">
   const viewer = isSignedInViewer(claims);
   const [profileResult, post] = await Promise.all([
     viewer
-      ? supabase.from("profiles").select("display_name, avatar_url").eq("id", claims.sub).single()
+      ? supabase.from("profiles").select("display_name, avatar_url, username").eq("id", claims.sub).single()
       : Promise.resolve({ data: null }),
     fetchPromptById(supabase, viewer ? claims.sub : null, id),
   ]);
@@ -64,7 +64,7 @@ export default async function PromptDetailPage(props: PageProps<"/prompts/[id]">
       <DashboardHeader displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
       <PageShell variant="dashboard" rail={<PromptContext post={post} />}>
         <PostHeroHeader post={post} />
-        <PromptThread post={post} displayName={displayName} avatarUrl={avatarUrl} viewerCanAnswer={canAnswerPrompt(claims)} boldPredictions={boldPredictions} />
+        <PromptThread post={post} displayName={displayName} avatarUrl={avatarUrl} username={profileResult.data?.username ?? null} viewerCanAnswer={canAnswerPrompt(claims)} boldPredictions={boldPredictions} />
       </PageShell>
     </>
   );

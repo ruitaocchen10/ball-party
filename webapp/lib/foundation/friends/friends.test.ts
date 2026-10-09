@@ -46,7 +46,7 @@ describe("friends helpers", () => {
   it("drops activity rows of an unknown type", () => {
     const base = {
       occurred_at: "2026-10-08T00:00:00Z", actor_id: "a", username: "ava", display_name: "Ava", avatar_url: null,
-      post_id: null, post_caption: null, points: null, match_id: null, game: null, placement: null, raw_score: null, run_mode: null,
+      post_id: null, post_caption: null, take_body: null, comment_id: null, reply_count: 0, response: null, mode: null, opponents: null, opponent_you: null, opponent_count: null, friend_rank: null, friend_count: null, points: null, match_id: null, game: null, placement: null, raw_score: null, run_mode: null,
     };
     const events = activityEvents([{ ...base, event_type: "pick_made" }, { ...base, event_type: "mystery" }]);
     expect(events.map((event) => event.type)).toEqual(["pick_made"]);

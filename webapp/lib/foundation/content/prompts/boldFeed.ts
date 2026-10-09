@@ -29,10 +29,11 @@ export async function fetchBoldPredictionBoard(
   const authorIds = [...new Set(predictionRows.map((row) => row.author_id))];
   const playerIds = [...new Set(predictionRows.filter((row) => row.target_type === "player").map((row) => row.target_id))];
   const [profiles, playerRows] = await Promise.all([
-    authorIds.length ? supabase.from("profiles").select("id, display_name").in("id", authorIds).then((r) => r.data ?? []) : [],
+    authorIds.length ? supabase.from("profiles").select("id, display_name, username").in("id", authorIds).then((r) => r.data ?? []) : [],
     playerIds.length ? supabase.schema("prompts").rpc("players_by_ids", { p_ids: playerIds }).then((r) => r.data ?? []) : [],
   ]);
   const nameById = new Map(profiles.map((profile) => [profile.id, profile.display_name]));
+  const usernameById = new Map(profiles.map((profile) => [profile.id, profile.username]));
 
   const players: Record<string, PlayerResult> = {};
   for (const row of playerRows) {
@@ -41,5 +42,5 @@ export async function fetchBoldPredictionBoard(
     };
   }
 
-  return { predictions: predictionRows.map((row) => toBoldPrediction(row, viewerId, nameById)), weekGames, players };
+  return { predictions: predictionRows.map((row) => toBoldPrediction(row, viewerId, nameById, usernameById)), weekGames, players };
 }

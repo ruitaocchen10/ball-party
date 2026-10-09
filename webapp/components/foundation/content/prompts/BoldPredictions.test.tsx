@@ -46,7 +46,7 @@ function boldPost(overrides: Partial<Post> = {}): Post {
 const lockedPost = () => boldPost({ status: "locked", lockAt: "2026-10-07T12:00:00.000Z" });
 
 function prediction(id: string, body: string, target: BoldPrediction["target"], overrides: Partial<BoldPrediction> = {}): BoldPrediction {
-  return { id, author: "Ruitao", isViewer: true, body, target, createdAt: "2099-10-02T12:00:00.000Z", ...overrides };
+  return { id, author: "Ruitao", authorUsername: "ruitao", isViewer: true, body, target, createdAt: "2099-10-02T12:00:00.000Z", ...overrides };
 }
 
 function data(predictions: BoldPrediction[], players: Record<string, PlayerResult> = {}): BoldPredictionBoardData {

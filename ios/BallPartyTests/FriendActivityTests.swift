@@ -20,54 +20,116 @@ final class FriendActivityTests: XCTestCase {
     }
 
     private let blanks = """
-    "post_id":null,"post_caption":null,"points":null,"match_id":null,"game":null,"placement":null,"raw_score":null,"run_mode":null
+    "post_id":null,"post_caption":null,"take_body":null,"comment_id":null,"reply_count":0,"response":null,"points":null,"match_id":null,"game":null,"placement":null,"raw_score":null,"run_mode":null,"mode":null
     """
+
+    private func fields(_ overrides: [String: String]) -> String {
+        var base: [String: String] = [
+            "post_id": "null", "post_caption": "null", "take_body": "null", "comment_id": "null", "reply_count": "0", "response": "null", "opponents": "null", "opponent_you": "false", "opponent_count": "0", "friend_rank": "null", "friend_count": "null", "points": "null",
+            "match_id": "null", "game": "null", "placement": "null", "raw_score": "null", "run_mode": "null", "mode": "null",
+        ]
+        for (key, value) in overrides { base[key] = value }
+        return base.map { "\"\($0.key)\":\($0.value)" }.joined(separator: ",")
+    }
 
     func testPickMadeDecodesAndNeverCarriesAnOption() throws {
         let json = "[" + row("pick_made", "2026-10-01T12:00:00.123456+00:00",
-            "\"post_id\":\"00000000-0000-0000-0000-0000000000B1\",\"post_caption\":\"Week 5 lock\",\"points\":null,\"match_id\":null,\"game\":null,\"placement\":null,\"raw_score\":null,\"run_mode\":null") + "]"
+            fields(["post_id": "\"00000000-0000-0000-0000-0000000000B1\"", "post_caption": "\"Week 5 lock\""])) + "]"
         let events = try decodePage(json)
         XCTAssertEqual(events.count, 1)
         XCTAssertEqual(events[0].actor.username, "sam_k")
-        XCTAssertEqual(events[0].summary, "made a pick on “Week 5 lock”")
+        XCTAssertEqual(events[0].summary, "answered on “Week 5 lock”. Their picks show when it locks.")
         XCTAssertEqual(events[0].occurredAtRaw, "2026-10-01T12:00:00.123456+00:00")
     }
 
-    func testPickResultReadsPoints() throws {
-        let events = try decodePage("[" + row("pick_result", "2026-10-01T12:00:00+00:00",
-            "\"post_id\":\"00000000-0000-0000-0000-0000000000B1\",\"post_caption\":\"Week 5 lock\",\"points\":3,\"match_id\":null,\"game\":null,\"placement\":null,\"raw_score\":null,\"run_mode\":null") + "]")
-        XCTAssertEqual(events[0].summary, "scored +3 points on “Week 5 lock”")
-        XCTAssertEqual(
-            FriendActivityEvent(kind: .pickResult(postId: UUID(), caption: nil, points: 1), occurredAt: Date(), actor: .fixture()).summary,
-            "scored +1 point"
-        )
+    func testATakeCarriesTheAnswerTheTakeTheThreadAndThePoints() throws {
+        let slot = "20000000-0000-0000-0000-000000000001", option = "50000000-0000-0000-0000-000000000001"
+        let events = try decodePage("[" + row("take", "2026-10-01T12:00:00+00:00", fields([
+            "post_id": "\"00000000-0000-0000-0000-0000000000B1\"", "post_caption": "\"Week 5 lock\"",
+            "take_body": "\"Chiefs in a walk\"", "comment_id": "\"00000000-0000-0000-0000-0000000000D1\"",
+            "reply_count": "2", "points": "3",
+            "response": "{\"\(slot)\":[\"\(option)\"]}",
+        ])) + "]")
+        XCTAssertEqual(events[0].summary, "answered on “Week 5 lock” · +3")
+        guard case .take(let take) = events[0].kind else { return XCTFail("expected a take") }
+        XCTAssertEqual(take.body, "Chiefs in a walk")
+        XCTAssertEqual(take.commentId, UUID(uuidString: "00000000-0000-0000-0000-0000000000D1"))
+        XCTAssertEqual(take.replyCount, 2)
+        XCTAssertEqual(take.response, [UUID(uuidString: slot)!: [UUID(uuidString: option)!]])
     }
 
-    func testMatchResultReadsGamePlacementAndScore() throws {
-        let events = try decodePage("[" + row("match_result", "2026-10-01T12:00:00+00:00",
-            "\"post_id\":null,\"post_caption\":null,\"points\":null,\"match_id\":\"00000000-0000-0000-0000-0000000000C1\",\"game\":\"higher_or_lower\",\"placement\":2,\"raw_score\":\"1450.5\",\"run_mode\":\"party\"") + "]")
-        XCTAssertEqual(events[0].summary, "finished 2nd in Higher or Lower · 1,450.5")
+    func testATakeWithNoPostedTakeStillCarriesTheAnswer() throws {
+        let slot = "20000000-0000-0000-0000-000000000001"
+        let a = "50000000-0000-0000-0000-000000000001", b = "50000000-0000-0000-0000-000000000002"
+        let events = try decodePage("[" + row("take", "2026-10-01T12:00:00+00:00", fields([
+            "post_id": "\"00000000-0000-0000-0000-0000000000B1\"",
+            "response": "{\"\(slot)\":[\"\(a)\",\"\(b)\"]}",
+        ])) + "]")
+        guard case .take(let take) = events[0].kind else { return XCTFail("expected a take") }
+        XCTAssertNil(take.body)
+        XCTAssertNil(take.commentId)
+        XCTAssertEqual(take.response[UUID(uuidString: slot)!], [UUID(uuidString: a)!, UUID(uuidString: b)!])
+        XCTAssertEqual(events[0].summary, "answered")
     }
 
-    func testASoloMatchHasNoPlacementLine() throws {
-        let events = try decodePage("[" + row("match_result", "2026-10-01T12:00:00+00:00",
-            "\"post_id\":null,\"post_caption\":null,\"points\":null,\"match_id\":\"00000000-0000-0000-0000-0000000000C1\",\"game\":\"higher_or_lower\",\"placement\":1,\"raw_score\":12,\"run_mode\":\"solo\"") + "]")
-        XCTAssertEqual(events[0].summary, "played Higher or Lower solo · 12")
+    func testAWinReadsGameAndScore() throws {
+        let events = try decodePage("[" + row("win", "2026-10-01T12:00:00+00:00", fields([
+            "match_id": "\"00000000-0000-0000-0000-0000000000C1\"", "game": "\"higher_or_lower\"",
+            "placement": "1", "raw_score": "\"1450.5\"", "run_mode": "\"party\"",
+        ])) + "]")
+        XCTAssertEqual(events[0].summary, "won Higher or Lower · score 1,450.5")
     }
 
-    func testAnUnknownGameIsHumanizedNotDropped() throws {
-        let events = try decodePage("[" + row("match_result", "2026-10-01T12:00:00+00:00",
-            "\"post_id\":null,\"post_caption\":null,\"points\":null,\"match_id\":\"00000000-0000-0000-0000-0000000000C1\",\"game\":\"qb_season_builder\",\"placement\":null,\"raw_score\":null,\"run_mode\":\"arcade\"") + "]")
-        XCTAssertEqual(events[0].summary, "played Qb season builder")
+    func testAWinCarriesWhoItWasOver() throws {
+        let events = try decodePage("[" + row("win", "2026-10-01T12:00:00+00:00", fields([
+            "match_id": "\"00000000-0000-0000-0000-0000000000C1\"", "game": "\"higher_or_lower\"",
+            "opponents": "[\"Ava\"]", "opponent_you": "true", "opponent_count": "3",
+        ])) + "]")
+        guard case .win(_, _, _, let opponents, let you, let count) = events[0].kind else { return XCTFail("expected a win") }
+        XCTAssertEqual(opponents, ["Ava"])
+        XCTAssertTrue(you)
+        XCTAssertEqual(count, 3)
+        XCTAssertEqual(FriendActivityEvent.beatLine(opponents: opponents, you: you, count: count), "you, Ava and 1 other")
+        XCTAssertEqual(FriendActivityEvent.beatLine(opponents: [], you: true, count: 1), "you")
+        XCTAssertEqual(FriendActivityEvent.beatLine(opponents: [], you: false, count: 2), "2 players")
+        XCTAssertNil(FriendActivityEvent.beatLine(opponents: [], you: false, count: 0))
+    }
+
+    func testAHighScoreCarriesItsRankAmongFriends() throws {
+        let events = try decodePage("[" + row("high_score", "2026-10-01T12:00:00+00:00", fields([
+            "game": "\"higher_or_lower\"", "raw_score": "14", "friend_rank": "2", "friend_count": "5",
+        ])) + "]")
+        guard case .highScore(_, _, _, let rank, let count) = events[0].kind else { return XCTFail("expected a high score") }
+        XCTAssertEqual(rank, 2)
+        XCTAssertEqual(count, 5)
+    }
+
+    func testBackToBackWinsByOneFriendOnADayFoldTogether() throws {
+        func win(_ id: String, _ time: String) throws -> FriendActivityEvent {
+            try decodePage("[" + row("win", time, fields(["match_id": "\"00000000-0000-0000-0000-0000000000\(id)\"", "game": "\"higher_or_lower\""])) + "]")[0]
+        }
+        let items = FriendActivityItem.grouped([
+            try win("C1", "2026-10-01T12:00:00+00:00"),
+            try win("C2", "2026-10-01T09:00:00+00:00"),
+            try win("C3", "2026-09-30T09:00:00+00:00"),
+        ])
+        XCTAssertEqual(items.map(\.more.count), [1, 0])
+    }
+
+    func testAHighScoreReadsTheGameAndBoard() throws {
+        let hol = try decodePage("[" + row("high_score", "2026-10-01T12:00:00+00:00", fields(["game": "\"higher_or_lower\"", "raw_score": "14"])) + "]")
+        XCTAssertEqual(hol[0].summary, "set a new high score in Higher or Lower: 14 in a row")
+        let qb = try decodePage("[" + row("high_score", "2026-10-01T12:00:00+00:00", fields(["game": "\"qb_season_builder\"", "raw_score": "\"88.5\"", "mode": "\"hidden\""])) + "]")
+        XCTAssertEqual(qb[0].summary, "set a new high score in QB Season Builder (hidden): 88.5")
     }
 
     func testAnUnknownEventTypeIsSkippedNotFatal() throws {
         let json = "[" + row("brand_new", "2026-10-01T12:00:00+00:00", blanks) + ","
             + row("pick_made", "2026-10-01T11:00:00+00:00",
-                "\"post_id\":\"00000000-0000-0000-0000-0000000000B1\",\"post_caption\":null,\"points\":null,\"match_id\":null,\"game\":null,\"placement\":null,\"raw_score\":null,\"run_mode\":null") + "]"
+                fields(["post_id": "\"00000000-0000-0000-0000-0000000000B1\""])) + "]"
         let events = try decodePage(json)
         XCTAssertEqual(events.count, 1)
-        XCTAssertEqual(events[0].summary, "made a pick")
+        XCTAssertEqual(events[0].summary, "answered. Their picks show when it locks.")
     }
 
     // MARK: Paging

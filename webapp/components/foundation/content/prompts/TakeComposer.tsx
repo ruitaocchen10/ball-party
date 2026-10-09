@@ -17,6 +17,7 @@ type TakeComposerProps = {
   post: Post;
   displayName: string;
   avatarUrl: string | null;
+  username?: string | null;
 };
 
 /**
@@ -24,7 +25,7 @@ type TakeComposerProps = {
  * inputs, and Lock in. It uses the TakeCard shell so composing a take feels
  * like the card it becomes after submission.
  */
-export function TakeComposer({ post, displayName, avatarUrl }: TakeComposerProps) {
+export function TakeComposer({ post, displayName, avatarUrl, username = null }: TakeComposerProps) {
   const router = useRouter();
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
   const [draft, setDraft] = useState<Record<string, string[]>>({});
@@ -63,7 +64,7 @@ export function TakeComposer({ post, displayName, avatarUrl }: TakeComposerProps
     <section aria-label="Make your picks" className="flex flex-col">
       <div className="relative flex flex-1 flex-col overflow-hidden border border-line bg-surface-raised text-fg shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
         <div className="flex items-center gap-2.5 px-4 pt-4">
-          <AuthorIdentity name={displayName} avatarUrl={avatarUrl} />
+          <AuthorIdentity name={displayName} avatarUrl={avatarUrl} username={username} />
           <Badge>You</Badge>
         </div>
         <div className="px-4 pt-4">

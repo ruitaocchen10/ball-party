@@ -53,7 +53,7 @@ struct HuddleScreen: View {
             case .huddle:
                 HuddleFeedView(viewModel: viewModel)
             case .friends:
-                FriendActivityFeedView(viewModel: activity, client: friendsClient)
+                FriendActivityFeedView(viewModel: activity, huddle: viewModel, client: friendsClient)
                     .screenBackground()
             }
         }

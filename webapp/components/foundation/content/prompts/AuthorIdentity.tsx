@@ -8,10 +8,13 @@ import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvata
 export function AuthorIdentity({
   name,
   avatarUrl = null,
+  username = null,
   className = "",
 }: {
   name: string;
   avatarUrl?: string | null;
+  /** Shown as @username under the name; without one (a guest, or an old row) there is no second line. */
+  username?: string | null;
   className?: string;
 }) {
   return (
@@ -19,7 +22,7 @@ export function AuthorIdentity({
       <AuthorAvatar name={name} avatarUrl={avatarUrl} />
       <div className="min-w-0 leading-none">
         <p className="truncate font-mono text-base font-bold text-fg">{name}</p>
-        <p className="mt-1 type-label text-fg-muted">Rookie</p>
+        {username ? <p className="mt-1 truncate type-label text-fg-muted">@{username}</p> : null}
       </div>
     </div>
   );

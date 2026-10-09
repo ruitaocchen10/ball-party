@@ -44,6 +44,45 @@ values
   ('00000000-0000-0000-0000-00000000d002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'curator@ballparty.local', crypt('ball-party-demo', gen_salt('bf')), now(), '', '', '', '', now() - interval '7 days', now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Ball Curator"}'),
   ('00000000-0000-0000-0000-00000000d003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'tasha@ballparty.local', crypt('ball-party-demo', gen_salt('bf')), now(), '', '', '', '', now() - interval '7 days', now(), '{"provider":"email","providers":["email"]}', '{"display_name":"Tasha"}');
 
+-- More players so the friends screens have something to show. Same password as
+-- the accounts above. The profiles row comes from the auth.users trigger.
+insert into auth.users (
+  id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+  confirmation_token, email_change, email_change_token_new, recovery_token,
+  created_at, updated_at, raw_app_meta_data, raw_user_meta_data
+)
+select
+  ('00000000-0000-0000-0000-00000000d' || lpad(n::text, 3, '0'))::uuid,
+  '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+  lower(name) || '@ballparty.local', crypt('ball-party-demo', gen_salt('bf')), now(),
+  '', '', '', '', now() - interval '7 days', now(),
+  '{"provider":"email","providers":["email"]}',
+  jsonb_build_object('display_name', name)
+from (values
+  (4, 'Marcus'), (5, 'Priya'), (6, 'Jordan'), (7, 'Sam'), (8, 'Alex'),
+  (9, 'Dee'), (10, 'Mo'), (11, 'Riley'), (12, 'Casey')
+) as extra (n, name);
+
+-- Friendships. Demo Reader (d001) has six friends, two incoming requests, one
+-- outgoing request and one blocked player; the rest are friends with each other
+-- so a friend's friends list isn't empty. requester_id is who asked first.
+insert into public.friendships (requester_id, addressee_id, status, created_at, responded_at)
+select
+  ('00000000-0000-0000-0000-00000000d' || lpad(r::text, 3, '0'))::uuid,
+  ('00000000-0000-0000-0000-00000000d' || lpad(a::text, 3, '0'))::uuid,
+  s,
+  now() - make_interval(days => d),
+  case when s = 'pending' then null else now() - make_interval(days => d) end
+from (values
+  (1, 2, 'accepted', 6), (3, 1, 'accepted', 6), (1, 4, 'accepted', 5),
+  (5, 1, 'accepted', 4), (1, 6, 'accepted', 3), (7, 1, 'accepted', 2),
+  (8, 1, 'pending', 1), (9, 1, 'pending', 0),
+  (1, 10, 'pending', 1),
+  (1, 11, 'blocked', 2),
+  (2, 3, 'accepted', 6), (3, 4, 'accepted', 5), (4, 5, 'accepted', 4),
+  (2, 12, 'accepted', 3), (6, 7, 'accepted', 2)
+) as f (r, a, s, d);
+
 -- prompts_private.admin_config (0094) is deliberately left unseeded by
 -- migrations — an admin's email isn't a value a committed migration should
 -- carry (prod sets its own row by hand, outside any migration). Local dev
@@ -419,5 +458,61 @@ values
   ('00000000-0000-0000-0000-00000000e305', '00000000-0000-0000-0000-00000000a011', '00000000-0000-0000-0000-00000000d001', 'Moved the teams that looked sharp in the opener up a few spots, and dropped anyone with a banged-up offensive line.', true, null, now() - interval '6 days 6 hours'),
   ('00000000-0000-0000-0000-00000000e306', '00000000-0000-0000-0000-00000000a011', '00000000-0000-0000-0000-00000000d002', 'One week of tape is not a trend, but the Eagles looked like the best team on the field and my list says so.', true, null, now() - interval '6 days 2 hours'),
   ('00000000-0000-0000-0000-00000000e307', '00000000-0000-0000-0000-00000000a011', '00000000-0000-0000-0000-00000000d003', 'Kept the top three from last week and shuffled the bottom ten by point differential. Boring, but it is hard to argue with.', true, null, now() - interval '5 days 22 hours');
+
+-- Game results for the Friends tab: multiplayer wins (Priya wins two in a row, which fold
+-- into one card; Marcus beats Demo Reader) and new solo bests among Demo Reader's friends.
+insert into public.lobbies (id, code, host_id)
+values ('00000000-0000-0000-0000-00000000f001', 'DEMO1', '00000000-0000-0000-0000-00000000d001');
+
+insert into public.runs (id, lobby_id, mode, status, started_at, ended_at)
+select ('00000000-0000-0000-0000-00000000f1' || lpad(n::text, 2, '0'))::uuid,
+       '00000000-0000-0000-0000-00000000f001', mode::public.run_mode, 'finished',
+       now() - make_interval(hours => h) - interval '20 minutes', now() - make_interval(hours => h)
+  from (values (1, 'arcade', 4), (2, 'arcade', 3), (3, 'party', 2), (4, 'arcade', 6)) as r (n, mode, h);
+
+insert into public.matches (id, run_id, game, seq, status, started_at, ended_at)
+select ('00000000-0000-0000-0000-00000000f2' || lpad(n::text, 2, '0'))::uuid,
+       ('00000000-0000-0000-0000-00000000f1' || lpad(n::text, 2, '0'))::uuid,
+       'higher_or_lower', 1, 'complete',
+       now() - make_interval(hours => h) - interval '20 minutes', now() - make_interval(hours => h)
+  from (values (1, 4), (2, 3), (3, 2), (4, 6)) as m (n, h);
+
+-- (match, player d-number, placement, score)
+insert into public.run_participants (run_id, user_id, seat)
+select ('00000000-0000-0000-0000-00000000f1' || lpad(n::text, 2, '0'))::uuid,
+       ('00000000-0000-0000-0000-00000000d' || lpad(u::text, 3, '0'))::uuid,
+       (row_number() over (partition by n order by place) - 1)::int
+  from (values
+    (1, 4, 1, 14), (1, 1, 2, 9), (1, 5, 3, 4),
+    (2, 5, 1, 12), (2, 7, 2, 7),
+    (3, 5, 1, 15), (3, 6, 2, 10), (3, 1, 3, 3),
+    (4, 1, 1, 11), (4, 4, 2, 8)
+  ) as p (n, u, place, score);
+
+insert into public.match_players (match_id, run_id, user_id, placement, raw_score)
+select ('00000000-0000-0000-0000-00000000f2' || lpad(n::text, 2, '0'))::uuid,
+       ('00000000-0000-0000-0000-00000000f1' || lpad(n::text, 2, '0'))::uuid,
+       ('00000000-0000-0000-0000-00000000d' || lpad(u::text, 3, '0'))::uuid,
+       place, score
+  from (values
+    (1, 4, 1, 14), (1, 1, 2, 9), (1, 5, 3, 4),
+    (2, 5, 1, 12), (2, 7, 2, 7),
+    (3, 5, 1, 15), (3, 6, 2, 10), (3, 1, 3, 3),
+    (4, 1, 1, 11), (4, 4, 2, 8)
+  ) as p (n, u, place, score);
+
+-- Solo bests: updated_at is when the best was last raised.
+insert into public.higher_or_lower_player_stats (user_id, all_time_high, updated_at) values
+  ('00000000-0000-0000-0000-00000000d004', 14, now() - interval '4 hours'),
+  ('00000000-0000-0000-0000-00000000d006', 9,  now() - interval '1 day'),
+  ('00000000-0000-0000-0000-00000000d007', 6,  now() - interval '2 days'),
+  ('00000000-0000-0000-0000-00000000d001', 11, now() - interval '6 hours')
+on conflict (user_id) do update set all_time_high = excluded.all_time_high, updated_at = excluded.updated_at;
+
+insert into public.qb_season_builder_player_stats (user_id, mode, best_score, updated_at) values
+  ('00000000-0000-0000-0000-00000000d005', 'visible', 88.5, now() - interval '30 minutes'),
+  ('00000000-0000-0000-0000-00000000d001', 'visible', 76.0, now() - interval '1 day'),
+  ('00000000-0000-0000-0000-00000000d004', 'hidden',  71.5, now() - interval '5 hours')
+on conflict (user_id, mode) do update set best_score = excluded.best_score, updated_at = excluded.updated_at;
 
 commit;

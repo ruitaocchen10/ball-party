@@ -104,6 +104,10 @@ enum PromptFeed {
             rows.profiles.compactMap { row in row.avatarUrl.flatMap(URL.init(string:)).map { (row.id, $0) } },
             uniquingKeysWith: { first, _ in first }
         )
+        let usernameById = Dictionary(
+            rows.profiles.compactMap { row in row.username.map { (row.id, $0) } },
+            uniquingKeysWith: { first, _ in first }
+        )
         let gameById = Dictionary(rows.games.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let previousRanks = previousPowerRanks(rows: rows, responsesByPost: responsesByPost)
 
@@ -168,7 +172,7 @@ enum PromptFeed {
                     isOpinion: row.isOpinion,
                     slots: slots,
                     comments: commentTree(
-                        commentsByPost[row.id] ?? [], names: nameById, avatars: avatarById, viewerId: viewerId, tickets: ticketsByAuthor
+                        commentsByPost[row.id] ?? [], names: nameById, avatars: avatarById, usernames: usernameById, viewerId: viewerId, tickets: ticketsByAuthor
                     ),
                     responseCount: responseCount,
                     viewerResponse: mine.isEmpty ? nil : Dictionary(mine.map { ($0.slotId, $0.chosenOptionIds) }, uniquingKeysWith: { _, latest in latest }),
@@ -233,7 +237,7 @@ enum PromptFeed {
     /// take of its own rather than being silently dropped — the same call the
     /// web's `buildCommentTree` makes.
     private static func commentTree(
-        _ rows: [PromptCommentRow], names: [UUID: String], avatars: [UUID: URL], viewerId: UUID,
+        _ rows: [PromptCommentRow], names: [UUID: String], avatars: [UUID: URL], usernames: [UUID: String], viewerId: UUID,
         tickets: [UUID: [UUID: [UUID]]]
     ) -> [PromptComment] {
         let ids = Set(rows.map(\.id))
@@ -247,6 +251,7 @@ enum PromptFeed {
                 id: row.id,
                 author: names[row.authorId] ?? "Unknown",
                 authorAvatarURL: avatars[row.authorId],
+                authorUsername: usernames[row.authorId],
                 body: row.body,
                 createdAt: row.createdAt,
                 isViewer: row.authorId == viewerId,

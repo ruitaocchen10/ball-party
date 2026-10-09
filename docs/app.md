@@ -4,7 +4,7 @@ Ball Party is a sports (NFL) knowledge party game and community. People test the
 
 ## Surfaces
 
-**The Huddle (home, `/`).** Real accounts see two tabs, Huddle and Friends (`?view=friends`); Friends is the friend activity feed (`friend_activity`): friends' recent picks (never which options), pick results and match results from the last 30 days. The Huddle is a public feed of weekly prompts people answer and comment on: game picks, weekly picks, weekly awards, bold predictions, power rankings. Readable signed out; answering needs an account. Admins author and resolve prompts under `/admin`. The prompt kinds are `TemplateKind` in `webapp/lib/foundation/content/prompts/types.ts`.
+**The Huddle (home, `/`).** Real accounts see two tabs, Huddle and Friends (`?view=friends`); Friends is the friend activity feed (`friend_activity`, migration 0194), the last 30 days of: friends' answers to prompts drawn as the Huddle's take cards (the take, with their picks behind View take, shown once the prompt locks; before that the feed only says they answered), their multiplayer wins, and new solo high scores (Higher or Lower streak, QB Season Builder by mode). The Huddle is a public feed of weekly prompts people answer and comment on: game picks, weekly picks, weekly awards, bold predictions, power rankings. Readable signed out; answering needs an account. Admins author and resolve prompts under `/admin`. The prompt kinds are `TemplateKind` in `webapp/lib/foundation/content/prompts/types.ts`.
 
 **Games.** What each game is, who can play it, and whether it is live is the catalog in `webapp/lib/platform/orchestration/catalog.ts` (`status`, `solo`, `group`). Rules live in one doc per game:
 
