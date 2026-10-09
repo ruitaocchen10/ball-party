@@ -163,6 +163,7 @@ features:
     summary: Invite friends into a room from the lobby; accept or decline from the Party page
     web: done
     ios: done
+    note: Invites appear live on an open Party page / tab (Realtime on the recipient's own room_invites rows, then a re-read of list_room_invites). There is no push notification, so a closed app or tab sees them on next open.
   - id: rooms.pick-game
     summary: Host picks the game and starts a run
     web: done

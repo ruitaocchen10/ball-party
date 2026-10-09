@@ -18,7 +18,7 @@ Ball Party is a sports (NFL) knowledge party game and community. People test the
 
 Cards Against Humanity is not built: it has no catalog entry and no doc.
 
-**Rooms (`/party`).** A host creates a room with a join code, friends join, and the host picks a game from the live room-capable games. Any member can invite friends from the lobby; the invitee sees pending invites at the top of `/party` and joins or declines (invites last 24 hours, in-app only, no push). Each pick starts an **arcade** run: one match of one game. See [lobbies](./architecture/lobbies/lobbies.md) for lobby → run → match.
+**Rooms (`/party`).** A host creates a room with a join code, friends join, and the host picks a game from the live room-capable games. Any member can invite friends from the lobby; the invitee sees pending invites at the top of `/party` and joins or declines (invites last 24 hours, in-app only, no push notification; they appear live while the page or Party tab is open). Each pick starts an **arcade** run: one match of one game. See [lobbies](./architecture/lobbies/lobbies.md) for lobby → run → match.
 
 **Solo (`/solo`, and the sidebar's solo section).** Starts a solo run of any game with `solo: true`. Signed-out visitors get a guest session on web. Each solo game with an all-time best also has a leaderboard at `/solo/<game>/leaderboard` (see Leaderboard), linked from the "Best scores" rail with the viewer's rank. On iOS each solo game card on the Games tab has a Leaderboard button.
 

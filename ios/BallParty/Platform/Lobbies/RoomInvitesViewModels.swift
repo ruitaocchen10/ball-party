@@ -56,7 +56,9 @@ final class InviteFriendsViewModel: ObservableObject {
 }
 
 /// "Room invites" at the top of the Party tab: pending invites from friends.
-/// Pull-only (no push), so it is read on appear and on pull-to-refresh.
+/// Read on appear and on pull-to-refresh, and re-read whenever Realtime reports
+/// a change to the viewer's invites (`observe`), so a new invite shows up
+/// without a refresh.
 @MainActor
 final class RoomInvitesInboxViewModel: ObservableObject {
     enum Action: Equatable { case accept, decline }
@@ -82,6 +84,16 @@ final class RoomInvitesInboxViewModel: ObservableObject {
         guard let fresh = try? await client.invites() else { return }
         invites = fresh
         errors = errors.filter { id, _ in fresh.contains { $0.id == id } }
+    }
+
+    /// Keeps the list current for as long as the calling task lives (attach it
+    /// with `.task`). Every event is just "read again": `load()` is the only
+    /// thing that decides what is listed, so the stream cannot show an invite
+    /// the server would not.
+    func observe(recipientId: UUID) async {
+        for await _ in client.events(recipientId: recipientId) {
+            await load()
+        }
     }
 
     /// Joins the room. Returns it so the Party tab can step inside, or `nil`

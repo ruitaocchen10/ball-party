@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 
 import { CurrentRoom, type RoomSummary } from "@/components/home/CurrentRoom";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
-import { RoomInvitesInbox, type RoomInvite } from "@/components/home/RoomInvitesInbox";
+import { RoomInvitesInbox } from "@/components/home/RoomInvitesInbox";
 import { JoinRoom } from "@/components/home/JoinRoom";
 import { StartRoom } from "@/components/home/StartRoom";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { DashboardRail } from "@/components/foundation/ui-kit/DashboardRail";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
+import { toRoomInvite, type RoomInvite } from "@/lib/platform/lobbies/invites";
 import { createClient } from "@/lib/supabase/server";
 import { canCreateLobby, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
@@ -83,7 +84,7 @@ export default async function PartyPage(props: PageProps<"/party">) {
             <CurrentRoom room={room} headingId="party-room-heading-mobile" />
           </div>
         ) : null}
-        <RoomInvitesInbox invites={invites} hasRoom={room !== null} />
+        <RoomInvitesInbox invites={invites} hasRoom={room !== null} viewerId={canHost ? claims!.sub : null} />
         <ActionStrip hasRoom={room !== null} canCreateLobby={canHost} />
       </PageShell>
     </>
@@ -123,14 +124,7 @@ async function currentRoom(supabase: Client, userId: string): Promise<RoomSummar
 /** Pending room invites from friends. A failed read just hides the inbox. */
 async function pendingInvites(supabase: Client): Promise<RoomInvite[]> {
   const { data } = await supabase.rpc("list_room_invites");
-  return (data ?? []).map((row) => ({
-    inviteId: row.invite_id,
-    senderName: row.sender_display_name,
-    senderUsername: row.sender_username,
-    senderAvatarUrl: row.sender_avatar_url,
-    selectedGame: row.selected_game,
-    memberCount: row.member_count,
-  }));
+  return (data ?? []).map(toRoomInvite);
 }
 
 /**
