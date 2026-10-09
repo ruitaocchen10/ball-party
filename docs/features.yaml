@@ -156,8 +156,8 @@ features:
     summary: Invite friends into a room from the lobby; accept or decline from the Party page
     web: done
     ios: partial
-    ticket: BPMO-11
-    note: iOS has no room surface until BPMO-11 (the Party tab is a placeholder). The backend is done.
+    ticket: BPMO-TBD
+    note: The iOS Party tab and lobby exist (BPMO-11), but there is no invite UI yet (invite from the lobby, inbox on the Party tab). The backend is done. Create the BPMO ticket and replace BPMO-TBD.
   - id: rooms.pick-game
     summary: Host picks the game and starts a run
     web: done
