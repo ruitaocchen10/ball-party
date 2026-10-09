@@ -6,6 +6,7 @@ import { SoloGrid } from "@/components/home/SoloGrid";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
+import { formatSoloScore, SOLO_BOARD_COPY, soloBoardHref, type QbMode, type SoloBoard } from "@/lib/foundation/content/leaderboard/boards";
 import { createClient } from "@/lib/supabase/server";
 import { chromeIdentity, isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
@@ -55,7 +56,7 @@ export default async function SoloPage(props: PageProps<"/solo">) {
 
   // Best scores are an account feature: RLS refuses a guest these rows, so
   // they are not even asked for.
-  const scores = viewer && !isGuestViewer(claims) ? await fetchBestScores(supabase, claims!.sub as string) : null;
+  const scores = viewer && !isGuestViewer(claims) ? await fetchBestScores(supabase) : null;
 
   const { error } = await props.searchParams;
   const errorText = Array.isArray(error) ? error[0] : error;
@@ -84,16 +85,30 @@ export default async function SoloPage(props: PageProps<"/solo">) {
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 
-/** One row per solo game (per mode where a game keeps one best each); null means no finished run yet. */
-async function fetchBestScores(supabase: Client, userId: string): Promise<SoloBestScore[]> {
-  const [higherOrLower, qb] = await Promise.all([
-    supabase.from("higher_or_lower_player_stats").select("all_time_high").eq("user_id", userId).maybeSingle(),
-    supabase.from("qb_season_builder_player_stats").select("mode, best_score").eq("user_id", userId),
-  ]);
-  const qbBest = (mode: string) => qb.data?.find((row) => row.mode === mode)?.best_score ?? null;
-  return [
-    { game: "Higher or lower", detail: "All-time high", value: higherOrLower.data?.all_time_high ?? null },
-    { game: "QB Season Builder", detail: "Grades visible", value: qbBest("visible") },
-    { game: "QB Season Builder", detail: "Grades hidden", value: qbBest("hidden") },
+/**
+ * One row per solo game (per mode where a game keeps one best each): the viewer's
+ * best and their place on the all-time board. null means no finished run yet.
+ * `my_solo_standing` gives both in one read and returns the best even when the
+ * viewer is not ranked.
+ */
+async function fetchBestScores(supabase: Client): Promise<SoloBestScore[]> {
+  const rows: { game: string; detail?: string; board: SoloBoard; mode?: QbMode }[] = [
+    { game: "Higher or lower", detail: "All-time high", board: "higher-or-lower" },
+    { game: "QB Season Builder", detail: "Grades visible", board: "qb-season-builder", mode: "visible" },
+    { game: "QB Season Builder", detail: "Grades hidden", board: "qb-season-builder", mode: "hidden" },
   ];
+  return Promise.all(
+    rows.map(async ({ game, detail, board, mode }) => {
+      const { data } = await supabase.rpc("my_solo_standing", { p_game: SOLO_BOARD_COPY[board].game, p_mode: mode });
+      const standing = data?.[0];
+      return {
+        game,
+        detail,
+        value: standing?.best_score == null ? null : formatSoloScore(Number(standing.best_score), board),
+        rank: standing?.status === "ranked" ? standing.rank : null,
+        rankedCount: standing?.ranked_count ?? 0,
+        href: soloBoardHref({ board, mode }),
+      };
+    }),
+  );
 }
