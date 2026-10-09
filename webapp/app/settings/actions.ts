@@ -11,15 +11,15 @@ export type SettingsUpdateState = { error: string | null };
  * Called directly from the client (not as a `<form action>`) — a single
  * boolean doesn't need FormData, and a real form submission here would hit
  * React's post-action reset, which snaps a controlled checkbox back to its
- * original value regardless of the state that set it.
+ * original value regardless of the state that set it. The `set_profile_private`
+ * RPC owns the rules (accounts only); direct column writes are closed.
  */
-export async function updateRankingsVisibility(visible: boolean): Promise<SettingsUpdateState> {
+export async function setProfilePrivate(isPrivate: boolean): Promise<SettingsUpdateState> {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
-  const userId = data?.claims?.sub;
-  if (!userId || !canViewProfile(data?.claims)) return { error: "Create an account to change this." };
+  if (!canViewProfile(data?.claims)) return { error: "Create an account to change this." };
 
-  const { error } = await supabase.from("profiles").update({ rankings_visible: visible }).eq("id", userId);
+  const { error } = await supabase.rpc("set_profile_private", { p_private: isPrivate });
   if (error) return { error: "We couldn’t save that. Please try again." };
 
   revalidatePath("/settings");

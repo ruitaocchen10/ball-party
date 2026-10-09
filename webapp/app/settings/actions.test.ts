@@ -16,7 +16,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-import { deleteAccount } from "./actions";
+import { deleteAccount, setProfilePrivate } from "./actions";
 
 describe("deleteAccount", () => {
   beforeEach(() => {
@@ -71,6 +71,32 @@ describe("deleteAccount", () => {
     await expect(deleteAccount()).rejects.toThrow("not_authenticated");
 
     expect(list).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("setProfilePrivate", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    getClaims.mockResolvedValue({ data: { claims: { sub: "user-1" } } });
+    rpc.mockResolvedValue({ data: true, error: null });
+  });
+
+  it("calls the set_profile_private RPC", async () => {
+    await expect(setProfilePrivate(true)).resolves.toEqual({ error: null });
+    expect(rpc).toHaveBeenCalledWith("set_profile_private", { p_private: true });
+  });
+
+  it("reports a failed save", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "boom" } });
+    await expect(setProfilePrivate(false)).resolves.toEqual({ error: "We couldn’t save that. Please try again." });
+  });
+
+  it("refuses guests and signed-out visitors without calling the RPC", async () => {
+    getClaims.mockResolvedValue({ data: { claims: { sub: "guest-1", is_anonymous: true } } });
+    expect(await setProfilePrivate(true)).toEqual({ error: "Create an account to change this." });
+    getClaims.mockResolvedValue({ data: { claims: null } });
+    expect(await setProfilePrivate(true)).toEqual({ error: "Create an account to change this." });
     expect(rpc).not.toHaveBeenCalled();
   });
 });

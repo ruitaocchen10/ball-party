@@ -9,6 +9,9 @@ import SwiftUI
 /// are the same event here — a run appeared that this player is on.
 struct LobbyScreen: View {
     @StateObject private var viewModel: LobbyViewModel
+    @StateObject private var inbox = RoomInvitesInboxViewModel(
+        client: SupabaseRoomInvitesClient(client: SupabaseConfig.client)
+    )
     @Environment(\.scenePhase) private var scenePhase
     /// Which match this screen pushed, so dismissing it can say *which* board
     /// was left rather than whichever one the room happens to show now.
@@ -27,11 +30,12 @@ struct LobbyScreen: View {
     var body: some View {
         Group {
             switch viewModel.stage {
-            case .entry: LobbyEntryView(viewModel: viewModel)
-            case .room: LobbyRoomView(viewModel: viewModel)
+            case .entry: LobbyEntryView(viewModel: viewModel, inbox: inbox)
+            case .room: LobbyRoomView(viewModel: viewModel, inbox: inbox)
             case .closed: ClosedRoomView(viewModel: viewModel)
             }
         }
+        .task { await inbox.load() }
         .screenBackground()
         .navigationTitle("Play with friends")
         .navigationBarTitleDisplayMode(.inline)
@@ -75,11 +79,16 @@ struct LobbyScreen: View {
 
 private struct LobbyEntryView: View {
     @ObservedObject var viewModel: LobbyViewModel
+    @ObservedObject var inbox: RoomInvitesInboxViewModel
     @FocusState private var codeFocused: Bool
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                RoomInvitesInboxSection(viewModel: inbox, hasRoom: false) { lobby in
+                    Task { await viewModel.adopt(lobby) }
+                }
+
                 PageHeader(
                     eyebrow: "Two to four players",
                     title: "Play a room together.",
@@ -123,6 +132,7 @@ private struct LobbyEntryView: View {
             }
             .padding(16)
         }
+        .refreshable { await inbox.load() }
     }
 }
 
@@ -130,12 +140,23 @@ private struct LobbyEntryView: View {
 
 private struct LobbyRoomView: View {
     @ObservedObject var viewModel: LobbyViewModel
+    @ObservedObject var inbox: RoomInvitesInboxViewModel
+    @State private var inviting = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                RoomInvitesInboxSection(viewModel: inbox, hasRoom: true) { lobby in
+                    Task { await viewModel.adopt(lobby) }
+                }
                 code
                 roster
+
+                if let lobbyId = viewModel.lobby?.id {
+                    Button("Invite friends") { inviting = true }
+                        .buttonStyle(.ghost)
+                        .sheet(isPresented: $inviting) { InviteFriendsSheet(lobbyId: lobbyId) }
+                }
 
                 if let matchId = viewModel.rejoinableMatch {
                     Button {
@@ -180,6 +201,7 @@ private struct LobbyRoomView: View {
             }
             .padding(16)
         }
+        .refreshable { await inbox.load() }
         // Pushing the match screen takes this one off screen, which stops it
         // observing; coming back has to pick the room up again, or the roster
         // sits at whatever it said when the game started.

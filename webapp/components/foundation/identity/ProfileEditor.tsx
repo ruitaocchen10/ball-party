@@ -9,7 +9,9 @@ import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage"
 import { Field, Input } from "@/components/foundation/ui-kit/Input";
 import { Modal, ModalTitle } from "@/components/foundation/ui-kit/Modal";
 import { createClient } from "@/lib/supabase/client";
+import { markUsernameConfirmed } from "@/lib/foundation/identity/username";
 import { PresetAvatarPicker } from "./PresetAvatarPicker";
+import { UsernameField } from "./UsernameField";
 import { Button } from "@/components/foundation/ui-kit/Button";
 
 const EMPTY_PROFILE_UPDATE_STATE: ProfileUpdateState = { error: null, saved: false };
@@ -19,6 +21,8 @@ type ProfileEditorProps = {
   displayName: string;
   avatarUrl: string | null;
   userId: string;
+  /** The player's current username (null only if the row predates usernames). */
+  username?: string | null;
 };
 
 /** The profile header's trigger; editing itself happens in a focused dialog. */
@@ -54,14 +58,20 @@ export function ProfileEditor(props: ProfileEditorProps) {
   );
 }
 
-function ProfileEditorDialog({ displayName, avatarUrl, userId, onClose }: ProfileEditorProps & { onClose: () => void }) {
+function ProfileEditorDialog({ displayName, avatarUrl, userId, username, onClose }: ProfileEditorProps & { onClose: () => void }) {
   const [state, formAction, pending] = useActionState(updateProfile, EMPTY_PROFILE_UPDATE_STATE);
   const [avatar, setAvatar] = useState(avatarUrl ?? "");
   const [editingPhoto, setEditingPhoto] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [presetUploading, setPresetUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [usernameValue, setUsernameValue] = useState(username ?? "");
   const nameInput = useRef<HTMLInputElement>(null);
+
+  // Saving the editor with a username in it counts as confirming it.
+  useEffect(() => {
+    if (state.saved) markUsernameConfirmed(userId);
+  }, [state.saved, userId]);
 
   // Uploads straight to Storage from the browser. The avatars bucket's RLS
   // policy limits a write to the signed-in user's own prefix.
@@ -153,6 +163,10 @@ function ProfileEditorDialog({ displayName, avatarUrl, userId, onClose }: Profil
               required
               />
 </Field>
+          <input type="hidden" name="current_username" value={username ?? ""} />
+          <div className="mt-4">
+            <UsernameField value={usernameValue} onChange={setUsernameValue} currentUsername={username} />
+          </div>
           <AnimatedMessage role="alert" className="mt-3 text-sm text-hidden-text">
             {state.error}
           </AnimatedMessage>

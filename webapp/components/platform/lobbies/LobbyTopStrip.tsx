@@ -60,7 +60,7 @@ export function LobbyTopStrip({
 
       {lobbyId ? (
         <div className="order-3 basis-full sm:order-2 sm:basis-auto sm:mx-auto">
-          <InviteSuite code={code} />
+          <InviteSuite code={code} lobbyId={lobbyId} />
         </div>
       ) : null}
 

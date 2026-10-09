@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
-import { parseLeaderboardWindow, type Standing } from "@/lib/foundation/content/leaderboard/windows";
+import { parseLeaderboardScope, parseLeaderboardWindow, type Standing } from "@/lib/foundation/content/leaderboard/windows";
 import { canViewProfile, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,12 +21,14 @@ export default async function LeaderboardPage(props: { searchParams: Promise<Rec
 
   if (!isSignedInViewer(claims) || !canViewProfile(claims)) return <SignedOutLeaderboard />;
 
-  const window = parseLeaderboardWindow((await props.searchParams).window);
+  const params = await props.searchParams;
+  const window = parseLeaderboardWindow(params.window);
+  const scope = parseLeaderboardScope(params.scope);
 
   const [{ data: profile }, board, standingResult] = await Promise.all([
     supabase.from("profiles").select("display_name, avatar_url").eq("id", claims.sub).single(),
-    supabase.rpc("ball_knower_leaderboard", { p_window: window }),
-    supabase.rpc("my_ball_knower_standing", { p_window: window }),
+    supabase.rpc("ball_knower_leaderboard", { p_window: window, p_scope: scope }),
+    supabase.rpc("my_ball_knower_standing", { p_window: window, p_scope: scope }),
   ]);
 
   const displayName = profile?.display_name ?? (claims.email as string | undefined) ?? "Player";
@@ -44,7 +46,11 @@ export default async function LeaderboardPage(props: { searchParams: Promise<Rec
         <PageHeader
           eyebrow="Leaderboard"
           title="Ball Knower"
-          description="Points from your resolved picks, ranked against everyone who plays the weekly prompts."
+          description={
+            scope === "friends"
+              ? "Points from your resolved picks, ranked against your friends."
+              : "Points from your resolved picks, ranked against everyone who plays the weekly prompts."
+          }
         />
         <div className="mt-6">
           {failed ? (
@@ -52,6 +58,7 @@ export default async function LeaderboardPage(props: { searchParams: Promise<Rec
           ) : (
             <BallKnowerLeaderboard
               window={window}
+              scope={scope}
               rows={(board.data ?? []).map(toRow)}
               standing={toStanding(standingRow)}
             />
@@ -70,6 +77,7 @@ function toRow(row: {
   total_points: number;
   scored_picks: number;
   is_me: boolean;
+  username: string | null;
 }): LeaderboardRow {
   return {
     rank: row.rank,
@@ -79,6 +87,7 @@ function toRow(row: {
     totalPoints: row.total_points,
     scoredPicks: row.scored_picks,
     isMe: row.is_me,
+    username: row.is_me ? null : row.username,
   };
 }
 
@@ -91,7 +100,7 @@ function toStanding(row: {
   min_picks: number;
 }): Standing {
   return {
-    status: row.status === "ranked" || row.status === "hidden" ? row.status : "unranked",
+    status: row.status === "ranked" ? row.status : "unranked",
     rank: row.rank,
     totalPoints: row.total_points,
     scoredPicks: row.scored_picks,

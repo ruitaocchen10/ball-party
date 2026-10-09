@@ -277,6 +277,22 @@ final class LobbyViewModel: ObservableObject {
         await exitRoom()
     }
 
+    /// Step into a room the server already put us in (an accepted invite).
+    /// Joining it left any room we were in, so that one's channel comes down
+    /// first; `join_lobby`'s answer is not asked for again.
+    func adopt(_ lobby: Lobby) async {
+        await stopObservingAndWait()
+        snapshot = nil
+        dismissedMatchId = nil
+        errorMessage = nil
+        do {
+            try await enter(lobby)
+        } catch {
+            stage = .entry
+            errorMessage = Self.describe(error)
+        }
+    }
+
     /// Acknowledge a room that closed under us, from the closed screen.
     func dismissClosedRoom() async {
         await exitRoom()
@@ -405,7 +421,7 @@ final class LobbyViewModel: ObservableObject {
         return messages[server.message] ?? server.message
     }
 
-    private static let messages: [String: String] = [
+    nonisolated static let messages: [String: String] = [
         "lobby_not_found": "No room with that code.",
         "lobby_full": "That room is already full.",
         "not_a_member": "You're not in that room.",

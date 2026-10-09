@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["NS8CC9Z25V.com.ballparty.app"],
+        "components": [{ "/": "/friends/invite/*" }]
+      }
+    ]
+  }
+}

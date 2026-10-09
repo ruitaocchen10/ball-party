@@ -9,10 +9,10 @@
 --
 -- The profile editor is the one intentional exception: it updates the
 -- caller's own profile through the authenticated server client. RLS still
--- limits that write to auth.uid() = id; this grant only gives the local stack
--- the same table privilege the hosted project supplies.
+-- limits that write to auth.uid() = id, and migration 0183 narrows the hosted
+-- grant to these two columns; this gives the local stack the same privilege.
 grant select on all tables in schema public to anon, authenticated;
-grant update on table public.profiles to authenticated;
+grant update (display_name, avatar_url) on table public.profiles to authenticated;
 
 -- Social prompt gallery -------------------------------------------------------
 --

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
@@ -17,6 +17,7 @@ import {
 } from "@/lib/foundation/identity/types";
 
 import { GoogleButton } from "./GoogleButton";
+import { UsernameField } from "./UsernameField";
 
 // Fields are wells cut into the background, not panels — three cream blocks would
 // blow out a screen whose whole premise is that light is rare.
@@ -37,6 +38,8 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
     isSignup ? signUpWithEmail : signInWithEmail,
     EMPTY_AUTH_STATE,
   );
+
+  const [username, setUsername] = useState("");
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -75,6 +78,20 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
               placeholder="What your friends will see"
 />
 </Field>
+        )}
+
+        {isSignup && (
+          // No session exists yet, so availability can't be checked here. The
+          // choice rides along in the account's metadata and is claimed (and
+          // checked) when the player first lands signed in.
+          <UsernameField
+            value={username}
+            onChange={setUsername}
+            checkAvailability={false}
+            label="Username (optional)"
+            placeholder="How friends will find you"
+            help="Leave blank and we’ll pick one from your name. You can change it later."
+          />
         )}
 
         <Field label="Email">

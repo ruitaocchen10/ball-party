@@ -11,11 +11,11 @@ insert into tests.fx (k, v) values
   ('alpha',   tests.mkuser('Alpha')),
   ('bravo',   tests.mkuser('Bravo')),
   ('charlie', tests.mkuser('Charlie')),
-  ('hidden',  tests.mkuser('Hidden')),
+  ('deleted', tests.mkuser('Deleted')),
   ('thin',    tests.mkuser('Thin')),
   ('nobody',  tests.mkuser('Nobody'));
 
-update public.profiles set rankings_visible = false where id = (select v from tests.fx where k = 'hidden');
+update public.profiles set deleted_at = now() where id = (select v from tests.fx where k = 'deleted');
 
 -- P1 resolved yesterday, P2 resolved 400 days ago (lifetime only).
 insert into public.prompt_posts (
@@ -33,7 +33,7 @@ insert into public.prompt_slots (id, post_id, label, shape, points) values
   ('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000002', 'E', 'pick', 10),
   ('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000002', 'F', 'pick', 10);
 
--- Week:     alpha 60, bravo 30, charlie 30 (tie), hidden 90 (opted out),
+-- Week:     alpha 60, bravo 30, charlie 30 (tie), deleted 90 (account deleted),
 --           thin 100 from only two picks (below the floor).
 -- Lifetime: alpha 60, bravo 60 (30 old), charlie 30.
 create function pg_temp.respond(p_user text, p_slot int, p_points int) returns void
@@ -58,9 +58,9 @@ begin
   perform pg_temp.respond('charlie', 1, 10);
   perform pg_temp.respond('charlie', 2, 10);
   perform pg_temp.respond('charlie', 3, 10);
-  perform pg_temp.respond('hidden', 1, 30);
-  perform pg_temp.respond('hidden', 2, 30);
-  perform pg_temp.respond('hidden', 3, 30);
+  perform pg_temp.respond('deleted', 1, 30);
+  perform pg_temp.respond('deleted', 2, 30);
+  perform pg_temp.respond('deleted', 3, 30);
   perform pg_temp.respond('thin', 1, 50);
   perform pg_temp.respond('thin', 2, 50);
 end $$;
@@ -129,11 +129,11 @@ select is(
   'a qualified player is ranked with the shared tie rank'
 );
 
-select tests.act_as((select v from tests.fx where k = 'hidden'));
+select tests.act_as((select v from tests.fx where k = 'deleted'));
 select is(
   (select (status, total_points)::text from public.my_ball_knower_standing('week')),
-  '(hidden,90)',
-  'an opted-out player is told they are hidden and still sees their own points'
+  '(unranked,90)',
+  'a deleted account is off the board but still sees its own points'
 );
 
 select tests.act_as((select v from tests.fx where k = 'thin'));
@@ -154,15 +154,15 @@ select is(
 
 select tests.act_as_admin();
 select ok(
-  has_function_privilege('authenticated', 'public.ball_knower_leaderboard(text,integer)', 'execute')
-    and not has_function_privilege('anon', 'public.ball_knower_leaderboard(text,integer)', 'execute')
-    and has_function_privilege('authenticated', 'public.my_ball_knower_standing(text)', 'execute')
-    and not has_function_privilege('anon', 'public.my_ball_knower_standing(text)', 'execute'),
+  has_function_privilege('authenticated', 'public.ball_knower_leaderboard(text,integer,text)', 'execute')
+    and not has_function_privilege('anon', 'public.ball_knower_leaderboard(text,integer,text)', 'execute')
+    and has_function_privilege('authenticated', 'public.my_ball_knower_standing(text,text)', 'execute')
+    and not has_function_privilege('anon', 'public.my_ball_knower_standing(text,text)', 'execute'),
   'only signed-in players can call the leaderboard RPCs'
 );
 select ok(
   not has_function_privilege('authenticated', 'private.ball_knower_totals(text)', 'execute')
-    and not has_function_privilege('authenticated', 'private.ball_knower_cohort(text)', 'execute'),
+    and not has_function_privilege('authenticated', 'private.ball_knower_cohort(text,text,uuid)', 'execute'),
   'the cohort helpers are not callable by clients'
 );
 

@@ -1,8 +1,25 @@
 import SwiftUI
 
-/// Entry point for Huddle: owns the view model and shows the feed.
+/// The two tabs at the top of Home.
+enum HomeTab: Hashable, CaseIterable {
+    case huddle, friends
+
+    var title: String {
+        switch self {
+        case .huddle: "Huddle"
+        case .friends: "Friends"
+        }
+    }
+}
+
+/// Entry point for Home: a Huddle | Friends switch over the prompt feed
+/// (default) and the friend activity feed. The app is only reachable with a
+/// real account, so the switch is always shown.
 struct HuddleScreen: View {
     @StateObject private var viewModel: HuddleViewModel
+    @StateObject private var activity: FriendActivityViewModel
+    @State private var tab: HomeTab = .huddle
+    private let friendsClient: FriendsClient
 
     init(viewerId: UUID) {
         _viewModel = StateObject(
@@ -11,10 +28,38 @@ struct HuddleScreen: View {
                 viewerId: viewerId
             )
         )
+        let friends = SupabaseFriendsClient(client: SupabaseConfig.client)
+        friendsClient = friends
+        _activity = StateObject(
+            wrappedValue: FriendActivityViewModel(
+                client: SupabaseFriendActivityClient(client: SupabaseConfig.client),
+                friendsClient: friends
+            )
+        )
     }
 
     var body: some View {
-        HuddleFeedView(viewModel: viewModel)
+        VStack(spacing: 0) {
+            SegmentedChoice(
+                selection: $tab,
+                options: HomeTab.allCases,
+                title: \.title,
+                accessibilityName: "Home"
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            switch tab {
+            case .huddle:
+                HuddleFeedView(viewModel: viewModel)
+            case .friends:
+                FriendActivityFeedView(viewModel: activity, client: friendsClient)
+                    .screenBackground()
+            }
+        }
+        .screenBackground()
+        .navigationTitle("Home")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -42,8 +87,6 @@ struct HuddleFeedView: View {
             }
         }
         .screenBackground()
-        .navigationTitle("Huddle")
-        .navigationBarTitleDisplayMode(.inline)
         // Also runs on coming back from a prompt, which is when the feed is
         // most likely to be stale (a pick was just locked in).
         .task { await viewModel.load() }

@@ -39,6 +39,28 @@ enum LeaderboardWindow: String, CaseIterable, Equatable, Sendable {
     }
 }
 
+/// Who the board ranks: everyone, or the caller and their accepted friends
+/// (the `p_scope` argument of both RPCs, migration 0187). The cohort is the
+/// server's; the same ranking code runs either way.
+enum LeaderboardScope: String, CaseIterable, Equatable, Sendable {
+    case all
+    case friends
+
+    var label: String {
+        switch self {
+        case .all: "Everyone"
+        case .friends: "Friends"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .all: "Points from your resolved picks, ranked against everyone who plays the weekly prompts."
+        case .friends: "Points from your resolved picks, ranked against you and your friends."
+        }
+    }
+}
+
 /// One ranked player — a row of `ball_knower_leaderboard`.
 struct LeaderboardRow: Decodable, Equatable, Sendable, Identifiable {
     let rank: Int
@@ -49,6 +71,8 @@ struct LeaderboardRow: Decodable, Equatable, Sendable, Identifiable {
     let scoredPicks: Int
     let isMe: Bool
     let rankedCount: Int
+    /// Set when the row can link to a profile; absent or null otherwise.
+    let username: String?
 
     var id: UUID { profileId }
 
@@ -61,12 +85,14 @@ struct LeaderboardRow: Decodable, Equatable, Sendable, Identifiable {
         case scoredPicks = "scored_picks"
         case isMe = "is_me"
         case rankedCount = "ranked_count"
+        case username
     }
 
     init(
         rank: Int, profileId: UUID = UUID(), displayName: String, avatarURL: URL? = nil,
-        totalPoints: Int, scoredPicks: Int, isMe: Bool = false, rankedCount: Int
+        totalPoints: Int, scoredPicks: Int, isMe: Bool = false, rankedCount: Int, username: String? = nil
     ) {
+        self.username = username
         self.rank = rank
         self.profileId = profileId
         self.displayName = displayName
@@ -87,15 +113,20 @@ struct LeaderboardRow: Decodable, Equatable, Sendable, Identifiable {
         scoredPicks = try c.decode(Int.self, forKey: .scoredPicks)
         isMe = try c.decode(Bool.self, forKey: .isMe)
         rankedCount = try c.decode(Int.self, forKey: .rankedCount)
+        username = try c.decodeIfPresent(String.self, forKey: .username)
     }
+
+    /// The username to open this row's profile with: none for yourself or
+    /// when the server sent none.
+    var profileUsername: String? { isMe ? nil : username }
 }
 
 /// Where the caller stands — the one row `my_ball_knower_standing` returns.
 struct LeaderboardStanding: Decodable, Equatable, Sendable {
-    /// `ranked` is on the board; `hidden` has rankings visibility off;
-    /// `unranked` is visible but under the pick floor (including no picks).
+    /// `ranked` is on the board; `unranked` is under the pick floor
+    /// (including no picks).
     enum Status: String, Equatable, Sendable {
-        case ranked, hidden, unranked
+        case ranked, unranked
     }
 
     let status: Status
@@ -141,17 +172,23 @@ struct LeaderboardStanding: Decodable, Equatable, Sendable {
     }
 
     /// What the caller's own row says, decided in one place — `standingCopy`
-    /// in the web's `windows.ts`. iOS has no settings screen for rankings
-    /// visibility yet (BPMO-10), so the hidden line points at the web.
-    var copy: (headline: String, detail: String) {
+    /// in the web's `windows.ts`.
+    var copy: (headline: String, detail: String) { copy(for: .all) }
+
+    /// The same, for a board scope. A friends board is too small for a
+    /// top-percent band to mean anything, so it says "2 of 5" instead.
+    func copy(for scope: LeaderboardScope) -> (headline: String, detail: String) {
         switch status {
-        case .hidden:
-            return ("You're hidden", "Turn rankings visibility back on in Settings on the web to appear here")
         case .unranked:
             return unrankedCopy
         case .ranked:
             guard let rank, let band = topPercent else { return unrankedCopy }
-            return ("#\(rank)", "Top \(band)% of \(rankedCount.formatted()) ranked players")
+            switch scope {
+            case .all:
+                return ("#\(rank)", "Top \(band)% of \(rankedCount.formatted()) ranked players")
+            case .friends:
+                return ("#\(rank)", "Ranked \(rank) of \(rankedCount.formatted()) on your friends board")
+            }
         }
     }
 
