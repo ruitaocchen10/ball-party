@@ -378,6 +378,10 @@ export type Database = {
         Args: { p_choices: Json; p_comment?: string; p_post_id: string }
         Returns: undefined
       }
+      delete_post: {
+        Args: { p_post_id: string }
+        Returns: undefined
+      }
       void_post: {
         Args: { p_post_id: string; p_reason: string }
         Returns: undefined

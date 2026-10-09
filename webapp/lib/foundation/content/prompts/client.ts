@@ -148,3 +148,12 @@ export async function voidPromptPost(
   });
   return { error: error ? promptErrorMessage(error.message) : null };
 }
+
+/** Permanently removes a post and, by cascade, its responses, comments and predictions. Any status. */
+export async function deletePromptPost(
+  supabase: SupabaseBrowserClient,
+  { postId }: { postId: string },
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.schema("prompts").rpc("delete_post", { p_post_id: postId });
+  return { error: error ? promptErrorMessage(error.message) : null };
+}

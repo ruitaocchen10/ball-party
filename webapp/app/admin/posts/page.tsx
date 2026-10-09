@@ -38,7 +38,8 @@ function formatDate(value: string) {
  * Open and locked posts carry resolve/void controls; game picks with a
  * resolution source are graded by auto_resolve_tick (0096), so for those
  * Resolve is only the fallback if the sweep can't. Opinion posts (0111) are
- * never graded, so they only get Void.
+ * never graded, so they only get Void. Every post, whatever its status,
+ * can be deleted.
  */
 export default async function AdminPostsPage({
   searchParams,
@@ -126,9 +127,12 @@ export default async function AdminPostsPage({
               {actionable && post.is_opinion ? (
                 <p className="text-sm text-fg-muted sm:col-span-2">Opinion post — there&apos;s no right answer to grade, so it can only be voided.</p>
               ) : null}
-              {actionable ? (
-                <PostActions postId={post.id} slots={slots} canResolve={!post.is_opinion && hasLocked(post.lock_at)} />
-              ) : null}
+              <PostActions
+                postId={post.id}
+                slots={slots}
+                canResolve={!post.is_opinion && hasLocked(post.lock_at)}
+                canClose={actionable}
+              />
             </li>
             );
           })}
