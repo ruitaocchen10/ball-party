@@ -2,21 +2,23 @@ import Foundation
 @testable import BallParty
 import XCTest
 
-/// `LobbyViewModel` against `FakeLobbyClient` and `FakeHigherOrLowerClient` —
-/// the two network seams a room screen touches. Every assertion is on what a
+/// `LobbyViewModel` against `FakeLobbyClient`, `FakeHigherOrLowerClient` and
+/// `FakeAuctionClient` — the network seams a room screen touches. Every assertion is on what a
 /// screen would show or what the app asked the server for.
 @MainActor
 final class LobbyViewModelTests: XCTestCase {
     private var viewerId = UUID()
     private var client: FakeLobbyClient!
     private var game: FakeHigherOrLowerClient!
+    private var auction: FakeAuctionClient!
     private var viewModel: LobbyViewModel!
 
     override func setUp() async throws {
         viewerId = UUID()
         client = FakeLobbyClient(viewerId: viewerId)
         game = FakeHigherOrLowerClient(viewerId: viewerId)
-        viewModel = LobbyViewModel(client: client, game: game, viewerId: viewerId)
+        auction = FakeAuctionClient(viewerId: viewerId)
+        viewModel = LobbyViewModel(client: client, game: game, auction: auction, viewerId: viewerId)
     }
 
     override func tearDown() async throws {
@@ -141,7 +143,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_room_renewsItsPresenceLeaseWhileTheScreenIsOpen() async {
         viewModel = LobbyViewModel(
-            client: client, game: game, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
+            client: client, game: game, auction: auction, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
         )
         await viewModel.createRoom()
 
@@ -152,7 +154,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_room_aBackgroundedScreenLetsItsLeaseLapseAndRenewsOnReturn() async {
         viewModel = LobbyViewModel(
-            client: client, game: game, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
+            client: client, game: game, auction: auction, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
         )
         await viewModel.createRoom()
         await eventually { self.client.heartbeatCount >= 1 }
@@ -295,6 +297,115 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.stage, .room)
         XCTAssertEqual(viewModel.errorMessage, "You need between two and four players.")
         XCTAssertNil(viewModel.matchToEnter)
+    }
+
+    // MARK: - Starting the auction
+
+    private func hostAnAuctionRoom() async {
+        await viewModel.createRoom()
+        await viewModel.loadFormat()
+        await viewModel.selectGame(.auctionTeamBuilder)
+        client.anotherPlayerJoins(named: "Sam")
+        await eventually { self.viewModel.selectedGame == .auctionTeamBuilder && self.viewModel.members.count == 2 }
+    }
+
+    func test_startingTheAuction_freezesTheRosterThenDealsWithTheHostsFormat() async {
+        await hostAnAuctionRoom()
+        await eventually { self.viewModel.canStart }
+
+        viewModel.auctionScoringMode = .seasonTotal
+        viewModel.rosterPreset = .deep
+        viewModel.tokenCount = 3
+        viewModel.auctionFrom = 2016
+        viewModel.auctionTo = 2024
+        await viewModel.startGame()
+
+        XCTAssertEqual(client.startedRuns, [.auctionTeamBuilder])
+        XCTAssertEqual(auction.startCalls.count, 1)
+        XCTAssertEqual(auction.startCalls.first?.scoringMode, .seasonTotal)
+        XCTAssertEqual(auction.startCalls.first?.preset, .deep)
+        XCTAssertEqual(auction.startCalls.first?.tokens, 3)
+        XCTAssertEqual(auction.startCalls.first?.era, SeasonRange(from: 2016, to: 2024))
+        XCTAssertTrue(game.startCalls.isEmpty, "the ladder was dealt for an auction")
+        XCTAssertNotNil(viewModel.matchToEnter)
+        XCTAssertEqual(viewModel.gameToEnter, .auctionTeamBuilder)
+    }
+
+    func test_startingTheAuction_opensOnWeeklyLotsStandardRosterAndOneToken() async {
+        await hostAnAuctionRoom()
+        await eventually { self.viewModel.canStart }
+
+        await viewModel.startGame()
+
+        XCTAssertEqual(auction.startCalls.first?.scoringMode, .weekly)
+        XCTAssertEqual(auction.startCalls.first?.preset, .standard)
+        XCTAssertEqual(auction.startCalls.first?.tokens, 1)
+        // The whole pool, as offered.
+        XCTAssertEqual(auction.startCalls.first?.era, SeasonRange(from: 2010, to: 2025))
+    }
+
+    func test_startingTheAuction_aWindowNarrowerThanTheDealersFloorIsExplainedBeforeTheTap() async {
+        await hostAnAuctionRoom()
+        await eventually { self.viewModel.canStart }
+
+        viewModel.auctionFrom = 2020
+        viewModel.auctionTo = 2022
+
+        XCTAssertFalse(viewModel.canStart)
+        XCTAssertEqual(viewModel.startBlockedReason, "Pick a span of at least 4 seasons")
+
+        viewModel.auctionTo = 2023
+        XCTAssertTrue(viewModel.canStart)
+    }
+
+    func test_startingTheAuction_theNarrowFloorDoesNotBlockHigherOrLower() async {
+        await viewModel.createRoom()
+        await viewModel.loadFormat()
+        await viewModel.selectGame(.higherOrLower)
+        client.anotherPlayerJoins(named: "Sam")
+        await eventually { self.viewModel.canStart }
+
+        viewModel.auctionFrom = 2020
+        viewModel.auctionTo = 2020
+
+        XCTAssertTrue(viewModel.canStart)
+    }
+
+    func test_startingTheAuction_theEraPickersNeverHoldAnInvertedRange() async {
+        await viewModel.createRoom()
+        await viewModel.loadFormat()
+
+        viewModel.auctionTo = 2015
+        viewModel.auctionFrom = 2020
+
+        XCTAssertEqual(viewModel.auctionTo, 2020)
+    }
+
+    func test_startingTheAuction_aDealRefusalLeavesTheRoomUpWithItsReason() async {
+        await hostAnAuctionRoom()
+        await eventually { self.viewModel.canStart }
+        auction.failures["start"] = AuctionServerError(message: "pool_exhausted")
+
+        await viewModel.startGame()
+
+        XCTAssertEqual(viewModel.stage, .room)
+        XCTAssertNotNil(viewModel.errorMessage)
+    }
+
+    func test_enteringAMatch_opensTheScreenForTheGameTheRunIsPlaying() async {
+        await viewModel.createRoom()
+        client.anotherPlayerJoins(named: "Sam")
+        await eventually { self.viewModel.members.count == 2 }
+
+        client.hostStartsARun(game: .auctionTeamBuilder)
+
+        await eventually { self.viewModel.matchToEnter != nil }
+        XCTAssertEqual(viewModel.gameToEnter, .auctionTeamBuilder)
+    }
+
+    func test_enteringAMatch_aMatchWithNoNamedGameIsHigherOrLowerAsEveryEarlierOneWas() {
+        XCTAssertEqual(RunMatch(id: UUID(), status: .playing).matchGame, .higherOrLower)
+        XCTAssertEqual(RunMatch(id: UUID(), status: .playing, game: "auction_team_builder").matchGame, .auctionTeamBuilder)
     }
 
     func test_startingAGame_carriesEverySeatedPlayerIn() async {

@@ -189,8 +189,8 @@ features:
   - id: game.auction-team-builder
     summary: Auction Team Builder (room, 2-4)
     web: done
-    ios: missing
-    ticket: BPMO-12
+    ios: done
+    note: 'The whole game plays on iOS: the host picks scoring, roster, tokens and era in the room, then bidding, custom bids, free lots, the Pass, Scout and Seal tokens, sealed rounds and the final table all match the web. Gaps: team logos (iOS shows team codes; the logo PNGs are not bundled), the host Pause button (web only), and the replay format picker (web lets the host change scoring, roster and era on Play again; iOS replays the same format). The lot reveal is a short suspense beat rather than the web slot reel.'
   - id: game.sabotage-draft
     summary: Sabotage Draft (room, 2-4)
     web: done

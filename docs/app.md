@@ -45,7 +45,7 @@ Every non-guest account has a unique username (3-20 letters, digits or underscor
 
 ## iOS
 
-Four tabs: Home (Huddle | Friends), Games, Party (rooms), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard, and a picker at the top switches between Ball Knower and Gamer. Friends and other players' profiles are in the Profile menu. Room invites work on iOS too: invite friends from the lobby, and the Party tab lists pending invites. iOS also opens friend invite links as Universal Links. Games on iOS are Higher or Lower (solo and live match) and QB Season Builder; the rest are web only. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
+Four tabs: Home (Huddle | Friends), Games, Party (rooms), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard, and a picker at the top switches between Ball Knower and Gamer. Friends and other players' profiles are in the Profile menu. Room invites work on iOS too: invite friends from the lobby, and the Party tab lists pending invites. iOS also opens friend invite links as Universal Links. Games on iOS are Higher or Lower (solo and live match), Auction Team Builder (live match) and QB Season Builder; the rest are web only. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
 
 ## Keeping this file true
 

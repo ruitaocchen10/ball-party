@@ -20,6 +20,9 @@ import { renderMatch } from "@/test/render";
  * seat on the clock, and almost every rule below follows from that.
  */
 
+/** What `resolve` stamps on every lot it settles, sold or not. */
+const RESOLVED = { resolved_at: "2026-09-24T12:00:00Z" };
+
 const raiseButtons = () =>
   screen.getAllByRole("button", { name: /^\+\$/ }) as HTMLButtonElement[];
 const customButton = () => screen.getByRole("button", { name: "Custom" }) as HTMLButtonElement;
@@ -43,18 +46,30 @@ const matchWith = (over: Partial<Parameters<typeof AuctionMatch>[0]["initial"]>)
   />
 );
 describe("the four phases", () => {
-  it("keeps a board cell for every turn lot, including undealt lots", () => {
+  it("sizes the board to the lots that can still be played, not the dealt total", () => {
     renderMatch({ turn: turn("bidding", { lotCount: 40, currentLot: 2, turnSeat: 0 }) });
 
+    // No format means the original shape: five slots a player, none won yet.
+    // Lot 2 is on the block and will fill one of them, so the rest are still ahead.
+    const expected = 2 + (players().length * 5 - 1);
     const strip = screen.getByRole("list", { name: "Auction board" });
-    expect(within(strip).getAllByRole("listitem")).toHaveLength(40);
-    expect(within(strip).getByLabelText("Lot 40, not yet dealt")).toBeInTheDocument();
+    expect(within(strip).getAllByRole("listitem")).toHaveLength(expected);
+    expect(within(strip).getByLabelText(`Lot ${expected}, not yet dealt`)).toBeInTheDocument();
+    expect(within(strip).queryByLabelText("Lot 40, not yet dealt")).not.toBeInTheDocument();
+    expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent(`/ ${expected}`);
+  });
+
+  it("never grows the board past the lots the server dealt", () => {
+    renderMatch({ turn: turn("bidding", { lotCount: 4, currentLot: 2, turnSeat: 0 }) });
+
+    const strip = screen.getByRole("list", { name: "Auction board" });
+    expect(within(strip).getAllByRole("listitem")).toHaveLength(4);
   });
 
   it("records a settled lot's face, slot, price, winner, and abbreviated name in the board", () => {
     renderMatch({
       turn: turn("bidding", { currentLot: 2, turnSeat: 0 }),
-      lots: board([{ winner_id: "u1", slot: "RB", price: 0 }]),
+      lots: board([{ ...RESOLVED, winner_id: "u1", slot: "RB", price: 0 }]),
     });
 
     const strip = screen.getByRole("list", { name: "Auction board" });
@@ -64,17 +79,33 @@ describe("the four phases", () => {
   });
 
   it("records an unsold lot without inventing a price or winner", () => {
-    renderMatch({ turn: turn("bidding", { currentLot: 2, turnSeat: 0 }) });
+    renderMatch({
+      turn: turn("bidding", { currentLot: 2, turnSeat: 0 }),
+      lots: board([RESOLVED]),
+    });
 
     expect(screen.getByLabelText("Lot 1, Saquon Barkley, unfilled, no price, no winner")).toBeInTheDocument();
+  });
+
+  it("says a lot the dealer skipped was skipped, without naming a player nobody saw", () => {
+    // Lot 1 was never put up (no resolved_at): the dealer jumped from it to lot 2.
+    renderMatch({
+      turn: turn("bidding", { currentLot: 2, turnSeat: 0 }),
+      lots: board([{ display_name: "Skipped Spare" }]),
+    });
+
+    const strip = screen.getByRole("list", { name: "Auction board" });
+    expect(within(strip).getByLabelText("Lot 1, skipped")).toHaveTextContent("Skipped");
+    expect(screen.queryByText(/Skipped Spare/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Skipped Spare/)).not.toBeInTheDocument();
   });
 
   it("marks and smoothly scrolls the live board cell without naming undealt players", () => {
     renderMatch({
       turn: turn("sold", { currentLot: 3 }),
       lots: board([
-        { winner_id: "u0", slot: "RB", price: 3 },
-        { winner_id: "u1", slot: "QB", price: 4 },
+        { ...RESOLVED, winner_id: "u0", slot: "RB", price: 3 },
+        { ...RESOLVED, winner_id: "u1", slot: "QB", price: 4 },
         {},
         { display_name: "Undealt Player" },
       ]),
@@ -92,7 +123,7 @@ describe("the four phases", () => {
   it("keeps the compact board treatment for a season lot", () => {
     renderMatch({
       turn: turn("bidding", { currentLot: 2, turnSeat: 0 }),
-      lots: board([{ winner_id: "u1", slot: "RB", price: 4, week: null, opponent: null }]),
+      lots: board([{ ...RESOLVED, winner_id: "u1", slot: "RB", price: 4, week: null, opponent: null }]),
     });
 
     expect(screen.getByLabelText("Lot 1, Saquon Barkley, RB, $4, won by Ben")).toHaveTextContent("S. Barkley");

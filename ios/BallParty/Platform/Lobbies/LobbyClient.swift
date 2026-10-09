@@ -93,7 +93,7 @@ struct SupabaseLobbyClient: LobbyClient {
             // but read as a list: "no run" is the room's normal resting state,
             // not a failure.
             async let runs: [LiveRun] = client.from("runs")
-                .select("matches(id, status), run_participants(user_id)")
+                .select("matches(id, status, game), run_participants(user_id)")
                 .eq("lobby_id", value: lobbyId)
                 .eq("status", value: "active")
                 .execute().value

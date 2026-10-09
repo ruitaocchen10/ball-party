@@ -42,6 +42,19 @@ seasons: shorter windows can fail to deal a Deep board (`pool_exhausted`, which
 remains as a backstop). Both bounds come from the pool, so nothing hardcodes a
 year.
 
+**Lots shown.** The board strip does not show the dealt total, which includes
+spare lots the match may never reach (it ends the moment every roster is full).
+It shows the lots already behind the table, the one on the block, and the roster
+slots still open, capped at the dealt total. Every lot that goes up sells and
+fills one slot, so that is what is left to play. It can grow by one when a lot is
+skipped as unusable or a Pass token redraws a replacement. Both clients compute
+it the same way (`playableLotCount`); the server's `lot_count` is unchanged.
+
+A lot the dealer skipped as unusable was never shown, so the strip marks it
+"Skipped" instead of naming its player. A lot is skipped, rather than unsold, when
+it sits behind the current lot with no `resolved_at`; `resolve` stamps every lot
+it settles, sold or not.
+
 ## Bidding
 
 Turn-based ascending auction, one lot at a time:
