@@ -131,10 +131,10 @@ features:
     web: done
     ios: done
   - id: friends.activity-feed
-    summary: Friends' recent picks (never which options), pick results and match results from the last 30 days
+    summary: Friends' answers to prompts (with the take they posted, once the prompt locks), multiplayer wins and new solo high scores from the last 30 days
     web: done
     ios: done
-    note: The Friends tab on Home, next to Huddle (web /?view=friends). Real accounts only; guests and signed-out visitors see just the Huddle.
+    note: The Friends tab on Home, next to Huddle (web /?view=friends). Real accounts only; guests and signed-out visitors see just the Huddle. While a prompt is open the feed only says a friend answered; the answer appears at the lock. Answers are the Huddle's take cards (the take, with the picks folded behind View take); wins and new bests are lighter game cards (a best shows the number, the friend's rank among you and your friends, and Beat it; a win names who it was over; one friend's wins on a day fold into one card). Losses, one-player matches and solo runs that set no new best are left out. Layout gaps: web pages with an Older link and its Beat it / Play buttons jump to /solo and /party, while iOS pages with Load more and opens the game's board (Beat it) or the friend's profile.
 
   # --- Leaderboard -----------------------------------------------------------
   - id: leaderboard.ball-knower

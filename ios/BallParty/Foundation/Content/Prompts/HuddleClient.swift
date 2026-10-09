@@ -118,7 +118,7 @@ struct SupabaseHuddleClient: HuddleClient {
             let commentRows = try await comments
             let authorIds = Set(posts.map(\.authorId) + commentRows.map(\.authorId))
             let profiles: [PromptProfileRow] = try await client.from("profiles")
-                .select("id, display_name, avatar_url")
+                .select("id, display_name, avatar_url, username")
                 .in("id", values: Array(authorIds))
                 .execute().value
 

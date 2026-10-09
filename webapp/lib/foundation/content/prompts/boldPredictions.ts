@@ -17,6 +17,7 @@ export type BoldTarget = { type: BoldTargetType; id: string };
 export type BoldPrediction = {
   id: string;
   author: string;
+  authorUsername: string | null;
   isViewer: boolean;
   body: string;
   target: BoldTarget;
@@ -52,10 +53,11 @@ export function describeTarget(target: BoldTarget, data: Pick<BoldPredictionBoar
 type Client = SupabaseClient<Database>;
 type PredictionRow = Database["public"]["Tables"]["bold_predictions"]["Row"];
 
-export function toBoldPrediction(row: PredictionRow, viewerId: string | null, nameById: Map<string, string>): BoldPrediction {
+export function toBoldPrediction(row: PredictionRow, viewerId: string | null, nameById: Map<string, string>, usernameById: Map<string, string | null>): BoldPrediction {
   return {
     id: row.id,
     author: nameById.get(row.author_id) ?? "Unknown",
+    authorUsername: usernameById.get(row.author_id) ?? null,
     isViewer: row.author_id === viewerId,
     body: row.body,
     target: { type: row.target_type as BoldTargetType, id: row.target_id },

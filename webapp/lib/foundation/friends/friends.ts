@@ -44,7 +44,7 @@ export function friendInvitePath(code: string): string {
 
 /** A row of `friend_activity`, camel-cased for the UI. */
 export type ActivityEvent = {
-  type: "pick_made" | "pick_result" | "match_result";
+  type: "take" | "pick_made" | "win" | "high_score";
   occurredAt: string;
   actorId: string;
   username: string | null;
@@ -52,12 +52,31 @@ export type ActivityEvent = {
   avatarUrl: string | null;
   postId: string | null;
   postCaption: string | null;
+  /** The take posted with the answer. Only on a revealed `take`. */
+  takeBody: string | null;
+  /** The take's comment, for its thread. Null when the friend answered without posting a take. */
+  commentId: string | null;
+  replyCount: number;
+  /** The answer, `{slot id: option ids}`. Only on a revealed `take`; an open prompt's answer never leaves the server. */
+  response: Record<string, string[]> | null;
   points: number | null;
   matchId: string | null;
   game: string | null;
   placement: number | null;
+  /** A win's score, or a high score's new best. */
   rawScore: number | null;
   runMode: string | null;
+  /** The QB Season Builder board a high score is on (visible or hidden). */
+  mode: string | null;
+  /** A win: the beaten players who are the caller's friends. */
+  opponents: string[];
+  /** A win: the caller was one of the players beaten. */
+  opponentYou: boolean;
+  /** A win: everyone the winner beat. */
+  opponentCount: number;
+  /** A high score: where the new best sits among the caller and their friends. */
+  friendRank: number | null;
+  friendCount: number | null;
 };
 
 export const ACTIVITY_PAGE_SIZE = 30;
@@ -71,19 +90,32 @@ type ActivityRow = {
   avatar_url: string | null;
   post_id: string | null;
   post_caption: string | null;
+  take_body: string | null;
+  comment_id: string | null;
+  reply_count: number | null;
+  response: unknown;
   points: number | null;
   match_id: string | null;
   game: string | null;
   placement: number | null;
   raw_score: number | null;
   run_mode: string | null;
+  mode: string | null;
+  opponents: string[] | null;
+  opponent_you: boolean | null;
+  opponent_count: number | null;
+  friend_rank: number | null;
+  friend_count: number | null;
 };
+
+const ACTIVITY_TYPES = ["take", "pick_made", "win", "high_score"] as const;
 
 export function activityEvents(rows: ActivityRow[]): ActivityEvent[] {
   return rows.flatMap((row) => {
-    if (row.event_type !== "pick_made" && row.event_type !== "pick_result" && row.event_type !== "match_result") return [];
+    const type = ACTIVITY_TYPES.find((known) => known === row.event_type);
+    if (!type) return [];
     return [{
-      type: row.event_type,
+      type,
       occurredAt: row.occurred_at,
       actorId: row.actor_id,
       username: row.username,
@@ -91,14 +123,46 @@ export function activityEvents(rows: ActivityRow[]): ActivityEvent[] {
       avatarUrl: row.avatar_url,
       postId: row.post_id,
       postCaption: row.post_caption,
+      takeBody: row.take_body,
+      commentId: row.comment_id,
+      replyCount: row.reply_count ?? 0,
+      response: row.response && typeof row.response === "object" ? (row.response as Record<string, string[]>) : null,
       points: row.points,
       matchId: row.match_id,
       game: row.game,
       placement: row.placement,
       rawScore: row.raw_score,
       runMode: row.run_mode,
+      mode: row.mode,
+      opponents: row.opponents ?? [],
+      opponentYou: row.opponent_you ?? false,
+      opponentCount: row.opponent_count ?? 0,
+      friendRank: row.friend_rank,
+      friendCount: row.friend_count,
     }];
   });
+}
+
+/** One feed entry. A friend's wins on the same day fold into one entry led by the newest; `more` holds the rest. */
+export type ActivityItem = { event: ActivityEvent; more: ActivityEvent[] };
+
+/** Folds back-to-back wins by the same friend on the same (UTC) day into one entry, so a busy player doesn't fill the feed. */
+export function groupActivity(events: ActivityEvent[]): ActivityItem[] {
+  const items: ActivityItem[] = [];
+  for (const event of events) {
+    const last = items[items.length - 1];
+    if (
+      event.type === "win" &&
+      last?.event.type === "win" &&
+      last.event.actorId === event.actorId &&
+      last.event.occurredAt.slice(0, 10) === event.occurredAt.slice(0, 10)
+    ) {
+      last.more.push(event);
+    } else {
+      items.push({ event, more: [] });
+    }
+  }
+  return items;
 }
 
 export function ordinalPlace(value: number): string {

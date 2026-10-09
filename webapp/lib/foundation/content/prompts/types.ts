@@ -72,6 +72,8 @@ export type Comment = {
   author: string;
   /** The author's profile picture, or null when they have none — the card then draws a generated one. */
   authorAvatarUrl?: string | null;
+  /** The author's @username, or null when they have none (a guest). */
+  authorUsername?: string | null;
   body: string;
   createdAt: string;
   /** True only for the signed-in reader's comment. */

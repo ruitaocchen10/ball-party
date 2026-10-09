@@ -43,6 +43,9 @@ export default async function Home(props: PageProps<"/">) {
   const params = await props.searchParams;
   const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
   const view: HomeView = hasFriendsTab && viewParam === "friends" ? "friends" : "huddle";
+  // Friends pages by `?before=<occurred_at of the last event shown>`, so each page can load the prompts its take cards need.
+  const beforeParam = Array.isArray(params.before) ? params.before[0] : params.before;
+  const before = view === "friends" && typeof beforeParam === "string" && !Number.isNaN(Date.parse(beforeParam)) ? beforeParam : null;
 
   // Independent of each other, so they go together rather than in sequence.
   // The Huddle is readable before a player has an account or a temporary
@@ -53,15 +56,17 @@ export default async function Home(props: PageProps<"/">) {
       ? supabase.from("profiles").select("display_name, avatar_url, username").eq("id", claims!.sub).single()
       : Promise.resolve({ data: null }),
     viewer ? currentRoom(supabase, claims!.sub) : Promise.resolve(null),
-    (view === "friends" ? Promise.resolve([]) : fetchPromptFeed(supabase, viewer ? claims!.sub : null)).then(async (feed) => ({
+    fetchPromptFeed(supabase, viewer ? claims!.sub : null).then(async (feed) => ({
       posts: feed,
       // Only the games these posts are about, read from the same table the iOS
       // app uses. A schedule outage should never hide the feed; it only drops
       // the venue, kickoff and primetime details from the covers.
-      gameContexts: await fetchGameContexts(supabase, feed.flatMap((post) => post.slots.flatMap((slot) => slot.sourceGameId ?? []))).catch(() => []),
+      gameContexts: view === "friends"
+        ? []
+        : await fetchGameContexts(supabase, feed.flatMap((post) => post.slots.flatMap((slot) => slot.sourceGameId ?? []))).catch(() => []),
     })),
     view === "friends" ? supabase.rpc("list_friends") : null,
-    view === "friends" ? supabase.rpc("friend_activity", { p_limit: ACTIVITY_PAGE_SIZE }) : null,
+    view === "friends" ? supabase.rpc("friend_activity", { p_limit: ACTIVITY_PAGE_SIZE, ...(before ? { p_before: before } : {}) }) : null,
   ]);
 
   const { displayName, email, avatarUrl } = chromeIdentity(claims, profileResult.data);
@@ -73,6 +78,7 @@ export default async function Home(props: PageProps<"/">) {
   // Power Rankings ritual. Other composer-only templates remain out of this
   // dashboard stream while their player experiences are refined.
   const pickPosts = posts.filter(isHomePrompt);
+  const activityFeedEvents = activityEvents(activity?.data ?? []);
 
   return (
     <SearchQueryProvider initialQuery={query}>
@@ -97,7 +103,12 @@ export default async function Home(props: PageProps<"/">) {
           friends?.error || activity?.error ? (
             <EmptyState title="Couldn't load friend activity" className="mt-6">Try again in a moment.</EmptyState>
           ) : (
-            <ActivityFeed initial={activityEvents(activity?.data ?? [])} hasFriends={(friends?.data ?? []).length > 0} />
+            <ActivityFeed
+              events={activityFeedEvents}
+              posts={new Map(posts.map((post) => [post.id, post]))}
+              hasFriends={(friends?.data ?? []).length > 0}
+              olderHref={(activity?.data ?? []).length >= ACTIVITY_PAGE_SIZE && activityFeedEvents.length > 0 ? `/?view=friends&before=${encodeURIComponent((activity!.data ?? [])[(activity!.data ?? []).length - 1].occurred_at)}` : null}
+            />
           )
         ) : (
           <HuddleFeed posts={pickPosts} canAnswer={canAnswerPrompt(claims)} gameContexts={gameContexts} />

@@ -44,6 +44,7 @@ type Props = {
   viewerCanAnswer: boolean;
   displayName?: string;
   avatarUrl?: string | null;
+  username?: string | null;
   /** Overrides the write and the player search, for tests. */
   actions?: BoldPredictionActions;
   playerSearch?: PlayerSearch;
@@ -55,7 +56,7 @@ type Props = {
  * that response is final. Locking in is what unlocks everyone else's
  * predictions; after the post locks they are open to all.
  */
-export function BoldPredictionsBoard({ post, data, viewerCanAnswer, displayName = "You", avatarUrl = null, actions, playerSearch }: Props) {
+export function BoldPredictionsBoard({ post, data, viewerCanAnswer, displayName = "You", avatarUrl = null, username = null, actions, playerSearch }: Props) {
   const router = useRouter();
   const now = usePromptDeadlineNow(post);
   const open = isPromptOpenForAnswers(post, now);
@@ -82,6 +83,7 @@ export function BoldPredictionsBoard({ post, data, viewerCanAnswer, displayName 
             data={tagData}
             displayName={displayName}
             avatarUrl={avatarUrl}
+            username={username}
             act={act}
             onPlayerFound={(player) => setFound((current) => ({ ...current, [player.id]: player }))}
             playerSearch={playerSearch}
@@ -100,11 +102,12 @@ export function BoldPredictionsBoard({ post, data, viewerCanAnswer, displayName 
 }
 
 /** Drafts live in the browser until Lock in; only then does anything reach the server. */
-function PredictionComposer({ post, data, displayName, avatarUrl, act, onPlayerFound, playerSearch, onSubmitted }: {
+function PredictionComposer({ post, data, displayName, avatarUrl, username, act, onPlayerFound, playerSearch, onSubmitted }: {
   post: Post;
   data: TagData;
   displayName: string;
   avatarUrl: string | null;
+  username: string | null;
   act: () => BoldPredictionActions;
   onPlayerFound: (player: PlayerResult) => void;
   playerSearch?: PlayerSearch;
@@ -134,7 +137,7 @@ function PredictionComposer({ post, data, displayName, avatarUrl, act, onPlayerF
       <p className="flex items-center gap-2 text-sm text-fg-muted"><Lock aria-hidden className="h-3.5 w-3.5 shrink-0" /> Lock them in as one response. You can&apos;t change it after, and you&apos;ll see everyone else&apos;s.</p>
 
       <div className={`${CARD_SHELL} p-4`}>
-        <YouHeader name={displayName} avatarUrl={avatarUrl} />
+        <YouHeader name={displayName} avatarUrl={avatarUrl} username={username} />
 
         {drafts.length ? (
           <ul className="mt-4 flex flex-col gap-3">
@@ -209,10 +212,10 @@ function PredictionComposer({ post, data, displayName, avatarUrl, act, onPlayerF
 const CARD_SHELL = "relative overflow-hidden border border-line bg-surface-raised text-fg shadow-[0_10px_24px_rgb(0_0_0/0.4)]";
 
 /** The post-card header the pick composer uses: who is answering, tagged as the viewer. */
-function YouHeader({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
+function YouHeader({ name, avatarUrl, username }: { name: string; avatarUrl: string | null; username: string | null }) {
   return (
     <div className="flex items-center gap-2.5">
-      <AuthorIdentity name={name} avatarUrl={avatarUrl} />
+      <AuthorIdentity name={name} avatarUrl={avatarUrl} username={username} />
       <Badge>You</Badge>
     </div>
   );
@@ -279,7 +282,7 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
   const card = (group: (typeof groups)[number]) => (
     <article key={group.key} aria-label={`${group.author}'s predictions`} className={`${CARD_SHELL} p-4`}>
       <div className="flex items-center gap-2.5">
-        <AuthorIdentity name={group.author} />
+        <AuthorIdentity name={group.author} username={group.authorUsername} />
         {group.isViewer ? <Badge>You</Badge> : null}
       </div>
       <ul className="mt-4 flex flex-col gap-3">
@@ -317,10 +320,10 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
 
 /** One response per person: a viewer's predictions sit together on a single card, in first-seen order. */
 function byAuthor(predictions: BoldPrediction[]) {
-  const groups = new Map<string, { key: string; author: string; isViewer: boolean; predictions: BoldPrediction[] }>();
+  const groups = new Map<string, { key: string; author: string; authorUsername: string | null; isViewer: boolean; predictions: BoldPrediction[] }>();
   for (const prediction of predictions) {
     const key = `${prediction.isViewer ? "me" : "other"}:${prediction.author}`;
-    const group = groups.get(key) ?? { key, author: prediction.author, isViewer: prediction.isViewer, predictions: [] };
+    const group = groups.get(key) ?? { key, author: prediction.author, authorUsername: prediction.authorUsername, isViewer: prediction.isViewer, predictions: [] };
     group.predictions.push(prediction);
     groups.set(key, group);
   }

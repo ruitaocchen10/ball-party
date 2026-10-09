@@ -290,6 +290,7 @@ export type Database = {
         }
         Returns: string
       }
+      delete_post: { Args: { p_post_id: string }; Returns: undefined }
       is_admin: { Args: never; Returns: boolean }
       my_bold_predictions: {
         Args: { p_post_id: string }
@@ -376,10 +377,6 @@ export type Database = {
       }
       submit_response: {
         Args: { p_choices: Json; p_comment?: string; p_post_id: string }
-        Returns: undefined
-      }
-      delete_post: {
-        Args: { p_post_id: string }
         Returns: undefined
       }
       void_post: {
@@ -2926,17 +2923,27 @@ export type Database = {
         Returns: {
           actor_id: string
           avatar_url: string
+          comment_id: string
           display_name: string
           event_type: string
+          friend_count: number
+          friend_rank: number
           game: string
           match_id: string
+          mode: string
           occurred_at: string
+          opponent_count: number
+          opponent_you: boolean
+          opponents: string[]
           placement: number
           points: number
           post_caption: string
           post_id: string
           raw_score: number
+          reply_count: number
+          response: Json
           run_mode: string
+          take_body: string
           username: string
         }[]
       }

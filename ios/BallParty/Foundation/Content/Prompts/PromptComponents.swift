@@ -78,6 +78,10 @@ struct TakeCardView: View {
     /// Where the reply row leads. Without it the row is a plain label: a reply,
     /// or a take already open on its own screen, has nowhere further to go.
     var threadDestination: (() -> AnyView)?
+    /// What the take is answering, drawn as a quoted strip between the author line and the
+    /// take (the friends feed). `contextDestination` opens that prompt.
+    var contextTitle: String?
+    var contextDestination: (() -> AnyView)?
 
     @State private var picksShown = false
 
@@ -85,7 +89,12 @@ struct TakeCardView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Avatar(name: comment.author, url: comment.authorAvatarURL, size: 28)
-                Text(comment.author).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(comment.author).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
+                    if let username = comment.authorUsername {
+                        Text("@\(username)").font(.sans(12)).foregroundStyle(Theme.fgMuted)
+                    }
+                }
                 if comment.isViewer {
                     Text("You").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
                 }
@@ -94,6 +103,7 @@ struct TakeCardView: View {
                     .font(.mono(10))
                     .foregroundStyle(Theme.fgMuted)
             }
+            if let contextTitle { contextStrip(contextTitle) }
             if !comment.body.isEmpty {
                 Text(comment.body)
                     .font(.sans(16))
@@ -128,6 +138,29 @@ struct TakeCardView: View {
         // A link and a button inside it would fight for the same tap, so the
         // card is only ever combined into one element when it has neither.
         .accessibilityElement(children: threadDestination == nil && !collapsesPicks ? .combine : .contain)
+    }
+
+    @ViewBuilder
+    private func contextStrip(_ title: String) -> some View {
+        let strip = VStack(alignment: .leading, spacing: 2) {
+            Text("Answering").monoLabel(9, tracking: 0.1)
+            Text(title)
+                .font(.sans(15, weight: .medium))
+                .foregroundStyle(Theme.fg)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Theme.surface)
+        .overlay(Rectangle().stroke(Theme.line, lineWidth: 1))
+        if let contextDestination {
+            NavigationLink { contextDestination() } label: { strip }
+                .buttonStyle(.plain)
+        } else {
+            strip
+        }
     }
 
     @ViewBuilder

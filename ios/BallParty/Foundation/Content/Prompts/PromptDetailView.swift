@@ -131,7 +131,12 @@ private struct YourCard: View {
             HStack(spacing: 8) {
                 if let take {
                     Avatar(name: take.author, url: take.authorAvatarURL, size: 28)
-                    Text(take.author).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(take.author).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
+                        if let username = take.authorUsername {
+                            Text("@\(username)").font(.sans(12)).foregroundStyle(Theme.fgMuted)
+                        }
+                    }
                 }
                 Text("You").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
                 Spacer()

@@ -37,6 +37,20 @@ final class HuddleViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.posts.first?.slots.first?.options.map(\.label), ["Chiefs", "Bills"])
     }
 
+    func test_aTakeCarriesItsAuthorsUsername() async throws {
+        let sam = client.addProfile(named: "Sam", username: "sam_k")
+        let nobody = client.addProfile(named: "Nobody")
+        let post = client.addPost("A prompt", by: sam)
+        client.anotherPlayerPosts("Chiefs", on: post, by: sam)
+        client.anotherPlayerPosts("Bills", on: post, by: nobody)
+
+        await viewModel.load()
+
+        let takes = try XCTUnwrap(viewModel.posts.first).comments
+        XCTAssertEqual(takes.first { $0.author == "Sam" }?.authorUsername, "sam_k")
+        XCTAssertNil(takes.first { $0.author == "Nobody" }?.authorUsername)
+    }
+
     func test_feed_showsPicksAndPowerRankingsOnly_likeTheWebHome() async throws {
         client.addPost("A picks post")
         client.addPost("A ranking post", kind: "ranking")

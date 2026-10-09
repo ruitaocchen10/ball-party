@@ -114,6 +114,8 @@ struct PromptComment: Identifiable, Equatable, Sendable {
     let author: String
     /// The author's profile picture; without one the card draws their initial.
     var authorAvatarURL: URL? = nil
+    /// The author's @username, shown under their name; nil for a player without one.
+    var authorUsername: String? = nil
     let body: String
     let createdAt: Date
     let isViewer: Bool
@@ -434,11 +436,13 @@ struct PromptProfileRow: Decodable, Equatable, Sendable {
     let id: UUID
     let displayName: String
     var avatarUrl: String? = nil
+    var username: String? = nil
 
     private enum CodingKeys: String, CodingKey {
         case id
         case displayName = "display_name"
         case avatarUrl = "avatar_url"
+        case username
     }
 }
 

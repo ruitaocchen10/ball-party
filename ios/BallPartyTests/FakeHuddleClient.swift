@@ -76,8 +76,8 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
 
     // MARK: - Test controls
 
-    func addProfile(_ id: UUID = UUID(), named name: String) -> UUID {
-        lock.withLock { rows.profiles.append(PromptProfileRow(id: id, displayName: name)) }
+    func addProfile(_ id: UUID = UUID(), named name: String, username: String? = nil) -> UUID {
+        lock.withLock { rows.profiles.append(PromptProfileRow(id: id, displayName: name, username: username)) }
         return id
     }
 

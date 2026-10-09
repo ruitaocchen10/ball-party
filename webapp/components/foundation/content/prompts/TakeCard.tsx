@@ -23,6 +23,8 @@ export function TakeCard({
   composer,
   thread,
   collapsedByDefault = false,
+  replyCount,
+  context,
 }: {
   comment: Comment;
   isYou?: boolean;
@@ -38,6 +40,10 @@ export function TakeCard({
   thread?: ReactNode;
   /** Other people's pick tickets stay skim-friendly until the reader asks to open one. */
   collapsedByDefault?: boolean;
+  /** For a take whose replies aren't loaded: the count to show instead of `comment.replies.length`. */
+  replyCount?: number;
+  /** Sits between the author line and the take: what the take is answering (the friends feed's prompt strip). */
+  context?: ReactNode;
 }) {
   const [takeExpanded, setTakeExpanded] = useState(!collapsedByDefault);
   const canCollapseTake = collapsedByDefault && Boolean(children);
@@ -46,18 +52,21 @@ export function TakeCard({
   return (
     <article className="relative border border-line bg-surface-raised shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
       <div className="flex items-center gap-2.5 px-4 pt-4">
-        <AuthorIdentity name={comment.author} avatarUrl={avatarUrl ?? comment.authorAvatarUrl ?? null} />
+        <AuthorIdentity name={comment.author} avatarUrl={avatarUrl ?? comment.authorAvatarUrl ?? null} username={comment.authorUsername} />
         {isYou ? <Badge>You</Badge> : null}
         <span className="ml-auto shrink-0 font-mono text-[10px] tracking-[0.04em] text-fg-muted">{relativeTime(comment.createdAt)}</span>
       </div>
+      {context ? <div className="px-4 pt-3">{context}</div> : null}
       {comment.body ? <p className={`px-4 pt-4 text-lg leading-7 font-medium text-fg${hasBottomRow || children ? "" : " pb-4"}`}>{comment.body}</p> : null}
       {takeExpanded ? children : null}
+      {/* No bottom row (a take with no comment link or footer, as in the friends feed): pad under the picks. */}
+      {takeExpanded && children && !hasBottomRow ? <div className="pb-4" /> : null}
       {hasBottomRow ? (
         <div className="flex items-center gap-3 px-4 pt-4 pb-4">
           {commentHref ? (
             <Link href={commentHref} aria-label={`Comment on ${comment.author}'s take`} className="inline-flex items-center gap-1.5 text-fg-muted transition-colors hover:text-fg">
               <MessageCircle className="h-5 w-5" strokeWidth={1.8} />
-              {comment.replies.length ? <span className="font-mono text-xs">{comment.replies.length}</span> : null}
+              {(replyCount ?? comment.replies.length) ? <span className="font-mono text-xs">{replyCount ?? comment.replies.length}</span> : null}
             </Link>
           ) : null}
           {footer ? <span className="min-w-0">{footer}</span> : null}

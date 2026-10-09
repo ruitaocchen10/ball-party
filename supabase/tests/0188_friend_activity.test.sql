@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(21);
 
 \ir support/harness.psql
 
@@ -28,32 +28,60 @@ insert into public.prompt_slots (id, post_id, label, shape, points) values
   ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'A', 'pick', 25),
   ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'B', 'pick', 25),
   ('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', 'C', 'pick', 25);
+insert into public.prompt_slot_options (id, slot_id, label, sublabel, team_code) values
+  ('50000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'Chiefs', null, 'KC'),
+  ('50000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 'Bills', null, 'BUF');
+insert into public.prompt_comments (post_id, author_id, body, posted_with_pick) values
+  ('10000000-0000-0000-0000-000000000001', (select v from tests.fx where k = 'friend'), 'Mahomes in a walk', true),
+  ('10000000-0000-0000-0000-000000000002', (select v from tests.fx where k = 'friend'), 'Secret take', true);
 insert into public.prompt_responses (post_id, slot_id, profile_id, chosen_option_ids, points_earned, created_at) values
-  ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', (select v from tests.fx where k = 'friend'),   array[gen_random_uuid()], 25,   now() - interval '3 days'),
-  ('10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', (select v from tests.fx where k = 'friend'),   array[gen_random_uuid()], null, now() - interval '1 hour'),
+  ('10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', (select v from tests.fx where k = 'friend'),   array['50000000-0000-0000-0000-000000000001'::uuid], 25,   now() - interval '3 days'),
+  ('10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', (select v from tests.fx where k = 'friend'),   array['50000000-0000-0000-0000-000000000002'::uuid], null, now() - interval '1 hour'),
   ('10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', (select v from tests.fx where k = 'stranger'), array[gen_random_uuid()], null, now() - interval '30 minutes'),
   ('10000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000003', (select v from tests.fx where k = 'friend'),   array[gen_random_uuid()], 25,   now() - interval '60 days');
 
--- A finished solo match for the friend and one for the stranger.
-insert into public.runs (id, mode, status, started_at, ended_at) values
-  ('30000000-0000-0000-0000-000000000001', 'solo', 'finished', now() - interval '2 hours', now() - interval '90 minutes'),
-  ('30000000-0000-0000-0000-000000000002', 'solo', 'finished', now() - interval '2 hours', now() - interval '90 minutes');
+-- Multiplayer: the friend beats me in one arcade match, loses another to me, wins a solo-mode run,
+-- and wins an arcade match alone (one player).
+insert into public.lobbies (id, code, host_id)
+values ('60000000-0000-0000-0000-000000000001', 'FAL01', (select v from tests.fx where k = 'me'));
+insert into public.runs (id, lobby_id, mode, status, started_at, ended_at) values
+  ('30000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 'arcade', 'finished', now() - interval '4 hours', now() - interval '3 hours'),
+  ('30000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000001', 'arcade', 'finished', now() - interval '4 hours', now() - interval '3 hours'),
+  ('30000000-0000-0000-0000-000000000003', null, 'solo', 'finished', now() - interval '4 hours', now() - interval '3 hours'),
+  ('30000000-0000-0000-0000-000000000004', '60000000-0000-0000-0000-000000000001', 'arcade', 'finished', now() - interval '4 hours', now() - interval '3 hours');
+insert into public.matches (id, run_id, game, seq, status, started_at, ended_at)
+select ('40000000-0000-0000-0000-00000000000' || n)::uuid, ('30000000-0000-0000-0000-00000000000' || n)::uuid,
+       'higher_or_lower', 1, 'complete', now() - interval '4 hours', now() - interval '3 hours'
+  from generate_series(1, 4) n;
 insert into public.run_participants (run_id, user_id, seat) values
   ('30000000-0000-0000-0000-000000000001', (select v from tests.fx where k = 'friend'), 0),
-  ('30000000-0000-0000-0000-000000000002', (select v from tests.fx where k = 'stranger'), 0);
-insert into public.matches (id, run_id, game, seq, status, started_at, ended_at) values
-  ('40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'higher_or_lower', 1, 'complete', now() - interval '2 hours', now() - interval '90 minutes'),
-  ('40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', 'higher_or_lower', 1, 'complete', now() - interval '2 hours', now() - interval '90 minutes');
+  ('30000000-0000-0000-0000-000000000001', (select v from tests.fx where k = 'me'), 1),
+  ('30000000-0000-0000-0000-000000000002', (select v from tests.fx where k = 'friend'), 0),
+  ('30000000-0000-0000-0000-000000000002', (select v from tests.fx where k = 'me'), 1),
+  ('30000000-0000-0000-0000-000000000003', (select v from tests.fx where k = 'friend'), 0),
+  ('30000000-0000-0000-0000-000000000004', (select v from tests.fx where k = 'friend'), 0);
 insert into public.match_players (match_id, run_id, user_id, placement, raw_score) values
   ('40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', (select v from tests.fx where k = 'friend'), 1, 12),
-  ('40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', (select v from tests.fx where k = 'stranger'), 1, 99);
+  ('40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', (select v from tests.fx where k = 'me'), 2, 5),
+  ('40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', (select v from tests.fx where k = 'friend'), 2, 3),
+  ('40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', (select v from tests.fx where k = 'me'), 1, 9),
+  ('40000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', (select v from tests.fx where k = 'friend'), 1, 8),
+  ('40000000-0000-0000-0000-000000000004', '30000000-0000-0000-0000-000000000004', (select v from tests.fx where k = 'friend'), 1, 7);
+
+-- Solo bests: the friend raised both 2 hours ago and the stranger raised one; a 40-day-old best is out of the window.
+insert into public.higher_or_lower_player_stats (user_id, all_time_high, updated_at) values
+  ((select v from tests.fx where k = 'friend'), 14, now() - interval '2 hours'),
+  ((select v from tests.fx where k = 'stranger'), 30, now() - interval '2 hours');
+insert into public.qb_season_builder_player_stats (user_id, mode, best_score, updated_at) values
+  ((select v from tests.fx where k = 'friend'), 'visible', 88.5, now() - interval '20 minutes'),
+  ((select v from tests.fx where k = 'friend'), 'hidden', 70.0, now() - interval '40 days');
 
 select tests.act_as((select v from tests.fx where k = 'me'));
 
 select is(
   (select array_agg(event_type order by occurred_at desc) from public.friend_activity()),
-  array['pick_made', 'match_result', 'pick_result', 'pick_made'],
-  'the feed has the friend''s picks, match and result, newest first'
+  array['high_score', 'pick_made', 'high_score', 'win', 'take'],
+  'the feed has the friend''s open pick, bests, multiplayer win and revealed answer, newest first'
 );
 select is(
   (select count(*)::integer from public.friend_activity() where actor_id = (select v from tests.fx where k = 'stranger')),
@@ -66,44 +94,85 @@ select is(
   'your own activity is not in your friends feed'
 );
 select is(
-  (select (post_caption, points)::text from public.friend_activity() where event_type = 'pick_result'),
-  '("Resolved one",25)',
-  'a result carries the prompt and the points earned'
+  (select (post_caption, take_body, points, response)::text from public.friend_activity() where event_type = 'take'),
+  '("Resolved one","Mahomes in a walk",25,"{""20000000-0000-0000-0000-000000000001"": [""50000000-0000-0000-0000-000000000001""]}")',
+  'a revealed answer carries the prompt, the take, the points and the chosen option ids per slot'
+);
+select ok(
+  (select comment_id is not null and reply_count = 0 from public.friend_activity() where event_type = 'take'),
+  'a take locates its thread'
 );
 select is(
-  (select post_caption from public.friend_activity() where event_type = 'pick_made' order by occurred_at desc limit 1),
-  'Open one',
-  'a pick event names the prompt'
+  (select (post_caption, take_body, comment_id, response)::text from public.friend_activity() where event_type = 'pick_made'),
+  '("Open one",,,)',
+  'an open prompt shows that a friend answered, with neither the answer nor the take'
 );
 select is(
-  (select (game, placement, raw_score, run_mode)::text from public.friend_activity() where event_type = 'match_result'),
-  '(higher_or_lower,1,12,solo)',
-  'a match event carries game, placement, score and run mode'
+  (select count(*)::integer from public.friend_activity() where event_type = 'win'),
+  1,
+  'only the multiplayer win appears: not the loss, the solo run or the one-player match'
+);
+select is(
+  (select (game, placement, raw_score, run_mode)::text from public.friend_activity() where event_type = 'win'),
+  '(higher_or_lower,1,12,arcade)',
+  'a win carries game, placement, score and run mode'
+);
+select is(
+  (select (opponents, opponent_you, opponent_count)::text from public.friend_activity() where event_type = 'win'),
+  '(,t,1)',
+  'a win says the caller was the opponent; only friends are named'
+);
+select is(
+  (select array_agg(game || ':' || friend_rank || '/' || friend_count order by game) from public.friend_activity() where event_type = 'high_score'),
+  array['higher_or_lower:1/1', 'qb_season_builder:1/1'],
+  'a high score is ranked among the caller and their friends'
+);
+select is(
+  (select array_agg(game || ':' || raw_score || ':' || coalesce(mode, '') order by game) from public.friend_activity() where event_type = 'high_score'),
+  array['higher_or_lower:14:', 'qb_season_builder:88.5:visible'],
+  'a high score carries the game, the new best and the QB mode; a best older than 30 days is left out'
 );
 select is(
   (select count(*)::integer from public.friend_activity() where post_caption = 'Old one'),
   0,
-  'events older than 30 days are not included'
-);
-select is(
-  (select count(*)::integer from public.friend_activity() where event_type = 'pick_made' and post_caption = 'Old one'),
-  0,
-  'picks older than 30 days are not included'
+  'prompts answered more than 30 days ago are not included'
 );
 select is(
   (select count(*)::integer
      from pg_proc p, unnest(p.proargnames) n
     where p.proname = 'friend_activity' and n in ('chosen_option_ids', 'is_guest', 'is_private', 'deleted_at')),
   0,
-  'the feed never returns the chosen options or private profile columns'
+  'the feed never returns raw option ids or private profile columns'
 );
 
 select is((select count(*)::integer from public.friend_activity(1)), 1, 'p_limit caps the rows');
 select is(
   (select event_type from public.friend_activity(10, (select occurred_at from public.friend_activity() offset 1 limit 1)) limit 1),
-  'pick_result',
+  'high_score',
   'p_before pages past the rows already seen'
 );
+
+-- Once the open prompt locks, the same row becomes a revealed answer.
+select tests.act_as_admin();
+update public.prompt_posts set lock_at = now() - interval '1 minute', status = 'locked'
+ where id = '10000000-0000-0000-0000-000000000002';
+select tests.act_as((select v from tests.fx where k = 'me'));
+select is(
+  (select (take_body, response is not null)::text from public.friend_activity() where post_caption = 'Open one'),
+  '("Secret take",t)',
+  'a locked prompt reveals the answer and the take'
+);
+select is(
+  (select event_type from public.friend_activity() where post_caption = 'Open one'),
+  'take',
+  'and is a take event, not a pick_made'
+);
+
+-- A void prompt drops out entirely.
+select tests.act_as_admin();
+update public.prompt_posts set status = 'void', void_reason = 'test' where id = '10000000-0000-0000-0000-000000000002';
+select tests.act_as((select v from tests.fx where k = 'me'));
+select is((select count(*)::integer from public.friend_activity() where post_caption = 'Open one'), 0, 'a void prompt is not in the feed');
 
 -- Removing the friend empties the feed.
 select public.remove_friend((select v from tests.fx where k = 'friend'));
