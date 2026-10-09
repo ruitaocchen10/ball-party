@@ -96,26 +96,93 @@ struct AwardGameTile: View {
 // MARK: - Answering
 
 /// The six awards: teams and the game are chosen from their options, the three
-/// players are searched for. A tap on the chosen team or game clears it.
+/// players are searched for. A tap on the chosen team or game clears it. Like
+/// the web, one award is open at a time: the rest collapse to a row that says
+/// what was picked (with Edit) or that nothing is yet (with Pick), and choosing
+/// hands over to the next award still waiting for an answer.
 struct WeeklyAwardsPicker: View {
     @ObservedObject var viewModel: HuddleViewModel
     let post: PromptPost
 
+    @State private var openSlot: UUID?
+    @State private var started = false
+
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 3)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 10) {
             ForEach(post.slots) { slot in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(slot.label)
-                        .font(.slab(15, relativeTo: .body))
-                        .textCase(.uppercase)
-                        .foregroundStyle(Theme.fgMuted)
-                        .accessibilityAddTraits(.isHeader)
-                    input(for: slot)
+                if openSlot == slot.id {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(slot.label)
+                            .font(.slab(15, relativeTo: .body))
+                            .textCase(.uppercase)
+                            .foregroundStyle(Theme.fgMuted)
+                            .accessibilityAddTraits(.isHeader)
+                        input(for: slot)
+                    }
+                } else {
+                    collapsedRow(slot)
                 }
             }
         }
+        .onAppear {
+            guard !started else { return }
+            started = true
+            openSlot = post.slots.first { !isAnswered($0) }?.id
+        }
+    }
+
+    private func isAnswered(_ slot: PromptSlot) -> Bool {
+        slot.playerSearch
+            ? viewModel.player(in: slot.id, of: post.id) != nil
+            : !viewModel.selection(in: slot.id, of: post.id).isEmpty
+    }
+
+    /// Closes `slot` once it has an answer and opens the next award still waiting for one.
+    private func advance(from slot: PromptSlot) {
+        guard isAnswered(slot), let index = post.slots.firstIndex(where: { $0.id == slot.id }) else { return }
+        let others = post.slots[(index + 1)...] + post.slots[..<index]
+        openSlot = others.first { !isAnswered($0) }?.id
+    }
+
+    private func choose(_ option: PromptOption, in slot: PromptSlot) {
+        viewModel.toggle(option.id, in: slot.id, of: post.id)
+        advance(from: slot)
+    }
+
+    private func collapsedRow(_ slot: PromptSlot) -> some View {
+        let player = slot.playerSearch ? viewModel.player(in: slot.id, of: post.id) : nil
+        let option = viewModel.selection(in: slot.id, of: post.id).first.flatMap { id in slot.options.first { $0.id == id } }
+        let summary = player?.name ?? option?.label
+        return HStack(spacing: 10) {
+            if let player {
+                Portrait(name: player.name, url: player.headshotURL, size: 32)
+            } else if let option {
+                AwardOptionIcon(option: option, slot: slot, size: 32)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(slot.label).monoLabel(10, tracking: 0.08, color: Theme.fgMuted)
+                Text(summary ?? "Not picked yet")
+                    .font(.slab(18, relativeTo: .body))
+                    .textCase(.uppercase)
+                    .foregroundStyle(summary == nil ? Theme.fgMuted : Theme.fg)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            Spacer(minLength: 8)
+            Button(summary == nil ? "Pick" : "Edit") { openSlot = slot.id }
+                .font(.mono(11, weight: .bold))
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.fg)
+                .underline()
+                .accessibilityLabel("\(summary == nil ? "Pick" : "Edit") \(slot.label)")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surfaceRaised)
+        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
     }
 
     @ViewBuilder
@@ -126,7 +193,10 @@ struct WeeklyAwardsPicker: View {
                 label: slot.label,
                 selection: viewModel.player(in: slot.id, of: post.id),
                 search: { try await viewModel.searchPlayers($0) },
-                onSelect: { viewModel.setPlayer($0, in: slot.id, of: post.id) }
+                onSelect: {
+                    viewModel.setPlayer($0, in: slot.id, of: post.id)
+                    advance(from: slot)
+                }
             )
         } else if !slot.options.isEmpty, slot.options.allSatisfy({ $0.gameTeamCodes != nil }) {
             VStack(spacing: 8) {
@@ -135,7 +205,7 @@ struct WeeklyAwardsPicker: View {
                         AwardGameTile(
                             away: game.away, home: game.home, label: option.label,
                             state: ChoiceTileState(chosen: chosen, option: option.id)
-                        ) { viewModel.toggle(option.id, in: slot.id, of: post.id) }
+                        ) { choose(option, in: slot) }
                     }
                 }
             }
@@ -145,7 +215,7 @@ struct WeeklyAwardsPicker: View {
                     AwardTeamTile(
                         code: option.teamCode ?? "", name: option.label,
                         state: ChoiceTileState(chosen: chosen, option: option.id)
-                    ) { viewModel.toggle(option.id, in: slot.id, of: post.id) }
+                    ) { choose(option, in: slot) }
                 }
             }
         } else {

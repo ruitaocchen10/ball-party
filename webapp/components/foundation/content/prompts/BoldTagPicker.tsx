@@ -46,14 +46,14 @@ export function BoldTagPicker({ value, onChange, weekGames, players, onPlayerFou
 
   return (
     <div className="flex flex-col gap-3">
-      <div role="group" aria-label="Tag type" className="flex flex-wrap gap-1.5">
+      <div role="group" aria-label="Tag type" className="grid grid-cols-3 gap-1.5">
         {MODES.map(({ type, label }) => (
           <button
             key={type}
             type="button"
             aria-pressed={mode === type}
             onClick={() => switchMode(type)}
-            className={`cursor-pointer px-3 py-2 font-slab text-xs uppercase ${mode === type ? "bg-panel text-panel-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
+            className={`cursor-pointer px-3 py-3 text-center font-slab text-sm uppercase ${mode === type ? "bg-panel text-panel-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
           >
             {label}
           </button>

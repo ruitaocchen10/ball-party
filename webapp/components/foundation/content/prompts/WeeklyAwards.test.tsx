@@ -93,3 +93,24 @@ it("publishes Weekly Awards as an ungraded opinion post with its six slots in or
   expect(published.slots.map((slot: Slot) => slot.options.length)).toEqual([32, 32, 2, 0, 0, 0]);
   expect(published.slots.map((slot: Slot) => Boolean(slot.playerSearch))).toEqual([false, false, false, true, true, true]);
 });
+
+it("keeps unanswered categories collapsed, opens the next one after a pick, and lets a pick be edited", async () => {
+  const three: Slot[] = [...slots, { id: "s-loser", label: "Biggest loser", shape: "pick", points: 1, options: [team("KC"), team("BUF")] }];
+  const { WeeklyAwardsSlots: Slots } = await import("./WeeklyAwards");
+  function Harness() {
+    const [draft, setDraft] = useState<Record<string, string[]>>({});
+    return <Slots slots={three} responses={draft} onChange={(id, response) => setDraft((d) => ({ ...d, [id]: response }))} />;
+  }
+  const user = userEvent.setup();
+  render(<Harness />);
+
+  expect(screen.getAllByRole("button", { name: "KC" })).toHaveLength(1);
+  expect(screen.getByRole("button", { name: "Pick Biggest loser" })).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "KC" }));
+  expect(screen.getByRole("button", { name: "Edit Biggest winner" })).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Offensive player of the week" })).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Edit Biggest winner" }));
+  expect(screen.getByRole("group", { name: "Biggest winner" })).toBeInTheDocument();
+});
