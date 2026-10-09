@@ -37,6 +37,7 @@ struct LobbyScreen: View {
             }
         }
         .task { await inbox.load() }
+        .task { await inbox.observe(recipientId: viewModel.viewerId) }
         .screenBackground()
         .navigationTitle("Play with friends")
         .navigationBarTitleDisplayMode(.inline)

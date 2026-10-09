@@ -116,6 +116,51 @@ final class RoomInvitesInboxViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.invites[0].summary, "Higher or Lower room · 2 of 4 players")
     }
 
+    func testAnInviteThatArrivesWhileOpenAppearsWithoutARefresh() async throws {
+        let client = FakeRoomInvitesClient()
+        let viewModel = make(client)
+        await viewModel.load()
+        XCTAssertTrue(viewModel.invites.isEmpty)
+
+        let observing = Task { await viewModel.observe(recipientId: UUID()) }
+        defer { observing.cancel() }
+
+        client.inviteRows = [RoomInvite(senderName: "Dana")]
+        try await eventually { client.emit(.changed); return viewModel.invites.count == 1 }
+        XCTAssertEqual(viewModel.invites.map(\.senderName), ["Dana"])
+    }
+
+    func testRejoiningTheChannelReadsAgain() async throws {
+        let client = FakeRoomInvitesClient()
+        let viewModel = make(client)
+        let observing = Task { await viewModel.observe(recipientId: UUID()) }
+        defer { observing.cancel() }
+
+        // Sent while the socket was down: no `.changed` ever came for it.
+        client.inviteRows = [RoomInvite(senderName: "Dana")]
+        try await eventually { client.emit(.subscribed); return viewModel.invites.count == 1 }
+    }
+
+    func testObservingEndsWithItsStream() async {
+        let client = FakeRoomInvitesClient()
+        let viewModel = make(client)
+        let observing = Task { await viewModel.observe(recipientId: UUID()) }
+        while client.eventsOpened == 0 { await Task.yield() }
+        client.finishEvents()
+        await observing.value
+    }
+
+    /// Retries `check` until it holds. The observing task starts on its own
+    /// schedule, so an event emitted before it subscribes is lost; emitting
+    /// inside the check keeps trying until one lands.
+    private func eventually(_ check: () -> Bool) async throws {
+        for _ in 0..<200 {
+            if check() { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTFail("Timed out waiting for the inbox to update")
+    }
+
     func testSummaryWithoutAGameIsJustTheHeadcount() {
         XCTAssertEqual(RoomInvite(senderName: "Dana", memberCount: 3).summary, "3 of 4 players")
         XCTAssertEqual(RoomInvite(senderName: "Dana", selectedGame: "auction", memberCount: 1).summary, "1 of 4 players")

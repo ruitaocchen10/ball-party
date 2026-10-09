@@ -1,34 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AuthorAvatar } from "@/components/foundation/content/prompts/AuthorIdentity";
 import { Button } from "@/components/foundation/ui-kit/Button";
-import { inviteErrorMessage, inviteRoomSummary } from "@/lib/platform/lobbies/invites";
+import { inviteErrorMessage, inviteRoomSummary, toRoomInvite, type RoomInvite } from "@/lib/platform/lobbies/invites";
 import { MATCH_GAME_NAMES, type MatchGame } from "@/lib/platform/orchestration/catalog";
+import { createRealtimeClient } from "@/lib/runtime/realtime/client";
 import { createClient } from "@/lib/supabase/client";
 
-export type RoomInvite = {
-  inviteId: string;
-  senderName: string;
-  senderUsername: string;
-  senderAvatarUrl: string | null;
-  selectedGame: string | null;
-  memberCount: number;
-};
+export type { RoomInvite };
 
 /**
  * Pending room invites from friends, on the Party page. Accepting joins the
  * room (the server runs the same `join_lobby` a code does, so a full or closed
  * room is refused there) and goes straight into it. Declining just clears the
- * row. Invites are pull-only: they appear when this page is loaded, with no push.
+ * row.
+ *
+ * New invites arrive live: a change to the viewer's own `room_invites` rows is
+ * only a nudge to re-read `list_room_invites`, so the 24-hour life, the open-room
+ * check and the friendship check stay the server's. `viewerId` is null for
+ * anyone who cannot have invites (guests, signed-out), which opens no channel.
  */
-export function RoomInvitesInbox({ invites: initial, hasRoom = false }: { invites: RoomInvite[]; hasRoom?: boolean }) {
+export function RoomInvitesInbox({
+  invites: initial,
+  hasRoom = false,
+  viewerId = null,
+}: {
+  invites: RoomInvite[];
+  hasRoom?: boolean;
+  viewerId?: string | null;
+}) {
   const router = useRouter();
   const [invites, setInvites] = useState(initial);
   const [busy, setBusy] = useState<{ id: string; action: "accept" | "decline" } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!viewerId) return;
+    let cancelled = false;
+    let cleanup: (() => void) | null = null;
+
+    void (async () => {
+      const supabase = await createRealtimeClient();
+      if (cancelled) return;
+
+      // A failed read keeps whatever is listed; the next event or reconnect retries.
+      const refetch = async () => {
+        const { data, error } = await supabase.rpc("list_room_invites");
+        if (cancelled || error || !data) return;
+        setInvites(data.map(toRoomInvite));
+      };
+
+      const channel = supabase
+        .channel(`room-invites:${viewerId}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "room_invites", filter: `recipient_id=eq.${viewerId}` },
+          () => void refetch(),
+        )
+        // First connect and every resubscribe after a drop: an invite sent while
+        // the socket was down produced no event, so re-read on each join.
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") void refetch();
+        });
+
+      cleanup = () => void supabase.removeChannel(channel);
+    })();
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, [viewerId]);
 
   if (invites.length === 0) return null;
 

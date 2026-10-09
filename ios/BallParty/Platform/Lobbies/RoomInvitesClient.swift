@@ -111,7 +111,12 @@ enum RoomInviteCopy {
     ]
 }
 
-/// Room invites' network seam (migration 0189). Every rule (who may be
+/// Something happened to the viewer's invites, or the channel (re)joined.
+/// Neither carries data: the inbox re-reads `list_room_invites`, which is where
+/// the 24-hour life and the friendship check are applied.
+enum RoomInviteEvent: Sendable { case changed, subscribed }
+
+/// Room invites' network seam (migrations 0189, 0195). Every rule (who may be
 /// invited, the 24-hour life, capacity) is the server's.
 protocol RoomInvitesClient: Sendable {
     /// `invite_friend_to_room`.
@@ -122,6 +127,11 @@ protocol RoomInvitesClient: Sendable {
     func accept(_ inviteId: UUID) async throws -> Lobby
     /// `decline_room_invite`.
     func decline(_ inviteId: UUID) async throws
+    /// Changes to the caller's own `room_invites` rows, plus a `.subscribed` on
+    /// every join, first connect and each resubscribe after a drop (an invite
+    /// sent while the socket was down produced no event). Ends when the
+    /// consuming task is cancelled.
+    func events(recipientId: UUID) -> AsyncStream<RoomInviteEvent>
 }
 
 struct SupabaseRoomInvitesClient: RoomInvitesClient {
@@ -151,6 +161,19 @@ struct SupabaseRoomInvitesClient: RoomInvitesClient {
     func decline(_ inviteId: UUID) async throws {
         try await wrapped {
             _ = try await client.rpc("decline_room_invite", params: IdParams(p_invite_id: inviteId)).execute()
+        }
+    }
+
+    func events(recipientId: UUID) -> AsyncStream<RoomInviteEvent> {
+        realtimeEvents(
+            client: client, topics: ["room-invites:\(recipientId)"], subscribed: .subscribed
+        ) { channels, yield in
+            let invites = channels[0].postgresChange(
+                AnyAction.self, table: "room_invites", filter: .eq("recipient_id", value: recipientId)
+            )
+            // No payload is decoded: the row is only ever the fact that the
+            // list changed.
+            return [{ for await _ in invites { yield(.changed) } }]
         }
     }
 

@@ -37,6 +37,25 @@ final class FakeRoomInvitesClient: RoomInvitesClient, @unchecked Sendable {
         try check("decline")
     }
 
+    private var eventContinuation: AsyncStream<RoomInviteEvent>.Continuation?
+
+    /// How many times `events` has been asked for a stream.
+    private(set) var eventsOpened = 0
+
+    func events(recipientId: UUID) -> AsyncStream<RoomInviteEvent> {
+        eventsOpened += 1
+        return AsyncStream { continuation in
+            self.eventContinuation = continuation
+            continuation.onTermination = { _ in self.eventContinuation = nil }
+        }
+    }
+
+    /// Plays an event through the stream `events` handed out.
+    func emit(_ event: RoomInviteEvent) { eventContinuation?.yield(event) }
+
+    /// Ends the stream, the way cancelling the observing task would.
+    func finishEvents() { eventContinuation?.finish() }
+
     private func check(_ name: String) throws {
         if let failure = failures[name] { throw failure }
     }

@@ -39,3 +39,31 @@ export function inviteRoomSummary(gameLabel: string | null, memberCount: number)
   const players = `${memberCount} of 4 players`;
   return gameLabel ? `${gameLabel} · ${players}` : players;
 }
+
+export type RoomInvite = {
+  inviteId: string;
+  senderName: string;
+  senderUsername: string;
+  senderAvatarUrl: string | null;
+  selectedGame: string | null;
+  memberCount: number;
+};
+
+/** A row of `list_room_invites`, in the shape the inbox renders. */
+export function toRoomInvite(row: {
+  invite_id: string;
+  sender_display_name: string;
+  sender_username: string;
+  sender_avatar_url: string | null;
+  selected_game: string | null;
+  member_count: number;
+}): RoomInvite {
+  return {
+    inviteId: row.invite_id,
+    senderName: row.sender_display_name,
+    senderUsername: row.sender_username,
+    senderAvatarUrl: row.sender_avatar_url,
+    selectedGame: row.selected_game,
+    memberCount: row.member_count,
+  };
+}
