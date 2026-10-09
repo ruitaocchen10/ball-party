@@ -162,8 +162,8 @@ struct SegmentedChoice<Value: Hashable>: View {
 
 // MARK: - Avatars
 
-/// A round avatar: the image if there is one, otherwise the initial in slab
-/// on the accent.
+/// A round avatar: the image if there is one, otherwise the generated picture for the player's
+/// name (`GeneratedAvatar`, the same one web draws).
 struct Avatar: View {
     let name: String
     var url: URL?
@@ -173,14 +173,14 @@ struct Avatar: View {
 
     var body: some View {
         // "Mine" is a red ring standing off the avatar by a gap, so it still
-        // shows against the red fallback.
+        // shows against any fallback.
         let inner = isMine ? size - 8 : size
         AsyncImage(url: url) { phase in
             switch phase {
             case .success(let image):
                 image.resizable().scaledToFill().background(Theme.panelShade)
             default:
-                initial(size: inner)
+                GeneratedAvatarView(name: name)
             }
         }
         .frame(width: inner, height: inner)
@@ -188,17 +188,5 @@ struct Avatar: View {
         .frame(width: size, height: size)
         .overlay { if isMine { Circle().strokeBorder(Theme.hidden, lineWidth: 2) } }
         .accessibilityHidden(true)
-    }
-
-    private func initial(size: CGFloat) -> some View {
-        ZStack {
-            Theme.hidden
-            // Bebas Neue's capitals sit optically high in the line box; this
-            // is the web's `.font-slab-optical-center`.
-            Text(String(name.prefix(1)).uppercased())
-                .font(.slab(size * 0.55, relativeTo: .body))
-                .foregroundStyle(Theme.panel)
-                .offset(y: size * 0.55 * 0.06)
-        }
     }
 }
