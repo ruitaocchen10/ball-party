@@ -25,6 +25,9 @@ final class HuddleViewModel: ObservableObject {
     /// has closed on somebody who never answered.
     enum CardAction: Equatable {
         case makePicks, viewPicks, seeTakes, seeResults, updateApp
+        /// Bold Predictions' own pair: the web labels them by whether the post is
+        /// still open, not by whether the viewer has answered.
+        case makePredictions, seePredictions
 
         var label: String {
             switch self {
@@ -33,6 +36,8 @@ final class HuddleViewModel: ObservableObject {
             case .seeTakes: "See takes"
             case .seeResults: "See results"
             case .updateApp: "Update to play"
+            case .makePredictions: "Make your predictions"
+            case .seePredictions: "See predictions"
             }
         }
     }
@@ -51,6 +56,17 @@ final class HuddleViewModel: ObservableObject {
     /// `{post → how many teams}` — the depth a Power Rankings ballot is being
     /// composed to (5, 10 or 32). Absent means the shallowest.
     @Published private(set) var rankDepths: [UUID: Int] = [:]
+    /// `{post → {slot → player}}` — the players chosen for a Weekly Awards post's
+    /// search slots. A player is not an option, so it is kept apart from
+    /// `pickDrafts` and sent as a directory id.
+    @Published private(set) var playerDrafts: [UUID: [UUID: NFLPlayer]] = [:]
+    /// `{post → predictions}` — Bold Predictions not yet locked in.
+    @Published private(set) var boldDrafts: [UUID: [BoldDraft]] = [:]
+    /// `{post → the games and players its tags are drawn from}`.
+    @Published private(set) var boldBoards: [UUID: BoldBoardData] = [:]
+    /// Players this session has found, so a tag the viewer just chose keeps its
+    /// name and headshot.
+    @Published private(set) var foundPlayers: [String: NFLPlayer] = [:]
     /// `{post → take}` — the optional take that goes with the picks.
     @Published private(set) var takeDrafts: [UUID: String] = [:]
     /// `{take → reply}`.
@@ -134,6 +150,7 @@ final class HuddleViewModel: ObservableObject {
     func callToAction(for postId: UUID) -> CardAction {
         guard let post = post(postId) else { return .seeResults }
         if post.isUnsupported { return .updateApp }
+        if post.isBoldPredictions { return post.isTakingPicks(at: now()) ? .makePredictions : .seePredictions }
         if canAnswer(postId) { return .makePicks }
         if post.viewerAnswered { return post.isTakingPicks(at: now()) ? .viewPicks : .seeTakes }
         return .seeResults
@@ -175,7 +192,7 @@ final class HuddleViewModel: ObservableObject {
     /// removes it.
     func toggle(_ optionId: UUID, in slotId: UUID, of postId: UUID) {
         guard canAnswer(postId), let post = post(postId),
-              let slot = post.slots.first(where: { $0.id == slotId })
+              let slot = post.slots.first(where: { $0.id == slotId }), !slot.playerSearch
         else { return }
         var chosen = selection(in: slotId, of: postId)
         if let index = chosen.firstIndex(of: optionId) {
@@ -206,10 +223,32 @@ final class HuddleViewModel: ObservableObject {
         takeDrafts[postId] = String(text.prefix(Self.commentMax))
     }
 
+    /// The player chosen for one of a Weekly Awards post's search slots.
+    func player(in slotId: UUID, of postId: UUID) -> NFLPlayer? {
+        playerDrafts[postId]?[slotId]
+    }
+
+    /// Chooses (or, with `nil`, clears) the player for a search slot.
+    func setPlayer(_ player: NFLPlayer?, in slotId: UUID, of postId: UUID) {
+        guard canAnswer(postId), let slot = post(postId)?.slots.first(where: { $0.id == slotId }), slot.playerSearch
+        else { return }
+        playerDrafts[postId, default: [:]][slotId] = player
+        if let player { foundPlayers[player.id] = player }
+    }
+
+    /// Searches the player directory for a Weekly Awards slot or a prediction tag.
+    func searchPlayers(_ query: String) async throws -> [NFLPlayer] {
+        try await client.searchPlayers(query: query)
+    }
+
     /// Whether every slot has a complete answer.
     func canSubmit(_ postId: UUID) -> Bool {
-        guard canAnswer(postId), let post = post(postId) else { return false }
-        return post.slots.allSatisfy { selection(in: $0.id, of: postId).count == requiredCount(for: $0, in: post) }
+        guard canAnswer(postId), let post = post(postId), !post.isBoldPredictions else { return false }
+        return post.slots.allSatisfy { slot in
+            slot.playerSearch
+                ? player(in: slot.id, of: postId) != nil
+                : selection(in: slot.id, of: postId).count == requiredCount(for: slot, in: post)
+        }
     }
 
     /// Locks in the picks — and the take, in the same call — then re-reads,
@@ -223,18 +262,109 @@ final class HuddleViewModel: ObservableObject {
         defer { isSending = false }
 
         let take = takeDraft(for: postId).trimmed
+        let players = (playerDrafts[postId] ?? [:]).mapValues(\.id)
+        // A search slot is answered by its player, so whatever option a stale
+        // draft might hold for it is not sent.
+        let choices = (pickDrafts[postId] ?? [:]).filter { players[$0.key] == nil }
         do {
             try await client.submitResponse(
-                postId: postId, choices: pickDrafts[postId] ?? [:], comment: take.isEmpty ? nil : take
+                postId: postId, choices: choices, players: players, comment: take.isEmpty ? nil : take
             )
         } catch {
             errorMessage = HuddleServerError.describe(error)
             return
         }
         pickDrafts[postId] = nil
+        playerDrafts[postId] = nil
         rankDepths[postId] = nil
         takeDrafts[postId] = nil
         await load()
+    }
+
+    // MARK: - Bold Predictions
+
+    func boldDraftList(for postId: UUID) -> [BoldDraft] { boldDrafts[postId] ?? [] }
+
+    /// Whether `draft` is a prediction worth keeping: some words (trimmed, at most
+    /// 280 characters) and a tag. The server checks the tag itself.
+    static func isReadyPrediction(_ draft: BoldDraft) -> Bool {
+        let body = draft.body.trimmed
+        return !body.isEmpty && body.count <= BoldLimits.bodyMax
+    }
+
+    func canAddPrediction(to postId: UUID) -> Bool {
+        canAnswer(postId) && boldDraftList(for: postId).count < BoldLimits.maxPredictions
+    }
+
+    /// Adds a prediction to the response being written. Returns whether it was
+    /// kept — not when the response is full or the words are missing or too long.
+    @discardableResult
+    func addPrediction(_ draft: BoldDraft, to postId: UUID) -> Bool {
+        guard canAddPrediction(to: postId), Self.isReadyPrediction(draft) else { return false }
+        boldDrafts[postId, default: []].append(BoldDraft(body: draft.body.trimmed, target: draft.target))
+        return true
+    }
+
+    /// Replaces the prediction at `index`. Returns whether it was kept.
+    @discardableResult
+    func replacePrediction(at index: Int, with draft: BoldDraft, in postId: UUID) -> Bool {
+        guard canAnswer(postId), boldDraftList(for: postId).indices.contains(index), Self.isReadyPrediction(draft)
+        else { return false }
+        boldDrafts[postId]?[index] = BoldDraft(body: draft.body.trimmed, target: draft.target)
+        return true
+    }
+
+    func removePrediction(at index: Int, from postId: UUID) {
+        guard canAnswer(postId), boldDraftList(for: postId).indices.contains(index) else { return }
+        boldDrafts[postId]?.remove(at: index)
+    }
+
+    func canLockInPredictions(_ postId: UUID) -> Bool {
+        canAnswer(postId) && !boldDraftList(for: postId).isEmpty && !isSending
+    }
+
+    /// Locks in the whole response — final: there is no editing or deleting
+    /// afterwards — then re-reads, because answering is what unlocks everyone
+    /// else's predictions. On a refusal the drafts stay where they were.
+    func lockInPredictions(_ postId: UUID) async {
+        guard canLockInPredictions(postId) else { return }
+        isSending = true
+        errorMessage = nil
+        defer { isSending = false }
+
+        do {
+            try await client.submitBoldPredictions(postId: postId, predictions: boldDraftList(for: postId))
+        } catch {
+            errorMessage = HuddleServerError.describe(error)
+            return
+        }
+        boldDrafts[postId] = nil
+        await load()
+        await loadBoldBoard(postId)
+    }
+
+    /// Reads what a post's tags are drawn from: the week's games for a matchup
+    /// tag, and the directory rows of whichever players its predictions name.
+    /// Like the web, a failure costs the tags their art, never the post.
+    func loadBoldBoard(_ postId: UUID) async {
+        guard let post = post(postId), post.isBoldPredictions else { return }
+        async let games: [NFLScheduleGame] = (try? await client.weekGames(after: post.lockAt)) ?? []
+        let tagged = Set(post.boldPredictions.filter { $0.target.type == .player }.map(\.target.id))
+        let missing = tagged.subtracting(foundPlayers.keys)
+        async let players: [NFLPlayer] = missing.isEmpty ? [] : ((try? await client.players(ids: Array(missing))) ?? [])
+        let (weekGames, found) = await (games, players)
+        for player in found { foundPlayers[player.id] = player }
+        boldBoards[postId] = BoldBoardData(weekGames: weekGames, players: foundPlayers)
+    }
+
+    /// The tag data for a post, with every player found so far.
+    func boldBoard(for postId: UUID) -> BoldBoardData {
+        BoldBoardData(weekGames: boldBoards[postId]?.weekGames ?? [], players: foundPlayers)
+    }
+
+    /// Remembers a player the viewer chose for a tag.
+    func rememberPlayer(_ player: NFLPlayer) {
+        foundPlayers[player.id] = player
     }
 
     // MARK: - Replying

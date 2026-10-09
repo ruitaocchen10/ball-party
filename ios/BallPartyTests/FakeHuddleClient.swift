@@ -40,11 +40,24 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
     private var _revealedRequests: [UUID] = []
     private var _submissions: [Submission] = []
     private var _comments: [PostedComment] = []
+    private var _boldSubmissions: [BoldSubmission] = []
+    private var _playerSearches: [String] = []
+
+    // The player directory, the week's schedule and the predictions the server holds.
+    private var directory: [NFLPlayer] = []
+    private var schedule: [NFLScheduleGame] = []
+    private var boldRows: [BoldPredictionRow] = []
 
     struct Submission: Equatable {
         let postId: UUID
         let choices: [UUID: [UUID]]
+        var players: [UUID: String] = [:]
         let comment: String?
+    }
+
+    struct BoldSubmission: Equatable {
+        let postId: UUID
+        let predictions: [BoldDraft]
     }
 
     struct PostedComment: Equatable {
@@ -59,6 +72,8 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
     var revealedRequests: [UUID] { lock.withLock { _revealedRequests } }
     var submissions: [Submission] { lock.withLock { _submissions } }
     var postedComments: [PostedComment] { lock.withLock { _comments } }
+    var boldSubmissions: [BoldSubmission] { lock.withLock { _boldSubmissions } }
+    var playerSearches: [String] { lock.withLock { _playerSearches } }
 
     /// Scripted failures, keyed by RPC name (`feed_rows`, `submit_response`,
     /// `post_comment`, `revealed_responses`, `power_ranking_top_five`). Cleared
@@ -129,6 +144,48 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
         }
     }
 
+    /// A Game Picks / Weekly Picks post: one slot per `(away, home)` game, each with
+    /// four options in the composer's order — away <7, away 7+, home <7, home 7+ —
+    /// like `0174` writes them. `optionIds[game]` is in that order.
+    @discardableResult
+    func addMarginPost(
+        _ promptText: String,
+        games: [(away: (name: String, code: String), home: (name: String, code: String))] = [(("Chiefs", "KC"), ("Bills", "BUF"))],
+        status: String = "open",
+        locksIn: TimeInterval = 3600
+    ) -> AddedPost {
+        lock.withLock {
+            let postId = UUID(), authorId = UUID()
+            rows.profiles.append(PromptProfileRow(id: authorId, displayName: "Ball Party"))
+            rows.posts.append(PromptPostRow(
+                id: postId, templateKind: games.count == 1 ? "game_pick" : "weekly_picks", authorId: authorId,
+                promptText: promptText, lockAt: epoch.addingTimeInterval(locksIn), createdAt: epoch, status: status
+            ))
+            var slotIds: [UUID] = [], optionIds: [[UUID]] = []
+            for (index, game) in games.enumerated() {
+                let slotId = UUID()
+                slotIds.append(slotId)
+                rows.slots.append(PromptSlotRow(id: slotId, postId: postId, label: "Game \(index + 1)", sortOrder: index))
+                let spec: [(String, String, String)] = [
+                    (game.away.name, game.away.code, "under_7"), (game.away.name, game.away.code, "7_plus"),
+                    (game.home.name, game.home.code, "under_7"), (game.home.name, game.home.code, "7_plus"),
+                ]
+                var ids: [UUID] = []
+                for (position, option) in spec.enumerated() {
+                    let optionId = UUID()
+                    ids.append(optionId)
+                    rows.options.append(PromptOptionRow(
+                        id: optionId, slotId: slotId, label: "\(option.0) by \(option.2 == "under_7" ? "<7" : "7+")",
+                        sublabel: option.2 == "under_7" ? "Wins by 1–6" : "Wins by 7 or more",
+                        teamCode: option.1, sortOrder: position, margin: option.2
+                    ))
+                }
+                optionIds.append(ids)
+            }
+            return AddedPost(id: postId, slotIds: slotIds, optionIds: optionIds)
+        }
+    }
+
     /// A Power Rankings post: one `rank` slot over the given teams (label and
     /// team code both the code), best-known order first, with the cover art the
     /// admin chose. `option(_:)` finds a team's option id.
@@ -160,6 +217,89 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
                 return optionId
             }
             return AddedPost(id: postId, slotIds: [slotId], optionIds: [optionIds])
+        }
+    }
+
+    /// A Weekly Awards post, laid out as the composer writes it: two teams slots
+    /// (three clubs each, enough to tell them apart), a best-game slot whose
+    /// options keep their clubs as `AWAY @ HOME` in the sublabel, and three
+    /// player-search slots that start with no options at all.
+    @discardableResult
+    func addWeeklyAwardsPost(
+        _ promptText: String = "Weekly awards",
+        status: String = "open",
+        age: TimeInterval = 0,
+        locksIn: TimeInterval = 3600
+    ) -> AddedPost {
+        lock.withLock {
+            let postId = UUID(), authorId = UUID()
+            rows.profiles.append(PromptProfileRow(id: authorId, displayName: "Ball Party"))
+            rows.posts.append(PromptPostRow(
+                id: postId, templateKind: "weekly_awards", authorId: authorId, promptText: promptText,
+                lockAt: epoch.addingTimeInterval(locksIn), createdAt: epoch.addingTimeInterval(-age),
+                status: status, isOpinion: true
+            ))
+            let labels = ["Biggest winner", "Biggest loser", "Best game", "Offensive player", "Defensive player", "LVP"]
+            var slotIds: [UUID] = [], optionIds: [[UUID]] = []
+            for (index, label) in labels.enumerated() {
+                let slotId = UUID()
+                slotIds.append(slotId)
+                rows.slots.append(PromptSlotRow(
+                    id: slotId, postId: postId, label: label, sortOrder: index, playerSearch: index > 2
+                ))
+                var ids: [UUID] = []
+                let options: [(label: String, sublabel: String?, team: String?)] = switch index {
+                case 0, 1: [("Chiefs", nil, "KC"), ("Bills", nil, "BUF"), ("Eagles", nil, "PHI")]
+                case 2: [("Chiefs @ Bills", "KC @ BUF", nil), ("Eagles @ Cowboys", "PHI @ DAL", nil)]
+                default: []
+                }
+                for (optionIndex, option) in options.enumerated() {
+                    let optionId = UUID()
+                    ids.append(optionId)
+                    rows.options.append(PromptOptionRow(
+                        id: optionId, slotId: slotId, label: option.label, sublabel: option.sublabel,
+                        teamCode: option.team, sortOrder: optionIndex
+                    ))
+                }
+                optionIds.append(ids)
+            }
+            return AddedPost(id: postId, slotIds: slotIds, optionIds: optionIds)
+        }
+    }
+
+    /// A Bold Predictions post: no slots, opinion only.
+    @discardableResult
+    func addBoldPredictionsPost(
+        _ promptText: String = "Bold predictions",
+        status: String = "open",
+        age: TimeInterval = 0,
+        locksIn: TimeInterval = 3600
+    ) -> AddedPost {
+        lock.withLock {
+            let postId = UUID(), authorId = UUID()
+            rows.profiles.append(PromptProfileRow(id: authorId, displayName: "Ball Party"))
+            rows.posts.append(PromptPostRow(
+                id: postId, templateKind: "bold_predictions", authorId: authorId, promptText: promptText,
+                lockAt: epoch.addingTimeInterval(locksIn), createdAt: epoch.addingTimeInterval(-age),
+                status: status, isOpinion: true
+            ))
+            return AddedPost(id: postId, slotIds: [], optionIds: [])
+        }
+    }
+
+    func addPlayers(_ players: [NFLPlayer]) { lock.withLock { directory += players } }
+
+    func setWeekGames(_ games: [NFLScheduleGame]) { lock.withLock { schedule = games } }
+
+    /// Somebody else's prediction, as if written while the viewer wasn't looking.
+    func anotherPlayerPredicts(
+        _ body: String, on post: AddedPost, by author: UUID, tagging target: BoldTarget, secondsAfterEpoch offset: TimeInterval = 0
+    ) {
+        lock.withLock {
+            boldRows.append(BoldPredictionRow(
+                postId: post.id, authorId: author, body: body, targetType: target.type.rawValue,
+                targetId: target.id, createdAt: epoch.addingTimeInterval(offset)
+            ))
         }
     }
 
@@ -283,13 +423,30 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
         }
     }
 
-    func submitResponse(postId: UUID, choices: [UUID: [UUID]], comment: String?) async throws {
+    func submitResponse(postId: UUID, choices: [UUID: [UUID]], players: [UUID: String], comment: String?) async throws {
         try lock.withLock {
             if let failure = _failures["submit_response"] { throw failure }
-            _submissions.append(Submission(postId: postId, choices: choices, comment: comment))
+            _submissions.append(Submission(postId: postId, choices: choices, players: players, comment: comment))
             for (slotId, optionIds) in choices {
                 rows.viewerResponses.append(PromptResponseRow(
                     postId: postId, slotId: slotId, chosenOptionIds: optionIds, pointsEarned: nil
+                ))
+            }
+            // The server makes an option for a player the first time anyone picks them.
+            for (slotId, playerId) in players {
+                guard let player = directory.first(where: { $0.id == playerId }) else {
+                    throw HuddleServerError(message: "invalid_option")
+                }
+                let existing = rows.options.first { $0.slotId == slotId && $0.sublabel == player.summary && $0.label == player.name }
+                let optionId = existing?.id ?? UUID()
+                if existing == nil {
+                    rows.options.append(PromptOptionRow(
+                        id: optionId, slotId: slotId, label: player.name, sublabel: player.summary,
+                        teamCode: player.team, headshotUrl: player.headshotURL?.absoluteString
+                    ))
+                }
+                rows.viewerResponses.append(PromptResponseRow(
+                    postId: postId, slotId: slotId, chosenOptionIds: [optionId], pointsEarned: nil
                 ))
             }
             if let comment, !comment.isEmpty {
@@ -298,6 +455,62 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
                 ))
             }
         }
+    }
+
+    func boldPredictions(postId: UUID) async throws -> BoldPredictionRows {
+        try lock.withLock {
+            if let failure = _failures["bold_predictions"] { throw failure }
+            let post = rows.posts.first { $0.id == postId }
+            let mine = boldRows.contains { $0.postId == postId && $0.authorId == viewerId }
+            let revealed = mine || (post.map { $0.lockAt <= epoch } ?? false)
+            let visible = boldRows.filter { $0.postId == postId && (revealed || $0.authorId == viewerId) }
+            let authors = Set(visible.map(\.authorId))
+            return BoldPredictionRows(
+                predictions: visible, profiles: rows.profiles.filter { authors.contains($0.id) }
+            )
+        }
+    }
+
+    func boldPredictionCounts(postIds: [UUID]) async throws -> [UUID: Int] {
+        lock.withLock {
+            Dictionary(postIds.map { id in (id, boldRows.filter { $0.postId == id }.count) }, uniquingKeysWith: { first, _ in first })
+        }
+    }
+
+    func submitBoldPredictions(postId: UUID, predictions: [BoldDraft]) async throws {
+        try lock.withLock {
+            if let failure = _failures["submit_bold_predictions"] { throw failure }
+            if boldRows.contains(where: { $0.postId == postId && $0.authorId == viewerId }) {
+                throw HuddleServerError(message: "already_answered")
+            }
+            _boldSubmissions.append(BoldSubmission(postId: postId, predictions: predictions))
+            for (index, prediction) in predictions.enumerated() {
+                boldRows.append(BoldPredictionRow(
+                    postId: postId, authorId: viewerId, body: prediction.body, targetType: prediction.target.type.rawValue,
+                    targetId: prediction.target.id, createdAt: epoch.addingTimeInterval(Double(index))
+                ))
+            }
+        }
+    }
+
+    func weekGames(after lockAt: Date) async throws -> [NFLScheduleGame] {
+        try lock.withLock {
+            if let failure = _failures["week_games"] { throw failure }
+            return schedule
+        }
+    }
+
+    func searchPlayers(query: String) async throws -> [NFLPlayer] {
+        try lock.withLock {
+            _playerSearches.append(query)
+            if let failure = _failures["search_players"] { throw failure }
+            let needle = query.lowercased()
+            return directory.filter { $0.name.lowercased().contains(needle) }
+        }
+    }
+
+    func players(ids: [String]) async throws -> [NFLPlayer] {
+        lock.withLock { directory.filter { ids.contains($0.id) } }
     }
 
     func postComment(postId: UUID, body: String, parentCommentId: UUID?) async throws {

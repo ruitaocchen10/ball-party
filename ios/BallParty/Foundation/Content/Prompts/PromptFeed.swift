@@ -20,9 +20,11 @@ enum PromptFeed {
         // `post_aggregates` is the only sanctioned way to see anyone else's
         // pick, so it is asked for only the posts that actually need it.
         // A kind this build can't render has nothing to reveal, so it is never
-        // asked for either.
+        // asked for either — and neither is Bold Predictions, which has no slots
+        // to aggregate: its predictions are read through their own RPC below.
         let renderable = posts.filter { !PromptPost.isUnsupportedKind($0.templateKind) }
-        let needingAggregate = renderable.filter { row in
+        let slotted = renderable.filter { $0.templateKind != PromptPost.boldPredictionsKind }
+        let needingAggregate = slotted.filter { row in
             answered.contains(row.id) || !(row.postStatus?.isTakingPicks(lockAt: row.lockAt, now: now) ?? false)
         }
         let aggregates = try await gather(needingAggregate) {
@@ -43,7 +45,7 @@ enum PromptFeed {
         // behind the server's, in which case the server says `picks_not_revealed`
         // for a post the phone thought had locked: that is "nothing to show
         // yet", not a failed feed. Any other failure still fails it.
-        let revealed = try await gather(renderable.filter { $0.lockAt <= now || $0.postStatus == .resolved }) { post in
+        let revealed = try await gather(slotted.filter { $0.lockAt <= now || $0.postStatus == .resolved }) { post in
             do {
                 return try await client.revealedResponses(postId: post.id)
             } catch let error as HuddleServerError where error.message == HuddleServerError.picksNotRevealed {
@@ -51,26 +53,34 @@ enum PromptFeed {
             }
         }
 
+        // A Bold Predictions post's response is a set of predictions. The RPC
+        // decides which of them this viewer may read, so a post is asked for
+        // whatever its state — and its count, which is safe before lock.
+        let boldPosts = renderable.filter { $0.templateKind == PromptPost.boldPredictionsKind }
+        let bold = try await gather(boldPosts) { try await client.boldPredictions(postId: $0.id) }
+        let boldCounts = await (try? client.boldPredictionCounts(postIds: boldPosts.map(\.id))) ?? [:]
+
         return assemble(
-            rows: rows, aggregates: aggregates, powerTopFive: powerTopFive, revealed: revealed, viewerId: viewerId
+            rows: rows, aggregates: aggregates, powerTopFive: powerTopFive, revealed: revealed,
+            bold: bold, boldCounts: boldCounts, viewerId: viewerId
         )
     }
 
-    /// The feed shows Picks and Power Rankings posts whose status this app
-    /// knows. (`assemble` also leaves out a post with a slot shape it doesn't
+    /// The feed shows the kinds this app renders, and a placeholder for the ones
+    /// it doesn't, whose status this app knows. (`assemble` also leaves out a post with a slot shape it doesn't
     /// know.)
     private static func isShown(_ row: PromptPostRow) -> Bool {
         row.postStatus != nil && PromptPost.isFeedKind(row.templateKind)
     }
 
     /// Runs `fetch` for every post at once, keyed by post id.
-    private static func gather<Row: Sendable>(
-        _ posts: [PromptPostRow], _ fetch: @escaping @Sendable (PromptPostRow) async throws -> [Row]
-    ) async throws -> [UUID: [Row]] {
-        try await withThrowingTaskGroup(of: (UUID, [Row]).self) { group in
+    private static func gather<Result: Sendable>(
+        _ posts: [PromptPostRow], _ fetch: @escaping @Sendable (PromptPostRow) async throws -> Result
+    ) async throws -> [UUID: Result] {
+        try await withThrowingTaskGroup(of: (UUID, Result).self) { group in
             for post in posts { group.addTask { (post.id, try await fetch(post)) } }
-            var results: [UUID: [Row]] = [:]
-            for try await (id, rows) in group { results[id] = rows }
+            var results: [UUID: Result] = [:]
+            for try await (id, result) in group { results[id] = result }
             return results
         }
     }
@@ -93,6 +103,8 @@ enum PromptFeed {
         aggregates: [UUID: [PromptAggregateRow]] = [:],
         powerTopFive: [UUID: [PromptPowerTopFiveRow]] = [:],
         revealed: [UUID: [PromptRevealedResponseRow]] = [:],
+        bold: [UUID: BoldPredictionRows] = [:],
+        boldCounts: [UUID: Int] = [:],
         viewerId: UUID
     ) -> [PromptPost] {
         let slotsByPost = Dictionary(grouping: rows.slots, by: \.postId)
@@ -136,9 +148,10 @@ enum PromptFeed {
                         options: (optionsBySlot[slotRow.id] ?? []).sorted { $0.sortOrder < $1.sortOrder }.map {
                             PromptOption(
                                 id: $0.id, label: $0.label, sublabel: $0.sublabel, teamCode: $0.teamCode,
-                                headshotURL: $0.headshotUrl.flatMap(URL.init(string:))
+                                headshotURL: $0.headshotUrl.flatMap(URL.init(string:)), margin: $0.margin
                             )
                         },
+                        playerSearch: slotRow.playerSearch,
                         game: slotRow.sourceGameId.flatMap { gameById[$0] }
                     )
                 }
@@ -186,7 +199,38 @@ enum PromptFeed {
                         PowerRankingConsensusEntry(
                             optionId: $0.optionId, topFiveCount: $0.topFiveCount, averageRank: $0.averageRank
                         )
-                    }
+                    },
+                    predictionCount: row.templateKind == PromptPost.boldPredictionsKind
+                        ? boldCounts[row.id] ?? bold[row.id]?.predictions.count ?? 0
+                        : nil,
+                    boldPredictions: boldPredictions(bold[row.id], fallbackNames: nameById, viewerId: viewerId)
+                )
+            }
+    }
+
+    /// A post's predictions in the order they were written, each with the name
+    /// and picture of whoever wrote it. A prediction tagged with a kind of target
+    /// this app doesn't know is left out rather than drawn wrongly.
+    private static func boldPredictions(
+        _ rows: BoldPredictionRows?, fallbackNames: [UUID: String], viewerId: UUID
+    ) -> [BoldPrediction] {
+        guard let rows else { return [] }
+        let profiles = Dictionary(rows.profiles.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return rows.predictions
+            .sorted { ($0.createdAt, $0.id.uuidString) < ($1.createdAt, $1.id.uuidString) }
+            .compactMap { row -> BoldPrediction? in
+                guard let type = BoldTargetType(rawValue: row.targetType) else { return nil }
+                let profile = profiles[row.authorId]
+                return BoldPrediction(
+                    id: row.id,
+                    authorId: row.authorId,
+                    author: profile?.displayName ?? fallbackNames[row.authorId] ?? "Unknown",
+                    authorUsername: profile?.username,
+                    authorAvatarURL: profile?.avatarUrl.flatMap(URL.init(string:)),
+                    isViewer: row.authorId == viewerId,
+                    body: row.body,
+                    target: BoldTarget(type: type, id: row.targetId),
+                    createdAt: row.createdAt
                 )
             }
     }

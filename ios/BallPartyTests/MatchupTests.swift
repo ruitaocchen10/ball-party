@@ -227,4 +227,91 @@ final class MatchupTests: XCTestCase {
         XCTAssertNil(open.winnerId)
         XCTAssertEqual(graded.winnerId, bills.id)
     }
+
+    // MARK: - Winner and margin
+
+    private func choice(_ label: String, _ code: String, _ margin: String?) -> PromptOption {
+        PromptOption(id: UUID(), label: label, sublabel: nil, teamCode: code, headshotURL: nil, margin: margin)
+    }
+
+    /// The four options in the composer's order: away <7, away 7+, home <7, home 7+.
+    private func marginOptions() -> [PromptOption] {
+        [
+            choice("Chiefs by <7", "KC", "under_7"), choice("Chiefs by 7+", "KC", "7_plus"),
+            choice("Bills by <7", "BUF", "under_7"), choice("Bills by 7+", "BUF", "7_plus"),
+        ]
+    }
+
+    func test_aGameWithFourMarginChoicesIsStillAMatchupDrawnFromItsTwoClubs() throws {
+        let options = marginOptions()
+        let game = slot(shape: .pick, options: options)
+
+        let cover = try XCTUnwrap(game.matchup)
+        XCTAssertEqual(cover.away.label, "Chiefs", "the cover names the club, not the margin")
+        XCTAssertEqual(cover.away.teamCode, "KC")
+        XCTAssertEqual(cover.home.label, "Bills")
+        XCTAssertEqual(cover.home.teamCode, "BUF")
+        XCTAssertEqual(cover.away.id, options[0].id, "each club keeps its short option's id")
+
+        let margin = try XCTUnwrap(game.marginGame)
+        XCTAssertEqual(
+            margin.choices.map(\.label), ["Chiefs by <7", "Bills by <7", "Chiefs by 7+", "Bills by 7+"],
+            "laid out like the web: each club's <7 on top, 7+ below"
+        )
+    }
+
+    func test_theFourChoicesAreFoundByTeamAndMarginNotByPosition() throws {
+        let options = marginOptions()
+        let shuffled = [options[3], options[0], options[2], options[1]]
+
+        let margin = try XCTUnwrap(slot(shape: .pick, options: shuffled).marginGame)
+
+        XCTAssertEqual(margin.awayShort.label, "Bills by <7", "the first club met is the away one")
+        XCTAssertEqual(margin.homeLong.label, "Chiefs by 7+")
+    }
+
+    func test_marginChoicesThatDontFormAGameAreNotOne() {
+        let options = marginOptions()
+
+        XCTAssertNil(slot(shape: .pick, options: [options[0], options[1], options[2]]).marginGame, "three of four")
+        XCTAssertNil(slot(shape: .pick, options: [options[0], options[0], options[2], options[3]]).marginGame, "a repeat")
+        XCTAssertNil(slot(shape: .pickSet, options: options).marginGame, "a pick of several")
+        XCTAssertNil(
+            slot(shape: .pick, options: options.map { choice($0.label, "KC", $0.margin) }).marginGame, "one club twice"
+        )
+        XCTAssertNil(
+            slot(shape: .pick, options: options.map { choice($0.label, $0.teamCode ?? "", nil) }).marginGame, "no margins"
+        )
+        XCTAssertNil(slot(shape: .pick, options: [team("Chiefs", "KC"), team("Bills", "BUF")]).marginGame, "a plain winner pick")
+    }
+
+    func test_aPostOfMarginGamesIsAMatchupPostThatNeedsFullRows() {
+        let margin = slot(shape: .pick, options: marginOptions())
+        let plain = slot(shape: .pick, options: [team("Chiefs", "KC"), team("Bills", "BUF")])
+        func post(_ slots: [PromptSlot]) -> PromptPost {
+            PromptPost(
+                id: UUID(), templateKind: "weekly_picks", templateName: "Picks", author: "A", caption: "",
+                createdAt: Date(), promptText: "Q", resolutionCriteria: "", lockAt: Date(), status: .open,
+                voidReason: nil, isOpinion: false, slots: slots, comments: [], responseCount: 0,
+                viewerResponse: nil, viewerPointsAwarded: nil, aggregate: nil
+            )
+        }
+
+        XCTAssertTrue(post([margin, margin]).isMatchupPost)
+        XCTAssertTrue(post([margin, margin]).hasMarginGames)
+        XCTAssertTrue(post([plain, margin]).hasMarginGames)
+        XCTAssertFalse(post([plain, plain]).hasMarginGames)
+    }
+
+    func test_aTiedMarginGameIsGradedWithNoRightAnswer() {
+        let options = marginOptions()
+        let tied = PromptSlot(
+            id: UUID(), label: "Slot", shape: .pick, pickCount: nil, points: 10, correctOptionIds: [], options: options
+        )
+
+        XCTAssertNotNil(tied.correctOptionIds, "graded")
+        XCTAssertNil(tied.winnerId, "but nobody won")
+        XCTAssertNil(tied.isCorrect(options[0].id))
+    }
 }
+

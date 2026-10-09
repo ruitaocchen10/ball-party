@@ -186,7 +186,13 @@ private struct PostCard: View {
                     .padding(.top, 16)
             }
 
-            if post.aggregate != nil {
+            if post.isBoldPredictions {
+                let count = post.predictionCount ?? 0
+                Text("\(count) \(count == 1 ? "prediction" : "predictions") made")
+                    .monoLabel(10, tracking: 0.1)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+            } else if post.aggregate != nil {
                 Text("\(post.responseCount) \(post.responseCount == 1 ? "person has" : "people have") answered")
                     .monoLabel(10, tracking: 0.1)
                     .padding(.horizontal, 16)
@@ -218,6 +224,10 @@ private struct PostCard: View {
     private var teaser: some View {
         if post.isPowerRankings {
             PowerRankingsCover(teamCodes: post.coverTeamCodes)
+        } else if post.isWeeklyAwards {
+            WeeklyAwardsCover()
+        } else if post.isBoldPredictions {
+            BoldPredictionsCover()
         } else if post.isMatchupPost {
             if post.slots.count == 1, let matchup = post.slots[0].matchup {
                 MatchupPoster(away: matchup.away, home: matchup.home, game: post.slots[0].game)

@@ -37,6 +37,22 @@ struct PromptOption: Identifiable, Equatable, Sendable {
     let sublabel: String?
     let teamCode: String?
     let headshotURL: URL?
+    /// A Game Picks option's margin bucket (`under_7` or `7_plus`): the team wins
+    /// by under 7, or by 7 or more (exactly 7 counts as 7+). `nil` on every other
+    /// kind of option.
+    var margin: String? = nil
+
+    /// A Weekly Awards "Best game" option keeps its two clubs as `AWAY @ HOME`
+    /// in the sublabel, because `prompt_slot_options` has a single `team_code`
+    /// column. Anything else is not a game. The web reads it the same way
+    /// (`matchupTeamCodes` in `feed.ts`).
+    var gameTeamCodes: (away: String, home: String)? {
+        guard let sublabel else { return nil }
+        let parts = sublabel.components(separatedBy: " @ ")
+        guard parts.count == 2, parts.allSatisfy({ (2...3).contains($0.count) && $0.allSatisfy { $0.isUppercase && $0.isLetter } })
+        else { return nil }
+        return (parts[0], parts[1])
+    }
 }
 
 /// One game on the schedule the web and this app share (`public.nfl_games`,
@@ -77,6 +93,11 @@ struct PromptSlot: Identifiable, Equatable, Sendable {
     /// Ground truth — `nil` until the post resolves. Order counts for `rank`.
     let correctOptionIds: [UUID]?
     let options: [PromptOption]
+    /// A Weekly Awards player slot: answered by searching the player directory,
+    /// not by choosing among `options`. The answer is the player's directory id;
+    /// the server makes the option the first time anyone picks that player, so
+    /// `options` holds only the players picked so far.
+    var playerSearch = false
     /// The schedule entry this slot is about — set on a game pick, `nil` on
     /// anything else, and on a game the schedule doesn't know (yet).
     var game: NFLGame? = nil
@@ -86,10 +107,32 @@ struct PromptSlot: Identifiable, Equatable, Sendable {
     /// for anything that isn't a head-to-head between two teams (a ranking, a
     /// pick of players), which is what keeps those on the plain option list.
     var matchup: (away: PromptOption, home: PromptOption)? {
+        // A Game Picks game is drawn as the same two-team cover, from its two
+        // clubs; its four choices are drawn apart from it (`MarginChoices`).
+        if let game = marginGame { return game.cover }
         guard shape == .pick, options.count == 2,
               options.allSatisfy({ $0.teamCode != nil && $0.headshotURL == nil })
         else { return nil }
         return (options[0], options[1])
+    }
+
+    /// A Game Picks game: the winner and the margin, four options per game —
+    /// each team "by <7" and "by 7+". `nil` for anything else, including a game
+    /// picked for its winner alone.
+    var marginGame: MarginGame? {
+        guard shape == .pick, options.count == 4, options.allSatisfy({ $0.margin != nil && $0.teamCode != nil }) else { return nil }
+        var teams: [String] = []
+        for option in options {
+            if let code = option.teamCode, !teams.contains(code) { teams.append(code) }
+        }
+        guard teams.count == 2 else { return nil }
+        func option(_ team: String, _ margin: String) -> PromptOption? {
+            options.first { $0.teamCode == team && $0.margin == margin }
+        }
+        guard let awayShort = option(teams[0], "under_7"), let awayLong = option(teams[0], "7_plus"),
+              let homeShort = option(teams[1], "under_7"), let homeLong = option(teams[1], "7_plus")
+        else { return nil }
+        return MarginGame(awayShort: awayShort, awayLong: awayLong, homeShort: homeShort, homeLong: homeLong)
     }
 
     /// Whether `optionId` is one of the right answers — `nil` until the post
@@ -105,6 +148,27 @@ struct PromptSlot: Identifiable, Equatable, Sendable {
         case .pick: 1
         case .pickSet, .rank: pickCount ?? options.count
         }
+    }
+}
+
+/// One Game Picks game's four choices, found by team and margin rather than by
+/// position, so the order the composer wrote them in doesn't matter.
+struct MarginGame: Equatable, Sendable {
+    let awayShort: PromptOption
+    let awayLong: PromptOption
+    let homeShort: PromptOption
+    let homeLong: PromptOption
+
+    /// The choices as the web lays them out: each team's "<7" on top, "7+" below.
+    var choices: [PromptOption] { [awayShort, homeShort, awayLong, homeLong] }
+
+    /// The two clubs for the game's cover, named without the margin ("Chiefs by
+    /// <7" is just "Chiefs"). Each keeps its short option's id.
+    var cover: (away: PromptOption, home: PromptOption) { (Self.club(awayShort), Self.club(homeShort)) }
+
+    private static func club(_ option: PromptOption) -> PromptOption {
+        let name = option.label.range(of: " by ").map { String(option.label[..<$0.lowerBound]) } ?? option.label
+        return PromptOption(id: option.id, label: name, sublabel: nil, teamCode: option.teamCode, headshotURL: nil)
     }
 }
 
@@ -175,20 +239,43 @@ struct PromptPost: Identifiable, Equatable, Sendable {
     /// Power Rankings only: the teams most often placed in a ballot's top
     /// five, best first. Empty until `aggregate` is (same reveal rule).
     var powerRankingTopFive: [PowerRankingConsensusEntry] = []
+    /// Bold Predictions only: how many predictions people have written. The text
+    /// stays hidden until the viewer has locked in their own response.
+    var predictionCount: Int?
+    /// Bold Predictions only: what the server lets this viewer read — their own
+    /// before they answer, everyone's once they have or the post has locked.
+    var boldPredictions: [BoldPrediction] = []
 
-    var viewerAnswered: Bool { viewerResponse != nil }
+    /// A Bold Predictions response is the set of predictions, not slot choices,
+    /// so the viewer has answered when any of the predictions read back is theirs.
+    var viewerAnswered: Bool { viewerResponse != nil || boldPredictions.contains { $0.isViewer } }
 
     /// Power Rankings: an opinion-only, weekly ranking of the league where the
     /// respondent — not the composer — chooses to rank 5, 10 or all 32 teams.
     var isPowerRankings: Bool { templateKind == Self.powerRankingsKind }
 
     static let powerRankingsKind = "power_rankings"
+    static let weeklyAwardsKind = "weekly_awards"
+    static let boldPredictionsKind = "bold_predictions"
+
+    /// Weekly Awards: an opinion-only slate of six awards — two teams, a game and
+    /// three players found by searching the directory.
+    var isWeeklyAwards: Bool { templateKind == Self.weeklyAwardsKind }
+
+    /// Bold Predictions: up to five written calls, each tagged with a game, a team
+    /// or a player, locked in together as one response.
+    var isBoldPredictions: Bool { templateKind == Self.boldPredictionsKind }
+
     /// How many teams a Power Rankings ballot may hold (`submit_response`).
     static let powerRankingDepths = [5, 10, 32]
 
     /// Whether every slot is a head-to-head between two teams, which is when
     /// the post is drawn as matchup covers instead of an option list.
     var isMatchupPost: Bool { !slots.isEmpty && slots.allSatisfy { $0.matchup != nil } }
+
+    /// Whether any game on the post is a winner-and-margin pick, which is drawn a
+    /// full row wide instead of two to a row.
+    var hasMarginGames: Bool { slots.contains { $0.marginGame != nil } }
 
     func isTakingPicks(at now: Date) -> Bool { status.isTakingPicks(lockAt: lockAt, now: now) }
 
@@ -201,18 +288,18 @@ struct PromptPost: Identifiable, Equatable, Sendable {
 
     static func isPicksKind(_ kind: String) -> Bool { picksKinds.contains(kind) }
 
-    /// What the web home shows (`isHomePrompt` in `webapp/app/page.tsx`): Picks
-    /// plus Power Rankings. The other kinds stay with the admin tooling.
-    static let feedKinds = picksKinds + [powerRankingsKind]
+    /// What the web home shows (`isHomePrompt` in `webapp/app/page.tsx`): Picks,
+    /// Power Rankings, Weekly Awards and Bold Predictions. The other kinds stay
+    /// with the admin tooling.
+    static let feedKinds = picksKinds + [powerRankingsKind, weeklyAwardsKind, boldPredictionsKind]
 
     /// Kinds that stay with the admin tooling and never reach the feed, here or
     /// on the web.
     static let adminOnlyKinds = ["stat_leader", "ranking", "custom_multi"]
 
-    /// A kind this build can't render — a newer release's (`weekly_awards`,
-    /// `bold_predictions`). It shows as an "update the app" placeholder rather
-    /// than vanishing or being drawn with answer UI that would send the server
-    /// the wrong thing.
+    /// A kind this build can't render — a newer release's. It shows as an
+    /// "update the app" placeholder rather than vanishing or being drawn with
+    /// answer UI that would send the server the wrong thing.
     static func isUnsupportedKind(_ kind: String) -> Bool {
         !feedKinds.contains(kind) && !adminOnlyKinds.contains(kind)
     }
@@ -330,14 +417,32 @@ struct PromptSlotRow: Decodable, Equatable, Sendable {
     let correctOptionIds: [UUID]?
     /// The nflverse game id of a game pick (`prompt_slots.source_game_id`, 0097).
     let sourceGameId: String?
+    /// A Weekly Awards player slot (`prompt_slots.player_search`, 0175).
+    let playerSearch: Bool
 
     init(
         id: UUID, postId: UUID, label: String, shape: String = "pick", pickCount: Int? = nil,
-        points: Int = 10, sortOrder: Int = 0, correctOptionIds: [UUID]? = nil, sourceGameId: String? = nil
+        points: Int = 10, sortOrder: Int = 0, correctOptionIds: [UUID]? = nil, sourceGameId: String? = nil,
+        playerSearch: Bool = false
     ) {
         self.id = id; self.postId = postId; self.label = label; self.shape = shape
         self.pickCount = pickCount; self.points = points; self.sortOrder = sortOrder
         self.correctOptionIds = correctOptionIds; self.sourceGameId = sourceGameId
+        self.playerSearch = playerSearch
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        postId = try c.decode(UUID.self, forKey: .postId)
+        label = try c.decode(String.self, forKey: .label)
+        shape = try c.decode(String.self, forKey: .shape)
+        pickCount = try c.decodeIfPresent(Int.self, forKey: .pickCount)
+        points = try c.decode(Int.self, forKey: .points)
+        sortOrder = try c.decode(Int.self, forKey: .sortOrder)
+        correctOptionIds = try c.decodeIfPresent([UUID].self, forKey: .correctOptionIds)
+        sourceGameId = try c.decodeIfPresent(String.self, forKey: .sourceGameId)
+        playerSearch = try c.decodeIfPresent(Bool.self, forKey: .playerSearch) ?? false
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -347,6 +452,7 @@ struct PromptSlotRow: Decodable, Equatable, Sendable {
         case sortOrder = "sort_order"
         case correctOptionIds = "correct_option_ids"
         case sourceGameId = "source_game_id"
+        case playerSearch = "player_search"
     }
 }
 
@@ -358,17 +464,32 @@ struct PromptOptionRow: Decodable, Equatable, Sendable {
     let teamCode: String?
     let headshotUrl: String?
     let sortOrder: Int
+    /// `under_7` or `7_plus` on a Game Picks option (`margin`, 0174); `nil` otherwise.
+    let margin: String?
 
     init(
         id: UUID, slotId: UUID, label: String, sublabel: String? = nil, teamCode: String? = nil,
-        headshotUrl: String? = nil, sortOrder: Int = 0
+        headshotUrl: String? = nil, sortOrder: Int = 0, margin: String? = nil
     ) {
         self.id = id; self.slotId = slotId; self.label = label; self.sublabel = sublabel
         self.teamCode = teamCode; self.headshotUrl = headshotUrl; self.sortOrder = sortOrder
+        self.margin = margin
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        slotId = try c.decode(UUID.self, forKey: .slotId)
+        label = try c.decode(String.self, forKey: .label)
+        sublabel = try c.decodeIfPresent(String.self, forKey: .sublabel)
+        teamCode = try c.decodeIfPresent(String.self, forKey: .teamCode)
+        headshotUrl = try c.decodeIfPresent(String.self, forKey: .headshotUrl)
+        sortOrder = try c.decode(Int.self, forKey: .sortOrder)
+        margin = try c.decodeIfPresent(String.self, forKey: .margin)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, label, sublabel
+        case id, label, sublabel, margin
         case slotId = "slot_id"
         case teamCode = "team_code"
         case headshotUrl = "headshot_url"

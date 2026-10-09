@@ -49,6 +49,11 @@
 		597F339E95769DF03F33DCAB /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17FAE7FC496C6B37C6917E34 /* AuthViewModel.swift */; };
 		5AE7FA6561DEB71485B68350 /* BeamAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC029C1C2EA489541067B8E /* BeamAvatarView.swift */; };
 		5E439B62812C03AC931340AB /* PromptModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C204F0F834FDBB7C86EB1650 /* PromptModelsTests.swift */; };
+		7C41E9D05A2B83F6D1E04A97 /* PromptCovers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2D86F1A93C5407E8A1D3E65 /* PromptCovers.swift */; };
+		3D5A91C07E2B4F68A1C09D35 /* AwardsAndBoldModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E4271B6A3F90D5E2B71A46 /* AwardsAndBoldModels.swift */; };
+		4E6BA2D18F3C5079B2D1AE46 /* PlayerPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F5382C7B40A1E6F3C82B57 /* PlayerPickerView.swift */; };
+		5F7CB3E29A4D618AC3E2BF57 /* WeeklyAwardsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA06493D8C51B2F70D4A3C68 /* WeeklyAwardsViews.swift */; };
+		608DC4F3AB5E729BD4F3C068 /* BoldPredictionsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB175A4E9D62C3A81E5B4D79 /* BoldPredictionsViews.swift */; };
 		5E80D2A91B4C37F0A6D9E813 /* PowerRankingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31C7E5B2D9048F6B1E70C24 /* PowerRankingsViews.swift */; };
 		60CEB77CE80375849D19FB8F /* BallPartyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6922E355C2C789A3555050C /* BallPartyApp.swift */; };
 		696F992F3B9E971D15739013 /* AuthGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB0816A1860592796A6B1F7 /* AuthGateView.swift */; };
@@ -232,6 +237,11 @@
 		A1B2C3D4E5F60718293A4B02 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B04 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B06 /* ProfileViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModelTests.swift; sourceTree = "<group>"; };
+		B2D86F1A93C5407E8A1D3E65 /* PromptCovers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptCovers.swift; sourceTree = "<group>"; };
+		C8E4271B6A3F90D5E2B71A46 /* AwardsAndBoldModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AwardsAndBoldModels.swift; sourceTree = "<group>"; };
+		D9F5382C7B40A1E6F3C82B57 /* PlayerPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPickerView.swift; sourceTree = "<group>"; };
+		EA06493D8C51B2F70D4A3C68 /* WeeklyAwardsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyAwardsViews.swift; sourceTree = "<group>"; };
+		FB175A4E9D62C3A81E5B4D79 /* BoldPredictionsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoldPredictionsViews.swift; sourceTree = "<group>"; };
 		A31C7E5B2D9048F6B1E70C24 /* PowerRankingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerRankingsViews.swift; sourceTree = "<group>"; };
 		A7193900A25A83B54C9926E5 /* OFL-BebasNeue.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-BebasNeue.txt"; sourceTree = "<group>"; };
 		A7F14CA6A4049A095659FEFE /* FakeQbSeasonBuilderClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeQbSeasonBuilderClient.swift; sourceTree = "<group>"; };
@@ -415,6 +425,11 @@
 				98EF401B82882F0056E7A29B /* TakeThreadView.swift */,
 				D14025B7D4BB51302FBC7BD9 /* NFLTeams.swift */,
 				A31C7E5B2D9048F6B1E70C24 /* PowerRankingsViews.swift */,
+				FB175A4E9D62C3A81E5B4D79 /* BoldPredictionsViews.swift */,
+				EA06493D8C51B2F70D4A3C68 /* WeeklyAwardsViews.swift */,
+				D9F5382C7B40A1E6F3C82B57 /* PlayerPickerView.swift */,
+				C8E4271B6A3F90D5E2B71A46 /* AwardsAndBoldModels.swift */,
+				B2D86F1A93C5407E8A1D3E65 /* PromptCovers.swift */,
 				6931E401827645B4B12716D2 /* MatchupViews.swift */,
 			);
 			path = Prompts;
@@ -833,6 +848,11 @@
 				CAC5F136454928795283C382 /* TakeThreadView.swift in Sources */,
 				4FDA21D1094F96EBA2E80C55 /* NFLTeams.swift in Sources */,
 				5E80D2A91B4C37F0A6D9E813 /* PowerRankingsViews.swift in Sources */,
+				608DC4F3AB5E729BD4F3C068 /* BoldPredictionsViews.swift in Sources */,
+				5F7CB3E29A4D618AC3E2BF57 /* WeeklyAwardsViews.swift in Sources */,
+				4E6BA2D18F3C5079B2D1AE46 /* PlayerPickerView.swift in Sources */,
+				3D5A91C07E2B4F68A1C09D35 /* AwardsAndBoldModels.swift in Sources */,
+				7C41E9D05A2B83F6D1E04A97 /* PromptCovers.swift in Sources */,
 				2BE052FBAA70990942926F54 /* MatchupViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

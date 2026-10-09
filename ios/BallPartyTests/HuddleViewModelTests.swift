@@ -51,35 +51,37 @@ final class HuddleViewModelTests: XCTestCase {
         XCTAssertNil(takes.first { $0.author == "Nobody" }?.authorUsername)
     }
 
-    func test_feed_showsPicksAndPowerRankingsOnly_likeTheWebHome() async throws {
+    func test_feed_showsTheKindsTheWebHomeShows() async throws {
         client.addPost("A picks post")
         client.addPost("A ranking post", kind: "ranking")
         client.addPost("A stat leader post", kind: "stat_leader")
         client.addPost("A legacy game pick", kind: "game_pick")
         client.addPost("A status from the future", status: "postponed")
         client.addPowerRankingsPost("A power rankings post", teams: ["KC", "BUF"])
+        client.addWeeklyAwardsPost("A weekly awards post")
+        client.addBoldPredictionsPost("A bold predictions post")
 
         await viewModel.load()
 
         XCTAssertEqual(
-            Set(viewModel.posts.map(\.promptText)), ["A picks post", "A legacy game pick", "A power rankings post"]
+            Set(viewModel.posts.map(\.promptText)),
+            ["A picks post", "A legacy game pick", "A power rankings post", "A weekly awards post", "A bold predictions post"]
         )
     }
 
     func test_feed_aKindFromANewerRelease_showsAsAnUpdatePlaceholderNotAnAnswerForm() async throws {
-        client.addPost("Weekly awards", kind: "weekly_awards")
-        client.addPost("Bold predictions", kind: "bold_predictions")
+        client.addPost("Something new", kind: "hot_takes_2027")
         client.addPost("A picks post")
 
         await viewModel.load()
 
-        let awards = try XCTUnwrap(viewModel.posts.first { $0.templateKind == "weekly_awards" })
-        XCTAssertEqual(viewModel.posts.count, 3)
-        XCTAssertTrue(awards.isUnsupported)
-        XCTAssertTrue(awards.slots.isEmpty)
-        XCTAssertFalse(viewModel.canAnswer(awards.id))
-        XCTAssertEqual(viewModel.callToAction(for: awards.id), .updateApp)
-        XCTAssertEqual(viewModel.callToAction(for: awards.id).label, "Update to play")
+        let newer = try XCTUnwrap(viewModel.posts.first { $0.templateKind == "hot_takes_2027" })
+        XCTAssertEqual(viewModel.posts.count, 2)
+        XCTAssertTrue(newer.isUnsupported)
+        XCTAssertTrue(newer.slots.isEmpty)
+        XCTAssertFalse(viewModel.canAnswer(newer.id))
+        XCTAssertEqual(viewModel.callToAction(for: newer.id), .updateApp)
+        XCTAssertEqual(viewModel.callToAction(for: newer.id).label, "Update to play")
 
         let picks = try XCTUnwrap(viewModel.posts.first { $0.promptText == "A picks post" })
         XCTAssertFalse(picks.isUnsupported)
@@ -886,4 +888,330 @@ final class HuddleViewModelTests: XCTestCase {
 
         XCTAssertEqual(Set(viewModel.posts.map(\.promptText)), ["Old", "New"], "the late answer, which predates New, won")
     }
+
+    // MARK: - Weekly Awards
+
+    private let mahomes = NFLPlayer(id: "00-0033873", name: "Patrick Mahomes", position: "QB", team: "KC")
+    private let allen = NFLPlayer(id: "00-0034857", name: "Josh Allen", position: "QB", team: "BUF")
+
+    /// Answers every Weekly Awards slot of `post`: the first option of the team
+    /// and game slots, and `player` for the three search slots.
+    private func answerEverySlot(of post: FakeHuddleClient.AddedPost, with player: NFLPlayer) {
+        for index in 0..<3 { viewModel.toggle(post.optionIds[index][0], in: post.slotIds[index], of: post.id) }
+        for index in 3..<6 { viewModel.setPlayer(player, in: post.slotIds[index], of: post.id) }
+    }
+
+    func test_weeklyAwards_isAPlayablePostWithThreePlayerSlots() async throws {
+        client.addWeeklyAwardsPost()
+        await viewModel.load()
+
+        let post = try onlyPost()
+        XCTAssertFalse(post.isUnsupported)
+        XCTAssertTrue(post.isWeeklyAwards)
+        XCTAssertEqual(post.slots.map(\.playerSearch), [false, false, false, true, true, true])
+        XCTAssertEqual(post.slots[2].options.compactMap { $0.gameTeamCodes?.away }, ["KC", "PHI"])
+        XCTAssertTrue(viewModel.canAnswer(post.id))
+        XCTAssertEqual(viewModel.callToAction(for: post.id), .makePicks)
+    }
+
+    func test_weeklyAwards_needsAllSixAnswersBeforeItCanBeLockedIn() async throws {
+        let added = client.addWeeklyAwardsPost()
+        client.addPlayers([mahomes])
+        await viewModel.load()
+
+        XCTAssertFalse(viewModel.canSubmit(added.id))
+        for index in 0..<3 { viewModel.toggle(added.optionIds[index][0], in: added.slotIds[index], of: added.id) }
+        XCTAssertFalse(viewModel.canSubmit(added.id), "the players are still missing")
+
+        viewModel.setPlayer(mahomes, in: added.slotIds[3], of: added.id)
+        viewModel.setPlayer(mahomes, in: added.slotIds[4], of: added.id)
+        XCTAssertFalse(viewModel.canSubmit(added.id))
+
+        viewModel.setPlayer(mahomes, in: added.slotIds[5], of: added.id)
+        XCTAssertTrue(viewModel.canSubmit(added.id))
+
+        viewModel.setPlayer(nil, in: added.slotIds[5], of: added.id)
+        XCTAssertFalse(viewModel.canSubmit(added.id), "clearing a player takes the answer back")
+    }
+
+    func test_weeklyAwards_aPlayerCanOnlyBeChosenForASearchSlotAndAnOptionOnlyForTheOthers() async throws {
+        let added = client.addWeeklyAwardsPost()
+        await viewModel.load()
+
+        viewModel.setPlayer(mahomes, in: added.slotIds[0], of: added.id)
+        XCTAssertNil(viewModel.player(in: added.slotIds[0], of: added.id), "a team slot takes no player")
+
+        viewModel.toggle(UUID(), in: added.slotIds[3], of: added.id)
+        XCTAssertTrue(viewModel.selection(in: added.slotIds[3], of: added.id).isEmpty, "a search slot takes no option")
+
+        viewModel.toggle(added.optionIds[0][1], in: added.slotIds[0], of: added.id)
+        viewModel.toggle(added.optionIds[0][0], in: added.slotIds[0], of: added.id)
+        XCTAssertEqual(viewModel.selection(in: added.slotIds[0], of: added.id), [added.optionIds[0][0]], "a second tap elsewhere replaces")
+        viewModel.toggle(added.optionIds[0][0], in: added.slotIds[0], of: added.id)
+        XCTAssertTrue(viewModel.selection(in: added.slotIds[0], of: added.id).isEmpty, "a tap on the chosen team clears it")
+    }
+
+    func test_weeklyAwards_lockingInSendsPlayersAsIdsAndTeamsAsOptions() async throws {
+        let added = client.addWeeklyAwardsPost()
+        client.addPlayers([mahomes])
+        await viewModel.load()
+        answerEverySlot(of: added, with: mahomes)
+        viewModel.setTakeDraft("Chiefs all day", for: added.id)
+
+        await viewModel.submitAnswer(added.id)
+
+        let sent = try XCTUnwrap(client.submissions.first)
+        XCTAssertEqual(Set(sent.choices.keys), Set(added.slotIds.prefix(3)))
+        XCTAssertEqual(sent.players, [added.slotIds[3]: mahomes.id, added.slotIds[4]: mahomes.id, added.slotIds[5]: mahomes.id])
+        XCTAssertEqual(sent.comment, "Chiefs all day")
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertNil(viewModel.player(in: added.slotIds[3], of: added.id), "the draft is cleared once it is in")
+
+        // Read back, the ballot's player slots hold the options the server made.
+        let post = try XCTUnwrap(viewModel.post(added.id))
+        XCTAssertTrue(post.viewerAnswered)
+        let chosen = try XCTUnwrap(post.viewerResponse?[added.slotIds[3]]?.first)
+        XCTAssertEqual(post.slots[3].options.first { $0.id == chosen }?.label, "Patrick Mahomes")
+        XCTAssertEqual(viewModel.callToAction(for: added.id), .viewPicks)
+    }
+
+    func test_weeklyAwards_aRefusedBallotKeepsEveryAnswer() async throws {
+        let added = client.addWeeklyAwardsPost()
+        client.addPlayers([mahomes])
+        await viewModel.load()
+        answerEverySlot(of: added, with: mahomes)
+        client.failures["submit_response"] = HuddleServerError(message: "invalid_option")
+
+        await viewModel.submitAnswer(added.id)
+
+        XCTAssertEqual(viewModel.errorMessage, "One of those picks isn't valid anymore. Refresh and try again.")
+        XCTAssertEqual(viewModel.player(in: added.slotIds[3], of: added.id), mahomes)
+        XCTAssertEqual(viewModel.selection(in: added.slotIds[0], of: added.id), [added.optionIds[0][0]])
+        XCTAssertTrue(viewModel.canSubmit(added.id))
+    }
+
+    func test_weeklyAwards_playerSearchGoesToTheDirectory() async throws {
+        client.addPlayers([mahomes, allen])
+        let found = try await viewModel.searchPlayers("josh")
+
+        XCTAssertEqual(found, [allen])
+        XCTAssertEqual(client.playerSearches, ["josh"])
+    }
+
+    func test_weeklyAwards_aLockedPostTakesNoPlayers() async throws {
+        let added = client.addWeeklyAwardsPost(locksIn: -60)
+        await viewModel.load()
+
+        viewModel.setPlayer(mahomes, in: added.slotIds[3], of: added.id)
+
+        XCTAssertNil(viewModel.player(in: added.slotIds[3], of: added.id))
+        XCTAssertFalse(viewModel.canAnswer(added.id))
+    }
+
+    // MARK: - Bold Predictions
+
+    private let chiefs = BoldTarget(type: .team, id: "KC")
+
+    func test_bold_isAPlayablePostWithNoSlots() async throws {
+        client.addBoldPredictionsPost()
+        await viewModel.load()
+
+        let post = try onlyPost()
+        XCTAssertFalse(post.isUnsupported)
+        XCTAssertTrue(post.isBoldPredictions)
+        XCTAssertTrue(post.slots.isEmpty)
+        XCTAssertNil(post.aggregate, "there is nothing to aggregate")
+        XCTAssertFalse(post.viewerAnswered)
+        XCTAssertTrue(viewModel.canAnswer(post.id))
+        XCTAssertTrue(client.aggregateRequests.isEmpty)
+        XCTAssertTrue(client.revealedRequests.isEmpty)
+    }
+
+    func test_bold_theCardInvitesPredictionsWhileOpenAndShowsThemOnceLocked() async throws {
+        let open = client.addBoldPredictionsPost("Open", locksIn: 3600)
+        let locked = client.addBoldPredictionsPost("Locked", locksIn: -60)
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.callToAction(for: open.id), .makePredictions)
+        XCTAssertEqual(viewModel.callToAction(for: open.id).label, "Make your predictions")
+        XCTAssertEqual(viewModel.callToAction(for: locked.id), .seePredictions)
+        XCTAssertEqual(viewModel.callToAction(for: locked.id).label, "See predictions")
+    }
+
+    func test_bold_draftsAreKeptTrimmedAndCappedAtFive() async throws {
+        let added = client.addBoldPredictionsPost()
+        await viewModel.load()
+
+        XCTAssertFalse(viewModel.addPrediction(BoldDraft(body: "   ", target: chiefs), to: added.id), "words are required")
+        XCTAssertFalse(viewModel.addPrediction(BoldDraft(body: String(repeating: "a", count: 281), target: chiefs), to: added.id))
+        XCTAssertTrue(viewModel.addPrediction(BoldDraft(body: String(repeating: "a", count: 280), target: chiefs), to: added.id))
+        XCTAssertTrue(viewModel.addPrediction(BoldDraft(body: "  Chiefs go 17-0  ", target: chiefs), to: added.id))
+        XCTAssertEqual(viewModel.boldDraftList(for: added.id)[1].body, "Chiefs go 17-0")
+
+        for number in 3...5 {
+            XCTAssertTrue(viewModel.addPrediction(BoldDraft(body: "Call \(number)", target: chiefs), to: added.id))
+        }
+        XCTAssertFalse(viewModel.canAddPrediction(to: added.id))
+        XCTAssertFalse(viewModel.addPrediction(BoldDraft(body: "One too many", target: chiefs), to: added.id))
+        XCTAssertEqual(viewModel.boldDraftList(for: added.id).count, 5)
+    }
+
+    func test_bold_aDraftCanBeEditedAndRemovedBeforeLockingIn() async throws {
+        let added = client.addBoldPredictionsPost()
+        await viewModel.load()
+        viewModel.addPrediction(BoldDraft(body: "First", target: chiefs), to: added.id)
+        viewModel.addPrediction(BoldDraft(body: "Second", target: chiefs), to: added.id)
+
+        let bills = BoldTarget(type: .team, id: "BUF")
+        XCTAssertTrue(viewModel.replacePrediction(at: 0, with: BoldDraft(body: "  Edited ", target: bills), in: added.id))
+        XCTAssertFalse(viewModel.replacePrediction(at: 0, with: BoldDraft(body: "", target: bills), in: added.id))
+        XCTAssertFalse(viewModel.replacePrediction(at: 9, with: BoldDraft(body: "Nope", target: bills), in: added.id))
+        XCTAssertEqual(viewModel.boldDraftList(for: added.id).map(\.body), ["Edited", "Second"])
+        XCTAssertEqual(viewModel.boldDraftList(for: added.id)[0].target, bills)
+
+        viewModel.removePrediction(at: 0, from: added.id)
+        XCTAssertEqual(viewModel.boldDraftList(for: added.id).map(\.body), ["Second"])
+    }
+
+    func test_bold_lockingInNeedsAtLeastOnePrediction() async throws {
+        let added = client.addBoldPredictionsPost()
+        await viewModel.load()
+        XCTAssertFalse(viewModel.canLockInPredictions(added.id))
+
+        await viewModel.lockInPredictions(added.id)
+        XCTAssertTrue(client.boldSubmissions.isEmpty)
+
+        viewModel.addPrediction(BoldDraft(body: "Chiefs go 17-0", target: chiefs), to: added.id)
+        XCTAssertTrue(viewModel.canLockInPredictions(added.id))
+    }
+
+    func test_bold_lockingInSendsTheWholeResponseAndRevealsEveryoneElses() async throws {
+        let added = client.addBoldPredictionsPost()
+        let sam = client.addProfile(named: "Sam", username: "sam_k")
+        client.anotherPlayerPredicts("Jets win the division", on: added, by: sam, tagging: BoldTarget(type: .team, id: "NYJ"), secondsAfterEpoch: 30)
+        await viewModel.load()
+
+        var post = try onlyPost()
+        XCTAssertTrue(post.boldPredictions.isEmpty, "before answering, only your own predictions are readable")
+        XCTAssertEqual(post.predictionCount, 1, "but how many have been made is public")
+
+        viewModel.addPrediction(BoldDraft(body: "Chiefs go 17-0", target: chiefs), to: added.id)
+        viewModel.addPrediction(BoldDraft(body: "Mahomes wins MVP", target: BoldTarget(type: .player, id: mahomes.id)), to: added.id)
+        await viewModel.lockInPredictions(added.id)
+
+        XCTAssertEqual(client.boldSubmissions, [
+            .init(postId: added.id, predictions: [
+                BoldDraft(body: "Chiefs go 17-0", target: chiefs),
+                BoldDraft(body: "Mahomes wins MVP", target: BoldTarget(type: .player, id: mahomes.id)),
+            ])
+        ])
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertTrue(viewModel.boldDraftList(for: added.id).isEmpty, "the drafts are cleared once they are in")
+
+        post = try onlyPost()
+        XCTAssertTrue(post.viewerAnswered)
+        XCTAssertFalse(viewModel.canAnswer(added.id), "the response is final")
+        XCTAssertEqual(post.predictionCount, 3)
+        // Oldest first: the viewer's two were written at +0s and +1s, Sam's at +30s.
+        XCTAssertEqual(post.boldPredictions.map(\.body), ["Chiefs go 17-0", "Mahomes wins MVP", "Jets win the division"])
+        let others = post.boldPredictions.filter { !$0.isViewer }
+        XCTAssertEqual(others.map(\.author), ["Sam"])
+        XCTAssertEqual(others.first?.authorUsername, "sam_k")
+        XCTAssertEqual(others.first?.target, BoldTarget(type: .team, id: "NYJ"))
+    }
+
+    func test_bold_aRefusedResponseKeepsTheDraftsAndSaysWhy() async throws {
+        let added = client.addBoldPredictionsPost()
+        await viewModel.load()
+        viewModel.addPrediction(BoldDraft(body: "Chiefs go 17-0", target: chiefs), to: added.id)
+        client.failures["submit_bold_predictions"] = HuddleServerError(message: "invalid_target")
+
+        await viewModel.lockInPredictions(added.id)
+
+        XCTAssertEqual(viewModel.errorMessage, "That tag isn't valid for this post anymore. Pick another.")
+        XCTAssertEqual(viewModel.boldDraftList(for: added.id).count, 1)
+        XCTAssertFalse(try onlyPost().viewerAnswered)
+    }
+
+    func test_bold_aSecondResponseIsRefusedByTheServer() async throws {
+        let added = client.addBoldPredictionsPost()
+        // A second phone that read the feed before the first one answered.
+        let stale = HuddleViewModel(client: client, viewerId: viewerId, now: { [client] in client!.epoch })
+        await stale.load()
+        await viewModel.load()
+        viewModel.addPrediction(BoldDraft(body: "First response", target: chiefs), to: added.id)
+        await viewModel.lockInPredictions(added.id)
+
+        XCTAssertTrue(stale.canAnswer(added.id), "it has not heard yet")
+        stale.addPrediction(BoldDraft(body: "Second response", target: chiefs), to: added.id)
+        await stale.lockInPredictions(added.id)
+
+        XCTAssertEqual(stale.errorMessage, "You've already locked in your predictions.")
+        XCTAssertEqual(client.boldSubmissions.count, 1)
+        XCTAssertEqual(stale.boldDraftList(for: added.id).count, 1, "the refused draft stays where it was")
+    }
+
+    func test_bold_theBoardReadsTheWeeksGamesAndTheTaggedPlayers() async throws {
+        let added = client.addBoldPredictionsPost()
+        client.addPlayers([mahomes, allen])
+        client.setWeekGames([NFLScheduleGame(id: "2026_03_KC_BUF", away: "KC", home: "BUF")])
+        await viewModel.load()
+        viewModel.addPrediction(BoldDraft(body: "Mahomes wins MVP", target: BoldTarget(type: .player, id: mahomes.id)), to: added.id)
+        await viewModel.lockInPredictions(added.id)
+
+        let board = viewModel.boldBoard(for: added.id)
+        XCTAssertEqual(board.weekGames.map(\.id), ["2026_03_KC_BUF"])
+        XCTAssertEqual(board.players[mahomes.id], mahomes, "a tagged player is looked up so the tag can show a name and headshot")
+        XCTAssertNil(board.players[allen.id])
+    }
+
+    func test_bold_aScheduleOutageCostsTheTagsTheirArtNotThePost() async throws {
+        let added = client.addBoldPredictionsPost()
+        client.failures["week_games"] = HuddleServerError(message: "boom")
+        await viewModel.load()
+
+        await viewModel.loadBoldBoard(added.id)
+
+        XCTAssertEqual(viewModel.phase, .loaded)
+        XCTAssertTrue(viewModel.boldBoard(for: added.id).weekGames.isEmpty)
+        XCTAssertNotNil(viewModel.boldBoards[added.id], "loaded, just empty — so the picker says so instead of spinning")
+    }
+
+    // MARK: - Winner and margin
+
+    func test_gamePick_aGameWithMarginChoicesIsDrawnAsAGameAndAnsweredWithOneChoice() async throws {
+        let added = client.addMarginPost("Who wins Chiefs @ Bills?")
+        await viewModel.load()
+
+        let post = try onlyPost()
+        XCTAssertTrue(post.isMatchupPost, "it gets the game cover, not the generic option strip")
+        XCTAssertNotNil(post.slots[0].marginGame)
+        XCTAssertEqual(post.slots[0].matchup?.away.label, "Chiefs")
+        XCTAssertFalse(viewModel.canSubmit(added.id))
+
+        // Chiefs by 7+, then a second tap elsewhere replaces it.
+        viewModel.toggle(added.optionIds[0][1], in: added.slotId, of: added.id)
+        viewModel.toggle(added.optionIds[0][2], in: added.slotId, of: added.id)
+        XCTAssertEqual(viewModel.selection(in: added.slotId, of: added.id), [added.optionIds[0][2]])
+        XCTAssertTrue(viewModel.canSubmit(added.id))
+
+        await viewModel.submitAnswer(added.id)
+
+        XCTAssertEqual(client.submissions.first?.choices, [added.slotId: [added.optionIds[0][2]]])
+        XCTAssertEqual(try onlyPost().viewerResponse?[added.slotId], [added.optionIds[0][2]])
+    }
+
+    func test_weeklyPicks_everyGameWithMarginChoicesNeedsOne() async throws {
+        let added = client.addMarginPost(
+            "Week 3", games: [(("Chiefs", "KC"), ("Bills", "BUF")), (("Eagles", "PHI"), ("Cowboys", "DAL"))]
+        )
+        await viewModel.load()
+
+        XCTAssertTrue(try onlyPost().hasMarginGames)
+        viewModel.toggle(added.optionIds[0][0], in: added.slotIds[0], of: added.id)
+        XCTAssertFalse(viewModel.canSubmit(added.id), "the second game is still open")
+        viewModel.toggle(added.optionIds[1][3], in: added.slotIds[1], of: added.id)
+        XCTAssertTrue(viewModel.canSubmit(added.id))
+    }
 }
+
