@@ -76,6 +76,7 @@ private struct GamesScreen: View {
                 } destination: {
                     QbSeasonBuilderScreen(viewerId: viewerId, mode: qbMode, era: qbEra)
                 }
+                .leaderboard(.qbSeasonBuilder, mode: qbMode)
 
                 SoloGameCard(
                     name: ["Higher", "or lower"],
@@ -98,6 +99,7 @@ private struct GamesScreen: View {
                         era: higherOrLowerFormat.era
                     )
                 }
+                .leaderboard(.higherOrLower)
             }
             .padding(16)
         }
@@ -124,6 +126,11 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
     /// parent's state, so shutting this keeps what was picked and the run
     /// still starts with it.
     @State private var settingsOpen = false
+
+    /// The game's all-time best-run board, offered beside Play solo when set.
+    fileprivate var leaderboardBoard: SoloBoard?
+    /// The mode the board opens on, where the game keeps one best per mode.
+    fileprivate var leaderboardMode: QbRatingMode = .visible
 
     fileprivate init(
         name: [String],
@@ -194,6 +201,14 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
                     Text("Play solo")
                 }
                 .buttonStyle(.solid)
+                if let board = leaderboardBoard {
+                    NavigationLink {
+                        SoloLeaderboardScreen(board: board, mode: leaderboardMode)
+                    } label: {
+                        Text("Leaderboard")
+                    }
+                    .buttonStyle(.ghost)
+                }
             }
             .padding(.top, 12)
             .overlay(alignment: .top) { LineRule() }
@@ -207,6 +222,15 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
 }
 
 extension SoloGameCard {
+    /// Offers the game's leaderboard under Play solo. A QB Season Builder card
+    /// opens it on the ratings mode picked on the card.
+    func leaderboard(_ board: SoloBoard, mode: QbRatingMode = .visible) -> Self {
+        var card = self
+        card.leaderboardBoard = board
+        card.leaderboardMode = mode
+        return card
+    }
+
     /// The Settings row and, when open, the card's choices.
     @ViewBuilder fileprivate var settingsDisclosure: some View {
         VStack(alignment: .leading, spacing: 12) {

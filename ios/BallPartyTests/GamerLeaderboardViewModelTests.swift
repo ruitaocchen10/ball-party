@@ -14,7 +14,7 @@ final class GamerLeaderboardViewModelTests: XCTestCase {
         var soloPlace = SoloStanding(status: .unranked)
         var failing = false
         private(set) var gamerWindows: [LeaderboardWindow] = []
-        private(set) var soloReads: [(game: SoloGame, mode: QbMode?, scope: LeaderboardScope)] = []
+        private(set) var soloReads: [(game: SoloGame, mode: QbRatingMode?, scope: LeaderboardScope)] = []
 
         func gamerBoard(window: LeaderboardWindow, scope: LeaderboardScope) async throws -> [GamerRow] {
             gamerWindows.append(window)
@@ -27,20 +27,20 @@ final class GamerLeaderboardViewModelTests: XCTestCase {
             return gamerPlace
         }
 
-        func soloBoard(game: SoloGame, mode: QbMode?, scope: LeaderboardScope) async throws -> [SoloRow] {
+        func soloBoard(game: SoloGame, mode: QbRatingMode?, scope: LeaderboardScope) async throws -> [SoloRow] {
             soloReads.append((game, mode, scope))
             if failing { throw Offline() }
             return soloRows
         }
 
-        func soloStanding(game: SoloGame, mode: QbMode?, scope: LeaderboardScope) async throws -> SoloStanding {
+        func soloStanding(game: SoloGame, mode: QbRatingMode?, scope: LeaderboardScope) async throws -> SoloStanding {
             if failing { throw Offline() }
             return soloPlace
         }
     }
 
     func testStartsLoading() {
-        let viewModel = GamerLeaderboardViewModel(board: .gamer, client: StubClient())
+        let viewModel = GamerLeaderboardViewModel(source: .wins, client: StubClient())
         XCTAssertEqual(viewModel.phase, .loading)
         XCTAssertTrue(viewModel.rows.isEmpty)
     }
@@ -49,7 +49,7 @@ final class GamerLeaderboardViewModelTests: XCTestCase {
         let client = StubClient()
         client.gamerRows = [GamerRow(rank: 1, displayName: "Ava", wins: 3, gamesPlayed: 5, rankedCount: 1)]
         client.gamerPlace = GamerStanding(status: .ranked, rank: 1, wins: 3, gamesPlayed: 5, rankedCount: 1)
-        let viewModel = GamerLeaderboardViewModel(board: .gamer, client: client, window: .month)
+        let viewModel = GamerLeaderboardViewModel(source: .wins, client: client, window: .month)
 
         await viewModel.load()
 
@@ -63,7 +63,7 @@ final class GamerLeaderboardViewModelTests: XCTestCase {
     func testQbSeasonBuilderReadsItsModeAndFormatsScores() async {
         let client = StubClient()
         client.soloRows = [SoloRow(rank: 1, displayName: "Ava", bestScore: 91, rankedCount: 1)]
-        let viewModel = GamerLeaderboardViewModel(board: .qbSeasonBuilder, client: client, mode: .hidden)
+        let viewModel = GamerLeaderboardViewModel(source: .solo(.qbSeasonBuilder), client: client, mode: .hidden)
 
         await viewModel.load()
 
@@ -74,7 +74,7 @@ final class GamerLeaderboardViewModelTests: XCTestCase {
 
     func testHigherOrLowerSendsNoMode() async {
         let client = StubClient()
-        let viewModel = GamerLeaderboardViewModel(board: .higherOrLower, client: client, mode: .hidden)
+        let viewModel = GamerLeaderboardViewModel(source: .solo(.higherOrLower), client: client, mode: .hidden)
 
         await viewModel.load()
 
@@ -84,7 +84,7 @@ final class GamerLeaderboardViewModelTests: XCTestCase {
 
     func testSwitchingScopeReadsAgain() async {
         let client = StubClient()
-        let viewModel = GamerLeaderboardViewModel(board: .higherOrLower, client: client)
+        let viewModel = GamerLeaderboardViewModel(source: .solo(.higherOrLower), client: client)
         await viewModel.load()
 
         viewModel.scope = .friends
@@ -96,7 +96,7 @@ final class GamerLeaderboardViewModelTests: XCTestCase {
     func testAFailedReadLeavesNothingToShow() async {
         let client = StubClient()
         client.failing = true
-        let viewModel = GamerLeaderboardViewModel(board: .gamer, client: client)
+        let viewModel = GamerLeaderboardViewModel(source: .wins, client: client)
 
         await viewModel.load()
 
@@ -108,7 +108,7 @@ final class GamerLeaderboardViewModelTests: XCTestCase {
     func testAFriendsBoardWithOnlyYouOnItIsEmpty() async {
         let client = StubClient()
         client.soloRows = [SoloRow(rank: 1, displayName: "Me", bestScore: 5, isMe: true, rankedCount: 1)]
-        let viewModel = GamerLeaderboardViewModel(board: .higherOrLower, client: client, scope: .friends)
+        let viewModel = GamerLeaderboardViewModel(source: .solo(.higherOrLower), client: client, scope: .friends)
 
         await viewModel.load()
 

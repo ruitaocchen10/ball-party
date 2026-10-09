@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// The wins board and the two solo boards, embedded in `LeaderboardView`.
-/// Mirrors the web's `GamerLeaderboard` and `SoloLeaderboard`: a scope picker,
-/// then a window picker (wins) or a Visible / Hidden picker (QB Season
-/// Builder), the caller's own standing, and the ranked list.
+/// The multiplayer wins board, hosted by `LeaderboardView` beside Ball Knower.
+/// Mirrors the web's `GamerLeaderboard`: a board picker, a scope picker, a
+/// window picker, the caller's own standing and the ranked list.
 struct GamerLeaderboardView: View {
     @StateObject private var viewModel: GamerLeaderboardViewModel
     @Binding private var board: LeaderboardBoard
@@ -13,18 +12,23 @@ struct GamerLeaderboardView: View {
         client: GamerLeaderboardClient = SupabaseGamerLeaderboardClient(client: SupabaseConfig.client)
     ) {
         _board = board
-        _viewModel = StateObject(wrappedValue: GamerLeaderboardViewModel(board: board.wrappedValue, client: client))
+        _viewModel = StateObject(wrappedValue: GamerLeaderboardViewModel(source: .wins, client: client))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             PageHeader(
                 eyebrow: "Leaderboard",
-                title: viewModel.board.title,
-                description: viewModel.board.description(for: viewModel.scope)
+                title: LeaderboardBoard.gamer.title,
+                description: LeaderboardBoard.gamer.description(for: viewModel.scope)
             )
 
-            BoardPicker(selection: $board)
+            SegmentedChoice(
+                selection: $board,
+                options: LeaderboardBoard.allCases,
+                title: { $0.label },
+                accessibilityName: "Leaderboard"
+            )
 
             SegmentedChoice(
                 selection: $viewModel.scope,
@@ -33,32 +37,95 @@ struct GamerLeaderboardView: View {
                 accessibilityName: "Board"
             )
 
-            if viewModel.board.hasWindows {
-                SegmentedChoice(
-                    selection: $viewModel.window,
-                    options: LeaderboardWindow.allCases,
-                    title: { $0.label },
-                    accessibilityName: "Time window"
-                )
-            }
+            SegmentedChoice(
+                selection: $viewModel.window,
+                options: LeaderboardWindow.allCases,
+                title: { $0.label },
+                accessibilityName: "Time window"
+            )
 
-            if viewModel.board == .qbSeasonBuilder {
-                SegmentedChoice(
-                    selection: $viewModel.mode,
-                    options: QbMode.allCases,
-                    title: { $0.label },
-                    accessibilityName: "Season mode"
-                )
-            }
-
-            content
+            BoardContent(viewModel: viewModel, caption: caption, rule: rule)
         }
         // Restarts, and cancels the read in flight, whenever the selection changes.
         .task(id: viewModel.selection) { await viewModel.load() }
     }
 
-    @ViewBuilder
-    private var content: some View {
+    private var caption: String {
+        switch viewModel.window {
+        case .week: "Wins in the last 7 days"
+        case .month: "Wins in the last 30 days"
+        case .year: "Wins in the last 365 days"
+        case .lifetime: "Every multiplayer win"
+        }
+    }
+
+    private var rule: String {
+        "A win is a first-place finish in a multiplayer game with at least two players. A tie for first counts as a win for everyone tied."
+    }
+}
+
+/// One solo game's all-time best-run board, pushed from the game's card on the
+/// Games tab. Mirrors the web's `/solo/<game>/leaderboard`: a scope picker, QB
+/// Season Builder's Visible / Hidden picker, the caller's own standing and the
+/// ranked list. There are no windows: a personal best is all-time.
+struct SoloLeaderboardScreen: View {
+    let board: SoloBoard
+    @StateObject private var viewModel: GamerLeaderboardViewModel
+
+    init(
+        board: SoloBoard,
+        mode: QbRatingMode = .visible,
+        client: GamerLeaderboardClient = SupabaseGamerLeaderboardClient(client: SupabaseConfig.client)
+    ) {
+        self.board = board
+        _viewModel = StateObject(wrappedValue: GamerLeaderboardViewModel(source: .solo(board), client: client, mode: mode))
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                PageHeader(
+                    eyebrow: "Solo",
+                    title: board.title,
+                    description: board.description(for: viewModel.scope)
+                )
+
+                SegmentedChoice(
+                    selection: $viewModel.scope,
+                    options: LeaderboardScope.allCases,
+                    title: { $0.label },
+                    accessibilityName: "Board"
+                )
+
+                if board == .qbSeasonBuilder {
+                    SegmentedChoice(
+                        selection: $viewModel.mode,
+                        options: QbRatingMode.allCases,
+                        title: { $0.label },
+                        accessibilityName: "Season mode"
+                    )
+                }
+
+                BoardContent(viewModel: viewModel, caption: board.caption, rule: board.rule)
+            }
+            .padding(16)
+        }
+        .screenBackground()
+        .navigationTitle("Leaderboard")
+        .navigationBarTitleDisplayMode(.inline)
+        // Restarts, and cancels the read in flight, whenever the selection changes.
+        .task(id: viewModel.selection) { await viewModel.load() }
+    }
+}
+
+/// The standing, the ranked list and the empty and failed states: the part of
+/// the wins board and the solo boards that is the same.
+private struct BoardContent: View {
+    @ObservedObject var viewModel: GamerLeaderboardViewModel
+    let caption: String
+    let rule: String
+
+    var body: some View {
         switch viewModel.phase {
         case .loading where viewModel.standing == nil:
             ProgressView().frame(maxWidth: .infinity, minHeight: 160)
@@ -69,39 +136,12 @@ struct GamerLeaderboardView: View {
             }
         default:
             if let standing = viewModel.standing {
-                boardContent(standing)
+                content(standing)
             }
         }
     }
 
-    private var caption: String {
-        switch viewModel.board {
-        case .gamer:
-            switch viewModel.window {
-            case .week: "Wins in the last 7 days"
-            case .month: "Wins in the last 30 days"
-            case .year: "Wins in the last 365 days"
-            case .lifetime: "Every multiplayer win"
-            }
-        case .higherOrLower: "Best solo streak, all time"
-        case .qbSeasonBuilder: "Best season score, all time"
-        case .ballKnower: ""
-        }
-    }
-
-    private var rule: String {
-        switch viewModel.board {
-        case .gamer:
-            "A win is a first-place finish in a multiplayer game with at least two players. A tie for first counts as a win for everyone tied."
-        case .higherOrLower:
-            "Ranked on your longest solo streak. Multiplayer games don't count."
-        case .qbSeasonBuilder:
-            "Ranked on your best single season. Visible and Hidden runs have their own boards."
-        case .ballKnower: ""
-        }
-    }
-
-    private func boardContent(_ standing: BoardStanding) -> some View {
+    private func content(_ standing: BoardStanding) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if standing.isRanked {
                 PanelCard(edge: false) {
@@ -161,40 +201,6 @@ struct GamerLeaderboardView: View {
 //
 // Used by the Ball Knower screen as well, so the three kinds of board look
 // the same.
-
-/// The tabs between boards. A row that scrolls sideways, because four slab
-/// labels do not fit a phone's width as one segmented control.
-struct BoardPicker: View {
-    @Binding var selection: LeaderboardBoard
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 0) {
-                ForEach(LeaderboardBoard.allCases, id: \.self) { board in
-                    let isSelected = board == selection
-                    Button {
-                        selection = board
-                    } label: {
-                        Text(board.label)
-                            .font(.slab(17, relativeTo: .body))
-                            .tracking(0.7)
-                            .textCase(.uppercase)
-                            .foregroundStyle(isSelected ? Theme.panelFg : Theme.fg)
-                            .padding(.horizontal, 16)
-                            .frame(minHeight: 44)
-                            .background(isSelected ? Theme.panel : .clear)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
-                }
-            }
-            .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Leaderboard")
-    }
-}
 
 /// One row of any board. The caller's own row sits on a panel; any other row
 /// opens a profile only when the server gave a username for it.

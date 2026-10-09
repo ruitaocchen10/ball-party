@@ -6,17 +6,15 @@ import Foundation
 // `my_solo_standing`, migration 0192). Ranking, ties, windows and who is
 // eligible all live in SQL; nothing here recomputes them.
 
-/// The boards under the leaderboard screen, in tab order.
+/// The boards on the leaderboard screen, in picker order. The solo games'
+/// all-time best boards are `SoloBoard`s and live with the games.
 enum LeaderboardBoard: String, CaseIterable, Equatable, Hashable, Sendable {
-    case ballKnower, gamer, higherOrLower, qbSeasonBuilder
+    case ballKnower, gamer
 
-    /// Short label for the board picker.
     var label: String {
         switch self {
         case .ballKnower: "Ball Knower"
         case .gamer: "Wins"
-        case .higherOrLower: "Higher or Lower"
-        case .qbSeasonBuilder: "QB Season"
         }
     }
 
@@ -24,18 +22,43 @@ enum LeaderboardBoard: String, CaseIterable, Equatable, Hashable, Sendable {
         switch self {
         case .ballKnower: "Ball Knower"
         case .gamer: "Multiplayer wins"
+        }
+    }
+
+    func description(for scope: LeaderboardScope) -> String {
+        switch self {
+        case .ballKnower:
+            return scope.description
+        case .gamer:
+            return scope == .friends
+                ? "Multiplayer wins, ranked against your friends."
+                : "Multiplayer wins, ranked against everyone who plays in rooms."
+        }
+    }
+}
+
+/// A solo game that keeps an all-time best per player, and so has its own board.
+enum SoloBoard: String, CaseIterable, Equatable, Hashable, Sendable {
+    case higherOrLower, qbSeasonBuilder
+
+    var title: String {
+        switch self {
         case .higherOrLower: "Higher or Lower"
         case .qbSeasonBuilder: "QB Season Builder"
+        }
+    }
+
+    /// The `p_game` the RPCs take.
+    var game: SoloGame {
+        switch self {
+        case .higherOrLower: .higherOrLower
+        case .qbSeasonBuilder: .qbSeasonBuilder
         }
     }
 
     func description(for scope: LeaderboardScope) -> String {
         let friends = scope == .friends
         switch self {
-        case .ballKnower:
-            return scope.description
-        case .gamer:
-            return friends ? "Multiplayer wins, ranked against your friends." : "Multiplayer wins, ranked against everyone who plays in rooms."
         case .higherOrLower:
             return friends ? "Your best solo streak, ranked against your friends." : "Your best solo streak, ranked against everyone."
         case .qbSeasonBuilder:
@@ -43,35 +66,25 @@ enum LeaderboardBoard: String, CaseIterable, Equatable, Hashable, Sendable {
         }
     }
 
-    /// The solo game a board ranks, as `solo_leaderboard` names it. Nil for the other boards.
-    var soloGame: SoloGame? {
+    var caption: String {
         switch self {
-        case .higherOrLower: .higherOrLower
-        case .qbSeasonBuilder: .qbSeasonBuilder
-        case .ballKnower, .gamer: nil
+        case .higherOrLower: "Best solo streak, all time"
+        case .qbSeasonBuilder: "Best season score, all time"
         }
     }
 
-    /// Windows only apply to the boards that count something over time.
-    var hasWindows: Bool { self == .gamer }
+    var rule: String {
+        switch self {
+        case .higherOrLower: "Ranked on your longest solo streak. Multiplayer games don't count."
+        case .qbSeasonBuilder: "Ranked on your best single season. Visible and Hidden runs have their own boards."
+        }
+    }
 }
 
 /// The `p_game` argument of `solo_leaderboard` and `my_solo_standing`.
 enum SoloGame: String, Equatable, Sendable {
     case higherOrLower = "higher_or_lower"
     case qbSeasonBuilder = "qb_season_builder"
-}
-
-/// QB Season Builder scores a visible run and a hidden run separately, so each is its own board.
-enum QbMode: String, CaseIterable, Equatable, Sendable {
-    case visible, hidden
-
-    var label: String {
-        switch self {
-        case .visible: "Visible"
-        case .hidden: "Hidden"
-        }
-    }
 }
 
 /// One ranked player — a row of `gamer_leaderboard`.
@@ -287,7 +300,7 @@ struct BoardEntry: Equatable, Identifiable, Sendable {
         spoken = "Rank \(row.rank), \(row.displayName)\(row.isMe ? ", you" : ""), \(row.wins) \(row.wins == 1 ? "win" : "wins"), \(row.gamesPlayed) \(row.gamesPlayed == 1 ? "game" : "games")"
     }
 
-    init(_ row: SoloRow, board: LeaderboardBoard) {
+    init(_ row: SoloRow, board: SoloBoard) {
         rank = row.rank
         profileId = row.profileId
         displayName = row.displayName
@@ -300,7 +313,7 @@ struct BoardEntry: Equatable, Identifiable, Sendable {
     }
 
     /// A streak is a whole number; a QB score always keeps its one decimal (91.0, 80.5).
-    static func formatScore(_ score: Double, board: LeaderboardBoard) -> String {
+    static func formatScore(_ score: Double, board: SoloBoard) -> String {
         board == .qbSeasonBuilder
             ? score.formatted(.number.precision(.fractionLength(1)))
             : Int(score).formatted()
@@ -334,7 +347,7 @@ struct BoardStanding: Equatable, Sendable {
         }
     }
 
-    init(_ standing: SoloStanding, board: LeaderboardBoard, scope: LeaderboardScope) {
+    init(_ standing: SoloStanding, board: SoloBoard, scope: LeaderboardScope) {
         isRanked = standing.status == .ranked && standing.rank != nil
         rank = standing.rank
         value = standing.bestScore.map { BoardEntry.formatScore($0, board: board) }

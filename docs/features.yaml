@@ -146,11 +146,11 @@ features:
     web: done
     ios: done
   - id: leaderboard.solo-higher-or-lower
-    summary: Higher or Lower leaderboard of best solo streaks, all time
+    summary: Higher or Lower leaderboard of best solo streaks, all time (in the solo games area)
     web: done
     ios: done
   - id: leaderboard.solo-qb-season-builder
-    summary: QB Season Builder leaderboard of best season scores, all time, with a Visible / Hidden toggle
+    summary: QB Season Builder leaderboard of best season scores, all time, with a Visible / Hidden toggle (in the solo games area)
     web: done
     ios: done
   - id: friends.leaderboard-scope

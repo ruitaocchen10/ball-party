@@ -42,17 +42,15 @@ final class GamerLeaderboardModelsTests: XCTestCase {
         XCTAssertNil(solo.bestScore)
     }
 
-    func testOnlySoloBoardsNameAGame() {
-        XCTAssertEqual(LeaderboardBoard.higherOrLower.soloGame, .higherOrLower)
-        XCTAssertEqual(LeaderboardBoard.qbSeasonBuilder.soloGame, .qbSeasonBuilder)
-        XCTAssertNil(LeaderboardBoard.gamer.soloGame)
-        XCTAssertNil(LeaderboardBoard.ballKnower.soloGame)
+    func testEachSoloBoardNamesItsGameAndMode() {
+        XCTAssertEqual(SoloBoard.higherOrLower.game, .higherOrLower)
+        XCTAssertEqual(SoloBoard.qbSeasonBuilder.game, .qbSeasonBuilder)
         XCTAssertEqual(SoloGame.qbSeasonBuilder.rawValue, "qb_season_builder")
-        XCTAssertEqual(QbMode.hidden.rawValue, "hidden")
+        XCTAssertEqual(QbRatingMode.hidden.rawValue, "hidden")
     }
 
-    func testOnlyTheWinsBoardHasWindows() {
-        XCTAssertEqual(LeaderboardBoard.allCases.filter(\.hasWindows), [.gamer])
+    func testTheLeaderboardScreenHasTwoBoards() {
+        XCTAssertEqual(LeaderboardBoard.allCases, [.ballKnower, .gamer])
     }
 
     func testScoresFormatByBoard() {

@@ -9,9 +9,9 @@ protocol GamerLeaderboardClient: Sendable {
     /// `my_gamer_standing` — the caller's own place on it.
     func gamerStanding(window: LeaderboardWindow, scope: LeaderboardScope) async throws -> GamerStanding
     /// `solo_leaderboard` — one solo game's all-time best runs. `mode` is QB Season Builder's, nil otherwise.
-    func soloBoard(game: SoloGame, mode: QbMode?, scope: LeaderboardScope) async throws -> [SoloRow]
+    func soloBoard(game: SoloGame, mode: QbRatingMode?, scope: LeaderboardScope) async throws -> [SoloRow]
     /// `my_solo_standing` — the caller's own place on it.
-    func soloStanding(game: SoloGame, mode: QbMode?, scope: LeaderboardScope) async throws -> SoloStanding
+    func soloStanding(game: SoloGame, mode: QbRatingMode?, scope: LeaderboardScope) async throws -> SoloStanding
 }
 
 struct SupabaseGamerLeaderboardClient: GamerLeaderboardClient {
@@ -43,13 +43,13 @@ struct SupabaseGamerLeaderboardClient: GamerLeaderboardClient {
         return row
     }
 
-    func soloBoard(game: SoloGame, mode: QbMode?, scope: LeaderboardScope) async throws -> [SoloRow] {
+    func soloBoard(game: SoloGame, mode: QbRatingMode?, scope: LeaderboardScope) async throws -> [SoloRow] {
         try await client
             .rpc("solo_leaderboard", params: SoloParams(p_game: game.rawValue, p_mode: mode?.rawValue, p_scope: scope.rawValue))
             .execute().value
     }
 
-    func soloStanding(game: SoloGame, mode: QbMode?, scope: LeaderboardScope) async throws -> SoloStanding {
+    func soloStanding(game: SoloGame, mode: QbRatingMode?, scope: LeaderboardScope) async throws -> SoloStanding {
         let rows: [SoloStanding] = try await client
             .rpc("my_solo_standing", params: SoloParams(p_game: game.rawValue, p_mode: mode?.rawValue, p_scope: scope.rawValue))
             .execute().value
@@ -73,10 +73,16 @@ final class GamerLeaderboardViewModel: ObservableObject {
     struct Selection: Equatable, Sendable {
         let window: LeaderboardWindow
         let scope: LeaderboardScope
-        let mode: QbMode
+        let mode: QbRatingMode
     }
 
-    let board: LeaderboardBoard
+    /// Which board this reads: the multiplayer wins, or one solo game's best runs.
+    enum Source: Equatable, Sendable {
+        case wins
+        case solo(SoloBoard)
+    }
+
+    let source: Source
 
     @Published private(set) var rows: [BoardEntry] = []
     @Published private(set) var standing: BoardStanding?
@@ -84,19 +90,18 @@ final class GamerLeaderboardViewModel: ObservableObject {
     /// UI-only state the screen binds directly to; the screen reloads when it changes.
     @Published var window: LeaderboardWindow
     @Published var scope: LeaderboardScope
-    @Published var mode: QbMode
+    @Published var mode: QbRatingMode
 
     private let client: GamerLeaderboardClient
 
     init(
-        board: LeaderboardBoard,
+        source: Source,
         client: GamerLeaderboardClient,
         window: LeaderboardWindow = .week,
         scope: LeaderboardScope = .all,
-        mode: QbMode = .visible
+        mode: QbRatingMode = .visible
     ) {
-        precondition(board != .ballKnower, "Ball Knower has its own LeaderboardViewModel")
-        self.board = board
+        self.source = source
         self.client = client
         self.window = window
         self.scope = scope
@@ -132,18 +137,19 @@ final class GamerLeaderboardViewModel: ObservableObject {
     }
 
     private func read(_ requested: Selection) async throws -> ([BoardEntry], BoardStanding) {
-        let board = board
-        if let game = board.soloGame {
+        switch source {
+        case .solo(let board):
             // Only QB Season Builder has modes; the RPC refuses one for any other game.
-            let mode: QbMode? = board == .qbSeasonBuilder ? requested.mode : nil
-            async let rows = client.soloBoard(game: game, mode: mode, scope: requested.scope)
-            async let place = client.soloStanding(game: game, mode: mode, scope: requested.scope)
+            let mode: QbRatingMode? = board == .qbSeasonBuilder ? requested.mode : nil
+            async let rows = client.soloBoard(game: board.game, mode: mode, scope: requested.scope)
+            async let place = client.soloStanding(game: board.game, mode: mode, scope: requested.scope)
             let (freshRows, freshStanding) = try await (rows, place)
             return (freshRows.map { BoardEntry($0, board: board) }, BoardStanding(freshStanding, board: board, scope: requested.scope))
+        case .wins:
+            async let rows = client.gamerBoard(window: requested.window, scope: requested.scope)
+            async let place = client.gamerStanding(window: requested.window, scope: requested.scope)
+            let (freshRows, freshStanding) = try await (rows, place)
+            return (freshRows.map(BoardEntry.init), BoardStanding(freshStanding, scope: requested.scope))
         }
-        async let rows = client.gamerBoard(window: requested.window, scope: requested.scope)
-        async let place = client.gamerStanding(window: requested.window, scope: requested.scope)
-        let (freshRows, freshStanding) = try await (rows, place)
-        return (freshRows.map(BoardEntry.init), BoardStanding(freshStanding, scope: requested.scope))
     }
 }

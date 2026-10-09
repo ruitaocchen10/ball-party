@@ -20,7 +20,7 @@ Cards Against Humanity is not built: it has no catalog entry and no doc.
 
 **Rooms (`/party`).** A host creates a room with a join code, friends join, and the host picks a game from the live room-capable games. Any member can invite friends from the lobby; the invitee sees pending invites at the top of `/party` and joins or declines (invites last 24 hours, in-app only, no push). Each pick starts an **arcade** run: one match of one game. See [lobbies](./architecture/lobbies/lobbies.md) for lobby → run → match.
 
-**Solo (`/solo`, and the sidebar's solo section).** Starts a solo run of any game with `solo: true`. Signed-out visitors get a guest session on web.
+**Solo (`/solo`, and the sidebar's solo section).** Starts a solo run of any game with `solo: true`. Signed-out visitors get a guest session on web. Each solo game with an all-time best also has a leaderboard at `/solo/<game>/leaderboard` (see Leaderboard), linked from the "Best scores" rail with the viewer's rank. On iOS each solo game card on the Games tab has a Leaderboard button.
 
 **Profile (`/profile`).** Three tabs (`?tab=`): **Stats** (match history, knower highlights and rankings), **Takes** (the player's prompt takes) and **Friends** (see below). Edit profile also sets the player's unique **username**.
 
@@ -28,10 +28,10 @@ Cards Against Humanity is not built: it has no catalog entry and no doc.
 
 **Other players' profiles (`/u/<username>`).** Another player's highlights and match history. A private profile shows only its header to non-friends; unknown, guest and blocking users all look like not found (`get_profile`, migration 0186). Leaderboard rows link here.
 
-**Leaderboard (`/leaderboard`).** Four boards, picked with `?board=`; each can be scoped to Everyone or Friends (the friends board ranks you against your accepted friends). Accounts only, not guests or signed-out visitors, and a private profile still ranks. Ranking and ties are in SQL.
+**Leaderboard (`/leaderboard`).** Two boards, picked with `?board=`; each can be scoped to Everyone or Friends (the friends board ranks you against your accepted friends). Accounts only, not guests or signed-out visitors, and a private profile still ranks. Ranking and ties are in SQL.
 - **Ball Knower** (default): resolved prompt points over the week, month, year or all time, with the viewer's own row and a 3-scored-pick floor (`ball_knower_leaderboard`, `my_ball_knower_standing`, migrations 0181 and 0182).
 - **Wins** (`board=gamer`): multiplayer wins over the same windows. A win is first place in a completed non-solo match with at least two players; a tie for first counts for everyone tied. Shows games played beside wins (`gamer_leaderboard`, `my_gamer_standing`, migration 0192).
-- **Higher or Lower** and **QB Season Builder** (`board=higher-or-lower`, `board=qb-season-builder`): each player's best solo run, all time, with no windows. Higher or Lower ranks the longest solo streak. QB Season Builder ranks the best season score, with a Visible / Hidden toggle (`mode=`) because the two modes are scored separately (`solo_leaderboard`, `my_solo_standing`, migration 0192).
+- **Solo games' boards** live with the games, not under `/leaderboard`: `/solo/higher-or-lower/leaderboard` and `/solo/qb-season-builder/leaderboard` (an old `/leaderboard?board=<game>` link redirects). Each ranks every player's best solo run, all time, with no windows, and takes the same Everyone / Friends scope. Higher or Lower ranks the longest solo streak. QB Season Builder ranks the best season score, with a Visible / Hidden toggle (`mode=`) because the two modes are scored separately (`solo_leaderboard`, `my_solo_standing`, migration 0192).
 
 ## Accounts
 
@@ -45,7 +45,7 @@ Every non-guest account has a unique username (3-20 letters, digits or underscor
 
 ## iOS
 
-Four tabs: Home (Huddle | Friends), Games, Party (rooms), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard, and a board picker at the top switches between the four boards. Friends and other players' profiles are in the Profile menu. Room invites work on iOS too: invite friends from the lobby, and the Party tab lists pending invites. iOS also opens friend invite links as Universal Links. Games on iOS are Higher or Lower (solo and live match) and QB Season Builder; the rest are web only. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
+Four tabs: Home (Huddle | Friends), Games, Party (rooms), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard, and a picker at the top switches between Ball Knower and Wins. Friends and other players' profiles are in the Profile menu. Room invites work on iOS too: invite friends from the lobby, and the Party tab lists pending invites. iOS also opens friend invite links as Universal Links. Games on iOS are Higher or Lower (solo and live match) and QB Season Builder; the rest are web only. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
 
 ## Keeping this file true
 

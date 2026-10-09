@@ -1,11 +1,11 @@
 import SwiftUI
 
 /// The leaderboards, pushed from the Profile tab's stats card. Mirrors the
-/// web's `/leaderboard`: a board picker (Ball Knower, multiplayer wins, and one
-/// all-time board per solo game), then for each the ranked list with the
-/// caller's own standing above it, which is also highlighted in place when
-/// they are on the list. This view hosts Ball Knower; the other boards are
-/// `GamerLeaderboardView`.
+/// web's `/leaderboard`: a board picker (Ball Knower and multiplayer wins),
+/// then for each the ranked list with the caller's own standing above it,
+/// which is also highlighted in place when they are on the list. This view
+/// hosts Ball Knower; the wins board is `GamerLeaderboardView`. The solo games'
+/// boards live with the games (`SoloLeaderboardScreen`).
 struct LeaderboardView: View {
     @StateObject private var viewModel: LeaderboardViewModel
     /// Which board is showing. The Profile card opens on Ball Knower; the other
@@ -51,7 +51,12 @@ struct LeaderboardView: View {
                 description: viewModel.scope.description
             )
 
-            BoardPicker(selection: $board)
+            SegmentedChoice(
+                selection: $board,
+                options: LeaderboardBoard.allCases,
+                title: { $0.label },
+                accessibilityName: "Leaderboard"
+            )
 
             SegmentedChoice(
                 selection: $viewModel.scope,
