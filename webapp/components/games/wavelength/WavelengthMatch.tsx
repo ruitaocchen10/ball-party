@@ -244,9 +244,6 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
       <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(6rem,1fr)] gap-3 lg:grid-cols-[minmax(15rem,.5fr)_minmax(0,1.4fr)_minmax(21rem,.8fr)] lg:grid-rows-1">
 
         <section className="relative flex min-h-0 flex-1 flex-col items-center justify-start lg:col-start-2 lg:row-start-1" aria-label="The board">
-          {revealRound != null && board.phase !== "reveal" && (
-            <RevealBanner round={rounds.find((round) => round.round === revealRound) ?? null} scores={board.teamScores} />
-          )}
           {board.phase === "fill" && (
             canFill
               ? <BoardPanel card={myFillCard} target={myFillTarget ?? undefined} caption="Only you can see the target" />
@@ -257,6 +254,9 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
           )}
           {board.phase === "reveal" && current && (
             <BoardPanel card={currentCard} clue={currentClue} target={current.revealed_target} needle={current.guess_position ?? undefined} points={current.points} skipped={current.status === "skipped"} />
+          )}
+          {revealRound != null && board.phase !== "reveal" && (
+            <RevealBanner round={rounds.find((round) => round.round === revealRound) ?? null} scores={board.teamScores} />
           )}
         </section>
 
@@ -338,14 +338,14 @@ function UpcomingRoundCell({ roundNumber }: { roundNumber: number }) {
 }
 
 /** A non-blocking flash for a round that just settled while the table has
- * already moved on to the next one underneath it (see the REVEAL_MS effect
- * above) — it never covers the live board's controls. */
+ * already moved on to the next one — it sits under the board so it never
+ * covers the clue or the controls (see the REVEAL_MS effect above). */
 function RevealBanner({ round, scores }: { round: WavelengthRound | null; scores: number[] }) {
   if (!round) return null;
   const skipped = round.status === "skipped";
   const reaction = skipped ? "Clue skipped" : round.points === 4 ? "Bullseye!" : round.points === 3 ? "So close!" : round.points === 2 ? "In the zone" : "Off the mark";
   return (
-    <div role="status" className="animate-sold-headline absolute inset-x-3 top-3 z-10 flex items-center gap-4 border border-panel-fg/15 bg-panel px-4 py-3 text-panel-fg shadow-card">
+    <div role="status" className="animate-sold-headline mt-3 flex w-full max-w-2xl items-center gap-4 border border-panel-fg/15 bg-panel px-4 py-3 text-panel-fg shadow-card">
       {!skipped && (
         <div className="w-28 shrink-0">
           <Dial needle={round.guess_position ?? undefined} target={round.revealed_target ?? undefined} label={`Round ${round.round} result`} />
