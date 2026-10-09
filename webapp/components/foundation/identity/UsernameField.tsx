@@ -47,7 +47,9 @@ export function UsernameField({
   placeholder?: string;
   help?: string;
 }) {
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
+  // The last answer from the server, tagged with the name it was for. A name
+  // with no answer yet reads as "checking", so nothing is set from the effect body.
+  const [answer, setAnswer] = useState<{ value: string; status: Status } | null>(null);
   const latest = useRef(0);
 
   const trimmed = value.trim();
@@ -57,19 +59,17 @@ export function UsernameField({
 
   useEffect(() => {
     const ticket = ++latest.current;
-    if (!shouldCheck) {
-      setStatus({ kind: "idle" });
-      return;
-    }
-    setStatus({ kind: "checking" });
+    if (!shouldCheck) return;
     const timer = setTimeout(async () => {
       const result = await checkUsernameAvailable(trimmed);
       if (ticket !== latest.current) return; // a newer keystroke superseded this answer
-      if (result.available === null) setStatus({ kind: "error", message: result.error ?? "Couldn’t check that username." });
-      else setStatus({ kind: result.available ? "available" : "unavailable" });
+      if (result.available === null) setAnswer({ value: trimmed, status: { kind: "error", message: result.error ?? "Couldn’t check that username." } });
+      else setAnswer({ value: trimmed, status: { kind: result.available ? "available" : "unavailable" } });
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [shouldCheck, trimmed]);
+
+  const status: Status = !shouldCheck ? { kind: "idle" } : answer?.value === trimmed ? answer.status : { kind: "checking" };
 
   let message: string = help ?? USERNAME_HINT;
   let tone: "muted" | "error" | "ok" = "muted";

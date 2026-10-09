@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useSyncExternalStore, useTransition } from "react";
 
 import { claimUsername } from "@/app/profile/actions";
 import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage";
@@ -29,22 +29,25 @@ export function UsernamePrompt({
   /** A username chosen at signup that differs from the assigned one, if any. */
   preferredUsername?: string | null;
 }) {
-  const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [value, setValue] = useState(preferredUsername || currentUsername);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const input = useRef<HTMLInputElement>(null);
 
-  // Read after mount: localStorage doesn't exist during server rendering.
-  useEffect(() => {
-    if (!isUsernameConfirmed(userId)) setOpen(true);
-  }, [userId]);
+  // localStorage doesn't exist during server rendering, so the server snapshot
+  // says "confirmed" (render nothing) and the client reads the real value.
+  const confirmed = useSyncExternalStore(
+    subscribeToStorage,
+    () => isUsernameConfirmed(userId),
+    () => true,
+  );
 
-  if (!open) return null;
+  if (confirmed || dismissed) return null;
 
   function dismiss() {
     markUsernameConfirmed(userId);
-    setOpen(false);
+    setDismissed(true);
   }
 
   function save() {
@@ -95,4 +98,9 @@ export function UsernamePrompt({
       </form>
     </Modal>
   );
+}
+
+function subscribeToStorage(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  return () => window.removeEventListener("storage", onChange);
 }
