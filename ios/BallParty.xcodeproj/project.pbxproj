@@ -134,6 +134,13 @@
 		1A71C0DE0000000000000020 /* FriendInviteViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A71C0DE0000000000000010 /* FriendInviteViewModel.swift */; };
 		1A71C0DE0000000000000021 /* FriendInviteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A71C0DE0000000000000011 /* FriendInviteView.swift */; };
 		1A71C0DE0000000000000022 /* FriendInviteViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A71C0DE0000000000000012 /* FriendInviteViewModelTests.swift */; };
+		6D9C2E90ABD5C8B7641089A1 /* AuctionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E631169AEA3C6B88BF8BB49 /* AuctionModels.swift */; };
+		B9D26ED28D1D61D188B8D84E /* AuctionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3AE4D3EA3796BA1905A4A3F /* AuctionClient.swift */; };
+		050806843618C46C642FEDDE /* AuctionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F68B96EC8974E831C97A91BF /* AuctionViewModel.swift */; };
+		AF344484DD30BD8702934808 /* AuctionMatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F7F2ACC95E06588E5456B07 /* AuctionMatchView.swift */; };
+		B8BA6BB161F88BD2B294AA4D /* FakeAuctionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4F99086ABCC87DB1116109E /* FakeAuctionClient.swift */; };
+		38BCA648C7B00BB80300D324 /* AuctionViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E76464D3FBE02C237CC14F5 /* AuctionViewModelTests.swift */; };
+		E4966393429A8C261672904E /* AuctionModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD571661BCE34A8F2881A1B7 /* AuctionModelsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -279,6 +286,13 @@
 		1A71C0DE0000000000000010 /* FriendInviteViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInviteViewModel.swift; sourceTree = "<group>"; };
 		1A71C0DE0000000000000011 /* FriendInviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInviteView.swift; sourceTree = "<group>"; };
 		1A71C0DE0000000000000012 /* FriendInviteViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInviteViewModelTests.swift; sourceTree = "<group>"; };
+		9E631169AEA3C6B88BF8BB49 /* AuctionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionModels.swift; sourceTree = "<group>"; };
+		A3AE4D3EA3796BA1905A4A3F /* AuctionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionClient.swift; sourceTree = "<group>"; };
+		F68B96EC8974E831C97A91BF /* AuctionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionViewModel.swift; sourceTree = "<group>"; };
+		8F7F2ACC95E06588E5456B07 /* AuctionMatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionMatchView.swift; sourceTree = "<group>"; };
+		C4F99086ABCC87DB1116109E /* FakeAuctionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeAuctionClient.swift; sourceTree = "<group>"; };
+		0E76464D3FBE02C237CC14F5 /* AuctionViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionViewModelTests.swift; sourceTree = "<group>"; };
+		BD571661BCE34A8F2881A1B7 /* AuctionModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionModelsTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -329,6 +343,7 @@
 		20B084BADD8616DD75ABE461 /* Games */ = {
 			isa = PBXGroup;
 			children = (
+				B993EC1B740A794D8649AE96 /* AuctionTeamBuilder */,
 				D58D4DE0FDC90F00CE1A9BC7 /* HigherOrLower */,
 				A5FF96803CB5A63E7FB08499 /* QbSeasonBuilder */,
 			);
@@ -339,6 +354,9 @@
 			isa = PBXGroup;
 			children = (
 				B24C627FD473B3050D3FF1D3 /* MatchViewModelTests.swift */,
+				C4F99086ABCC87DB1116109E /* FakeAuctionClient.swift */,
+				0E76464D3FBE02C237CC14F5 /* AuctionViewModelTests.swift */,
+				BD571661BCE34A8F2881A1B7 /* AuctionModelsTests.swift */,
 				C0EF4EE33EB14B2F5356C940 /* LadderStandingsTests.swift */,
 				94F6295A7914445E51DB1E6D /* LobbyViewModelTests.swift */,
 				D9A1732B29058D68EB0FDE32 /* FakeLobbyClient.swift */,
@@ -540,6 +558,17 @@
 			path = Content;
 			sourceTree = "<group>";
 		};
+		B993EC1B740A794D8649AE96 /* AuctionTeamBuilder */ = {
+			isa = PBXGroup;
+			children = (
+				9E631169AEA3C6B88BF8BB49 /* AuctionModels.swift */,
+				A3AE4D3EA3796BA1905A4A3F /* AuctionClient.swift */,
+				F68B96EC8974E831C97A91BF /* AuctionViewModel.swift */,
+				8F7F2ACC95E06588E5456B07 /* AuctionMatchView.swift */,
+			);
+			path = AuctionTeamBuilder;
+			sourceTree = "<group>";
+		};
 		D58D4DE0FDC90F00CE1A9BC7 /* HigherOrLower */ = {
 			isa = PBXGroup;
 			children = (
@@ -710,6 +739,9 @@
 				B95459C3113ADA24ADDDA590 /* QbSeasonBuilderViewModelTests.swift in Sources */,
 				FEFEB3810EA48B5213A7CD68 /* ThemeTests.swift in Sources */,
 				42DE8959220F24CB5701F525 /* MatchViewModelTests.swift in Sources */,
+				B8BA6BB161F88BD2B294AA4D /* FakeAuctionClient.swift in Sources */,
+				38BCA648C7B00BB80300D324 /* AuctionViewModelTests.swift in Sources */,
+				E4966393429A8C261672904E /* AuctionModelsTests.swift in Sources */,
 				DE165F7E7550F0498C813C64 /* LadderStandingsTests.swift in Sources */,
 				0EC30C786785186D83970CA6 /* LobbyViewModelTests.swift in Sources */,
 				72EFAA44994616FFFE3437CE /* FakeLobbyClient.swift in Sources */,
@@ -764,6 +796,10 @@
 				798D7C39883FED3B0EE50C4A /* LobbyView.swift in Sources */,
 				88873EABB68D7F9E6369EADC /* MatchView.swift in Sources */,
 				C005EF7AFF2931CCCEA88FBD /* MatchViewModel.swift in Sources */,
+				6D9C2E90ABD5C8B7641089A1 /* AuctionModels.swift in Sources */,
+				B9D26ED28D1D61D188B8D84E /* AuctionClient.swift in Sources */,
+				050806843618C46C642FEDDE /* AuctionViewModel.swift in Sources */,
+				AF344484DD30BD8702934808 /* AuctionMatchView.swift in Sources */,
 				A5B5BC0CD44FF86CBB1361FE /* LadderStandings.swift in Sources */,
 				39F844201CA6B307D2E938DC /* LobbyViewModel.swift in Sources */,
 				DE9734EC8DC2E2B1DC813F1F /* LobbyClient.swift in Sources */,

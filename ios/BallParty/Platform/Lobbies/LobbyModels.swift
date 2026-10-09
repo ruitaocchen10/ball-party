@@ -17,23 +17,26 @@ struct LobbyServerError: Error, Equatable, Sendable {
 /// A game a room can be set to play.
 ///
 /// `lobbies.selected_game` is free text on the server and the same room may
-/// have been pointed at a game iOS doesn't ship yet (the auction, the sabotage
-/// draft) from the web, so an unrecognised value is a legitimate state to read
-/// back rather than a decoding failure — see `selectedMatchGame`.
+/// have been pointed at a game iOS doesn't ship yet (the sabotage draft, the
+/// Wavelength) from the web, so an unrecognised value is a legitimate state to
+/// read back rather than a decoding failure — see `selectedMatchGame`.
 enum MatchGame: String, Sendable, Equatable, CaseIterable, Identifiable {
     case higherOrLower = "higher_or_lower"
+    case auctionTeamBuilder = "auction_team_builder"
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .higherOrLower: "Higher or Lower"
+        case .auctionTeamBuilder: "Auction Team Builder"
         }
     }
 
     var tagline: String {
         switch self {
         case .higherOrLower: "Call the next card. Two to four players."
+        case .auctionTeamBuilder: "Bid on mystery fantasy lots to fill a roster. Two to four players."
         }
     }
 }
@@ -128,6 +131,20 @@ struct LobbyMember: Equatable, Sendable, Decodable, Identifiable {
 struct RunMatch: Equatable, Sendable, Decodable {
     let id: UUID
     let status: MatchStatus
+    /// Which game the match is, so the room can open the right screen. Raw, for
+    /// the same reason `Lobby.selectedGame` is: a game iOS can't play still reads
+    /// back honestly.
+    let game: String?
+
+    /// The game this app can play, when it is one. Every match before the
+    /// auction shipped here was Higher or Lower, so a missing value reads as it.
+    var matchGame: MatchGame { game.flatMap(MatchGame.init(rawValue:)) ?? .higherOrLower }
+
+    init(id: UUID, status: MatchStatus, game: String? = nil) {
+        self.id = id
+        self.status = status
+        self.game = game
+    }
 }
 
 /// The lobby's one active `runs` row, with the roster it froze at start.

@@ -29,7 +29,9 @@ import {
   hasSubmittedSealedBid,
   highBidder,
   lotAt,
+  playableLotCount,
   upsertLot,
+  wasPresented,
   myScoutHint,
   mySealedBid,
   revealedTotal,
@@ -604,7 +606,7 @@ export function AuctionMatch({
           {isHost ? <PauseButton matchId={matchId} paused={isPaused} /> : null}
         </div>
       ) : null}
-      <LotStrip lots={lots} players={players} turn={turn} phase={phase} />
+      <LotStrip lots={lots} players={players} turn={turn} phase={phase} format={format} />
       {/* DOM order is the phone's decision order: understand the lot, decide
           what to do, then inspect the other seats. Desktop placement gives
           controls their own column without changing that reading order. */}
@@ -816,12 +818,16 @@ function LotStrip({
   players,
   turn,
   phase,
+  format,
 }: {
   lots: Lot[];
   players: Player[];
   turn: Turn;
   phase: ReturnType<typeof viewerPhase>;
+  format: AuctionFormat | null;
 }) {
+  // Not `turn.lotCount`: that includes spare lots the match may never reach.
+  const lotCount = playableLotCount(turn, lots, players, format);
   const current = useRef<HTMLLIElement>(null);
   // Whose turn it is, not just which lot is up — the same "who" a snake
   // board's own icon leads with, and public the moment a turn opens even
@@ -838,18 +844,21 @@ function LotStrip({
 
   return (
     <MatchStrip ariaLabel="Auction board">
-      {Array.from({ length: turn.lotCount }, (_, index) => {
+      {Array.from({ length: lotCount }, (_, index) => {
         const seq = index + 1;
         if (seq === turn.currentLot) {
-          return <CurrentBoardCell key={seq} ref={current} seq={seq} lotCount={turn.lotCount} phase={phase} onClock={onClock} />;
+          return <CurrentBoardCell key={seq} ref={current} seq={seq} lotCount={lotCount} phase={phase} onClock={onClock} />;
         }
 
-        const settled = lots.find((candidate) => candidate.seq === seq) ?? null;
-        return settled && seq < turn.currentLot ? (
-          <SettledBoardCell key={seq} lot={settled} players={players} />
-        ) : (
-          <UndealtBoardCell key={seq} seq={seq} />
-        );
+        const dealt = lots.find((candidate) => candidate.seq === seq) ?? null;
+        if (dealt && seq < turn.currentLot) {
+          // A lot the dealer skipped was never shown to anyone, so the history
+          // says it was skipped rather than naming a player nobody saw.
+          return wasPresented(dealt)
+            ? <SettledBoardCell key={seq} lot={dealt} players={players} />
+            : <SkippedBoardCell key={seq} seq={seq} />;
+        }
+        return <UndealtBoardCell key={seq} seq={seq} />;
       })}
     </MatchStrip>
   );
@@ -895,6 +904,15 @@ function CurrentBoardCell({
   );
 }
 
+function SkippedBoardCell({ seq }: { seq: number }) {
+  return (
+    <StripCell tone="upcoming" width={92} ariaLabel={`Lot ${seq}, skipped`} className="gap-2">
+      <span aria-hidden className="mx-auto block h-7 w-7 rounded-full border border-dashed border-line opacity-50" />
+      <span className="text-center font-mono text-[9px] leading-none tracking-[0.1em] text-fg-muted uppercase">Skipped</span>
+    </StripCell>
+  );
+}
+
 function UndealtBoardCell({ seq }: { seq: number }) {
   return (
     <StripCell tone="upcoming" width={92} ariaLabel={`Lot ${seq}, not yet dealt`} className="gap-2">
@@ -917,7 +935,8 @@ function shuffle<T>(items: T[]): T[] {
  * is the last physical reel row, not a separate card that appears after the
  * reel has stopped.
  *
- * Decoys come only from already-settled lots (`seq < currentLot`) -- the
+ * Decoys come only from lots that were already put up (`seq < currentLot`
+ * and presented -- a spare the dealer skipped was never shown to anyone) -- the
  * same lots SettledBoardCell already names in the board strip above. Later,
  * undealt lots stay unnamed everywhere else in this UI (UndealtBoardCell
  * shows no identity), so the reel doesn't spoil those either, even though
@@ -930,7 +949,7 @@ function LotSpinner({ lot, lots, currentLot }: { lot: Lot; lots: Lot[]; currentL
   // reshuffle the reel mid-spin; a snapshot from the moment this reveal
   // started can't.
   const decoys = useMemo(() => {
-    const settled = shuffle(lots.filter((candidate) => candidate.seq < currentLot)).slice(0, 7);
+    const settled = shuffle(lots.filter((candidate) => candidate.seq < currentLot && wasPresented(candidate))).slice(0, 7);
 
     // The first lot has no earlier player to borrow, and the second has only
     // one. Repeat a neutral reel row instead of borrowing future lots: that

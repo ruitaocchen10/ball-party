@@ -62,8 +62,8 @@ final class FakeLobbyClient: LobbyClient, @unchecked Sendable {
     /// The host starts a run without this client asking — the case a member
     /// finds out about only because the room changed under them.
     @discardableResult
-    func hostStartsARun(seating seated: [UUID]? = nil) -> UUID {
-        let matchId = freezeRun(seating: seated ?? members.map(\.userId))
+    func hostStartsARun(seating seated: [UUID]? = nil, game: MatchGame = .higherOrLower) -> UUID {
+        let matchId = freezeRun(seating: seated ?? members.map(\.userId), game: game)
         emit(.changed)
         return matchId
     }
@@ -73,7 +73,7 @@ final class FakeLobbyClient: LobbyClient, @unchecked Sendable {
     func runFinishes() {
         guard let run else { return }
         self.run = LiveRun(
-            matches: run.matches.map { RunMatch(id: $0.id, status: .complete) },
+            matches: run.matches.map { RunMatch(id: $0.id, status: .complete, game: $0.game) },
             seatedUserIds: run.seatedUserIds
         )
         emit(.changed)
@@ -142,7 +142,7 @@ final class FakeLobbyClient: LobbyClient, @unchecked Sendable {
     func startRun(lobbyId: UUID, game: MatchGame) async throws -> UUID {
         try fail("start_run")
         startedRuns.append(game)
-        return freezeRun(seating: members.map(\.userId))
+        return freezeRun(seating: members.map(\.userId), game: game)
     }
 
     func leaveLobby(lobbyId: UUID) async throws {
@@ -181,9 +181,11 @@ final class FakeLobbyClient: LobbyClient, @unchecked Sendable {
     }
 
     /// One `'setup'` match, with the roster frozen as of now.
-    private func freezeRun(seating seated: [UUID]) -> UUID {
+    private func freezeRun(seating seated: [UUID], game: MatchGame) -> UUID {
         let matchId = UUID()
-        run = LiveRun(matches: [RunMatch(id: matchId, status: .setup)], seatedUserIds: Set(seated))
+        run = LiveRun(
+            matches: [RunMatch(id: matchId, status: .setup, game: game.rawValue)], seatedUserIds: Set(seated)
+        )
         return matchId
     }
 }

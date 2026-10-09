@@ -112,8 +112,50 @@ export function rosterSlots(format: AuctionFormat | null): RosterSlot[] {
   );
 }
 
+/**
+ * How many lots the strip should show: the ones already behind the table, the
+ * one on the block, and however many more roster slots are still open.
+ *
+ * The dealt `lotCount` includes spare RB/WR/TE lots that exist only so FLEX can
+ * never strand anybody, and the match ends the moment every roster is full, so
+ * showing it leaves empty cells at the end that look like lots nobody played.
+ * Every lot that is actually put up sells (an eligible player can always take
+ * it for $0) and fills exactly one slot, so what is left to play is the open
+ * slots across the table, less the current lot if it is still unsold.
+ *
+ * It is an estimate that tracks the real board: a lot skipped as unusable moves
+ * `currentLot` on without filling anything, and a Pass-token decline redraws a
+ * replacement, so the count can grow by one at those moments. It never exceeds
+ * `lotCount`, which stays the server's hard cap.
+ */
+export function playableLotCount(
+  turn: Pick<Turn, "lotCount" | "currentLot" | "phase">,
+  lots: Lot[],
+  players: { user_id: string }[],
+  format: AuctionFormat | null,
+): number {
+  const perPlayer = rosterSlots(format).length;
+  const open = players.reduce((sum, p) => {
+    const won = lots.filter((l) => l.winner_id === p.user_id && l.slot !== null).length;
+    return sum + Math.max(0, perPlayer - won);
+  }, 0);
+  const current = lotAt(lots, turn.currentLot);
+  const onTheBlock = current !== null && current.winner_id === null && turn.phase !== "sold" ? 1 : 0;
+  return Math.min(turn.lotCount, turn.currentLot + Math.max(0, open - onTheBlock));
+}
+
 /** The two raises the rules allow. Anything else is refused, not clamped. */
 export const INCREMENTS = [1, 5] as const;
+
+/**
+ * Whether a lot was actually put up for bidding. `resolve` stamps `resolved_at`
+ * on every lot it settles, sold or not, so a lot behind the table that has none
+ * is a spare the dealer skipped as unusable: nobody ever saw it, and its player
+ * must not appear in the board's history either.
+ */
+export function wasPresented(lot: Pick<Lot, "resolved_at">): boolean {
+  return lot.resolved_at !== null;
+}
 
 export function lotAt(lots: Lot[], seq: number): Lot | null {
   return lots.find((lot) => lot.seq === seq) ?? null;

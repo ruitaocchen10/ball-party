@@ -47,6 +47,25 @@ final class LobbyViewModel: ObservableObject {
     }
     @Published private(set) var seasonBounds: SeasonRange?
 
+    // MARK: The host's auction format
+    //
+    // Kept apart from Higher or Lower's picker rather than shared: the two
+    // games default differently (the auction opens on weekly lots) and the
+    // auction's era has a floor the ladder's doesn't — the dealer refuses a
+    // window narrower than `AuctionEra.minSpan` seasons.
+
+    @Published var auctionScoringMode: ScoringMode = .weekly
+    @Published var rosterPreset: RosterPreset = .standard
+    /// Single-use abilities per player: 0 is off, up to 3.
+    @Published var tokenCount = 1
+    @Published var auctionFrom = 0 {
+        didSet { if auctionFrom > auctionTo { auctionTo = auctionFrom } }
+    }
+    @Published var auctionTo = 0 {
+        didSet { if auctionTo < auctionFrom { auctionFrom = auctionTo } }
+    }
+    @Published private(set) var auctionEra: AuctionEra?
+
     /// A match already entered from this room, so returning to the room
     /// doesn't immediately push the same board back at the player.
     private var dismissedMatchId: UUID?
@@ -54,6 +73,7 @@ final class LobbyViewModel: ObservableObject {
     let viewerId: UUID
     private let client: LobbyClient
     private let game: HigherOrLowerClient
+    private let auction: AuctionClient
     private let heartbeatInterval: Duration
 
     private var observation: Task<Void, Never>?
@@ -62,11 +82,13 @@ final class LobbyViewModel: ObservableObject {
     init(
         client: LobbyClient,
         game: HigherOrLowerClient,
+        auction: AuctionClient,
         viewerId: UUID,
         heartbeatInterval: Duration = .seconds(10)
     ) {
         self.client = client
         self.game = game
+        self.auction = auction
         self.viewerId = viewerId
         self.heartbeatInterval = heartbeatInterval
     }
@@ -98,6 +120,9 @@ final class LobbyViewModel: ObservableObject {
         else { return nil }
         return match.id
     }
+
+    /// Which game the in-flight match is, so the room opens the right screen.
+    var gameToEnter: MatchGame { snapshot?.run?.inFlightMatch?.matchGame ?? .higherOrLower }
 
     /// A game this player is in but stepped out of. The room offers a way
     /// back in rather than stranding somebody outside their own match — the
@@ -131,7 +156,19 @@ final class LobbyViewModel: ObservableObject {
         if members.count < 2 { return "Waiting for one more player" }
         if members.count > 4 { return "That's too many players for one game" }
         if snapshot?.run?.inFlightMatch != nil { return "A game is already running in this room" }
+        // The dealer refuses these too; saying so before the tap is what stops
+        // it reading as a broken button.
+        if selectedGame == .auctionTeamBuilder, let era = auctionEra {
+            if auctionTo < auctionFrom { return "The last season has to come after the first" }
+            if auctionTo - auctionFrom + 1 < era.minSpan { return "Pick a span of at least \(era.minSpan) seasons" }
+        }
         return nil
+    }
+
+    /// The seasons the auction picker may offer, in order.
+    var auctionSeasonChoices: [Int] {
+        guard let auctionEra else { return [] }
+        return Array(auctionEra.seasonMin...auctionEra.seasonMax)
     }
 
     /// The seasons the host's picker may offer, in order.
@@ -180,15 +217,26 @@ final class LobbyViewModel: ObservableObject {
     /// Load the era limits behind the host's format picker. Safe to call
     /// again; it never overwrites a choice the host already made.
     func loadFormat() async {
-        guard seasonBounds == nil else { return }
-        do {
-            let bounds = try await game.seasonBounds()
-            seasonBounds = bounds
-            seasonFrom = bounds.from
-            seasonTo = bounds.to
-        } catch {
-            // The picker just doesn't appear, and the dealer falls back to the
-            // whole pool — the same non-fatal treatment the web gives it.
+        if seasonBounds == nil {
+            do {
+                let bounds = try await game.seasonBounds()
+                seasonBounds = bounds
+                seasonFrom = bounds.from
+                seasonTo = bounds.to
+            } catch {
+                // The picker just doesn't appear, and the dealer falls back to the
+                // whole pool — the same non-fatal treatment the web gives it.
+            }
+        }
+        if auctionEra == nil {
+            do {
+                let era = try await auction.seasonBounds()
+                auctionEra = era
+                auctionFrom = era.seasonMin
+                auctionTo = era.seasonMax
+            } catch {
+                // Same treatment as above: no picker, whole pool.
+            }
         }
     }
 
@@ -225,6 +273,14 @@ final class LobbyViewModel: ObservableObject {
                     // No bounds loaded means no picker was shown, so the
                     // dealer picks: the whole pool.
                     era: seasonBounds == nil ? nil : SeasonRange(from: seasonFrom, to: seasonTo)
+                )
+            case .auctionTeamBuilder:
+                _ = try await auction.start(
+                    matchId: matchId,
+                    scoringMode: auctionScoringMode,
+                    rosterPreset: rosterPreset,
+                    era: auctionEra == nil ? nil : SeasonRange(from: auctionFrom, to: auctionTo),
+                    tokenCount: tokenCount
                 )
             }
             // Everybody else is carried in by the run appearing in the room;
@@ -437,5 +493,9 @@ final class LobbyViewModel: ObservableObject {
         "pool_exhausted": "Couldn't deal a full board. Try again.",
         "invalid_season_range": "The last season has to come after the first.",
         "season_out_of_range": "That season isn't in the player pool.",
+        "season_range_too_narrow": "Pick a span of at least four seasons.",
+        "invalid_scoring_mode": "Choose a valid scoring mode.",
+        "invalid_roster_preset": "Choose a valid roster.",
+        "invalid_token_count": "Tokens can be zero to three per player.",
     ]
 }

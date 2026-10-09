@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { matchupLine, myScoutHint, tokensRemaining, upsertLot, weeklyRevealTier, type AuctionFormat, type Lot, type ScoutHint } from "./board";
+import { matchupLine, myScoutHint, playableLotCount, tokensRemaining, wasPresented, upsertLot, weeklyRevealTier, type AuctionFormat, type Lot, type ScoutHint } from "./board";
 
 const weeklyLot = {
   position: "RB",
@@ -96,5 +96,67 @@ describe("upsertLot", () => {
 
   it("keeps seq order when a late lot arrives out of order", () => {
     expect(upsertLot([at(1), at(3)], at(2)).map((l) => l.seq)).toEqual([1, 2, 3]);
+  });
+});
+
+describe("playableLotCount", () => {
+  const standard = {
+    scoringMode: "weekly", rosterPreset: "standard", qbSlots: 1, rbSlots: 1, wrSlots: 1, teSlots: 1,
+    flexSlots: 1, purse: 25, seasonFrom: 2010, seasonTo: 2025, tokenCount: 0,
+  } as AuctionFormat;
+  const four = ["a", "b", "c", "d"].map((user_id) => ({ user_id }));
+  const at = (seq: number, over: Partial<Lot> = {}) => ({ seq, position: "RB", winner_id: null, slot: null, ...over }) as Lot;
+  const turn = (currentLot: number, phase: "bidding" | "sold" = "bidding") => ({ lotCount: 22, currentLot, phase });
+
+  it("drops the FLEX spares from the opening count", () => {
+    // Four players, five slots each: 20 lots to play out of the 22 dealt.
+    expect(playableLotCount(turn(1), [at(1)], four, standard)).toBe(20);
+  });
+
+  it("is the lots behind the table, the one on the block, and the slots still open", () => {
+    const lots = [
+      at(1, { winner_id: "a", slot: "RB" }),
+      at(2, { winner_id: "b", slot: "QB" }),
+      at(3),
+    ];
+    // Two slots filled, so 18 open; lot 3 is on the block and fills one of them.
+    expect(playableLotCount(turn(3), lots, four, standard)).toBe(3 + 17);
+  });
+
+  it("counts a sold current lot as already filled, not still ahead", () => {
+    const lots = [at(1, { winner_id: "a", slot: "RB" })];
+    expect(playableLotCount(turn(1, "sold"), lots, four, standard)).toBe(1 + 19);
+  });
+
+  it("lands exactly on the last lot when only it is left", () => {
+    const won = ["a", "b", "c", "d"].flatMap((id, i) =>
+      ["QB", "RB", "WR", "TE", "FLEX"].map((slot, j) => at(i * 5 + j + 1, { winner_id: id, slot })),
+    );
+    // Everyone is full but the last seat's FLEX, which is the lot on the block.
+    const last = won.pop()!;
+    expect(playableLotCount(turn(20), [...won, at(20, { position: last.position })], four, standard)).toBe(20);
+  });
+
+  it("never exceeds what the server dealt", () => {
+    expect(playableLotCount({ lotCount: 6, currentLot: 1, phase: "bidding" }, [at(1)], four, standard)).toBe(6);
+  });
+
+  it("falls back to the original five-slot shape for a board with no format", () => {
+    expect(playableLotCount(turn(1), [at(1)], four, null)).toBe(20);
+  });
+
+  it("sizes a Deep board from its own slot counts", () => {
+    const deep = { ...standard, rosterPreset: "deep", qbSlots: 2, rbSlots: 2, wrSlots: 3, flexSlots: 2 } as AuctionFormat;
+    expect(playableLotCount({ lotCount: 40, currentLot: 1, phase: "bidding" }, [at(1)], four, deep)).toBe(40);
+  });
+});
+
+describe("wasPresented", () => {
+  it("is true for any lot the server settled, sold or not", () => {
+    expect(wasPresented({ resolved_at: "2026-09-24T12:00:00Z" })).toBe(true);
+  });
+
+  it("is false for a spare the dealer skipped, which was never resolved", () => {
+    expect(wasPresented({ resolved_at: null })).toBe(false);
   });
 });

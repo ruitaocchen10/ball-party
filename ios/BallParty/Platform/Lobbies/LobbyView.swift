@@ -22,6 +22,7 @@ struct LobbyScreen: View {
             wrappedValue: LobbyViewModel(
                 client: SupabaseLobbyClient(client: SupabaseConfig.client),
                 game: SupabaseHigherOrLowerClient(client: SupabaseConfig.client),
+                auction: SupabaseAuctionClient(client: SupabaseConfig.client),
                 viewerId: viewerId
             )
         )
@@ -40,13 +41,25 @@ struct LobbyScreen: View {
         .navigationTitle("Play with friends")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(item: presentedMatchBinding) { route in
-            MatchScreen(
-                matchId: route.id,
-                viewerId: viewModel.viewerId,
-                roomCode: viewModel.roomCode,
-                isHost: viewModel.isHost
-            )
-                .onAppear { presentedMatch = route.id }
+            Group {
+                switch route.game {
+                case .higherOrLower:
+                    MatchScreen(
+                        matchId: route.id,
+                        viewerId: viewModel.viewerId,
+                        roomCode: viewModel.roomCode,
+                        isHost: viewModel.isHost
+                    )
+                case .auctionTeamBuilder:
+                    AuctionMatchScreen(
+                        matchId: route.id,
+                        viewerId: viewModel.viewerId,
+                        roomCode: viewModel.roomCode,
+                        isHost: viewModel.isHost
+                    )
+                }
+            }
+            .onAppear { presentedMatch = route.id }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
@@ -60,7 +73,7 @@ struct LobbyScreen: View {
 
     private var presentedMatchBinding: Binding<MatchRoute?> {
         Binding(
-            get: { viewModel.matchToEnter.map(MatchRoute.init(id:)) },
+            get: { viewModel.matchToEnter.map { MatchRoute(id: $0, game: viewModel.gameToEnter) } },
             set: { route in
                 guard route == nil, let left = presentedMatch else { return }
                 viewModel.matchDismissed(left)
@@ -69,9 +82,11 @@ struct LobbyScreen: View {
         )
     }
 
-    /// A match id, as something `navigationDestination(item:)` can key off.
+    /// A match id and its game, as something `navigationDestination(item:)`
+    /// can key off. The game picks which screen the room opens.
     private struct MatchRoute: Identifiable, Hashable {
         let id: UUID
+        let game: MatchGame
     }
 }
 
@@ -286,8 +301,11 @@ private struct LobbyRoomView: View {
                 Text("The host hasn't picked a game yet.").monoLabel(11, tracking: 0.13)
             }
 
-            if viewModel.isHost, viewModel.selectedGame == .higherOrLower {
-                format
+            if viewModel.isHost, let chosen = viewModel.selectedGame {
+                switch chosen {
+                case .higherOrLower: format
+                case .auctionTeamBuilder: auctionFormat
+                }
                 Button {
                     Task { await viewModel.startGame() }
                 } label: {
@@ -319,6 +337,50 @@ private struct LobbyRoomView: View {
                 HStack(spacing: 12) {
                     SeasonMenu(title: "From", selection: $viewModel.seasonFrom, choices: viewModel.seasonChoices)
                     SeasonMenu(title: "To", selection: $viewModel.seasonTo, choices: viewModel.seasonChoices)
+                }
+            }
+        }
+    }
+
+    private var auctionFormat: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Scoring").fieldLabel()
+                SegmentedChoice(
+                    selection: $viewModel.auctionScoringMode,
+                    options: [ScoringMode.weekly, .seasonTotal],
+                    title: { $0.label },
+                    accessibilityName: "Scoring"
+                )
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Roster").fieldLabel()
+                Picker("Roster", selection: $viewModel.rosterPreset) {
+                    ForEach(RosterPreset.allCases) { preset in
+                        Text(preset.label).tag(preset)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fieldStyle()
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Tokens per player").fieldLabel()
+                SegmentedChoice(
+                    selection: $viewModel.tokenCount,
+                    options: [0, 1, 2, 3],
+                    title: { $0 == 0 ? "Off" : String($0) },
+                    accessibilityName: "Tokens per player"
+                )
+            }
+
+            if !viewModel.auctionSeasonChoices.isEmpty {
+                HStack(spacing: 12) {
+                    SeasonMenu(title: "From", selection: $viewModel.auctionFrom, choices: viewModel.auctionSeasonChoices)
+                    SeasonMenu(title: "To", selection: $viewModel.auctionTo, choices: viewModel.auctionSeasonChoices)
                 }
             }
         }
