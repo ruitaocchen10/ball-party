@@ -46,7 +46,7 @@ function boldPost(overrides: Partial<Post> = {}): Post {
 const lockedPost = () => boldPost({ status: "locked", lockAt: "2026-10-07T12:00:00.000Z" });
 
 function prediction(id: string, body: string, target: BoldPrediction["target"], overrides: Partial<BoldPrediction> = {}): BoldPrediction {
-  return { id, author: "Ruitao", isViewer: true, body, target, createdAt: "2099-10-02T12:00:00.000Z", ...overrides };
+  return { id, author: "Ruitao", authorUsername: "ruitao", isViewer: true, body, target, createdAt: "2099-10-02T12:00:00.000Z", ...overrides };
 }
 
 function data(predictions: BoldPrediction[], players: Record<string, PlayerResult> = {}): BoldPredictionBoardData {
@@ -312,7 +312,7 @@ it("offers Bold Predictions as a template and hides the opinion toggle, since it
   await chooseBoldWeek(user);
 
   expect(screen.queryByRole("checkbox", { name: /Opinion prompt/ })).not.toBeInTheDocument();
-  expect(screen.getByDisplayValue("Week 4 Bold Predictions")).toBeInTheDocument();
+  expect(screen.getByDisplayValue("NFL Week 4 Bold Predictions")).toBeInTheDocument();
 });
 
 it("publishes a Bold Predictions post with no slots, as an opinion, locking before the week's first kickoff", async () => {
@@ -327,7 +327,7 @@ it("publishes a Bold Predictions post with no slots, as an opinion, locking befo
   const published = onPublish.mock.calls[0][0];
   expect(published.templateKind).toBe("bold_predictions");
   expect(published.templateName).toBe("Bold Predictions");
-  expect(published.promptText).toBe("Week 4 Bold Predictions");
+  expect(published.promptText).toBe("NFL Week 4 Bold Predictions");
   expect(published.slots).toEqual([]);
   expect(published.isOpinion).toBe(true);
   expect(published.resolutionSource).toBeUndefined();

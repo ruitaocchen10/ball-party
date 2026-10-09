@@ -184,19 +184,19 @@ const OPINION_AWARDS_CRITERIA = "Opinion only — there are no right answers and
 export function defaultPromptText(kind: ComposerKind, game?: NflScheduleGame): string {
   switch (kind) {
     case "game_pick":
-      return game ? `${game.label}: who wins, and by how much?` : "Choose a game to start this prompt.";
+      return game ? `${game.label.replace(" @ ", " vs. ")}: Who wins?` : "Choose a game to start this prompt.";
     case "weekly_picks":
-      return game ? `Week ${game.week} picks: who wins?` : "Choose a season and week to start this prompt.";
+      return game ? `NFL Week ${game.week} Picks` : "Choose a season and week to start this prompt.";
     case "stat_leader":
       return "Who leads the NFL in rushing yards this season?";
     case "ranking":
       return "Rank the top candidates, best to worst.";
     case "weekly_awards":
-      return game ? `Week ${game.week} awards: who earned them?` : "Choose a season and week to start this prompt.";
+      return game ? `NFL Week ${game.week} Awards` : "Choose a season and week to start this prompt.";
     case "power_rankings":
-      return "Set your NFL power rankings.";
+      return game ? `Pre Week ${game.week} Power Rankings` : "Choose a season and week to start this prompt.";
     case "bold_predictions":
-      return game ? `Week ${game.week} Bold Predictions` : "Choose a season and week to start this prompt.";
+      return game ? `NFL Week ${game.week} Bold Predictions` : "Choose a season and week to start this prompt.";
   }
 }
 
