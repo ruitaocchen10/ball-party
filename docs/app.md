@@ -4,7 +4,7 @@ Ball Party is a sports (NFL) knowledge party game and community. People test the
 
 ## Surfaces
 
-**The Huddle (home, `/`).** A public feed of weekly prompts people answer and comment on: game picks, weekly picks, weekly awards, bold predictions, power rankings. Readable signed out; answering needs an account. Admins author and resolve prompts under `/admin`. The prompt kinds are `TemplateKind` in `webapp/lib/foundation/content/prompts/types.ts`.
+**The Huddle (home, `/`).** Real accounts see two tabs, Huddle and Friends (`?view=friends`); Friends is the friend activity feed (`friend_activity`): friends' recent picks (never which options), pick results and match results from the last 30 days. The Huddle is a public feed of weekly prompts people answer and comment on: game picks, weekly picks, weekly awards, bold predictions, power rankings. Readable signed out; answering needs an account. Admins author and resolve prompts under `/admin`. The prompt kinds are `TemplateKind` in `webapp/lib/foundation/content/prompts/types.ts`.
 
 **Games.** What each game is, who can play it, and whether it is live is the catalog in `webapp/lib/platform/orchestration/catalog.ts` (`status`, `solo`, `group`). Rules live in one doc per game:
 
@@ -24,7 +24,7 @@ Cards Against Humanity is not built: it has no catalog entry and no doc.
 
 **Profile (`/profile`).** Three tabs (`?tab=`): **Stats** (match history, knower highlights and rankings), **Takes** (the player's prompt takes) and **Friends** (see below). Edit profile also sets the player's unique **username**.
 
-**Friends (the Friends tab on `/profile`).** Accounts only; guests are asked to sign up. Friends list, incoming and outgoing requests, blocked players, exact-username search and a shareable invite link (`/friends/invite/<code>`, which stays its own page). The tab label shows a count of pending requests. `/friends` redirects to the tab. There is no friend activity feed in the UI for now; the `friend_activity` RPC exists but nothing calls it. Rules live in SQL (migrations 0183 to 0190).
+**Friends (the Friends tab on `/profile`).** Accounts only; guests are asked to sign up. Friends list, incoming and outgoing requests, blocked players, exact-username search and a shareable invite link (`/friends/invite/<code>`, which stays its own page). The tab label shows a count of pending requests. `/friends` redirects to the tab. Rules live in SQL (migrations 0183 to 0190).
 
 **Other players' profiles (`/u/<username>`).** Another player's highlights and match history. A private profile shows only its header to non-friends; unknown, guest and blocking users all look like not found (`get_profile`, migration 0186). Leaderboard rows link here.
 
@@ -42,7 +42,7 @@ Every non-guest account has a unique username (3-20 letters, digits or underscor
 
 ## iOS
 
-Four tabs: Home (Huddle), Games, Party (placeholder), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard. Friends and other players' profiles are in the Profile menu. Room invites wait on rooms shipping on iOS (BPMO-11). Games on iOS are Higher or Lower (solo and live match) and QB Season Builder; the rest are web only. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
+Four tabs: Home (Huddle), Games, Party (placeholder), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard. Home has the same Huddle | Friends tabs. Friends and other players' profiles are in the Profile menu. Room invites wait on rooms shipping on iOS (BPMO-11). Games on iOS are Higher or Lower (solo and live match) and QB Season Builder; the rest are web only. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
 
 ## Keeping this file true
 

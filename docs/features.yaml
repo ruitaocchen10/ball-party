@@ -133,9 +133,9 @@ features:
     ios: done
   - id: friends.activity-feed
     summary: Friends' recent picks (never which options), pick results and match results from the last 30 days
-    web: no
-    ios: no
-    note: Not shipped for now by product decision. The friend_activity RPC (migration 0189) stays in place for a later design; the web and iOS UI for it was removed.
+    web: done
+    ios: done
+    note: The Friends tab on Home, next to Huddle (web /?view=friends). Real accounts only; guests and signed-out visitors see just the Huddle.
 
   # --- Leaderboard -----------------------------------------------------------
   - id: leaderboard.ball-knower
