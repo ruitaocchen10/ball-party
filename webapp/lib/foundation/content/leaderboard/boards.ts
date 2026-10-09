@@ -6,7 +6,7 @@ import {
 } from "@/lib/foundation/content/leaderboard/windows";
 
 /** The boards under /leaderboard, in tab order. */
-export const LEADERBOARD_BOARDS = ["ball-knower", "gamer", "higher-or-lower", "qb-season-builder"] as const;
+export const LEADERBOARD_BOARDS = ["ball-knower", "gamer"] as const;
 export type LeaderboardBoard = (typeof LEADERBOARD_BOARDS)[number];
 
 export const DEFAULT_LEADERBOARD_BOARD: LeaderboardBoard = "ball-knower";
@@ -14,8 +14,6 @@ export const DEFAULT_LEADERBOARD_BOARD: LeaderboardBoard = "ball-knower";
 export const LEADERBOARD_BOARD_COPY: Record<LeaderboardBoard, { label: string; title: string }> = {
   "ball-knower": { label: "Ball Knower", title: "Ball Knower" },
   gamer: { label: "Wins", title: "Multiplayer wins" },
-  "higher-or-lower": { label: "Higher or Lower", title: "Higher or Lower" },
-  "qb-season-builder": { label: "QB Season", title: "QB Season Builder" },
 };
 
 /** The `?board=` param: anything unknown falls back to the default. */
@@ -24,11 +22,22 @@ export function parseLeaderboardBoard(value: string | string[] | undefined): Lea
   return LEADERBOARD_BOARDS.find((board) => board === first) ?? DEFAULT_LEADERBOARD_BOARD;
 }
 
-/** The solo game a board ranks, as `solo_leaderboard` names it. Null for the other boards. */
-export function soloGameFor(board: LeaderboardBoard): "higher_or_lower" | "qb_season_builder" | null {
-  if (board === "higher-or-lower") return "higher_or_lower";
-  if (board === "qb-season-builder") return "qb_season_builder";
-  return null;
+/**
+ * The solo games that keep an all-time best per player. Each one's board lives
+ * with the game, at /solo/<slug>/leaderboard, not under /leaderboard.
+ */
+export const SOLO_BOARDS = ["higher-or-lower", "qb-season-builder"] as const;
+export type SoloBoard = (typeof SOLO_BOARDS)[number];
+
+export const SOLO_BOARD_COPY: Record<SoloBoard, { title: string; game: "higher_or_lower" | "qb_season_builder" }> = {
+  "higher-or-lower": { title: "Higher or Lower", game: "higher_or_lower" },
+  "qb-season-builder": { title: "QB Season Builder", game: "qb_season_builder" },
+};
+
+/** The slug as a SoloBoard, or null: used to send old /leaderboard?board=<solo game> links to the game's page. */
+export function asSoloBoard(value: string | string[] | undefined): SoloBoard | null {
+  const first = Array.isArray(value) ? value[0] : value;
+  return SOLO_BOARDS.find((board) => board === first) ?? null;
 }
 
 /** QB Season Builder scores a visible run and a hidden run separately, so it has one board per mode. */
@@ -46,28 +55,45 @@ export function parseQbMode(value: string | string[] | undefined): QbMode {
 }
 
 /**
- * The URL for a board. Defaults (the Ball Knower board, the everyone scope, the
- * visible QB mode) are left out so shared links stay short. `window` only
- * applies to the boards that have windows, and `mode` only to QB Season Builder.
+ * The URL for a /leaderboard board. Defaults (the Ball Knower board, the
+ * everyone scope) are left out so shared links stay short. `window` only
+ * applies to the boards that have windows.
  */
 export function boardHref({
   board = DEFAULT_LEADERBOARD_BOARD,
   window,
   scope = DEFAULT_LEADERBOARD_SCOPE,
-  mode,
 }: {
   board?: LeaderboardBoard;
   window?: LeaderboardWindow;
   scope?: LeaderboardScope;
-  mode?: QbMode;
 }): string {
   const params = new URLSearchParams();
   if (board !== DEFAULT_LEADERBOARD_BOARD) params.set("board", board);
   if (window) params.set("window", window);
   if (scope !== DEFAULT_LEADERBOARD_SCOPE) params.set("scope", scope);
-  if (board === "qb-season-builder" && mode && mode !== DEFAULT_QB_MODE) params.set("mode", mode);
   const query = params.toString();
   return query ? `/leaderboard?${query}` : "/leaderboard";
+}
+
+/**
+ * The URL for a solo game's board. The scope and the QB mode are left out at
+ * their defaults, and `mode` only applies to QB Season Builder.
+ */
+export function soloBoardHref({
+  board,
+  scope = DEFAULT_LEADERBOARD_SCOPE,
+  mode,
+}: {
+  board: SoloBoard;
+  scope?: LeaderboardScope;
+  mode?: QbMode;
+}): string {
+  const params = new URLSearchParams();
+  if (scope !== DEFAULT_LEADERBOARD_SCOPE) params.set("scope", scope);
+  if (board === "qb-season-builder" && mode && mode !== DEFAULT_QB_MODE) params.set("mode", mode);
+  const query = params.toString();
+  return `/solo/${board}/leaderboard${query ? `?${query}` : ""}`;
 }
 
 /** The caller's standing on the multiplayer wins board. */
@@ -111,7 +137,7 @@ export function soloStandingCopy(standing: SoloStanding, scope: LeaderboardScope
 }
 
 /** A solo score for display: a streak is a whole number, a QB score always keeps its one decimal (91.0, 80.5). */
-export function formatSoloScore(score: number, board: LeaderboardBoard): string {
+export function formatSoloScore(score: number, board: SoloBoard): string {
   return board === "qb-season-builder"
     ? score.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
     : score.toLocaleString("en-US");

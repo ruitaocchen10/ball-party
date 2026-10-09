@@ -1,11 +1,11 @@
 import { BoardList, FindFriendsLink, ScopeNav, StandingBlock, type BoardRow } from "@/components/foundation/content/leaderboard/LeaderboardParts";
 import { ModeToggle } from "@/components/foundation/content/leaderboard/ModeToggle";
 import {
-  boardHref,
   formatSoloScore,
+  soloBoardHref,
   soloStandingCopy,
-  type LeaderboardBoard,
   type QbMode,
+  type SoloBoard,
   type SoloStanding,
 } from "@/lib/foundation/content/leaderboard/boards";
 import type { LeaderboardScope } from "@/lib/foundation/content/leaderboard/windows";
@@ -20,7 +20,7 @@ export type SoloRow = {
   isMe: boolean;
 };
 
-const BOARD_COPY: Record<"higher-or-lower" | "qb-season-builder", { caption: string; valueLabel: string; rule: string }> = {
+const BOARD_COPY: Record<SoloBoard, { caption: string; valueLabel: string; rule: string }> = {
   "higher-or-lower": {
     caption: "Best solo streak, all time",
     valueLabel: "Streak",
@@ -41,7 +41,7 @@ export function SoloLeaderboard({
   rows,
   standing,
 }: {
-  board: Extract<LeaderboardBoard, "higher-or-lower" | "qb-season-builder">;
+  board: SoloBoard;
   mode?: QbMode;
   scope?: LeaderboardScope;
   rows: SoloRow[];
@@ -61,9 +61,9 @@ export function SoloLeaderboard({
 
   return (
     <div>
-      <ScopeNav scope={scope} hrefFor={(key) => boardHref({ board, scope: key, mode })} />
+      <ScopeNav scope={scope} hrefFor={(key) => soloBoardHref({ board, scope: key, mode })} />
       {board === "qb-season-builder" && mode ? (
-        <ModeToggle mode={mode} hrefFor={(key) => boardHref({ board, scope, mode: key })} />
+        <ModeToggle mode={mode} hrefFor={(key) => soloBoardHref({ board, scope, mode: key })} />
       ) : null}
 
       <div className="mt-4">

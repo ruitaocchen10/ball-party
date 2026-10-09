@@ -41,7 +41,7 @@ describe("GamerLeaderboard", () => {
 describe("SoloLeaderboard", () => {
   it("offers a Visible / Hidden toggle on QB Season Builder only", () => {
     const { unmount } = render(<SoloLeaderboard board="qb-season-builder" mode="visible" rows={[]} standing={unrankedSolo} />);
-    expect(screen.getByRole("link", { name: "Hidden" })).toHaveAttribute("href", "/leaderboard?board=qb-season-builder&mode=hidden");
+    expect(screen.getByRole("link", { name: "Hidden" })).toHaveAttribute("href", "/solo/qb-season-builder/leaderboard?mode=hidden");
     unmount();
 
     render(<SoloLeaderboard board="higher-or-lower" rows={[]} standing={unrankedSolo} />);
@@ -50,7 +50,7 @@ describe("SoloLeaderboard", () => {
 
   it("keeps the mode when switching scope", () => {
     render(<SoloLeaderboard board="qb-season-builder" mode="hidden" rows={[]} standing={unrankedSolo} />);
-    expect(screen.getByRole("link", { name: "Friends" })).toHaveAttribute("href", "/leaderboard?board=qb-season-builder&scope=friends&mode=hidden");
+    expect(screen.getByRole("link", { name: "Friends" })).toHaveAttribute("href", "/solo/qb-season-builder/leaderboard?scope=friends&mode=hidden");
   });
 
   it("formats a QB score with one decimal", () => {

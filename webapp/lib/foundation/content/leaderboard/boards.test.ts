@@ -1,32 +1,32 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  asSoloBoard,
   boardHref,
   formatSoloScore,
   gamerStandingCopy,
   parseLeaderboardBoard,
   parseQbMode,
-  soloGameFor,
+  soloBoardHref,
   soloStandingCopy,
 } from "./boards";
 
-describe("parseLeaderboardBoard / parseQbMode", () => {
+describe("parseLeaderboardBoard / parseQbMode / asSoloBoard", () => {
   it("accepts known values and falls back on anything else", () => {
     expect(parseLeaderboardBoard("gamer")).toBe("gamer");
-    expect(parseLeaderboardBoard(["qb-season-builder", "gamer"])).toBe("qb-season-builder");
+    expect(parseLeaderboardBoard(["gamer", "ball-knower"])).toBe("gamer");
     expect(parseLeaderboardBoard("nope")).toBe("ball-knower");
+    expect(parseLeaderboardBoard("qb-season-builder")).toBe("ball-knower");
     expect(parseLeaderboardBoard(undefined)).toBe("ball-knower");
     expect(parseQbMode("hidden")).toBe("hidden");
     expect(parseQbMode("nope")).toBe("visible");
   });
-});
 
-describe("soloGameFor", () => {
-  it("names the RPC game for solo boards only", () => {
-    expect(soloGameFor("higher-or-lower")).toBe("higher_or_lower");
-    expect(soloGameFor("qb-season-builder")).toBe("qb_season_builder");
-    expect(soloGameFor("gamer")).toBeNull();
-    expect(soloGameFor("ball-knower")).toBeNull();
+  it("recognises a solo slug, so an old /leaderboard link can be sent to the game", () => {
+    expect(asSoloBoard("higher-or-lower")).toBe("higher-or-lower");
+    expect(asSoloBoard(["qb-season-builder"])).toBe("qb-season-builder");
+    expect(asSoloBoard("gamer")).toBeNull();
+    expect(asSoloBoard(undefined)).toBeNull();
   });
 });
 
@@ -39,11 +39,21 @@ describe("boardHref", () => {
   it("keeps board, window and scope", () => {
     expect(boardHref({ board: "gamer", window: "month", scope: "friends" })).toBe("/leaderboard?board=gamer&window=month&scope=friends");
   });
+});
+
+describe("soloBoardHref", () => {
+  it("lives under the game and leaves defaults out", () => {
+    expect(soloBoardHref({ board: "higher-or-lower" })).toBe("/solo/higher-or-lower/leaderboard");
+    expect(soloBoardHref({ board: "higher-or-lower", scope: "friends" })).toBe("/solo/higher-or-lower/leaderboard?scope=friends");
+  });
 
   it("only carries a QB mode on the QB board, and only when it is not the default", () => {
-    expect(boardHref({ board: "qb-season-builder", mode: "hidden" })).toBe("/leaderboard?board=qb-season-builder&mode=hidden");
-    expect(boardHref({ board: "qb-season-builder", mode: "visible" })).toBe("/leaderboard?board=qb-season-builder");
-    expect(boardHref({ board: "higher-or-lower", mode: "hidden" })).toBe("/leaderboard?board=higher-or-lower");
+    expect(soloBoardHref({ board: "qb-season-builder", mode: "hidden" })).toBe("/solo/qb-season-builder/leaderboard?mode=hidden");
+    expect(soloBoardHref({ board: "qb-season-builder", mode: "visible" })).toBe("/solo/qb-season-builder/leaderboard");
+    expect(soloBoardHref({ board: "qb-season-builder", scope: "friends", mode: "hidden" })).toBe(
+      "/solo/qb-season-builder/leaderboard?scope=friends&mode=hidden",
+    );
+    expect(soloBoardHref({ board: "higher-or-lower", mode: "hidden" })).toBe("/solo/higher-or-lower/leaderboard");
   });
 });
 

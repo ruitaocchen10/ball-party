@@ -40,7 +40,7 @@ const ROW_GRID_VALUE_ONLY = "grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-c
 /** The tabs between boards. Switching a board resets the window, the scope and the mode to what the destination defaults to. */
 export function BoardNav({ board, hrefFor }: { board: LeaderboardBoard; hrefFor: (board: LeaderboardBoard) => string }) {
   return (
-    <nav aria-label="Leaderboard" className="mb-3 grid grid-cols-2 border border-line sm:grid-cols-4">
+    <nav aria-label="Leaderboard" className="mb-3 flex border border-line">
       {LEADERBOARD_BOARDS.map((key) => {
         const active = key === board;
         return (
@@ -48,7 +48,7 @@ export function BoardNav({ board, hrefFor }: { board: LeaderboardBoard; hrefFor:
             key={key}
             href={hrefFor(key)}
             aria-current={active ? "page" : undefined}
-            className={`flex min-h-10 items-center justify-center px-2 type-label-lg font-bold transition-colors ${FOCUS} ${
+            className={`flex min-h-10 flex-1 items-center justify-center px-2 type-label-lg font-bold transition-colors ${FOCUS} ${
               active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
             }`}
           >
