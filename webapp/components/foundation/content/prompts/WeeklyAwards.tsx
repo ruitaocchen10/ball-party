@@ -28,11 +28,44 @@ export function WeeklyAwardsSlots({
 }) {
   // The picker is controlled by a full player, while the draft only keeps the id.
   const [players, setPlayers] = useState<Record<string, PlayerResult | null>>({});
+  // One category is open at a time: the first unanswered, then wherever the viewer taps.
+  const [openId, setOpenId] = useState<string | null>(() => slots.find((slot) => !responses[slot.id]?.length)?.id ?? null);
+
+  function answer(slot: Slot, response: string[]) {
+    onChange(slot.id, response);
+    if (!response.length) return;
+    // Hand over to the next category still waiting for a pick.
+    const index = slots.indexOf(slot);
+    const next = [...slots.slice(index + 1), ...slots.slice(0, index)].find((other) => !responses[other.id]?.length);
+    setOpenId(next?.id ?? null);
+  }
 
   return (
-    <div className="flex flex-col gap-5 px-4 pt-4">
-      {slots.map((slot) =>
-        slot.playerSearch ? (
+    <div className="flex flex-col gap-2.5 px-4 pt-4">
+      {slots.map((slot) => {
+        const response = responses[slot.id] ?? [];
+        const open = openId === slot.id;
+        const isTiles = !slot.playerSearch && slot.options.every((option) => option.teamCode || option.teamCodes?.length === 2);
+        if (!open) {
+          const chosen = slot.playerSearch ? players[slot.id] : null;
+          const option = slot.options.find((candidate) => candidate.id === response[0]);
+          const summary = chosen?.name ?? (response.length ? response.map((id) => slot.options.find((candidate) => candidate.id === id)?.label ?? id).join(", ") : null);
+          return (
+            <div key={slot.id} className="flex items-center gap-3 border border-line bg-surface-raised px-3.5 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="type-label text-fg-muted">{slot.label}</p>
+                <p className="mt-0.5 flex min-w-0 items-center gap-2 font-slab text-lg uppercase">
+                  {chosen ? <PlayerPortrait name={chosen.name} headshotUrl={chosen.headshotUrl} className="h-7 w-7 shrink-0" /> : option ? <OptionIcon option={option} className="h-7 w-7 shrink-0" /> : null}
+                  <span className={`min-w-0 truncate ${summary ? "" : "text-fg-muted"}`}>{summary ?? "Not picked yet"}</span>
+                </p>
+              </div>
+              <button type="button" onClick={() => setOpenId(slot.id)} aria-label={`${summary ? "Edit" : "Pick"} ${slot.label}`} className="cursor-pointer type-label underline">
+                {summary ? "Edit" : "Pick"}
+              </button>
+            </div>
+          );
+        }
+        return slot.playerSearch ? (
           <div key={slot.id}>
             <p className="mb-1.5 font-slab text-sm uppercase text-fg-muted">{slot.label}</p>
             <PlayerPicker
@@ -40,19 +73,19 @@ export function WeeklyAwardsSlots({
               value={players[slot.id] ?? null}
               onChange={(player) => {
                 setPlayers((current) => ({ ...current, [slot.id]: player }));
-                onChange(slot.id, player ? [player.id] : []);
+                answer(slot, player ? [player.id] : []);
               }}
             />
           </div>
-        ) : slot.options.every((option) => option.teamCode || option.teamCodes?.length === 2) ? (
+        ) : isTiles ? (
           <div key={slot.id}>
             <p className="mb-1.5 font-slab text-sm uppercase text-fg-muted">{slot.label}</p>
-            <AwardTiles slot={slot} chosen={responses[slot.id]?.[0]} onChange={(response) => onChange(slot.id, response)} />
+            <AwardTiles slot={slot} chosen={response[0]} onChange={(next) => answer(slot, next)} />
           </div>
         ) : (
-          <SlotFaceC key={slot.id} slot={slot} disabled={false} response={responses[slot.id] ?? []} onChange={(response) => onChange(slot.id, response)} allResponses={responses} />
-        ),
-      )}
+          <SlotFaceC key={slot.id} slot={slot} disabled={false} response={response} onChange={(next) => answer(slot, next)} allResponses={responses} />
+        );
+      })}
     </div>
   );
 }
