@@ -312,7 +312,7 @@ it("offers Bold Predictions as a template and hides the opinion toggle, since it
   await chooseBoldWeek(user);
 
   expect(screen.queryByRole("checkbox", { name: /Opinion prompt/ })).not.toBeInTheDocument();
-  expect(screen.getByDisplayValue("Week 4 Bold Predictions")).toBeInTheDocument();
+  expect(screen.getByDisplayValue("NFL Week 4 Bold Predictions")).toBeInTheDocument();
 });
 
 it("publishes a Bold Predictions post with no slots, as an opinion, locking before the week's first kickoff", async () => {
@@ -327,7 +327,7 @@ it("publishes a Bold Predictions post with no slots, as an opinion, locking befo
   const published = onPublish.mock.calls[0][0];
   expect(published.templateKind).toBe("bold_predictions");
   expect(published.templateName).toBe("Bold Predictions");
-  expect(published.promptText).toBe("Week 4 Bold Predictions");
+  expect(published.promptText).toBe("NFL Week 4 Bold Predictions");
   expect(published.slots).toEqual([]);
   expect(published.isOpinion).toBe(true);
   expect(published.resolutionSource).toBeUndefined();

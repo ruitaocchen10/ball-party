@@ -398,7 +398,7 @@ export function PromptPostComposer({
 
   function pickTemplate(next: ComposerKind) {
     setKind(next);
-    if (next === "game_pick" || next === "weekly_picks" || next === "weekly_awards" || next === "bold_predictions") {
+    if (next === "game_pick" || next === "weekly_picks" || next === "weekly_awards" || next === "bold_predictions" || next === "power_rankings") {
       setPromptText(defaultPromptText(next, selectedGame ?? weeklyGames[0]));
       if (next === "bold_predictions") setBoldLockFor(season, week);
       if (next === "weekly_picks") setWeeklyGameIds((current) => current.length ? current : weeklyGames.map((game) => game.id));
@@ -672,7 +672,7 @@ export function PromptPostComposer({
 
         <Section n={2} title={SETUP_SECTION_TITLES[kind]}>
 
-        {kind === "game_pick" || kind === "weekly_picks" || kind === "weekly_awards" || kind === "bold_predictions" ? (
+        {kind === "game_pick" || kind === "weekly_picks" || kind === "weekly_awards" || kind === "bold_predictions" || kind === "power_rankings" ? (
           <>
             <div className="flex flex-wrap items-start gap-4">
               <FieldBlock label="Season">

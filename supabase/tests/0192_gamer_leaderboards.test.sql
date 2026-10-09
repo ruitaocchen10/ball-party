@@ -3,9 +3,11 @@ select plan(24);
 
 \ir support/harness.psql
 
--- Seed data has finished matches of its own; start from none.
+-- Seed data has finished matches and solo bests of its own; start from none.
 delete from public.matches;
 delete from public.runs;
+delete from public.higher_or_lower_player_stats;
+delete from public.qb_season_builder_player_stats;
 
 insert into tests.fx (k, v) values
   ('a',     tests.mkuser('GlA')),
