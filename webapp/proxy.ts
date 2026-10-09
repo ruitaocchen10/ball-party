@@ -16,8 +16,11 @@ export const config = {
      * the crawler ones a signed-out bot asking for /robots.txt or
      * /sitemap.xml is redirected to /login and never sees them — the same goes
      * for the site-wide /opengraph-image card and the web app manifest.
+     * `.well-known/` is the same: iOS fetches
+     * /.well-known/apple-app-site-association with no session to verify
+     * Universal Links, and a redirect to /login fails it.
      * (Per-prompt images live under /prompts, which is already public.)
      */
-    "/((?!_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest|opengraph-image|twitter-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots\\.txt|\\.well-known/|sitemap\\.xml|manifest\\.webmanifest|opengraph-image|twitter-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

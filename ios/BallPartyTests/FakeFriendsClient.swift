@@ -13,6 +13,8 @@ final class FakeFriendsClient: FriendsClient, @unchecked Sendable {
     var sendResult: SendRequestResult = .requested
     var code = "ABC123DEF456"
     var resetCode = "NEWCODE00000"
+    var inviteLookup: UserSearchResult?
+    var redeemResult: SendRequestResult = .requested
     var profileResult: ProfileLookup?
     var highlightRows: [ProfileKnowerHighlightRow] = []
     var historyRows: [ProfileMatchHistoryRow] = []
@@ -73,6 +75,18 @@ final class FakeFriendsClient: FriendsClient, @unchecked Sendable {
         record("reset")
         if failingActions { throw Offline() }
         return resetCode
+    }
+
+    func lookupInviteCode(_ code: String) async throws -> UserSearchResult? {
+        record("lookup:\(code)")
+        if failing { throw Offline() }
+        return inviteLookup
+    }
+
+    func redeemInviteCode(_ code: String) async throws -> SendRequestResult {
+        record("redeem:\(code)")
+        if failingActions { throw Offline() }
+        return redeemResult
     }
 
     func profile(username: String) async throws -> ProfileLookup? {

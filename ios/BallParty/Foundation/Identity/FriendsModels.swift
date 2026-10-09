@@ -219,4 +219,23 @@ enum FriendInviteLink {
     static func url(code: String, base: URL = SiteLinks.home) -> URL {
         base.appendingPathComponent(pathPrefix).appendingPathComponent(code)
     }
+
+    /// The invite code in a link the app was opened with, or `nil` when the
+    /// URL isn't a friend invite. Accepts `https://ballparty.social/friends/invite/<code>`
+    /// (and `www.`), with or without a trailing slash. The code is only
+    /// shape-checked; the server decides whether it exists (`lookup_friend_code`).
+    static func code(from url: URL, base: URL = SiteLinks.home) -> String? {
+        guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased(),
+              let baseHost = base.host?.lowercased(),
+              host == baseHost || host == "www.\(baseHost)"
+        else { return nil }
+        let parts = url.pathComponents.filter { $0 != "/" }
+        let prefix = pathPrefix.split(separator: "/").map(String.init)
+        guard parts.count == prefix.count + 1, Array(parts.prefix(prefix.count)) == prefix else { return nil }
+        let code = parts[prefix.count]
+        guard (1...64).contains(code.count),
+              code.unicodeScalars.allSatisfy({ $0.isASCII && CharacterSet.alphanumerics.contains($0) })
+        else { return nil }
+        return code
+    }
 }

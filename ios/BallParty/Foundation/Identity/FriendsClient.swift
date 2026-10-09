@@ -22,6 +22,11 @@ protocol FriendsClient: Sendable {
     func inviteCode() async throws -> String
     /// `reset_friend_code`: old links stop working.
     func resetInviteCode() async throws -> String
+    /// `lookup_friend_code`: who owns an invite code, or `nil` when it is
+    /// unknown, expired, your own, or its owner blocked you.
+    func lookupInviteCode(_ code: String) async throws -> UserSearchResult?
+    /// `redeem_friend_code`: sends the request to the code's owner.
+    func redeemInviteCode(_ code: String) async throws -> SendRequestResult
     /// `get_profile`: `nil` for no such player (or one who can't be shown).
     func profile(username: String) async throws -> ProfileLookup?
     /// `get_profile_knower_highlights`: empty unless the body may be opened.
@@ -35,6 +40,7 @@ struct SupabaseFriendsClient: FriendsClient {
 
     private struct UsernameParams: Encodable, Sendable { let p_username: String }
     private struct QueryParams: Encodable, Sendable { let p_query: String }
+    private struct CodeParams: Encodable, Sendable { let p_code: String }
     private struct UserParams: Encodable, Sendable { let p_user_id: UUID }
     private struct ProfileParams: Encodable, Sendable { let p_profile_id: UUID }
 
@@ -81,6 +87,20 @@ struct SupabaseFriendsClient: FriendsClient {
 
     func resetInviteCode() async throws -> String {
         try await client.rpc("reset_friend_code").execute().value
+    }
+
+    func lookupInviteCode(_ code: String) async throws -> UserSearchResult? {
+        let rows: [UserSearchResult] = try await client
+            .rpc("lookup_friend_code", params: CodeParams(p_code: code))
+            .execute().value
+        return rows.first
+    }
+
+    func redeemInviteCode(_ code: String) async throws -> SendRequestResult {
+        let raw: String = try await client
+            .rpc("redeem_friend_code", params: CodeParams(p_code: code))
+            .execute().value
+        return SendRequestResult(rawValue: raw)
     }
 
     func profile(username: String) async throws -> ProfileLookup? {
