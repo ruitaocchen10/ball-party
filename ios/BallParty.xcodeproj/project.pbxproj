@@ -55,6 +55,8 @@
 		6FEB1D1D07DF8B21590DCF6E /* ProfileStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F963803C3E41D9DDFF08B1BF /* ProfileStatsTests.swift */; };
 		C0DE1EAD00000000000000B4 /* LeaderboardModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A4 /* LeaderboardModelsTests.swift */; };
 		C0DE1EAD00000000000000B5 /* LeaderboardViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A5 /* LeaderboardViewModelTests.swift */; };
+		C0DE1EAD00000000000000BA /* GamerLeaderboardViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000AA /* GamerLeaderboardViewModelTests.swift */; };
+		C0DE1EAD00000000000000B9 /* GamerLeaderboardModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A9 /* GamerLeaderboardModelsTests.swift */; };
 		F41E000000000000000B0008 /* FakeFriendsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0008 /* FakeFriendsClient.swift */; };
 		F41E000000000000000B0009 /* FriendsModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0009 /* FriendsModelsTests.swift */; };
 		F41E000000000000000B000A /* FriendsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A000A /* FriendsViewModelTests.swift */; };
@@ -100,6 +102,9 @@
 		C0DE1EAD00000000000000B1 /* LeaderboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A1 /* LeaderboardModels.swift */; };
 		C0DE1EAD00000000000000B2 /* LeaderboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A2 /* LeaderboardViewModel.swift */; };
 		C0DE1EAD00000000000000B3 /* LeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A3 /* LeaderboardView.swift */; };
+		C0DE1EAD00000000000000B8 /* GamerLeaderboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A8 /* GamerLeaderboardView.swift */; };
+		C0DE1EAD00000000000000B7 /* GamerLeaderboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A7 /* GamerLeaderboardViewModel.swift */; };
+		C0DE1EAD00000000000000B6 /* GamerLeaderboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE1EAD00000000000000A6 /* GamerLeaderboardModels.swift */; };
 		F41E000000000000000B0010 /* FriendActivityModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0010 /* FriendActivityModels.swift */; };
 		F41E000000000000000B0011 /* FriendActivityViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0011 /* FriendActivityViewModel.swift */; };
 		F41E000000000000000B0012 /* FriendActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0012 /* FriendActivityView.swift */; };
@@ -193,6 +198,9 @@
 		C0DE1EAD00000000000000A1 /* LeaderboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardModels.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A2 /* LeaderboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardViewModel.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A3 /* LeaderboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardView.swift; sourceTree = "<group>"; };
+		C0DE1EAD00000000000000A8 /* GamerLeaderboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamerLeaderboardView.swift; sourceTree = "<group>"; };
+		C0DE1EAD00000000000000A7 /* GamerLeaderboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamerLeaderboardViewModel.swift; sourceTree = "<group>"; };
+		C0DE1EAD00000000000000A6 /* GamerLeaderboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamerLeaderboardModels.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0010 /* FriendActivityModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityModels.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0011 /* FriendActivityViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityViewModel.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0012 /* FriendActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendActivityView.swift; sourceTree = "<group>"; };
@@ -260,6 +268,8 @@
 		F963803C3E41D9DDFF08B1BF /* ProfileStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileStatsTests.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A4 /* LeaderboardModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardModelsTests.swift; sourceTree = "<group>"; };
 		C0DE1EAD00000000000000A5 /* LeaderboardViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardViewModelTests.swift; sourceTree = "<group>"; };
+		C0DE1EAD00000000000000AA /* GamerLeaderboardViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamerLeaderboardViewModelTests.swift; sourceTree = "<group>"; };
+		C0DE1EAD00000000000000A9 /* GamerLeaderboardModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamerLeaderboardModelsTests.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0008 /* FakeFriendsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeFriendsClient.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0009 /* FriendsModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsModelsTests.swift; sourceTree = "<group>"; };
 		F41E000000000000000A000A /* FriendsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsViewModelTests.swift; sourceTree = "<group>"; };
@@ -352,6 +362,8 @@
 				F963803C3E41D9DDFF08B1BF /* ProfileStatsTests.swift */,
 				C0DE1EAD00000000000000A4 /* LeaderboardModelsTests.swift */,
 				C0DE1EAD00000000000000A5 /* LeaderboardViewModelTests.swift */,
+				C0DE1EAD00000000000000A9 /* GamerLeaderboardModelsTests.swift */,
+				C0DE1EAD00000000000000AA /* GamerLeaderboardViewModelTests.swift */,
 				F41E000000000000000A0013 /* FriendActivityTests.swift */,
 				F41E000000000000000A0008 /* FakeFriendsClient.swift */,
 				F41E000000000000000A0009 /* FriendsModelsTests.swift */,
@@ -436,6 +448,9 @@
 				C0DE1EAD00000000000000A1 /* LeaderboardModels.swift */,
 				C0DE1EAD00000000000000A2 /* LeaderboardViewModel.swift */,
 				C0DE1EAD00000000000000A3 /* LeaderboardView.swift */,
+				C0DE1EAD00000000000000A6 /* GamerLeaderboardModels.swift */,
+				C0DE1EAD00000000000000A7 /* GamerLeaderboardViewModel.swift */,
+				C0DE1EAD00000000000000A8 /* GamerLeaderboardView.swift */,
 				F41E000000000000000A0010 /* FriendActivityModels.swift */,
 				F41E000000000000000A0011 /* FriendActivityViewModel.swift */,
 				F41E000000000000000A0012 /* FriendActivityView.swift */,
@@ -714,6 +729,8 @@
 				6FEB1D1D07DF8B21590DCF6E /* ProfileStatsTests.swift in Sources */,
 				C0DE1EAD00000000000000B4 /* LeaderboardModelsTests.swift in Sources */,
 				C0DE1EAD00000000000000B5 /* LeaderboardViewModelTests.swift in Sources */,
+				C0DE1EAD00000000000000B9 /* GamerLeaderboardModelsTests.swift in Sources */,
+				C0DE1EAD00000000000000BA /* GamerLeaderboardViewModelTests.swift in Sources */,
 				F41E000000000000000B0013 /* FriendActivityTests.swift in Sources */,
 				F41E000000000000000B0008 /* FakeFriendsClient.swift in Sources */,
 				F41E000000000000000B0009 /* FriendsModelsTests.swift in Sources */,
@@ -770,6 +787,9 @@
 				C0DE1EAD00000000000000B1 /* LeaderboardModels.swift in Sources */,
 				C0DE1EAD00000000000000B2 /* LeaderboardViewModel.swift in Sources */,
 				C0DE1EAD00000000000000B3 /* LeaderboardView.swift in Sources */,
+				C0DE1EAD00000000000000B6 /* GamerLeaderboardModels.swift in Sources */,
+				C0DE1EAD00000000000000B7 /* GamerLeaderboardViewModel.swift in Sources */,
+				C0DE1EAD00000000000000B8 /* GamerLeaderboardView.swift in Sources */,
 				F41E000000000000000B0010 /* FriendActivityModels.swift in Sources */,
 				F41E000000000000000B0011 /* FriendActivityViewModel.swift in Sources */,
 				F41E000000000000000B0012 /* FriendActivityView.swift in Sources */,

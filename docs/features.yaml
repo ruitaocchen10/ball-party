@@ -141,6 +141,18 @@ features:
     summary: Ball Knower leaderboard by week, month, year and all time
     web: done
     ios: done
+  - id: leaderboard.gamer
+    summary: Multiplayer wins leaderboard by week, month, year and all time
+    web: done
+    ios: done
+  - id: leaderboard.solo-higher-or-lower
+    summary: Higher or Lower leaderboard of best solo streaks, all time
+    web: done
+    ios: done
+  - id: leaderboard.solo-qb-season-builder
+    summary: QB Season Builder leaderboard of best season scores, all time, with a Visible / Hidden toggle
+    web: done
+    ios: done
   - id: friends.leaderboard-scope
     summary: Switch the leaderboard between Everyone and Friends; rows link to the player's profile
     web: done
