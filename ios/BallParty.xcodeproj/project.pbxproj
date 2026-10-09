@@ -12,6 +12,11 @@
 		07E051BD31CC211613846724 /* IdentityConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC8A96142A0621FD8ABEA33 /* IdentityConstants.swift */; };
 		08BB98537B0108BABCE356CE /* MatchupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B44F7FC9C4A21EC4000278 /* MatchupTests.swift */; };
 		0EC30C786785186D83970CA6 /* LobbyViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F6295A7914445E51DB1E6D /* LobbyViewModelTests.swift */; };
+		F41E000000000000000B0040 /* FakeRoomInvitesClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0040 /* FakeRoomInvitesClient.swift */; };
+		F41E000000000000000B0041 /* RoomInvitesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0041 /* RoomInvitesTests.swift */; };
+		F41E000000000000000B0042 /* RoomInvitesClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0042 /* RoomInvitesClient.swift */; };
+		F41E000000000000000B0043 /* RoomInvitesViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0043 /* RoomInvitesViewModels.swift */; };
+		F41E000000000000000B0044 /* RoomInvitesViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0044 /* RoomInvitesViews.swift */; };
 		129D6AF9C48E6A7BB3521C15 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 23DA30C3359707F7DA8137CE /* Supabase */; };
 		159B8BF503F1CC21B45981B9 /* HigherOrLowerModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06CC9E8D135A5F6BDCAC5D9 /* HigherOrLowerModelsTests.swift */; };
 		1E658E143DDB30236B404160 /* ProfileEditorViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F3E3CD0F4677B1CC68FF26 /* ProfileEditorViewModelTests.swift */; };
@@ -198,6 +203,11 @@
 		F41E000000000000000A0007 /* StatsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCard.swift; sourceTree = "<group>"; };
 		90C8A4302CFCA2351E5A6EC8 /* QbSeasonBuilderModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderModelsTests.swift; sourceTree = "<group>"; };
 		94F6295A7914445E51DB1E6D /* LobbyViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyViewModelTests.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0040 /* FakeRoomInvitesClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeRoomInvitesClient.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0041 /* RoomInvitesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomInvitesTests.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0042 /* RoomInvitesClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomInvitesClient.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0043 /* RoomInvitesViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomInvitesViewModels.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0044 /* RoomInvitesViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomInvitesViews.swift; sourceTree = "<group>"; };
 		98EF401B82882F0056E7A29B /* TakeThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakeThreadView.swift; sourceTree = "<group>"; };
 		9BB3B711B5508796FC1E770E /* AppleSignInNonceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInNonceTests.swift; sourceTree = "<group>"; };
 		9BD9CB3F2559907FABE59D7D /* QbSeasonBuilderViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderViewModelTests.swift; sourceTree = "<group>"; };
@@ -316,6 +326,8 @@
 				C0EF4EE33EB14B2F5356C940 /* LadderStandingsTests.swift */,
 				94F6295A7914445E51DB1E6D /* LobbyViewModelTests.swift */,
 				D9A1732B29058D68EB0FDE32 /* FakeLobbyClient.swift */,
+				F41E000000000000000A0040 /* FakeRoomInvitesClient.swift */,
+				F41E000000000000000A0041 /* RoomInvitesTests.swift */,
 				9BB3B711B5508796FC1E770E /* AppleSignInNonceTests.swift */,
 				F06ED444F3FC870054ED36B7 /* AuthViewModelTests.swift */,
 				8810FD20EE533EA2EB24E459 /* FakeAuthBackend.swift */,
@@ -446,6 +458,9 @@
 				E2E8724BBFABEF13087046B9 /* LobbyView.swift */,
 				163C9C8FF9325011E269D5F0 /* LobbyViewModel.swift */,
 				669C2A35E7839D1D31ECC38E /* LobbyClient.swift */,
+				F41E000000000000000A0042 /* RoomInvitesClient.swift */,
+				F41E000000000000000A0043 /* RoomInvitesViewModels.swift */,
+				F41E000000000000000A0044 /* RoomInvitesViews.swift */,
 				26C9DBE8E8B4437D056DEFAB /* LobbyModels.swift */,
 			);
 			path = Lobbies;
@@ -674,6 +689,8 @@
 				DE165F7E7550F0498C813C64 /* LadderStandingsTests.swift in Sources */,
 				0EC30C786785186D83970CA6 /* LobbyViewModelTests.swift in Sources */,
 				72EFAA44994616FFFE3437CE /* FakeLobbyClient.swift in Sources */,
+				F41E000000000000000B0040 /* FakeRoomInvitesClient.swift in Sources */,
+				F41E000000000000000B0041 /* RoomInvitesTests.swift in Sources */,
 				C0228715574E2C17617AE87E /* FakeAuthBackend.swift in Sources */,
 				32F54770BF21BE083734336D /* IdentityConstantsTests.swift in Sources */,
 				EC750D5C2C3586D4CCDBD62F /* AppleSignInNonceTests.swift in Sources */,
@@ -723,6 +740,9 @@
 				A5B5BC0CD44FF86CBB1361FE /* LadderStandings.swift in Sources */,
 				39F844201CA6B307D2E938DC /* LobbyViewModel.swift in Sources */,
 				DE9734EC8DC2E2B1DC813F1F /* LobbyClient.swift in Sources */,
+				F41E000000000000000B0042 /* RoomInvitesClient.swift in Sources */,
+				F41E000000000000000B0043 /* RoomInvitesViewModels.swift in Sources */,
+				F41E000000000000000B0044 /* RoomInvitesViews.swift in Sources */,
 				31EED3E7CE74DE674478E1FC /* LobbyModels.swift in Sources */,
 				C69FB35F4AA035D13F12F2E3 /* PostgresValues.swift in Sources */,
 				60CEB77CE80375849D19FB8F /* BallPartyApp.swift in Sources */,
