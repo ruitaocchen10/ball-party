@@ -29,7 +29,7 @@ const BOARD: {
   round_count: 14,
   current_round: 1,
   slot: "QB",
-  turn_deadline: new Date(Date.now() + 30_000).toISOString(),
+  turn_deadline: new Date(Date.now() + 60_000).toISOString(),
   server_now: new Date().toISOString(),
   x_factor_open: false,
   active_user_id: "u0",
@@ -355,8 +355,8 @@ describe("the turn clock", () => {
   it("counts down without a unit suffix while a turn is in progress", () => {
     renderMatch();
     const clock = screen.getByRole("region", { name: "Clock" });
-    expect(clock).toHaveTextContent("30");
-    expect(clock).not.toHaveTextContent("30s");
+    expect(clock).toHaveTextContent("60");
+    expect(clock).not.toHaveTextContent("60s");
     expect(screen.getByRole("timer")).toBeInTheDocument();
   });
 

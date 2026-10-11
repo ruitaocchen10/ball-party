@@ -90,7 +90,7 @@ enum SabotageMode: String, Sendable, CaseIterable, Identifiable, Decodable {
 
 enum SabotageRules {
     /// One shared clock per turn; the same length for every turn.
-    static let turnDurationMs = 30_000
+    static let turnDurationMs = 60_000
     static let xFactor = "X_FACTOR"
 
     /// Slot for a round, defaulting to the full game's order. Past the last
