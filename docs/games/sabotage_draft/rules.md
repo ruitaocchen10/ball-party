@@ -77,7 +77,7 @@ only that you picked something.
 rotates, in fixed seat order every round. A round takes as many turns as there
 are seated players.
 
-**One shared clock per turn.** A turn is one `turn_deadline` (30 seconds). The
+**One shared clock per turn.** A turn is one `turn_deadline` (60 seconds). The
 active seat may lock their pick any time within it, and every other seat may
 lock exactly one guess or one explicit pass any time within it, including
 before the pick exists, since the eligible pool (the active seat's spun

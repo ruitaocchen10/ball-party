@@ -238,7 +238,7 @@ features:
     summary: Sabotage Draft (room, 2-4)
     web: done
     ios: done
-    note: 'The whole game plays on iOS: the host picks Full, Standard or Quick in the room, then the hidden pick, both guess types (player only, player and exact year), pass, the X-Factor decision, the season result with letter grades and the tiebreak bracket all match the web. Laid out as a pinned header (round and slot, your picks, on the clock, the turn clock) over three native tabs, Draft, Rosters and Log, with the guess search as a bottom sheet. Rosters has one tab per player rather than every roster stacked. Gaps: the host Pause button (web only), the replay format picker (iOS replays the same format), and the web turn-reveal reel and "your pick was sabotaged" swap card (iOS shows hits as badges on Rosters and in the Log).'
+    note: 'The whole game plays on iOS: the host picks Full, Standard or Quick in the room, then the hidden pick, both guess types (player only, player and exact year), pass, the X-Factor decision, the season result with letter grades and the tiebreak bracket all match the web. Laid out as a pinned header (round and slot, your picks, on the clock, the turn clock) over three native tabs, Draft, Rosters and Log, with the guess search as a bottom sheet. Rosters has one tab per player rather than every roster stacked. Each new turn opens with the franchise reel (the same one QB Season Builder uses) and the pick and guess forms wait for it to land. Gaps: the host Pause button (web only), the replay format picker (iOS replays the same format), and the web "your pick was sabotaged" swap card (iOS shows hits as badges on Rosters and in the Log).'
   - id: game.wavelength
     summary: 2v2 Wavelength (room, 2 or 4)
     web: done

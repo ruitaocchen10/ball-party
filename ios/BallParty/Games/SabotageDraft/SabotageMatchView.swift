@@ -148,6 +148,31 @@ private enum PickerTarget: String, Identifiable {
 private struct SabotageDraftTab: View {
     @ObservedObject var viewModel: SabotageViewModel
     @State private var picker: PickerTarget?
+    /// The last turn whose spin has landed. A turn that opens while you watch,
+    /// including the game's first, starts unrevealed so the reel plays; one
+    /// already well underway when you arrive (rejoining, or switching back to
+    /// this tab) starts revealed.
+    @State private var revealedTurn: String?
+
+    init(viewModel: SabotageViewModel) {
+        self.viewModel = viewModel
+        if let board = viewModel.board, let deadline = board.turnDeadline {
+            let elapsedMs = Date().timeIntervalSince(deadline) * 1_000 + Double(SabotageRules.turnDurationMs)
+            if elapsedMs > 5_000 { _revealedTurn = State(initialValue: Self.key(for: board)) }
+        }
+    }
+
+    private static func key(for board: SabotageBoard) -> String {
+        "\(board.currentRound)-\(board.activeUserId?.uuidString ?? "none")"
+    }
+
+    private var turnKey: String {
+        viewModel.board.map(Self.key(for:)) ?? ""
+    }
+
+    /// Mirrors the web's `useTurnReveal`: the pick and guess forms wait for
+    /// the reel to land, so nobody acts before the team is shown.
+    private var revealed: Bool { revealedTurn == turnKey }
 
     var body: some View {
         ScrollView {
@@ -155,8 +180,18 @@ private struct SabotageDraftTab: View {
                 if viewModel.isPaused {
                     ErrorBanner(message: "The host paused the game.")
                 }
-                spinCard
-                action
+                if !revealed, let spin = viewModel.activeSpin {
+                    spinReel(spin)
+                } else {
+                    spinCard
+                }
+                if revealed {
+                    action
+                } else {
+                    Text("Finding the team…")
+                        .font(.sans(14))
+                        .foregroundStyle(Theme.fgMuted)
+                }
                 if let message = viewModel.errorMessage {
                     ErrorBanner(message: message)
                 }
@@ -169,9 +204,25 @@ private struct SabotageDraftTab: View {
         .sheet(item: $picker) { target in
             sheet(for: target)
         }
+        // `.task(id:)` restarts on every new turn, like the web's
+        // `useTimedReveal(turnKey, ...)`.
+        .task(id: turnKey) {
+            guard revealedTurn != turnKey else { return }
+            try? await Task.sleep(nanoseconds: UInt64(QbSpinReel.revealSeconds * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            revealedTurn = turnKey
+        }
     }
 
     // MARK: The spin
+
+    private func spinReel(_ spin: SabotageSpin) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(viewModel.isActive ? "You are picking" : "\(viewModel.activePlayer?.name ?? "…") is picking")
+                .monoLabel(10, tracking: 0.13, color: Theme.fgMuted)
+            QbSpinReel(franchiseCode: spin.franchiseCode, season: nil, spinKey: turnKey)
+        }
+    }
 
     /// What is publicly true right now, whether or not it is the viewer's move:
     /// whose franchise this is and what its drafter may take from it.

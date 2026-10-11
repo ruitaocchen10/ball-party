@@ -66,7 +66,7 @@ const MESSAGE: Record<string, string> = { already_picked: "Your pick is already 
 // advance_turn, and submit_x_factor_decision (see
 // supabase/migrations/20260826180000_0063_sabotage_draft_merged_turn.sql),
 // so TurnClock needs one constant rather than a phase-keyed map.
-const TURN_DURATION_MS = 30_000;
+const TURN_DURATION_MS = 60_000;
 
 export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost = false, paused = false, initial }: { matchId: string; viewerId: string; roomCode?: string | null; isHost?: boolean; paused?: boolean; initial: { board: Board; players: Player[]; spins: Spin[]; picks: Pick[]; statuses: PickStatus[]; hits: Hit[]; guesses: Guess[]; passes: Pass[]; decisions: Decision[]; standings: Standing[]; tiebreaks: Tiebreak[]; pickAvs: PickAv[] } }) {
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);

@@ -66,9 +66,9 @@ select is(
 );
 
 select ok(
-  (select turn_deadline = now() + interval '30 seconds'
+  (select turn_deadline = now() + interval '60 seconds'
     from public.sabotage_draft_matches where match_id = (select v from tests.fx where k = 'm4')),
-  'a freshly dealt turn has the configured 30-second deadline'
+  'a freshly dealt turn has the configured 60-second deadline'
 );
 
 select is(

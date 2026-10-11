@@ -17,7 +17,9 @@ import SwiftUI
 /// each leg.
 struct QbSpinReel: View {
     let franchiseCode: String
-    let season: Int
+    /// Nil for a spin with no season attached (a Sabotage Draft turn spins a
+    /// franchise only); the rows then drop the year line.
+    let season: Int?
     /// Change this to remount and replay the animation — the SwiftUI
     /// equivalent of the web's `reelKey`.
     let spinKey: String
@@ -102,7 +104,7 @@ struct QbSpinReel: View {
 /// landing never looks like a swap to a different layout, only a stop.
 struct QbTeamRow: View {
     let code: String
-    let season: Int
+    let season: Int?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -113,7 +115,7 @@ struct QbTeamRow: View {
                     .lineSpacing(0)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(String(season)).monoLabel(11, tracking: 0.15)
+                if let season { Text(String(season)).monoLabel(11, tracking: 0.15) }
             }
             Spacer(minLength: 0)
         }
