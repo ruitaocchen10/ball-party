@@ -233,9 +233,11 @@ private struct BoldTagPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             PillChoice(
-                selection: Binding(get: { type }, set: switchType),
+                selection: Binding(get: { type }, set: { switchType($0) }),
                 options: BoldTargetType.allCases,
-                title: \.title,
+                // A closure, not `\.title`: the CI toolchain (Xcode 26.6, Swift 6.3.3)
+                // crashes in IR generation on the key-path-to-function adapter.
+                title: { $0.title },
                 accessibilityName: "Tag type"
             )
             switch type {

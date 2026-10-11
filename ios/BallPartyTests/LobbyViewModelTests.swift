@@ -90,11 +90,11 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.errorMessage, "some_new_rule")
     }
 
-    func test_joining_needsACode() async {
+    func test_joining_needsALinkToken() async {
         await viewModel.joinRoom(code: "  ")
 
         XCTAssertEqual(viewModel.stage, .entry)
-        XCTAssertEqual(viewModel.errorMessage, "Enter a room code.")
+        XCTAssertEqual(viewModel.errorMessage, "That room link isn't valid.")
         XCTAssertTrue(client.joinedCodes.isEmpty)
     }
 
