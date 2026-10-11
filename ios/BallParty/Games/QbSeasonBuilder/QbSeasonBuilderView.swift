@@ -59,9 +59,7 @@ private struct QbStartingView: View {
                 .padding(16)
             }
         } else {
-            ProgressView {
-                Text("Dealing your first spin…").monoLabel(11, tracking: 0.15)
-            }
+            LoadingState(label: "Dealing your first spin…")
         }
     }
 }
@@ -170,7 +168,7 @@ private struct QbPickView: View {
                 Task { await viewModel.lockInPick() }
             } label: {
                 HStack(spacing: 8) {
-                    if viewModel.isBusy { ProgressView() }
+                    if viewModel.isBusy { LoadingSpinner(size: 16) }
                     Text("Lock in pick")
                 }
             }
@@ -199,7 +197,8 @@ private struct QbSpinHeader: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.surfaceRaised)
-            .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
     }
@@ -256,7 +255,8 @@ private struct QbBuildTrack: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 7)
                 .background(pick != nil ? Theme.surfaceRaised : .clear)
-                .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(pick?.grade.map { "\(slot.label): grade \($0.spoken)" } ?? "\(slot.label): open")
             }
@@ -312,7 +312,8 @@ private struct QbQuarterbackCard: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceRaised)
-        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
     }
 }
 
@@ -346,8 +347,9 @@ private struct QbStatTile: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .background(active ? Theme.panel : .clear)
-            .overlay(Rectangle().strokeBorder(active ? Theme.panel : Theme.line, lineWidth: 1))
+            .background(active ? Theme.hidden : .clear)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(active ? Theme.hidden : Theme.line, lineWidth: 1))
             .opacity(isTaken ? 0.5 : 1)
             .contentShape(Rectangle())
         }
@@ -397,7 +399,8 @@ private struct QbBuildCard: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceRaised)
-        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
     }
 }
 
@@ -452,7 +455,7 @@ private struct QbFinishView: View {
                             .buttonStyle(.solid)
                     } else {
                         HStack(spacing: 12) {
-                            ProgressView()
+                            LoadingSpinner()
                             Text("Revealing your season…").slabTitle(27).accessibilityAddTraits(.isHeader)
                         }
                     }
@@ -460,7 +463,8 @@ private struct QbFinishView: View {
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.surfaceRaised)
-                .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
 
                 if let board = viewModel.board {
                     QbBuildCard(board: board)

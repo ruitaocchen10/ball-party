@@ -51,7 +51,7 @@ struct OtherProfileView: View {
     private var content: some View {
         switch viewModel.phase {
         case .loading:
-            ProgressView().frame(maxWidth: .infinity, minHeight: 160)
+            LoadingSpinner().frame(maxWidth: .infinity, minHeight: 160)
         case .notFound:
             EmptyState(title: "Player not found", message: OtherProfileViewModel.notFoundMessage)
         case .failed:
@@ -87,7 +87,7 @@ struct OtherProfileView: View {
 
     private func header(_ player: PlayerIdentity) -> some View {
         HStack(spacing: 16) {
-            Portrait(name: player.displayName, url: player.avatarURL)
+            Avatar(name: player.displayName, url: player.avatarURL)
             VStack(alignment: .leading, spacing: 0) {
                 Text(player.displayName)
                     .slabTitle(38)

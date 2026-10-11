@@ -70,9 +70,7 @@ private struct SoloStartingView: View {
                 .padding(16)
             }
         } else {
-            ProgressView {
-                Text("Dealing your ladder…").monoLabel(11, tracking: 0.15)
-            }
+            LoadingState(label: "Dealing your ladder…")
         }
     }
 }

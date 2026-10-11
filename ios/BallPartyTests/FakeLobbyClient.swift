@@ -16,6 +16,10 @@ final class FakeLobbyClient: LobbyClient, @unchecked Sendable {
     private(set) var lobby: Lobby?
     private(set) var members: [LobbyMember] = []
     private(set) var run: LiveRun?
+    private var wins: [UUID: Int] = [:]
+    /// What the host has saved on the room, and each save in order.
+    private(set) var savedFormat = LobbyGameFormat()
+    private(set) var formatSaves: [LobbyGameFormat] = []
     private var joinedAt = Date(timeIntervalSince1970: 1_786_795_200)
 
     // What the app asked for.
@@ -46,12 +50,29 @@ final class FakeLobbyClient: LobbyClient, @unchecked Sendable {
         return hostId
     }
 
+    /// Settings the host saved on the room before the viewer arrived.
+    func hostHadSavedFormat(_ format: LobbyGameFormat) {
+        savedFormat = format
+    }
+
+    /// The host changes the room's saved settings from their own device.
+    func hostSavesFormat(_ format: LobbyGameFormat) {
+        savedFormat = format
+        emit(.changed)
+    }
+
     @discardableResult
     func anotherPlayerJoins(named name: String = "Sam") -> UUID {
         let userId = UUID()
         members.append(member(userId, name))
         emit(.changed)
         return userId
+    }
+
+    /// A match in this room finishes with `userId` in first place.
+    func playerWinsAMatch(_ userId: UUID) {
+        wins[userId, default: 0] += 1
+        emit(.changed)
     }
 
     func playerLeaves(_ userId: UUID) {
@@ -125,7 +146,18 @@ final class FakeLobbyClient: LobbyClient, @unchecked Sendable {
         try fail("snapshot")
         snapshotCount += 1
         guard let lobby else { throw LobbyServerError(message: "lobby_not_found") }
-        return LobbySnapshot(lobby: lobby, members: members, run: run)
+        let withFormat = Lobby(
+            id: lobby.id, code: lobby.code, hostId: lobby.hostId,
+            selectedGame: lobby.selectedGame, closedAt: lobby.closedAt, gameFormat: savedFormat
+        )
+        return LobbySnapshot(lobby: withFormat, members: members, run: run, wins: wins)
+    }
+
+    func setGameFormat(lobbyId: UUID, format: LobbyGameFormat) async throws {
+        try fail("set_lobby_game_format")
+        savedFormat = format
+        formatSaves.append(format)
+        emit(.changed)
     }
 
     func selectGame(lobbyId: UUID, game: MatchGame) async throws {

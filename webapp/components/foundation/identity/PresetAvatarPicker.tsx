@@ -93,7 +93,7 @@ export function PresetAvatarPicker({
       <div className="mt-3">
         <div className="flex items-center gap-1.5" aria-label="Avatar colors">
           {colors.map((color, index) => (
-            <label key={index} className="relative block h-7 w-7 cursor-pointer overflow-hidden rounded-full ring-1 ring-line transition-transform hover:scale-105 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-panel">
+            <label key={index} className="relative block h-7 w-7 cursor-pointer overflow-hidden rounded-full ring-1 ring-line transition-transform hover:scale-105 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-fg">
               <span className="sr-only">Avatar color {index + 1}</span>
               <input
                 type="color"
@@ -117,8 +117,8 @@ export function PresetAvatarPicker({
               aria-pressed={selected}
               disabled={uploadingSeed !== null}
               onClick={() => choose(seed)}
-              className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel disabled:cursor-wait ${
-                selected ? "ring-2 ring-panel ring-offset-2 ring-offset-surface-raised" : "ring-1 ring-line"
+              className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg disabled:cursor-wait ${
+                selected ? "ring-2 ring-fg ring-offset-2 ring-offset-surface-raised" : "ring-1 ring-line"
               }`}
             >
               <span

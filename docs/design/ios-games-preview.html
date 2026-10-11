@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ball Party iOS Games Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* Tokens copied from ios/BallParty/Foundation/UIKit/Theme.swift */
+  :root {
+    --surface:#111311; --raised:#191C18;
+    --panel:#F4EFE4; --shade:#E7E0CF; --panel-fg:#17150F; --panel-muted:#6B665A; --panel-soft:#4C4739; --panel-line:#C7BFAC;
+    --hidden:#C9382C; --hidden-text:#FF5A4A; --hidden-ink:#A8291F;
+    --elite:#476735; --strong:#80672B; --even:#6B665A; --rough:#855238;
+    --fg:#E8E3D6; --muted:#8F8B7F; --line:rgba(232,227,214,.13);
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:#0a0b0a; color:var(--fg); font-family:'Barlow',sans-serif; padding:32px 16px 80px; }
+  h1 { font-family:'Bebas Neue'; font-size:48px; font-weight:400; letter-spacing:.02em; }
+  h2 { font-family:'Bebas Neue'; font-size:34px; font-weight:400; letter-spacing:.02em; margin-top:56px; }
+  .wrap { max-width:1320px; margin:0 auto; }
+  .lede { color:var(--muted); max-width:70ch; line-height:1.5; margin-top:8px; }
+  .tag { display:inline-block; font:700 10px 'JetBrains Mono'; letter-spacing:.14em; text-transform:uppercase; padding:3px 8px; margin-right:8px; vertical-align:middle; }
+  .tag.real { background:var(--panel); color:var(--panel-fg); }
+  .tag.concept { background:var(--hidden-ink); color:var(--panel); }
+  .row { display:flex; gap:32px; flex-wrap:wrap; margin-top:24px; align-items:flex-start; }
+  figure { width:390px; }
+  figcaption { font:400 11px 'JetBrains Mono'; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-top:12px; line-height:1.5; }
+  figcaption b { color:var(--fg); }
+
+  /* phone */
+  .phone { width:390px; height:780px; border:10px solid #2a2c29; border-radius:48px; background:var(--surface); overflow:hidden; display:flex; flex-direction:column; position:relative; }
+  .phone::before { content:''; position:absolute; top:8px; left:50%; transform:translateX(-50%); width:110px; height:28px; background:#000; border-radius:20px; z-index:5; }
+  .status { height:48px; flex:none; display:flex; justify-content:space-between; align-items:flex-end; padding:0 28px 4px; font:600 14px 'Barlow'; }
+  .nav { height:40px; flex:none; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--line); font:600 16px 'Barlow'; position:relative; }
+  .nav .back { position:absolute; left:14px; color:var(--fg); font-size:20px; }
+  .screen { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px; scrollbar-width:none;
+    background: radial-gradient(120% 60% at 50% 0%, #1a1f19 0%, var(--surface) 70%); }
+  .screen::-webkit-scrollbar { display:none; }
+  .tabbar { height:64px; flex:none; border-top:1px solid var(--line); background:var(--surface); display:flex; justify-content:space-around; align-items:center; font:400 9px 'JetBrains Mono'; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding-bottom:10px; }
+  .tabbar .on { color:var(--fg); }
+  .tabbar i { display:block; width:20px; height:20px; border:1.5px solid currentColor; border-radius:5px; margin:0 auto 4px; }
+
+  /* type */
+  .slab { font-family:'Bebas Neue'; text-transform:uppercase; font-weight:400; line-height:1; }
+  .mono { font-family:'JetBrains Mono'; text-transform:uppercase; color:var(--muted); font-size:11px; letter-spacing:.13em; }
+  .mono.b { font-weight:700; }
+  .num { font-family:'JetBrains Mono'; font-weight:700; font-variant-numeric:tabular-nums; }
+  .red { color:var(--hidden-text); } .fgc { color:var(--fg); }
+
+  /* surfaces */
+  .well { background:var(--raised); border:1px solid var(--line); box-shadow:inset 0 2px 3px rgba(0,0,0,.4); }
+  .panel { background:var(--panel); color:var(--panel-fg); box-shadow:0 10px 24px rgba(0,0,0,.5); }
+  .rule { height:1px; background:var(--line); }
+  .pad12 { padding:12px; }
+  .between { display:flex; justify-content:space-between; align-items:baseline; }
+  .concealed { background:repeating-linear-gradient(135deg,var(--hidden-ink) 0 6px,#992419 6px 12px); color:var(--panel); text-align:center; padding:14px; position:relative; box-shadow:0 10px 12px rgba(0,0,0,.4); }
+  .concealed::after { content:''; position:absolute; inset:4px; border:1px solid rgba(244,239,228,.35); pointer-events:none; }
+  .concealed .mono { color:var(--panel); }
+  .btn { display:flex; align-items:center; justify-content:center; min-height:48px; padding:0 16px; font:400 18px 'Bebas Neue'; text-transform:uppercase; letter-spacing:.03em; border:1px solid var(--line); flex:1; }
+  .btn.solid { background:var(--panel); color:var(--panel-fg); border-color:transparent; }
+  .btn.ghost { background:transparent; color:var(--fg); }
+  .btn.ink { background:var(--panel-fg); color:var(--panel); }
+  .btn.off { opacity:.4; }
+  .avatar { border-radius:50%; background:var(--shade); color:var(--panel-fg); display:flex; align-items:center; justify-content:center; font:700 12px 'Barlow'; flex:none; }
+  .avatar.me { box-shadow:0 0 0 2px var(--hidden); }
+  .meter { height:6px; background:rgba(232,227,214,.1); } .meter i { display:block; height:100%; background:var(--fg); }
+
+  /* lot strip */
+  .strip { display:flex; gap:6px; overflow:hidden; }
+  .cell { height:64px; flex:none; padding:8px; }
+  .cell.cur { width:112px; background:var(--panel); color:var(--panel-fg); }
+  .cell.set { width:92px; }
+  .cell.todo { width:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+  .cell.todo span { width:22px; height:22px; border:1px dashed var(--line); border-radius:50%; }
+  .cell .mono { font-size:9px; letter-spacing:.07em; }
+
+  /* lot card */
+  .lot .head { display:flex; justify-content:space-between; align-items:baseline; padding:14px 16px 0; }
+  .lot .who { text-align:center; padding:12px 16px; }
+  .portrait { width:96px; height:96px; border-radius:50%; background:var(--shade); margin:0 auto 8px; display:flex; align-items:center; justify-content:center; font:400 40px 'Bebas Neue'; color:var(--panel-muted); border:1px solid var(--panel-line); }
+  .pts { text-align:center; padding:14px; background:var(--shade); }
+  .sold { margin:0 16px 12px; padding:12px; border:1px solid var(--panel-line); }
+
+  /* roster */
+  .slot { display:flex; align-items:center; gap:8px; background:var(--panel); color:var(--panel-fg); padding:8px 10px; min-height:40px; margin-bottom:6px; font:600 14px 'Barlow'; }
+  .slot.empty { border:1px dashed var(--panel-line); }
+  .slot .k { width:44px; font:700 10px 'JetBrains Mono'; letter-spacing:.08em; color:var(--panel-muted); text-transform:uppercase; }
+  .slot .p { margin-left:auto; font:700 12px 'JetBrains Mono'; }
+  .slot.hl { box-shadow:inset 0 0 0 2px var(--hidden); }
+
+  .prow { padding:10px 12px; display:flex; align-items:center; gap:10px; }
+  .token { display:flex; gap:12px; align-items:center; padding:10px 12px; border-top:1px solid var(--line); }
+  .token .ic { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex:none; }
+  .token .ic.on { background:var(--panel); color:var(--panel-fg); } .token .ic.off { border:1px solid var(--line); color:var(--muted); }
+  .token .mono { font-size:9px; letter-spacing:.04em; text-transform:none; }
+
+  /* gallery of states */
+  .note { background:var(--raised); border-left:3px solid var(--hidden); padding:12px 16px; margin-top:24px; max-width:90ch; line-height:1.5; color:var(--fg); font-size:14px; }
+
+  /* proposed: pinned header + segmented game tabs */
+  .pin { flex:none; padding:10px 16px 0; background:var(--surface); display:flex; flex-direction:column; gap:8px; }
+  .pin .grid { display:grid; grid-template-columns:1fr 1fr 1fr; border:1px solid var(--line); background:var(--raised); }
+  .pin .grid > div { padding:6px 10px; border-right:1px solid var(--line); }
+  .pin .grid > div:last-child { border-right:0; }
+  .pin .grid .mono { font-size:9px; letter-spacing:.1em; display:block; }
+  .pin .grid .num { font-size:20px; }
+  .seg3 { display:flex; border:1px solid var(--line); margin:0 16px; flex:none; }
+  .seg3 div { flex:1; min-height:40px; display:flex; align-items:center; justify-content:center; gap:6px; font:400 17px 'Bebas Neue'; text-transform:uppercase; color:var(--fg); letter-spacing:.03em; }
+  .seg3 div.on { background:var(--panel); color:var(--panel-fg); }
+  .seg3 i { width:7px; height:7px; border-radius:50%; background:var(--hidden-text); display:inline-block; }
+  .screen.tight { padding:12px 16px; gap:12px; }
+  .lotc { display:flex; gap:12px; align-items:center; padding:12px 16px; }
+  .lotc .portrait { width:64px; height:64px; margin:0; font-size:26px; flex:none; }
+  .toks { display:flex; gap:8px; }
+  .tk { flex:1; min-height:56px; border:1px solid var(--line); background:var(--raised); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font:400 16px 'Bebas Neue'; text-transform:uppercase; }
+  .tk small { font:400 8px 'JetBrains Mono'; letter-spacing:.1em; color:var(--muted); }
+  .tk.on { background:var(--panel); color:var(--panel-fg); } .tk.on small { color:var(--panel-muted); }
+  .tk.off { color:var(--muted); }
+  .lrow { display:flex; align-items:center; gap:10px; padding:9px 12px; border-top:1px solid var(--line); }
+  .lrow:first-child { border-top:0; }
+  .lrow .sq { width:36px; font:700 10px 'JetBrains Mono'; letter-spacing:.06em; color:var(--fg); }
+  .before-after { display:flex; gap:12px; align-items:center; margin-top:16px; flex-wrap:wrap; }
+  .chip { font:700 11px 'JetBrains Mono'; letter-spacing:.1em; text-transform:uppercase; padding:6px 10px; border:1px solid var(--line); color:var(--muted); }
+  .chip b { color:var(--fg); }
+
+  .tabbar2 { height:83px; flex:none; border-top:1px solid var(--line); background:var(--surface); display:flex; padding:8px 8px 0; }
+  .tabbar2 div { flex:1; text-align:center; font:500 10px 'Barlow'; color:var(--muted); }
+  .tabbar2 div.on { color:var(--fg); }
+  .tabbar2 b { display:block; font-size:20px; line-height:26px; filter:grayscale(1) opacity(.6); position:relative; width:max-content; margin:0 auto 2px; }
+  .tabbar2 .on b { filter:grayscale(1) brightness(1.6); }
+  .tabbar2 u { position:absolute; top:-2px; right:-8px; min-width:8px; height:8px; border-radius:50%; background:var(--hidden); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Ball Party on iOS</h1>
+  <p class="lede">A visual preview of the multiplayer games on iOS. Auction Team Builder is drawn from the shipped SwiftUI (<code>AuctionMatchView.swift</code>) using the real tokens from <code>Theme.swift</code>. Higher or Lower is also live on iOS. Sabotage Draft and Wavelength are web only today, so those screens are <b>concepts</b> built from the same UI kit and each game's rules doc.</p>
+  <p class="note"><span class="tag real">From code</span> mirrors what the app renders, laid out from the view tree. <span class="tag concept">Concept</span> is a proposal, not shipped. These are HTML approximations: spacing and fonts are close, not pixel-exact against a simulator.</p>
+
+  <!-- ============ AUCTION ============ -->
+  <h2><span class="tag real">From code</span>Auction Team Builder: today</h2>
+  <p class="lede">Live room match, 4 players, Standard preset ($25 purse, 5 slots, tokens on). Scroll inside each phone: the bid bar sits below the fold on the first screen, and the clock and tokens are further down.</p>
+
+  <div class="row">
+    <!-- 1: your turn -->
+    <figure>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="nav"><span class="back">‹</span>Auction</div>
+        <div class="screen">
+          <!-- strip -->
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Lot 7 of 20</span><span class="mono">Season total · 2010–2025</span></div>
+            <div class="strip">
+              <div class="cell set well"><div class="between"><span class="mono b fgc">RB</span><span class="mono b fgc">$9</span></div><div class="slab" style="font-size:14px">C. McCaffrey</div><div class="mono">Dana</div></div>
+              <div class="cell set well"><div class="between"><span class="mono b fgc">QB</span><span class="mono b fgc">$4</span></div><div class="slab" style="font-size:14px">J. Allen</div><div class="mono">You</div></div>
+              <div class="cell cur"><div class="slab" style="font-size:18px">Lot 7</div><div class="mono" style="color:var(--panel-muted)">On the clock</div><div class="mono b" style="color:var(--panel-fg)">Marcus</div></div>
+              <div class="cell todo well"><span></span><div class="mono">8</div></div>
+              <div class="cell todo well"><span></span><div class="mono">9</div></div>
+            </div>
+          </div>
+
+          <!-- lot card -->
+          <div class="panel lot">
+            <div class="head"><span class="slab" style="font-size:22px">WR</span><span class="mono b" style="color:var(--panel-muted)">MIN</span></div>
+            <div class="who">
+              <div class="portrait">JJ</div>
+              <div class="slab" style="font-size:32px">Justin Jefferson</div>
+              <div class="mono" style="color:var(--panel-muted);margin-top:8px">2022 · Minnesota Vikings</div>
+            </div>
+            <div class="concealed">
+              <div class="mono b" style="letter-spacing:.15em">Fantasy points</div>
+              <div class="slab" style="font-size:40px;margin-top:4px">? ? ?</div>
+              <div class="mono b" style="letter-spacing:.1em;margin-top:4px">Scouted: Great</div>
+            </div>
+          </div>
+
+          <!-- bid bar -->
+          <div class="well pad12" style="display:flex;flex-direction:column;gap:12px">
+            <div class="between"><span class="mono b" style="letter-spacing:.14em">Standing bid</span><span class="slab" style="font-size:28px">$6</span></div>
+            <span class="mono" style="letter-spacing:.08em">Your budget · $21 left</span>
+            <div style="display:flex;gap:8px"><div class="btn solid">+$1</div><div class="btn solid">+$5</div><div class="btn solid">Custom</div></div>
+            <span class="mono" style="letter-spacing:.05em">Marcus holds $6. Raise or pass.</span>
+            <div class="rule"></div>
+            <div class="btn ghost">Pass</div>
+          </div>
+
+          <!-- clock -->
+          <div class="well pad12" style="display:flex;flex-direction:column;gap:8px">
+            <span class="mono b" style="letter-spacing:.14em">Your turn</span>
+            <span class="num" style="font-size:40px">14</span>
+            <div class="meter"><i style="width:72%"></i></div>
+          </div>
+
+          <!-- tokens -->
+          <div class="well">
+            <div class="between pad12"><span class="mono b" style="letter-spacing:.14em">Tokens</span><span class="mono" style="font-size:10px">2 of 3 left</span></div>
+            <div class="token"><div class="ic on">⊘</div><div><div class="slab" style="font-size:18px">Pass</div><div class="mono">Decline a lot you'd otherwise be stuck with, for free. Usable only when you're the only bidder left on it.</div></div><span class="mono b fgc" style="font-size:9px;margin-left:auto">Not now</span></div>
+            <div class="token"><div class="ic off">✓</div><div><div class="slab" style="font-size:18px;color:var(--muted)">Scout</div><div class="mono">Peek a rough performance tier for the current lot before it sells. Only you see it.</div></div><span class="mono b" style="font-size:9px;margin-left:auto">Used</span></div>
+            <div class="token"><div class="ic on">🔒</div><div><div class="slab" style="font-size:18px">Seal</div><div class="mono">Force this lot into a simultaneous blind bid instead of back-and-forth raising.</div></div><span class="mono b fgc" style="font-size:9px;margin-left:auto">Ready</span></div>
+          </div>
+
+          <!-- table -->
+          <div class="well">
+            <div class="between" style="padding:10px 12px"><span class="mono b" style="letter-spacing:.15em">The table</span><span class="mono" style="font-size:9px">Budget · points</span></div>
+            <div class="rule"></div>
+            <div class="prow"><div class="avatar me" style="width:28px;height:28px">R</div><div><div class="slab" style="font-size:18px">You <span class="mono b red" style="font-size:9px">YOU</span></div><div class="mono red" style="font-size:10px">Your turn</div></div><div style="margin-left:auto;text-align:right"><div class="num fgc" style="font-size:16px">312.4</div><div class="mono" style="font-size:10px">$21 &nbsp;🎫2</div></div><span class="mono">›</span></div>
+            <div style="padding:0 10px 10px">
+              <div class="slot"><span class="k">QB</span><span class="avatar" style="width:22px;height:22px;font-size:9px">JA</span>Josh Allen<span class="p">312.4</span></div>
+              <div class="slot empty"><span class="k">RB</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div>
+              <div class="slot empty"><span class="k">WR</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div>
+              <div class="slot empty"><span class="k">TE</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div>
+              <div class="slot empty"><span class="k">FLEX</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div>
+            </div>
+            <div class="rule"></div>
+            <div class="prow"><div class="avatar" style="width:28px;height:28px">D</div><div><div class="slab" style="font-size:18px">Dana</div><div class="mono" style="font-size:10px">Passed</div></div><div style="margin-left:auto;text-align:right"><div class="num fgc" style="font-size:16px">368.1</div><div class="mono" style="font-size:10px">$16 &nbsp;🎫3</div></div><span class="mono">›</span></div>
+            <div class="rule"></div>
+            <div class="prow"><div class="avatar" style="width:28px;height:28px">M</div><div><div class="slab" style="font-size:18px">Marcus</div><div class="mono red" style="font-size:10px">High bid · $6</div></div><div style="margin-left:auto;text-align:right"><div class="num fgc" style="font-size:16px">0.0</div><div class="mono" style="font-size:10px">$25 &nbsp;🎫3</div></div><span class="mono">›</span></div>
+            <div class="rule"></div>
+            <div class="prow"><div class="avatar" style="width:28px;height:28px">T</div><div><div class="slab" style="font-size:18px">Tess</div><div class="mono" style="font-size:10px">Waiting</div></div><div style="margin-left:auto;text-align:right"><div class="num fgc" style="font-size:16px">201.7</div><div class="mono" style="font-size:10px">$20 &nbsp;🎫3</div></div><span class="mono">›</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Your turn.</b> Strip, mystery lot (points hidden in red weave), bid bar, clock, token tray, the table. Tab bar is hidden during a live match.</figcaption>
+    </figure>
+
+    <!-- 2: sold -->
+    <figure>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="nav"><span class="back">‹</span>Auction</div>
+        <div class="screen">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Lot 7 of 20</span><span class="mono">Season total · 2010–2025</span></div>
+            <div class="strip">
+              <div class="cell set well"><div class="between"><span class="mono b fgc">QB</span><span class="mono b fgc">$4</span></div><div class="slab" style="font-size:14px">J. Allen</div><div class="mono">You</div></div>
+              <div class="cell cur"><div class="slab" style="font-size:18px">Lot 7</div><div class="mono" style="color:var(--panel-muted)">Sold</div><div class="mono b" style="color:var(--panel-fg)">Marcus</div></div>
+              <div class="cell todo well"><span></span><div class="mono">8</div></div>
+              <div class="cell todo well"><span></span><div class="mono">9</div></div>
+            </div>
+          </div>
+          <div class="panel lot">
+            <div class="head"><span class="slab" style="font-size:22px">WR</span><span class="mono b" style="color:var(--panel-muted)">MIN</span></div>
+            <div class="who">
+              <div class="portrait">JJ</div>
+              <div class="slab" style="font-size:32px">Justin Jefferson</div>
+              <div class="mono" style="color:var(--panel-muted);margin-top:8px">2022 · Minnesota Vikings</div>
+            </div>
+            <div class="sold">
+              <div class="mono b" style="font-size:10px;color:var(--panel-muted)">Sold to</div>
+              <div class="between"><span class="slab" style="font-size:22px">Marcus</span><span class="num" style="font-size:14px">$11</span></div>
+            </div>
+            <div class="pts">
+              <div class="mono b" style="color:var(--panel-muted);letter-spacing:.15em">Fantasy points</div>
+              <div class="slab num" style="font-size:40px;color:var(--elite);font-family:'Bebas Neue';font-weight:400">341.5</div>
+              <div class="mono b" style="color:var(--panel-muted);letter-spacing:.1em">Elite season</div>
+            </div>
+          </div>
+          <div class="well pad12"><div class="between"><span class="mono b" style="letter-spacing:.14em">Standing bid</span><span class="slab" style="font-size:28px">$11</span></div></div>
+          <div class="well pad12" style="display:flex;flex-direction:column;gap:8px">
+            <span class="mono b" style="letter-spacing:.14em">Sold</span>
+            <span class="num" style="font-size:40px">3</span>
+            <div class="meter"><i style="width:60%"></i></div>
+          </div>
+          <div class="well">
+            <div class="between" style="padding:10px 12px"><span class="mono b" style="letter-spacing:.15em">The table</span><span class="mono" style="font-size:9px">Budget · points</span></div>
+            <div class="rule"></div>
+            <div class="prow" style="background:rgba(244,239,228,.1)"><div class="avatar" style="width:28px;height:28px">M</div><div><div class="slab" style="font-size:18px">Marcus</div><div class="mono red" style="font-size:10px">Won · $11</div></div><div style="margin-left:auto;text-align:right"><div class="num fgc" style="font-size:16px">341.5</div><div class="mono" style="font-size:10px">$14 &nbsp;🎫3</div></div><span class="mono" style="transform:rotate(90deg)">›</span></div>
+            <div style="padding:0 10px 10px">
+              <div class="slot hl"><span class="k">WR</span><span class="avatar" style="width:22px;height:22px;font-size:9px">JJ</span>Justin Jefferson<span class="p">341.5</span></div>
+              <div class="slot empty"><span class="k">QB</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div>
+              <div class="slot empty"><span class="k">RB</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Sold.</b> The red weave peels away to the cream result, tinted by grade (green = elite). The buyer's row highlights and the new roster slot gets a red outline.</figcaption>
+    </figure>
+
+    <!-- 3: final -->
+    <figure>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="nav"><span class="back">‹</span>Auction</div>
+        <div class="screen">
+          <div>
+            <div class="mono b red" style="font-size:10px;letter-spacing:.16em">Final</div>
+            <div class="slab" style="font-size:44px;margin-top:4px">Dana wins the auction</div>
+          </div>
+          <div class="panel" style="padding:14px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;gap:12px;align-items:center"><span class="num" style="width:40px;color:var(--hidden-ink);font-size:16px">#1</span><div><div class="slab" style="font-size:24px">Dana</div><div class="mono" style="color:var(--panel-muted)">1,284.6 pts</div></div></div>
+            <div class="slot" style="background:transparent;padding:0"><span class="k">QB</span><span class="avatar" style="width:28px;height:28px;background:var(--shade)">LJ</span><div><div>Lamar Jackson</div><div class="mono" style="font-size:10px;color:var(--panel-muted)">2019 · BAL</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:16px;color:var(--elite)">415.2</div><div class="mono" style="font-size:10px;color:var(--panel-muted)">$8</div></div></div>
+            <div class="slot" style="background:transparent;padding:0"><span class="k">RB</span><span class="avatar" style="width:28px;height:28px;background:var(--shade)">DH</span><div><div>Derrick Henry</div><div class="mono" style="font-size:10px;color:var(--panel-muted)">2020 · TEN</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:16px;color:var(--elite)">340.1</div><div class="mono" style="font-size:10px;color:var(--panel-muted)">$7</div></div></div>
+            <div class="slot" style="background:transparent;padding:0"><span class="k">WR</span><span class="avatar" style="width:28px;height:28px;background:var(--shade)">CL</span><div><div>CeeDee Lamb</div><div class="mono" style="font-size:10px;color:var(--panel-muted)">2023 · DAL</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:16px;color:var(--strong)">289.4</div><div class="mono" style="font-size:10px;color:var(--panel-muted)">$5</div></div></div>
+          </div>
+          <div class="well" style="padding:14px"><div style="display:flex;gap:12px;align-items:center"><span class="num" style="width:40px;color:var(--muted);font-size:16px">#2</span><div><div class="slab" style="font-size:24px">Marcus</div><div class="mono">1,190.3 pts</div></div></div></div>
+          <div class="well" style="padding:14px"><div style="display:flex;gap:12px;align-items:center"><span class="num" style="width:40px;color:var(--muted);font-size:16px">#3</span><div><div class="slab" style="font-size:24px">You <span class="mono b red" style="font-size:9px">You</span></div><div class="mono">1,102.8 pts</div></div></div></div>
+          <div class="well" style="padding:14px"><div style="display:flex;gap:12px;align-items:center"><span class="num" style="width:40px;color:var(--muted);font-size:16px">#4</span><div><div class="slab" style="font-size:24px">Tess</div><div class="mono">981.0 pts</div></div></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div class="btn solid">Play again</div><div class="btn ghost">Back to the room</div></div>
+        </div>
+      </div>
+      <figcaption><b>Final.</b> The winner is the only cream panel, with every slot's player, season, price and graded points. The rest are dark wells. Host picks Play again / Back to the room.</figcaption>
+    </figure>
+  </div>
+
+
+  <!-- ============ AUCTION PROPOSED ============ -->
+  <h2><span class="tag concept">Concept</span>Auction Team Builder: tabbed</h2>
+  <p class="lede">Same data, reorganised. A pinned header keeps budget, standing bid and the clock on screen at all times. The native bottom tab bar (already themed in <code>Theme.swift</code>) splits the rest into <b>Auction</b> (decide now), <b>Table</b> (all rosters) and <b>Board</b> (lot history). The first tab needs no scrolling.</p>
+  <div class="before-after">
+    <span class="chip">Today: <b>one long column</b>, bid bar below the fold</span>
+    <span class="chip">Tabbed: <b>0 scroll</b> on the bidding tab</span>
+    <span class="chip">Tabs: <b>native TabView</b>, bottom</span>
+    <span class="chip">Token text: <b>info sheet</b>, not inline</span>
+  </div>
+  <div class="row">
+    <figure><div class="phone">
+        <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="nav"><span class="back">‹</span>Auction</div>
+        <div class="pin">
+          <div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Lot 7 of 20</span><span class="mono" style="font-size:10px">Season total · 2010–2025</span></div>
+          <div class="grid"><div><span class="mono">Your budget</span><span class="num">$21</span></div><div><span class="mono">Standing bid</span><span class="num">$6</span></div><div><span class="mono red">Your turn</span><span class="num red">14</span></div></div>
+          <div class="meter"><i style="width:72%"></i></div>
+        </div><div class="screen tight" style="background:var(--surface)">
+          <div class="panel">
+            <div class="between" style="padding:10px 16px 0"><span class="slab" style="font-size:18px">WR</span><span class="mono b" style="color:var(--panel-muted)">MIN</span></div>
+            <div class="lotc"><div class="portrait">JJ</div><div><div class="slab" style="font-size:28px">Justin Jefferson</div><div class="mono" style="color:var(--panel-muted);margin-top:4px;font-size:10px">2022 · Minnesota Vikings</div></div></div>
+            <div class="concealed" style="padding:10px"><span class="mono b" style="letter-spacing:.15em">Fantasy points</span> &nbsp;<span class="slab" style="font-size:28px;vertical-align:middle">? ? ?</span><div class="mono b" style="letter-spacing:.1em;margin-top:2px;font-size:10px">Scouted: Great</div></div>
+          </div>
+          <div class="well pad12" style="display:flex;flex-direction:column;gap:10px">
+            <span class="mono" style="letter-spacing:.05em">Marcus holds $6. Raise or pass.</span>
+            <div style="display:flex;gap:8px"><div class="btn solid">+$1</div><div class="btn solid">+$5</div><div class="btn solid">Custom</div></div>
+            <div class="btn ghost" style="min-height:44px">Pass</div>
+          </div>
+          <div class="toks">
+            <div class="tk off">⊘ Pass<small>Not now</small></div>
+            <div class="tk off">✓ Scout<small>Used</small></div>
+            <div class="tk on">🔒 Seal<small>Ready</small></div>
+          </div>
+        </div>
+        <div class="tabbar2"><div class="on"><b>🔨</b>Auction</div><div class=""><b>👥</b>Table</div><div class=""><b>☰</b>Board</div></div>
+      </div><figcaption><b>Auction tab.</b> Compact lot card (portrait beside the name), hidden points as a slim red band, bid buttons, and the three tokens as a row. Everything needed to act is visible at once.</figcaption></figure>
+    <figure><div class="phone">
+        <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="nav"><span class="back">‹</span>Auction</div>
+        <div class="pin">
+          <div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Lot 7 of 20</span><span class="mono" style="font-size:10px">Season total · 2010–2025</span></div>
+          <div class="grid"><div><span class="mono">Your budget</span><span class="num">$21</span></div><div><span class="mono">Standing bid</span><span class="num">$11</span></div><div><span class="mono ">Sold</span><span class="num ">3</span></div></div>
+          <div class="meter"><i style="width:60%"></i></div>
+        </div><div class="screen tight" style="background:var(--surface)">
+          <div class="panel">
+            <div class="between" style="padding:10px 16px 0"><span class="slab" style="font-size:18px">WR</span><span class="mono b" style="color:var(--panel-muted)">MIN</span></div>
+            <div class="lotc"><div class="portrait">JJ</div><div><div class="slab" style="font-size:28px">Justin Jefferson</div><div class="mono" style="color:var(--panel-muted);margin-top:4px;font-size:10px">2022 · Minnesota Vikings</div></div></div>
+            <div class="sold" style="margin:0 16px 10px;padding:8px 12px"><div class="between"><span><span class="mono b" style="font-size:10px;color:var(--panel-muted)">Sold to&nbsp;</span><span class="slab" style="font-size:22px">Marcus</span></span><span class="num" style="font-size:14px">$11</span></div></div>
+            <div class="pts" style="padding:10px"><span class="mono b" style="color:var(--panel-muted);letter-spacing:.15em">Fantasy points</span> &nbsp;<span class="slab" style="font-size:34px;color:var(--elite)">341.5</span><div class="mono b" style="color:var(--panel-muted);letter-spacing:.1em;font-size:10px">Elite season</div></div>
+          </div>
+          <div class="well pad12"><span class="mono" style="letter-spacing:.05em">Next lot starts in 3…</span></div>
+          <div class="toks">
+            <div class="tk off">⊘ Pass<small>Not now</small></div>
+            <div class="tk off">✓ Scout<small>Used</small></div>
+            <div class="tk off">🔒 Seal<small>Not now</small></div>
+          </div>
+        </div>
+        <div class="tabbar2"><div class="on"><b>🔨</b>Auction</div><div class=""><b>👥<u></u></b>Table</div><div class=""><b>☰</b>Board</div></div>
+      </div><figcaption><b>Sold.</b> The result replaces the red band in place. The red dot on <b>Table</b> says a roster changed while you were looking at the lot.</figcaption></figure>
+    <figure><div class="phone">
+        <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="nav"><span class="back">‹</span>Auction</div>
+        <div class="pin">
+          <div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Lot 7 of 20</span><span class="mono" style="font-size:10px">Season total · 2010–2025</span></div>
+          <div class="grid"><div><span class="mono">Your budget</span><span class="num">$21</span></div><div><span class="mono">Standing bid</span><span class="num">$6</span></div><div><span class="mono red">Your turn</span><span class="num red">14</span></div></div>
+          <div class="meter"><i style="width:72%"></i></div>
+        </div><div class="screen tight" style="background:var(--surface)">
+          <div class="well"><div class="prow"><div class="avatar me" style="width:28px;height:28px">R</div><div><div class="slab" style="font-size:18px">You <span class="mono b red" style="font-size:9px">YOU</span></div><div class="mono red" style="font-size:10px">Your turn</div></div><div style="margin-left:auto;text-align:right"><div class="num fgc" style="font-size:16px">312.4</div><div class="mono" style="font-size:10px">$21 · 🎫2</div></div></div><div style="padding:0 10px 10px"><div class="slot"><span class="k">QB</span><span class="avatar" style="width:22px;height:22px;font-size:9px">JA</span>Josh Allen<span class="p">312.4</span></div><div class="slot empty"><span class="k">RB</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">WR</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">TE</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">FLEX</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div></div></div><div class="well"><div class="prow"><div class="avatar" style="width:28px;height:28px">D</div><div><div class="slab" style="font-size:18px">Dana</div><div class="mono" style="font-size:10px">Passed</div></div><div style="margin-left:auto;text-align:right"><div class="num fgc" style="font-size:16px">368.1</div><div class="mono" style="font-size:10px">$16 · 🎫3</div></div></div><div style="padding:0 10px 10px"><div class="slot"><span class="k">QB</span><span class="avatar" style="width:22px;height:22px;font-size:9px">LJ</span>Lamar Jackson<span class="p">254.0</span></div><div class="slot"><span class="k">RB</span><span class="avatar" style="width:22px;height:22px;font-size:9px">DH</span>Derrick Henry<span class="p">114.1</span></div><div class="slot empty"><span class="k">WR</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">TE</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">FLEX</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div></div></div><div class="well"><div class="prow"><div class="avatar" style="width:28px;height:28px">M</div><div><div class="slab" style="font-size:18px">Marcus</div><div class="mono red" style="font-size:10px">High bid · $6</div></div><div style="margin-left:auto;text-align:right"><div class="num fgc" style="font-size:16px">0.0</div><div class="mono" style="font-size:10px">$25 · 🎫3</div></div></div><div style="padding:0 10px 10px"><div class="slot empty"><span class="k">QB</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">RB</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">WR</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">TE</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">FLEX</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div></div></div><div class="well"><div class="prow"><div class="avatar" style="width:28px;height:28px">T</div><div><div class="slab" style="font-size:18px">Tess</div><div class="mono" style="font-size:10px">Waiting</div></div><div style="margin-left:auto;text-align:right"><div class="num fgc" style="font-size:16px">201.7</div><div class="mono" style="font-size:10px">$20 · 🎫3</div></div></div><div style="padding:0 10px 10px"><div class="slot"><span class="k">QB</span><span class="avatar" style="width:22px;height:22px;font-size:9px">JH</span>Jalen Hurts<span class="p">201.7</span></div><div class="slot empty"><span class="k">RB</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">WR</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">TE</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">FLEX</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div></div></div></div>
+        <div class="tabbar2"><div class=""><b>🔨</b>Auction</div><div class="on"><b>👥</b>Table</div><div class=""><b>☰</b>Board</div></div>
+      </div><figcaption><b>Table tab.</b> Every roster fully open, with no tapping to expand. The pinned header still counts down, so reading rosters never costs you the clock.</figcaption></figure>
+    <figure><div class="phone">
+        <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="nav"><span class="back">‹</span>Auction</div>
+        <div class="pin">
+          <div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Lot 7 of 20</span><span class="mono" style="font-size:10px">Season total · 2010–2025</span></div>
+          <div class="grid"><div><span class="mono">Your budget</span><span class="num">$21</span></div><div><span class="mono">Standing bid</span><span class="num">$6</span></div><div><span class="mono red">Your turn</span><span class="num red">14</span></div></div>
+          <div class="meter"><i style="width:72%"></i></div>
+        </div><div class="screen tight" style="background:var(--surface)">
+          <div class="mono b" style="letter-spacing:.14em">Settled lots</div>
+          <div class="well"><div class="lrow"><span class="sq">QB</span><div><div class="slab" style="font-size:17px">Lamar Jackson</div><div class="mono" style="font-size:10px">Dana · 2019 · BAL</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:15px;color:#8fb37a">254.0</div><div class="mono" style="font-size:10px">$8</div></div></div><div class="lrow"><span class="sq">RB</span><div><div class="slab" style="font-size:17px">Derrick Henry</div><div class="mono" style="font-size:10px">Dana · 2020 · TEN</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:15px">114.1</div><div class="mono" style="font-size:10px">$7</div></div></div><div class="lrow"><span class="sq">QB</span><div><div class="slab" style="font-size:17px">Josh Allen</div><div class="mono" style="font-size:10px">You · 2021 · BUF</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:15px;color:#8fb37a">312.4</div><div class="mono" style="font-size:10px">$4</div></div></div><div class="lrow"><span class="sq">QB</span><div><div class="slab" style="font-size:17px">Jalen Hurts</div><div class="mono" style="font-size:10px">Tess · 2022 · PHI</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:15px">201.7</div><div class="mono" style="font-size:10px">$3</div></div></div><div class="lrow"><span class="sq">RB</span><div><div class="slab" style="font-size:17px">C. McCaffrey</div><div class="mono" style="font-size:10px">Dana · 2023 · SF</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:15px">—</div><div class="mono" style="font-size:10px">$9</div></div></div><div class="lrow"><span class="sq">TE</span><div><div class="slab" style="font-size:17px;color:var(--muted)">Skipped</div><div class="mono" style="font-size:10px">Never shown to the table</div></div></div>
+          </div>
+          <div class="mono b" style="letter-spacing:.14em;margin-top:4px">Coming up</div>
+          <div class="well">
+            <div class="lrow"><span class="sq" style="color:var(--hidden-text)">Now</span><div><div class="slab" style="font-size:17px">Lot 7 · WR</div><div class="mono red" style="font-size:10px">On the clock</div></div></div>
+            <div class="lrow"><span class="sq" style="color:var(--muted)">8</span><div><div class="mono">Not yet dealt</div></div></div>
+            <div class="lrow"><span class="sq" style="color:var(--muted)">9</span><div><div class="mono">Not yet dealt</div></div></div>
+          </div>
+        </div>
+        <div class="tabbar2"><div class=""><b>🔨</b>Auction</div><div class=""><b>👥</b>Table</div><div class="on"><b>☰</b>Board</div></div>
+      </div><figcaption><b>Board tab.</b> The horizontal strip becomes a vertical list: slot, buyer, price, graded points. Skipped lots are marked, upcoming lots are listed below.</figcaption></figure>
+  </div>
+
+  <!-- ============ HIGHER OR LOWER ============ -->
+  <h2><span class="tag real">Live on iOS</span>Higher or Lower</h2>
+  <p class="lede">Already shipped in <code>MatchView.swift</code>. Header and standings are taken from the code. The card pair is an approximation, since I only read the standings and final sections.</p>
+  <div class="row">
+    <figure>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+        <div class="nav"><span class="back">‹</span>Higher or Lower</div>
+        <div class="screen">
+          <div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Question 5 of 12</span><span class="mono">Season total · 2010–2025</span></div>
+          <div class="panel" style="padding:16px;text-align:center">
+            <div class="mono b" style="color:var(--panel-muted)">Anchor</div>
+            <div class="portrait" style="margin-top:8px">DA</div>
+            <div class="slab" style="font-size:30px">Davante Adams</div>
+            <div class="mono" style="color:var(--panel-muted);margin:6px 0 10px">2020 · WR · GB</div>
+            <div class="slab" style="font-size:44px">314.8 <span class="mono" style="font-size:11px;color:var(--panel-muted)">pts</span></div>
+          </div>
+          <div class="concealed" style="padding:18px">
+            <div class="mono b">Challenger</div>
+            <div class="slab" style="font-size:28px;margin-top:6px">Stefon Diggs</div>
+            <div class="mono" style="margin-top:4px">2020 · WR · BUF</div>
+            <div class="slab" style="font-size:40px;margin-top:8px">? ? ?</div>
+          </div>
+          <div style="display:flex;gap:8px"><div class="btn solid">▲ Higher</div><div class="btn solid">▼ Lower</div></div>
+          <div class="well pad12"><div class="between"><span class="mono b" style="letter-spacing:.14em">Time</span><span class="num" style="font-size:22px">11</span></div><div class="meter" style="margin-top:8px"><i style="width:55%"></i></div></div>
+          <div class="well">
+            <div class="between" style="padding:10px 12px"><span class="mono b" style="letter-spacing:.15em">Standings</span><span class="mono" style="font-size:9px">Correct · best</span></div>
+            <div class="rule"></div>
+            <div class="prow"><span class="num" style="width:28px;font-size:14px;color:var(--hidden-text)">#1</span><div><div class="slab" style="font-size:18px">Dana</div><div class="mono" style="font-size:10px">Locked in</div></div><div style="margin-left:auto;text-align:right"><div class="mono b fgc" style="font-size:10px">4 correct</div><div class="mono" style="font-size:10px">4 best</div></div></div>
+            <div class="rule"></div>
+            <div class="prow"><span class="num" style="width:28px;font-size:14px;color:var(--muted)">T-2</span><div><div class="slab" style="font-size:18px">You <span class="mono b red" style="font-size:9px">You</span></div><div class="mono" style="font-size:10px">Thinking…</div></div><div style="margin-left:auto;text-align:right"><div class="mono b fgc" style="font-size:10px">3 correct</div><div class="mono" style="font-size:10px">3 best</div></div></div>
+            <div class="rule"></div>
+            <div class="prow"><span class="num" style="width:28px;font-size:14px;color:var(--muted)">T-2</span><div><div class="slab" style="font-size:18px">Marcus</div><div class="mono" style="font-size:10px">Locked in</div></div><div style="margin-left:auto;text-align:right"><div class="mono b fgc" style="font-size:10px">3 correct</div><div class="mono" style="font-size:10px">2 best</div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Mid-ladder.</b> Anchor on cream, challenger concealed in red until everyone calls it. Standings rank by correct, then best streak.</figcaption>
+    </figure>
+  </div>
+
+  <!-- ============ SABOTAGE -->
+  <h2><span class="tag concept">Concept</span>Sabotage Draft: tabbed</h2>
+  <p class="lede">Header carries the round, your progress and who is on the shared 30-second clock. <b>Draft</b> is the only tab you act in. Guess search opens as a bottom sheet so the tab never scrolls. <b>Rosters</b> shows every board, with opponents' picks kept in red weave. <b>Log</b> lists each turn's hits and misses; its badge lights when a guess lands on you.</p>
+  <div class="row">
+    <figure><div class="phone"><div class="status"><span>9:41</span><span>●●● 5G</span></div><div class="nav"><span class="back">‹</span>Sabotage Draft</div><div class="pin"><div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Round 4 of 14 · WR1</span><span class="mono" style="font-size:10px">Full</span></div><div class="grid"><div><span class="mono">Your picks</span><span class="num">3 / 14</span></div><div><span class="mono red">On the clock</span><span class="num red">Maya</span></div><div><span class="mono red">Turn clock</span><span class="num red">22</span></div></div><div class="meter"><i style="width:73%"></i></div></div><div class="screen tight" style="background:var(--surface);position:relative">
+ <div class="panel" style="padding:12px 16px"><div class="mono b" style="color:var(--panel-muted)">Maya's spin</div><div class="slab" style="font-size:32px;margin-top:2px">Pittsburgh Steelers</div><div class="mono" style="color:var(--panel-muted);font-size:10px;margin-top:2px">Any WR in franchise history, any year</div></div>
+ <div class="concealed" style="padding:12px"><span class="mono b">Maya's pick · hidden</span><div class="slab" style="font-size:28px;margin-top:4px">??? · WR · PIT · ????</div></div>
+ <div class="well pad12" style="display:flex;flex-direction:column;gap:10px">
+  <span class="mono b" style="letter-spacing:.14em">Your guess</span>
+  <div style="display:flex;border:1px solid var(--line)"><div class="btn" style="background:var(--panel);color:var(--panel-fg);border:0;min-height:40px">Player</div><div class="btn" style="border:0;min-height:40px">Player + year</div></div>
+  <div style="background:var(--raised);border:1px solid var(--line);padding:0 12px;min-height:48px;display:flex;align-items:center;justify-content:space-between;font:400 16px 'Barlow';color:var(--muted)">Search PIT receivers…<span>⌕</span></div>
+  <div style="display:flex;gap:8px"><div class="btn solid off">Lock guess</div><div class="btn ghost">Pass</div></div>
+  <span class="mono" style="text-transform:none;letter-spacing:.04em;font-size:10px">Dana locked · Tess thinking · you haven't acted</span>
+ </div></div><div class="tabbar2"><div class="on"><b>🎯</b>Draft</div><div class=""><b>👥</b>Rosters</div><div class=""><b>📜</b>Log</div></div></div><figcaption><b>Draft tab.</b> Spin as the cream panel, the hidden pick in red, guess type and a search field that opens the sheet. Pass and Lock sit in reach.</figcaption></figure>
+    <figure><div class="phone"><div class="status"><span>9:41</span><span>●●● 5G</span></div><div class="nav"><span class="back">‹</span>Sabotage Draft</div><div class="pin"><div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Round 4 of 14 · WR1</span><span class="mono" style="font-size:10px">Full</span></div><div class="grid"><div><span class="mono">Your picks</span><span class="num">3 / 14</span></div><div><span class="mono red">On the clock</span><span class="num red">Maya</span></div><div><span class="mono red">Turn clock</span><span class="num red">22</span></div></div><div class="meter"><i style="width:73%"></i></div></div><div class="screen tight" style="background:var(--surface);position:relative">
+ <div class="panel" style="padding:12px 16px"><div class="mono b" style="color:var(--panel-muted)">Maya's spin</div><div class="slab" style="font-size:32px;margin-top:2px">Pittsburgh Steelers</div><div class="mono" style="color:var(--panel-muted);font-size:10px;margin-top:2px">Any WR in franchise history, any year</div></div>
+ <div class="concealed" style="padding:12px"><span class="mono b">Maya's pick · hidden</span><div class="slab" style="font-size:28px;margin-top:4px">??? · WR · PIT · ????</div></div>
+ <div class="well pad12" style="display:flex;flex-direction:column;gap:10px">
+  <span class="mono b" style="letter-spacing:.14em">Your guess</span>
+  <div style="display:flex;border:1px solid var(--line)"><div class="btn" style="background:var(--panel);color:var(--panel-fg);border:0;min-height:40px">Player</div><div class="btn" style="border:0;min-height:40px">Player + year</div></div>
+  <div style="background:var(--raised);border:1px solid var(--line);padding:0 12px;min-height:48px;display:flex;align-items:center;justify-content:space-between;font:400 16px 'Barlow';color:var(--muted)">Search PIT receivers…<span>⌕</span></div>
+  <div style="display:flex;gap:8px"><div class="btn solid off">Lock guess</div><div class="btn ghost">Pass</div></div>
+  <span class="mono" style="text-transform:none;letter-spacing:.04em;font-size:10px">Dana locked · Tess thinking · you haven't acted</span>
+ </div><div style="position:absolute;inset:0;background:rgba(0,0,0,.55)"></div>
+ <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px 16px;box-shadow:0 -10px 30px rgba(0,0,0,.6)">
+  <div style="width:36px;height:4px;background:var(--line);margin:0 auto 12px"></div>
+  <div style="background:var(--raised);border:1px solid var(--line);padding:0 12px;min-height:48px;display:flex;align-items:center;font:400 16px 'Barlow'">Antonio Br<span style="border-left:2px solid var(--fg);height:20px;margin-left:1px"></span></div>
+  <div style="margin-top:6px">
+   <div class="between" style="padding:12px 0;border-top:1px solid var(--line)"><span style="font:600 16px 'Barlow'">Antonio Brown</span><span class="mono" style="font-size:10px">WR · 2010–2017</span></div>
+   <div class="between" style="padding:12px 0;border-top:1px solid var(--line)"><span style="font:600 16px 'Barlow'">Antwaan Randle El</span><span class="mono" style="font-size:10px">WR · 2002–2005</span></div>
+   <div class="between" style="padding:12px 0;border-top:1px solid var(--line)"><span style="font:600 16px 'Barlow'">Antonio Bryant</span><span class="mono" style="font-size:10px">WR · 2010</span></div>
+  </div></div></div><div class="tabbar2"><div class="on"><b>🎯</b>Draft</div><div class=""><b>👥</b>Rosters</div><div class=""><b>📜</b>Log</div></div></div><figcaption><b>Guess search.</b> A bottom sheet over the Draft tab: type a few letters, tap a result. Locking from here returns to the tab.</figcaption></figure>
+    <figure><div class="phone"><div class="status"><span>9:41</span><span>●●● 5G</span></div><div class="nav"><span class="back">‹</span>Sabotage Draft</div><div class="pin"><div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Round 4 of 14 · WR1</span><span class="mono" style="font-size:10px">Full</span></div><div class="grid"><div><span class="mono">Your picks</span><span class="num">3 / 14</span></div><div><span class="mono red">On the clock</span><span class="num red">Maya</span></div><div><span class="mono red">Turn clock</span><span class="num red">22</span></div></div><div class="meter"><i style="width:73%"></i></div></div><div class="screen tight" style="background:var(--surface);position:relative"><div class="well"><div class="prow"><div class="avatar me" style="width:28px;height:28px">R</div><div><div class="slab" style="font-size:18px">You <span class="mono b red" style="font-size:9px">YOU</span></div><div class="mono" style="font-size:10px">3 of 14 filled</div></div><div class="mono b fgc" style="margin-left:auto;font-size:10px">Spun NE</div></div><div style="padding:0 10px 10px"><div class="slot"><span class="k">QB</span><span class="avatar" style="width:22px;height:22px;font-size:9px">TB</span>Tom Brady<span class="p">NE</span></div><div class="slot"><span class="k">RB1</span><span class="avatar" style="width:22px;height:22px;font-size:9px">RG</span>James White<span class="p">—</span></div><div class="slot empty"><span class="k">RB2</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">WR1</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div></div></div><div class="well"><div class="prow"><div class="avatar" style="width:28px;height:28px">M</div><div><div class="slab" style="font-size:18px">Maya</div><div class="mono red" style="font-size:10px">On the clock</div></div><div class="mono b fgc" style="margin-left:auto;font-size:10px">Spun PIT</div></div><div style="padding:0 10px 10px"><div class="slot" style="background:var(--hidden-ink);color:var(--panel)"><span class="k" style="color:var(--panel)">QB</span><span class="mono b" style="color:var(--panel);font-size:10px">??? · picked</span></div><div class="slot" style="background:var(--hidden-ink);color:var(--panel)"><span class="k" style="color:var(--panel)">RB1</span><span class="mono b" style="color:var(--panel);font-size:10px">??? · picked</span></div><div class="slot empty"><span class="k">RB2</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div><div class="slot empty"><span class="k">WR1</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div></div></div><div class="well"><div class="prow"><div class="avatar" style="width:28px;height:28px">D</div><div><div class="slab" style="font-size:18px">Dana</div><div class="mono" style="font-size:10px">Locked</div></div><div class="mono b fgc" style="margin-left:auto;font-size:10px">Spun GB</div></div><div style="padding:0 10px 10px"><div class="slot" style="background:var(--hidden-ink);color:var(--panel)"><span class="k" style="color:var(--panel)">QB</span><span class="mono b" style="color:var(--panel);font-size:10px">??? · picked</span></div><div class="slot" style="background:var(--hidden-ink);color:var(--panel)"><span class="k" style="color:var(--panel)">RB1</span><span class="mono b" style="color:var(--panel);font-size:10px">??? · picked</span></div><div class="slot empty"><span class="k">RB2</span><span class="mono" style="font-size:10px;color:var(--panel-muted)">— empty —</span></div></div></div></div><div class="tabbar2"><div class=""><b>🎯</b>Draft</div><div class="on"><b>👥</b>Rosters</div><div class=""><b>📜</b>Log</div></div></div><figcaption><b>Rosters tab.</b> Yours is in the clear. Everyone else's picks are red until the end, so you can see how many slots are filled but not who. Scrolls.</figcaption></figure>
+    <figure><div class="phone"><div class="status"><span>9:41</span><span>●●● 5G</span></div><div class="nav"><span class="back">‹</span>Sabotage Draft</div><div class="pin"><div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Round 4 of 14 · WR1</span><span class="mono" style="font-size:10px">Full</span></div><div class="grid"><div><span class="mono">Your picks</span><span class="num">3 / 14</span></div><div><span class="mono red">On the clock</span><span class="num red">Maya</span></div><div><span class="mono red">Turn clock</span><span class="num red">22</span></div></div><div class="meter"><i style="width:73%"></i></div></div><div class="screen tight" style="background:var(--surface);position:relative"><div class="mono b" style="letter-spacing:.14em">Round 4 so far</div><div class="well"><div class="between" style="padding:10px 12px"><span class="slab" style="font-size:18px">Tess drafted</span><span class="mono" style="font-size:9px">Turn 3 · Tess</span></div><div class="rule"></div><div class="between" style="padding:6px 12px"><span style="font:600 14px 'Barlow'">You · player only</span><span class="mono" style="font-size:10px">Miss</span></div><div class="between" style="padding:6px 12px"><span style="font:600 14px 'Barlow'">Maya · pass</span><span class="mono" style="font-size:10px">—</span></div><div class="between" style="padding:6px 12px"><span style="font:600 14px 'Barlow'">Dana · player + year</span><span class="mono b red" style="font-size:10px">Exact hit</span></div><div style="height:4px"></div></div><div class="well"><div class="between" style="padding:10px 12px"><span class="slab" style="font-size:18px">Dana drafted</span><span class="mono" style="font-size:9px">Turn 2 · Dana</span></div><div class="rule"></div><div class="between" style="padding:6px 12px"><span style="font:600 14px 'Barlow'">You · player + year</span><span class="mono" style="font-size:10px">Miss</span></div><div class="between" style="padding:6px 12px"><span style="font:600 14px 'Barlow'">Maya · player only</span><span class="mono b red" style="font-size:10px">Respun year</span></div><div class="between" style="padding:6px 12px"><span style="font:600 14px 'Barlow'">Tess · pass</span><span class="mono" style="font-size:10px">—</span></div><div style="height:4px"></div></div><div class="well"><div class="between" style="padding:10px 12px"><span class="slab" style="font-size:18px">You drafted</span><span class="mono" style="font-size:9px">Turn 1 · You</span></div><div class="rule"></div><div class="between" style="padding:6px 12px"><span style="font:600 14px 'Barlow'">Maya · pass</span><span class="mono" style="font-size:10px">—</span></div><div class="between" style="padding:6px 12px"><span style="font:600 14px 'Barlow'">Dana · player only</span><span class="mono" style="font-size:10px">Miss</span></div><div class="between" style="padding:6px 12px"><span style="font:600 14px 'Barlow'">Tess · pass</span><span class="mono" style="font-size:10px">—</span></div><div style="height:4px"></div></div></div><div class="tabbar2"><div class=""><b>🎯</b>Draft</div><div class=""><b>👥</b>Rosters</div><div class="on"><b>📜<u></u></b>Log</div></div></div><figcaption><b>Log tab.</b> Newest turn first: who guessed what and whether it landed. The dot appears when a hit changes your roster.</figcaption></figure>
+  </div>
+
+<!-- ============ WAVELENGTH -->
+  <h2><span class="tag concept">Concept</span>2v2 Wavelength: tabbed</h2>
+  <p class="lede">Only two tabs: the game is one board and a score. The header carries both team scores and the clock. <b>Dial</b> changes with your role (psychic, guesser, or watching). <b>Rounds</b> keeps the history of clues, with each target revealed once its round ends.</p>
+  <div class="row">
+    <figure><div class="phone"><div class="status"><span>9:41</span><span>●●● 5G</span></div><div class="nav"><span class="back">‹</span>Wavelength</div><div class="pin"><div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Round 3 of 8 · 2v2</span><span class="mono" style="font-size:10px">Kayla is the psychic</span></div><div class="grid"><div><span class="mono">Team A</span><span class="num">7</span></div><div><span class="mono">Team B</span><span class="num">5</span></div><div><span class="mono red">Clock</span><span class="num red">0:31</span></div></div><div class="meter"><i style="width:40%"></i></div></div><div class="screen tight" style="background:var(--surface);position:relative"><div class="mono b red" style="font-size:10px;letter-spacing:.16em">You are the psychic · only you see the target</div>
+ <div class="panel" style="padding:12px 8px 10px"><svg viewBox="0 0 320 190" style="width:300px;display:block;margin:0 auto"><path d="M20 170 A140 140 0 0 1 300 170" fill="none" stroke="#C7BFAC" stroke-width="30"/><g stroke-width="30" fill="none"><path d="M85.2 52.6 A140 140 0 0 1 100.5 41.5" stroke="#E7C08A"/><path d="M100.5 41.5 A140 140 0 0 1 117.5 33.4" stroke="#D49A4C"/><path d="M117.5 33.4 A140 140 0 0 1 135.5 28.6" stroke="#A8291F"/><path d="M135.5 28.6 A140 140 0 0 1 153.8 26.5" stroke="#D49A4C"/><path d="M153.8 26.5 A140 140 0 0 1 171.9 27.1" stroke="#E7C08A"/></g><circle cx="160" cy="170" r="8" fill="#17150F"/><line x1="160" y1="170" x2="95" y2="55" stroke="#17150F" stroke-width="3" stroke-linecap="round"/><text x="20" y="188" font-family="JetBrains Mono" font-size="9" fill="#17150F" letter-spacing="1" opacity=".7">LESS LIKELY</text><text x="300" y="188" font-family="JetBrains Mono" font-size="9" fill="#17150F" letter-spacing="1" text-anchor="end" opacity=".7">MORE LIKELY</text></svg><div class="mono" style="color:var(--panel-muted);text-align:center;margin-top:2px">A player you'd want to party with</div></div>
+ <div class="well pad12" style="display:flex;flex-direction:column;gap:10px"><span class="mono b" style="letter-spacing:.14em">Your clue · 1–8 words, no digits</span><div style="background:var(--raised);border:1px solid var(--line);padding:0 12px;min-height:48px;display:flex;align-items:center;font:400 16px 'Barlow'">Gronk</div><div class="btn solid">Send clue</div></div></div><div class="tabbar2"><div class="on"><b>🎚</b>Dial</div><div class=""><b>🕘</b>Rounds</div></div></div><figcaption><b>Dial · psychic.</b> The cream dial shows the wedges only you can see. Write a clue, send it.</figcaption></figure>
+    <figure><div class="phone"><div class="status"><span>9:41</span><span>●●● 5G</span></div><div class="nav"><span class="back">‹</span>Wavelength</div><div class="pin"><div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Round 3 of 8 · 2v2</span><span class="mono" style="font-size:10px">Kayla is the psychic</span></div><div class="grid"><div><span class="mono">Team A</span><span class="num">7</span></div><div><span class="mono">Team B</span><span class="num">5</span></div><div><span class="mono red">Clock</span><span class="num red">0:31</span></div></div><div class="meter"><i style="width:40%"></i></div></div><div class="screen tight" style="background:var(--surface);position:relative"><div class="mono b red" style="font-size:10px;letter-spacing:.16em">Kayla's clue · you guess</div>
+ <div class="panel" style="padding:10px 16px;text-align:center"><div class="mono" style="color:var(--panel-muted);font-size:10px">A player you'd want to party with</div><div class="slab" style="font-size:38px">"Gronk"</div></div>
+ <div class="concealed" style="padding:12px 8px 8px"><svg viewBox="0 0 320 190" style="width:300px;display:block;margin:0 auto"><path d="M20 170 A140 140 0 0 1 300 170" fill="none" stroke="rgba(244,239,228,.35)" stroke-width="30"/><circle cx="160" cy="170" r="8" fill="#F4EFE4"/><line x1="160" y1="170" x2="95" y2="55" stroke="#F4EFE4" stroke-width="3" stroke-linecap="round"/><text x="20" y="188" font-family="JetBrains Mono" font-size="9" fill="#F4EFE4" letter-spacing="1" opacity=".7">LESS LIKELY</text><text x="300" y="188" font-family="JetBrains Mono" font-size="9" fill="#F4EFE4" letter-spacing="1" text-anchor="end" opacity=".7">MORE LIKELY</text></svg><div class="mono b" style="margin-top:2px">Target hidden</div></div>
+ <div class="well pad12" style="display:flex;flex-direction:column;gap:10px"><div style="height:36px;background:var(--raised);border:1px solid var(--line);position:relative"><div style="position:absolute;left:30%;top:5px;bottom:5px;width:26px;background:var(--panel)"></div></div><div class="btn solid">Lock guess</div></div></div><div class="tabbar2"><div class="on"><b>🎚</b>Dial</div><div class=""><b>🕘</b>Rounds</div></div></div><figcaption><b>Dial · guesser.</b> The clue is on a panel and the target is red-woven. Slide to swing the needle, then lock in.</figcaption></figure>
+    <figure><div class="phone"><div class="status"><span>9:41</span><span>●●● 5G</span></div><div class="nav"><span class="back">‹</span>Wavelength</div><div class="pin"><div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Round 3 of 8 · 2v2</span><span class="mono" style="font-size:10px">Kayla is the psychic</span></div><div class="grid"><div><span class="mono">Team A</span><span class="num">7</span></div><div><span class="mono">Team B</span><span class="num">5</span></div><div><span class="mono red">Clock</span><span class="num red">0:31</span></div></div><div class="meter"><i style="width:40%"></i></div></div><div class="screen tight" style="background:var(--surface);position:relative"><div class="mono b red" style="font-size:10px;letter-spacing:.16em">Target revealed</div><div class="slab" style="font-size:44px;margin-top:-6px">Bullseye · +4</div>
+ <div class="panel" style="padding:12px 8px 10px"><svg viewBox="0 0 320 190" style="width:300px;display:block;margin:0 auto"><path d="M20 170 A140 140 0 0 1 300 170" fill="none" stroke="#C7BFAC" stroke-width="30"/><g stroke-width="30" fill="none"><path d="M85.2 52.6 A140 140 0 0 1 100.5 41.5" stroke="#E7C08A"/><path d="M100.5 41.5 A140 140 0 0 1 117.5 33.4" stroke="#D49A4C"/><path d="M117.5 33.4 A140 140 0 0 1 135.5 28.6" stroke="#476735"/><path d="M135.5 28.6 A140 140 0 0 1 153.8 26.5" stroke="#D49A4C"/><path d="M153.8 26.5 A140 140 0 0 1 171.9 27.1" stroke="#E7C08A"/></g><circle cx="160" cy="170" r="8" fill="#17150F"/><line x1="160" y1="170" x2="126" y2="32" stroke="#17150F" stroke-width="3" stroke-linecap="round"/><text x="20" y="188" font-family="JetBrains Mono" font-size="9" fill="#17150F" letter-spacing="1" opacity=".7">LESS LIKELY</text><text x="300" y="188" font-family="JetBrains Mono" font-size="9" fill="#17150F" letter-spacing="1" text-anchor="end" opacity=".7">MORE LIKELY</text></svg><div class="mono" style="color:var(--panel-muted);text-align:center;margin-top:2px">"Gronk" · needle landed in the 4</div></div>
+ <div class="well pad12"><span class="mono" style="text-transform:none;letter-spacing:.04em">Next: Dana is the psychic. Starting in 5…</span></div></div><div class="tabbar2"><div class="on"><b>🎚</b>Dial</div><div class=""><b>🕘</b>Rounds</div></div></div><figcaption><b>Dial · reveal.</b> When the guess locks, the red target turns cream with the wedges exposed. Red means concealed, cream means revealed.</figcaption></figure>
+    <figure><div class="phone"><div class="status"><span>9:41</span><span>●●● 5G</span></div><div class="nav"><span class="back">‹</span>Wavelength</div><div class="pin"><div class="between"><span class="mono b" style="letter-spacing:.15em;color:var(--fg)">Round 3 of 8 · 2v2</span><span class="mono" style="font-size:10px">Kayla is the psychic</span></div><div class="grid"><div><span class="mono">Team A</span><span class="num">7</span></div><div><span class="mono">Team B</span><span class="num">5</span></div><div><span class="mono red">Clock</span><span class="num red">0:31</span></div></div><div class="meter"><i style="width:40%"></i></div></div><div class="screen tight" style="background:var(--surface);position:relative"><div class="mono b" style="letter-spacing:.14em">Team A · 7</div><div class="well"><div class="lrow"><span class="sq" style="color:var(--muted)">R1</span><div><div class="slab" style="font-size:20px">"Bill Belichick"</div><div class="mono" style="font-size:10px">Kayla → You · Cold–Hot</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:18px;">+3</div></div></div><div class="lrow"><span class="sq" style="color:var(--muted)">R2</span><div><div class="slab" style="font-size:20px">"A Tuesday in October"</div><div class="mono" style="font-size:10px">You → Kayla · Overrated</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:18px;color:#8fb37a">+4</div></div></div></div><div class="mono b" style="letter-spacing:.14em;margin-top:4px">Team B · 5</div><div class="well"><div class="lrow"><span class="sq" style="color:var(--muted)">R1</span><div><div class="slab" style="font-size:20px">"Mahomes on a bad day"</div><div class="mono" style="font-size:10px">Dana → Marcus · Clutch</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:18px;">+2</div></div></div><div class="lrow"><span class="sq" style="color:var(--muted)">R2</span><div><div class="slab" style="font-size:20px">"Jets fan"</div><div class="mono" style="font-size:10px">Marcus → Dana · Sad–Happy</div></div><div style="margin-left:auto;text-align:right"><div class="num" style="font-size:18px;">+3</div></div></div></div><div class="well pad12"><span class="mono" style="text-transform:none;letter-spacing:.04em">Round 3 in progress: the target stays hidden until the guess locks.</span></div></div><div class="tabbar2"><div class=""><b>🎚</b>Dial</div><div class="on"><b>🕘</b>Rounds</div></div></div><figcaption><b>Rounds tab.</b> Every finished clue grouped by team, with points earned (green for bullseyes).</figcaption></figure>
+  </div>
+
+<p class="lede" style="margin-top:56px">Source: Theme.swift tokens, AuctionMatchView.swift, MatchView.swift; rules from docs/games/*/rules.md. Parity note: per AGENTS.md, Sabotage Draft and Wavelength on iOS would need a features.yaml entry and a Jira ticket before they ship.</p>
+</div>
+</body>
+</html>

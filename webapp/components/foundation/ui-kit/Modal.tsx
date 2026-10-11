@@ -51,14 +51,14 @@ export function Modal({
               event.preventDefault();
               target.focus();
             }}
-            className={`relative my-auto w-full ${size === "sm" ? "max-w-sm" : "max-w-md"} bg-surface-raised shadow-card outline-none ${
+            className={`relative my-auto w-full rounded-card ${size === "sm" ? "max-w-sm" : "max-w-md"} bg-surface-raised shadow-card outline-none ${
               padded ? "p-5" : ""
             } ${className}`.trim()}
           >
             {closeButton ? (
               <Dialog.Close
                 aria-label={closeLabel}
-                className="absolute top-4 right-4 flex h-9 w-9 cursor-pointer items-center justify-center text-fg-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+                className="absolute top-4 right-4 flex h-9 w-9 cursor-pointer items-center justify-center text-fg-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
               >
                 <X aria-hidden className="h-5 w-5" strokeWidth={1.5} />
               </Dialog.Close>

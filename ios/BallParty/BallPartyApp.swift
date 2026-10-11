@@ -9,10 +9,10 @@ struct BallPartyApp: App {
     var body: some Scene {
         WindowGroup {
             AuthGateView()
-                // Dark only, and cream is the tint: every default control
-                // (menus, spinners, back chevrons, the caret) inherits it.
+                // Dark only, and the text colour is the tint: every default control
+                // (menus, back chevrons, the caret, `LoadingSpinner`) inherits it.
                 .preferredColorScheme(.dark)
-                .tint(Theme.panel)
+                .tint(Theme.fg)
         }
     }
 }

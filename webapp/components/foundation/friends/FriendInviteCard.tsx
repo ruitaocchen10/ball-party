@@ -69,7 +69,7 @@ export function FriendInviteCard({ code, owner }: { code: string; owner: InviteO
         </ButtonLink>
         <Link
           href={`/u/${owner.username}`}
-          className="type-label text-fg-muted underline underline-offset-2 hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+          className="type-label text-fg-muted underline underline-offset-2 hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
         >
           View profile
         </Link>

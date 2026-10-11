@@ -27,7 +27,7 @@ struct FriendActivityFeedView: View {
     private var content: some View {
         switch viewModel.phase {
         case .loading:
-            ProgressView().frame(maxWidth: .infinity, minHeight: 160)
+            LoadingSpinner().frame(maxWidth: .infinity, minHeight: 160)
         case .failed:
             EmptyState(title: "Couldn’t load activity", message: "Try again in a moment.") {
                 Button("Retry") { Task { await viewModel.load() } }
@@ -217,9 +217,9 @@ private struct GameMomentCard: View {
         let qb = board == .qbSeasonBuilder
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Text("New best").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.panelFg)
+                Text("New best").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.surface)
                     .padding(.horizontal, 6).padding(.vertical, 3)
-                    .background(Theme.panel)
+                    .background(Theme.fg, in: RoundedRectangle(cornerRadius: Theme.chipRadius))
                 Text("in " + FriendActivityEvent.gameName(game) + (qb ? mode.map { " · \($0)" } ?? "" : ""))
                     .monoLabel(10, tracking: 0.08)
             }
@@ -253,9 +253,9 @@ private struct GameMomentCard: View {
         let wins = [event] + item.more
         VStack(alignment: .leading, spacing: 6) {
             Text(wins.count == 1 ? "Win" : "\(wins.count) wins")
-                .monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.panelFg)
+                .monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.surface)
                 .padding(.horizontal, 6).padding(.vertical, 3)
-                .background(Theme.panel)
+                .background(Theme.fg, in: RoundedRectangle(cornerRadius: Theme.chipRadius))
             if wins.count == 1 {
                 Text("Won \(FriendActivityEvent.gameName(game))")
                     .font(.sans(18, weight: .medium))

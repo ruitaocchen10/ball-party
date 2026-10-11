@@ -1,5 +1,11 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+
+// The invite dialog reads the viewer's friends when it opens.
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: () => ({ rpc: async () => ({ data: [], error: null }) }),
+}));
 
 import { MemberRoster } from "./MemberRoster";
 
@@ -46,5 +52,51 @@ describe("MemberRoster", () => {
     const emptyCard = screen.getByText("Open seat").closest("div");
     expect(emptyCard?.className).toContain("h-full");
     expect(emptyCard?.className).toContain("min-h-64");
+  });
+
+  it("marks the host and the viewer on their light cards", () => {
+    render(
+      <MemberRoster
+        members={[
+          { user_id: "ada", profiles: { display_name: "Ada" } },
+          { user_id: "bo", profiles: { display_name: "Bo" } },
+        ]}
+        hostId="ada"
+        viewerId="bo"
+        capacity={2}
+        stats={{}}
+      />,
+    );
+
+    expect(screen.getAllByText("Host")).toHaveLength(1);
+    expect(screen.getByText("you")).toBeInTheDocument();
+    expect(screen.getByText("at the table")).toBeInTheDocument();
+  });
+
+  it("opens the invite dialog from an open seat", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemberRoster
+        members={[{ user_id: "ada", profiles: { display_name: "Ada" } }]}
+        hostId="ada"
+        viewerId="ada"
+        capacity={2}
+        stats={{}}
+        lobbyId="lobby-1"
+      />,
+    );
+
+    expect(screen.queryByText("Invite friends")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /open seat/i }));
+    expect(await screen.findByText("Invite friends")).toBeInTheDocument();
+  });
+
+  it("leaves an open seat as a plain marker when there is no room to invite to", () => {
+    render(
+      <MemberRoster members={[]} hostId="ada" viewerId="ada" capacity={1} stats={{}} />,
+    );
+
+    expect(screen.queryByRole("button", { name: /open seat/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Open seat")).toBeInTheDocument();
   });
 });

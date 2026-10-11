@@ -1,6 +1,6 @@
 # Games
 
-Mirrors `webapp/components/games`. Three games are on iOS:
+Mirrors `webapp/components/games`. Every game is on iOS:
 
 - `HigherOrLower/`: the client protocol and its Supabase implementation, the
   models, the standings rules, and two screens (the solo run and the live
@@ -8,9 +8,26 @@ Mirrors `webapp/components/games`. Three games are on iOS:
 - `AuctionTeamBuilder/`: the live room match only (the auction has no solo
   mode). The client protocol and its Supabase implementation, the row models and
   the display-only board rules (`AuctionRules`, a port of the web's `board.ts`),
-  the view model, and the screen.
+  the view model, and the screen. The live board is a pinned header over three
+  native tabs (Auction, Table, Board) built on `Foundation/UIKit/GameTabs.swift`,
+  the shared shell the other games should use too.
+- `Wavelength/`: the live room match only (co-op or 2v2). The client protocol
+  and its Supabase implementation (including the private broadcast channel the
+  guesser's needle rides), the row models and the display-only dial rules, the
+  view model, and the screen: a pinned header over two native tabs (Dial,
+  Rounds) on the same `GameTabs.swift` shell. The dial is drawn and dragged in
+  `WavelengthDial`; the hidden target only ever reaches its psychic, because
+  row-level security narrows it before the app reads anything.
+- `SabotageDraft/`: the live room match only. The client protocol and its
+  Supabase implementation, the row models and the display-only slot and grade
+  rules (a port of the web's `rounds.ts` and `grades.ts`), the view model, and the
+  screen: a pinned header over three native tabs (Draft, Rosters, Log) on the
+  same `GameTabs.swift` shell, with the pick and guess search as a bottom sheet
+  (`SabotagePickerSheet`). Other players' picks never reach the app, because
+  row-level security narrows `sabotage_draft_picks` before it is read; the
+  Rosters tab draws them red and concealed.
 - `QbSeasonBuilder/`: the solo run (spin reel, picks, staged result).
 
-The other games (sabotage draft, wavelength) are web only. Rules live
+Rules live
 on the server: see `docs/games/<game>/rules.md` and
 `docs/architecture/architecture.md`.

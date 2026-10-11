@@ -1,27 +1,32 @@
 import type { ReactNode } from "react";
 
 /**
- * A card is the only light surface in the product. If something matters it goes
- * on a card; everything else is background.
+ * A card is a raised dark surface: a step lighter than the background, with a
+ * hairline edge. If something matters it goes on a card; everything else is
+ * background.
  *
- * The red strip along the top edge marks a card that has concealed information
- * behind it, which is why it doesn't break the rule that red means hidden. Pass
- * `edge={false}` when nothing is being withheld.
+ * `tone="light"` is the same card in the `fg` cream, for the people in a room
+ * (a seat that is taken) against the dark screen and the dark open seats around
+ * them. Text on it is `surface`, like a primary button's.
  */
+const TONES = {
+  panel: "bg-panel text-panel-fg",
+  light: "bg-fg text-surface",
+} as const;
+
 export function Card({
   children,
-  edge = true,
   className = "",
+  tone = "panel",
 }: {
   children: ReactNode;
-  edge?: boolean;
   className?: string;
+  tone?: keyof typeof TONES;
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-card bg-panel text-panel-fg shadow-card ${className}`}
+      className={`relative overflow-hidden rounded-card ${TONES[tone]} shadow-card ${className}`}
     >
-      {edge && <span aria-hidden className="block h-[5px] bg-hidden" />}
       {children}
     </div>
   );

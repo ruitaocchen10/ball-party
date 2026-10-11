@@ -30,9 +30,7 @@ struct MatchScreen: View {
     var body: some View {
         Group {
             if viewModel.board == nil {
-                ProgressView {
-                    Text("Dealing…").monoLabel(11, tracking: 0.15)
-                }
+                LoadingState(label: "Dealing…")
             } else if viewModel.isComplete {
                 MatchFinalView(viewModel: viewModel)
             } else {
@@ -185,7 +183,7 @@ private struct StandingsRail: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(standing.rank == 1 ? Theme.panel.opacity(0.05) : .clear)
+                .background(standing.rank == 1 ? Theme.fg.opacity(0.05) : .clear)
                 .accessibilityElement(children: .combine)
             }
         }
@@ -214,7 +212,7 @@ private struct MatchFinalView: View {
                 ForEach(viewModel.finalStandings) { row in
                     // The winner is the thing that matters, so the winner is a panel.
                     if row.rank == 1 {
-                        PanelCard(edge: false) {
+                        PanelCard {
                             finalRow(row, onPanel: true).padding(14)
                         }
                         .accessibilityElement(children: .combine)
@@ -272,7 +270,7 @@ private struct MatchFinalView: View {
                     Task { await viewModel.choosePostGame(.replay) }
                 } label: {
                     HStack(spacing: 8) {
-                        if viewModel.isBusy { ProgressView() }
+                        if viewModel.isBusy { LoadingSpinner(size: 16) }
                         Text("Play again")
                     }
                 }

@@ -18,13 +18,13 @@ const COLORS: { group: string; tokens: [name: string, use: string][] }[] = [
   {
     group: "Panels",
     tokens: [
-      ["panel", "The light surface: cards, cream buttons, chips."],
+      ["panel", "The raised surface: cards, menus, chips."],
       ["panel-shade", "A subdued band inside a panel."],
       ["panel-fg", "Primary text on a panel."],
       ["panel-muted", "Secondary text on a panel."],
       ["panel-soft", "Body copy on a panel."],
       ["panel-line", "Borders and rules on a panel."],
-      ["panel-hover", "A cream button's hover."],
+      ["panel-hover", "A pressable panel's hover."],
       ["panel-ink-hover", "An ink button's hover."],
     ],
   },
@@ -33,7 +33,7 @@ const COLORS: { group: string; tokens: [name: string, use: string][] }[] = [
     tokens: [
       ["hidden", "Concealed values and unfilled spots, as a surface."],
       ["hidden-text", "The same red, lifted for the background. Also error text."],
-      ["hidden-ink", "The same red, darkened for a cream panel."],
+      ["hidden-ink", "The same red, darkened: a hovered or pressed red surface."],
     ],
   },
   {

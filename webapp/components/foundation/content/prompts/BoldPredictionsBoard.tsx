@@ -90,7 +90,7 @@ export function BoldPredictionsBoard({ post, data, viewerCanAnswer, displayName 
             onSubmitted={() => router.refresh()}
           />
         ) : (
-          <p className="border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">
+          <p className="rounded-card border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">
             <Link href={`/login?next=/prompts/${post.id}`} className="font-semibold text-fg underline">Sign up</Link> to make your bold predictions. Lock yours in to see everyone else&apos;s.
           </p>
         )}
@@ -257,7 +257,7 @@ function PredictionForm({ idSuffix, initial, data, onPlayerFound, playerSearch, 
             maxLength={BOLD_BODY_MAX}
             rows={3}
             placeholder="Make your boldest call…"
-            className="block w-full resize-none border border-line bg-surface px-3 pt-2 pb-6 text-lg leading-6 text-fg placeholder:text-fg-muted focus:border-fg focus:outline-none"
+            className="block w-full resize-none rounded-card border border-line bg-surface px-3 pt-2 pb-6 text-lg leading-6 text-fg placeholder:text-fg-muted focus:border-fg focus:outline-none"
           />
           <p aria-live="polite" className="pointer-events-none absolute right-3 bottom-1.5 font-mono text-[10px] leading-none tracking-[0.06em] text-fg-muted tabular-nums">{body.length}/{BOLD_BODY_MAX}</p>
         </div>
@@ -300,7 +300,7 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
   return (
     <section aria-label="Revealed predictions" className="mt-5 w-full pb-16">
       {predictions.length === 0 ? (
-        <p className="border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">
+        <p className="rounded-card border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">
           {post.status === "void" ? "This post was voided." : "Nobody made a prediction before this locked."}
         </p>
       ) : (

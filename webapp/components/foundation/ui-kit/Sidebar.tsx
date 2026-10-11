@@ -151,7 +151,7 @@ export function Sidebar({
 }
 
 const FOCUS =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
 
 function FeedbackButton({ compact, onOpen }: { compact: boolean; onOpen: () => void }) {
   return (
@@ -191,7 +191,7 @@ function SidebarToggle({
       type="button"
       onClick={onToggleCollapsed}
       aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-      className={`absolute top-[23px] -right-[17px] z-10 flex h-[34px] w-[34px] items-center justify-center rounded-full border border-fg-muted bg-surface text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel ${FOCUS}`}
+      className={`absolute top-[23px] -right-[17px] z-10 flex h-[34px] w-[34px] items-center justify-center rounded-full border border-fg-muted bg-surface text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${FOCUS}`}
     >
       {collapsed ? (
         <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={1.5} />
@@ -212,11 +212,11 @@ function NavList({ pathname, collapsed }: { pathname: string; collapsed: boolean
           <Link
             key={href}
             href={href}
-            className={`flex items-center gap-3.5 px-3 py-2.5 font-mono text-sm font-semibold tracking-[0.03em] transition-colors ${FOCUS} ${
+            className={`flex items-center gap-3.5 rounded-card px-3 py-2.5 font-mono text-sm font-semibold tracking-[0.03em] transition-colors ${FOCUS} ${
               collapsed ? "justify-center" : ""
             } ${
               active
-                ? "bg-panel text-panel-fg"
+                ? "bg-fg text-surface"
                 : "text-fg hover:text-fg-muted"
             }`}
           >
@@ -305,7 +305,7 @@ function SignedOutAccount({ compact }: { compact: boolean }) {
       <Link
         href="/login"
         aria-label="Sign in"
-        className={`flex h-9 w-9 items-center justify-center bg-panel text-panel-fg ${FOCUS}`}
+        className={`flex h-9 w-9 items-center justify-center rounded-card bg-fg text-surface ${FOCUS}`}
       >
         <LogIn className="h-[18px] w-[18px]" strokeWidth={1.5} />
       </Link>
@@ -316,7 +316,7 @@ function SignedOutAccount({ compact }: { compact: boolean }) {
     <div className="flex flex-col gap-2">
       <Link
         href="/signup"
-        className={`flex h-9 items-center justify-center bg-panel px-3.5 font-mono text-xs font-bold tracking-[0.13em] text-panel-fg uppercase transition-colors hover:bg-panel-hover ${FOCUS}`}
+        className={`flex h-9 items-center justify-center rounded-card bg-fg px-3.5 font-mono text-xs font-bold tracking-[0.13em] text-surface uppercase transition-colors hover:bg-panel-ink-hover ${FOCUS}`}
       >
         Sign up
       </Link>
@@ -353,7 +353,7 @@ function MobileTopStrip({
         type="button"
         onClick={onOpenMenu}
         aria-label="Open menu"
-        className={`flex h-9 w-9 items-center justify-center bg-surface-raised text-fg ring-1 ring-line ring-inset ${FOCUS}`}
+        className={`flex h-9 w-9 items-center justify-center rounded-card bg-surface-raised text-fg ring-1 ring-line ring-inset ${FOCUS}`}
       >
         <Menu className="h-5 w-5" strokeWidth={1.5} />
       </button>

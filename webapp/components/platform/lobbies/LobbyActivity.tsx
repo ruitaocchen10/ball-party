@@ -20,7 +20,7 @@ export function LobbyActivity({ activity }: { activity: RoomActivity[] }) {
         <ol className="flex flex-col gap-1.5">
           {activity.map((item) => (
             <li key={item.id} className="flex items-start gap-2 rounded-card bg-surface-raised px-2.5 py-2.5 ring-1 ring-line ring-inset">
-              <Trophy aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-panel" strokeWidth={1.5} />
+              <Trophy aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg" strokeWidth={1.5} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm leading-5 text-fg">{activityLabel(item)}</p>
                 <time dateTime={item.endedAt} className="type-label-xs text-fg-muted">

@@ -35,7 +35,7 @@ export function ShareTakeButton({
           onClick={() => void share.generate()}
           disabled={share.phase === "rendering"}
           aria-label={`Preview a shareable image of your ${shareLabel}`}
-          className="flex items-center gap-2 bg-panel px-4 py-3 font-slab text-sm tracking-[0.04em] text-panel-fg uppercase shadow-[0_10px_24px_rgb(0_0_0/0.45)] transition-colors hover:bg-panel-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex items-center gap-2 rounded-card bg-fg px-4 py-3 font-slab text-sm tracking-[0.04em] text-surface uppercase shadow-[0_10px_24px_rgb(0_0_0/0.45)] transition-colors hover:bg-panel-ink-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Share2 className="h-4 w-4" strokeWidth={2.2} />
           {share.phase === "rendering" ? "Making image…" : `Share ${shareLabel}`}

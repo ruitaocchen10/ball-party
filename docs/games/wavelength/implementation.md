@@ -92,9 +92,9 @@ setup → (start) → fill → guessing ⇄ reveal → complete
 ```
 
 - **fill** — every player writes all their clues in parallel; one deadline for
-  the phase (40s × clues each). Missing clues become skipped rounds.
+  the phase (90s × clues each). Missing clues become skipped rounds.
 - **guessing** — rounds play sequentially. In versus the psychic's partner
-  guesses and teams alternate; in co-op the two players alternate. 30s per guess;
+  guesses and teams alternate; in co-op the two players alternate. 60s per guess;
   a missed guess auto-locks at the needle's last known position.
 - **reveal** — the target is written to the round row; points are scored and
   everyone sees it. Then the next round opens, or the match completes.
@@ -173,6 +173,6 @@ matching how the other games were built (a numbered migration per slice).
 - **Hosted exposed-schema step** is easy to forget and fails as `PGRST106` in
   production only.
 - **Sudden-death timers** default to the regular ones: each sudden-death round
-  is one clue per team, so the fill phase is 40 seconds and the guess is 30.
+  is one clue per team, so the fill phase is 90 seconds and the guess is 60.
   This was not discussed; change the config if it feels wrong. It no longer
   blocks slice 6.

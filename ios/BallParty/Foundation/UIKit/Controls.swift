@@ -5,18 +5,18 @@ import SwiftUI
 
 // MARK: - Buttons
 
-/// Buttons are cream, because a button is a known thing and everything known
-/// in this product sits on a light panel. `.ghost` is for the subordinate
+/// Buttons are a light fill on the dark page. `.ghost` is for the subordinate
 /// action on a screen — one primary per view.
 ///
-/// `.ink` inverts that for the one place the rule breaks down: a button
-/// sitting ON a cream panel, where cream-on-cream would be invisible. The
-/// colours swap; the meaning doesn't.
+/// `.ink` is the same light fill for a button sitting ON a panel, where a
+/// dark-on-dark button would be invisible.
 struct BPButtonStyle: ButtonStyle {
     enum Variant {
         case solid
         case ghost
         case ink
+        /// A dark fill for a button on a light card, where `.ink` would vanish.
+        case dark
     }
 
     var variant: Variant = .solid
@@ -45,13 +45,13 @@ struct BPButtonStyle: ButtonStyle {
                 .tint(foreground)
                 .padding(.horizontal, 16)
                 .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 48)
-                .background(background(pressed: pressed))
+                .background(background(pressed: pressed), in: RoundedRectangle(cornerRadius: Theme.cardRadius))
                 .overlay {
                     if variant == .ghost {
-                        Rectangle().strokeBorder(Theme.line, lineWidth: 1)
+                        RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1)
                     }
                 }
-                .contentShape(Rectangle())
+                .contentShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
                 .opacity(isEnabled ? 1 : 0.6)
                 .scaleEffect(pressed && !reduceMotion ? 0.97 : 1)
                 .animation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.75), value: pressed)
@@ -59,17 +59,19 @@ struct BPButtonStyle: ButtonStyle {
 
         private var foreground: Color {
             switch variant {
-            case .solid: Theme.panelFg
+            case .solid: Theme.surface
             case .ghost: Theme.fg
             case .ink: Theme.panel
+            case .dark: Theme.fg
             }
         }
 
         private func background(pressed: Bool) -> Color {
             switch variant {
-            case .solid: pressed ? Color(hex: 0xFFFDF7) : Theme.panel
+            case .solid: pressed ? Theme.panelInkHover : Theme.fg
             case .ghost: pressed ? Theme.surfaceRaised : .clear
-            case .ink: pressed ? Color(hex: 0x2C2921) : Theme.panelFg
+            case .ink: pressed ? Theme.panelInkHover : Theme.panelFg
+            case .dark: pressed ? Theme.panelHover : Theme.surface
             }
         }
     }
@@ -79,6 +81,7 @@ extension ButtonStyle where Self == BPButtonStyle {
     static var solid: BPButtonStyle { BPButtonStyle(variant: .solid) }
     static var ghost: BPButtonStyle { BPButtonStyle(variant: .ghost) }
     static var ink: BPButtonStyle { BPButtonStyle(variant: .ink) }
+    static var dark: BPButtonStyle { BPButtonStyle(variant: .dark) }
 }
 
 /// A button that reads as a quiet line of text — the "back home", "leave",
@@ -110,11 +113,12 @@ extension View {
     func fieldStyle() -> some View {
         font(.sans(16))
             .foregroundStyle(Theme.fg)
-            .tint(Theme.panel)
+            .tint(Theme.fg)
             .padding(.horizontal, 12)
             .frame(minHeight: 48)
             .background(Theme.surfaceRaised)
-            .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
     }
 
     /// The small uppercase caption above a field.
@@ -125,7 +129,7 @@ extension View {
 
 // MARK: - Segmented choice
 
-/// A row of mutually exclusive options. The selected one is a cream panel,
+/// A row of mutually exclusive options. The selected one is a red fill,
 /// like a pressed key; the rest are background.
 struct SegmentedChoice<Value: Hashable>: View {
     @Binding var selection: Value
@@ -145,16 +149,17 @@ struct SegmentedChoice<Value: Hashable>: View {
                         .font(.slab(17, relativeTo: .body))
                         .tracking(0.7)
                         .textCase(.uppercase)
-                        .foregroundStyle(isSelected ? Theme.panelFg : Theme.fg)
+                        .foregroundStyle(Theme.fg)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(isSelected ? Theme.panel : .clear)
+                        .background(isSelected ? Theme.hidden : .clear)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
-        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityName)
     }

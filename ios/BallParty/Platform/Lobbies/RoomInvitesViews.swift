@@ -44,7 +44,7 @@ struct InviteFriendsSheet: View {
     private var content: some View {
         switch viewModel.phase {
         case .loading:
-            ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            LoadingSpinner().frame(maxWidth: .infinity, minHeight: 120)
         case .failed(let message):
             EmptyState(title: "Couldn’t load your friends", message: message) {
                 Button("Retry") { Task { await viewModel.load() } }

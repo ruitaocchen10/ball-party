@@ -10,7 +10,7 @@ import Foundation
 @MainActor
 final class LobbyViewModel: ObservableObject {
     enum Stage: Equatable {
-        /// No room yet: host one, or join by code.
+        /// No room yet: host one, or take an invite.
         case entry
         /// In a room.
         case room
@@ -20,8 +20,6 @@ final class LobbyViewModel: ObservableObject {
 
     // MARK: Entry
 
-    /// The join-by-code field.
-    @Published var code = ""
 
     // MARK: Room
 
@@ -38,12 +36,23 @@ final class LobbyViewModel: ObservableObject {
     // to different RPCs and the solo one is a player's own format while this
     // is a decision made on behalf of a room.
 
-    @Published var scoringMode: ScoringMode = .seasonTotal
+    // Every picker below saves itself onto the room when the host changes it
+    // (`formatChanged`), so the rest of the room can see what is being set up.
+
+    @Published var scoringMode: ScoringMode = .seasonTotal {
+        didSet { formatChanged() }
+    }
     @Published var seasonFrom = 0 {
-        didSet { if seasonFrom > seasonTo { seasonTo = seasonFrom } }
+        didSet {
+            if seasonFrom > seasonTo { seasonTo = seasonFrom }
+            formatChanged()
+        }
     }
     @Published var seasonTo = 0 {
-        didSet { if seasonTo < seasonFrom { seasonFrom = seasonTo } }
+        didSet {
+            if seasonTo < seasonFrom { seasonFrom = seasonTo }
+            formatChanged()
+        }
     }
     @Published private(set) var seasonBounds: SeasonRange?
 
@@ -54,17 +63,47 @@ final class LobbyViewModel: ObservableObject {
     // auction's era has a floor the ladder's doesn't — the dealer refuses a
     // window narrower than `AuctionEra.minSpan` seasons.
 
-    @Published var auctionScoringMode: ScoringMode = .weekly
-    @Published var rosterPreset: RosterPreset = .standard
+    @Published var auctionScoringMode: ScoringMode = .weekly {
+        didSet { formatChanged() }
+    }
+    @Published var rosterPreset: RosterPreset = .standard {
+        didSet { formatChanged() }
+    }
     /// Single-use abilities per player: 0 is off, up to 3.
-    @Published var tokenCount = 1
+    @Published var tokenCount = 1 {
+        didSet { formatChanged() }
+    }
     @Published var auctionFrom = 0 {
-        didSet { if auctionFrom > auctionTo { auctionTo = auctionFrom } }
+        didSet {
+            if auctionFrom > auctionTo { auctionTo = auctionFrom }
+            formatChanged()
+        }
     }
     @Published var auctionTo = 0 {
-        didSet { if auctionTo < auctionFrom { auctionFrom = auctionTo } }
+        didSet {
+            if auctionTo < auctionFrom { auctionFrom = auctionTo }
+            formatChanged()
+        }
     }
     @Published private(set) var auctionEra: AuctionEra?
+
+    // MARK: The host's Wavelength format
+    //
+    // The mode is part of the roster: co-op seats one pair and 2v2 seats two,
+    // and the dealer refuses any other count, so the room says so before the tap.
+
+    @Published var wavelengthMode: WavelengthMode = .coop {
+        didSet { formatChanged() }
+    }
+    @Published var wavelengthPreset: WavelengthPreset = .short {
+        didSet { formatChanged() }
+    }
+
+    // MARK: The host's Sabotage Draft format
+
+    @Published var sabotageMode: SabotageMode = .full {
+        didSet { formatChanged() }
+    }
 
     /// A match already entered from this room, so returning to the room
     /// doesn't immediately push the same board back at the player.
@@ -74,7 +113,10 @@ final class LobbyViewModel: ObservableObject {
     private let client: LobbyClient
     private let game: HigherOrLowerClient
     private let auction: AuctionClient
+    private let wavelength: WavelengthClient
+    private let sabotage: SabotageClient
     private let heartbeatInterval: Duration
+    private let formatSaveDelay: Duration
 
     private var observation: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
@@ -83,14 +125,20 @@ final class LobbyViewModel: ObservableObject {
         client: LobbyClient,
         game: HigherOrLowerClient,
         auction: AuctionClient,
+        wavelength: WavelengthClient,
+        sabotage: SabotageClient,
         viewerId: UUID,
-        heartbeatInterval: Duration = .seconds(10)
+        heartbeatInterval: Duration = .seconds(10),
+        formatSaveDelay: Duration = .milliseconds(600)
     ) {
         self.client = client
         self.game = game
         self.auction = auction
+        self.wavelength = wavelength
+        self.sabotage = sabotage
         self.viewerId = viewerId
         self.heartbeatInterval = heartbeatInterval
+        self.formatSaveDelay = formatSaveDelay
     }
 
     deinit {
@@ -98,11 +146,122 @@ final class LobbyViewModel: ObservableObject {
         heartbeatTask?.cancel()
     }
 
+    // MARK: - The host's settings, saved on the room
+
+    /// Whether this room's saved settings have been loaded into the pickers yet:
+    /// once per room, so a host who comes back (or inherits the room) finds
+    /// them as they were left, and nothing the host is mid-edit on is overwritten.
+    private var formatHydrated = false
+    /// True while the pickers are being set by something other than the host's
+    /// hand (loading defaults, restoring the saved format), which must not be
+    /// saved back.
+    private var applyingFormat = false
+    private var formatSave: Task<Void, Never>?
+
+    /// What the host's pickers hold, in the shape the room stores.
+    var currentFormat: LobbyGameFormat {
+        LobbyGameFormat(
+            higherOrLower: .init(
+                scoringMode: scoringMode.rawValue,
+                seasonFrom: seasonBounds == nil ? nil : seasonFrom,
+                seasonTo: seasonBounds == nil ? nil : seasonTo
+            ),
+            auction: .init(
+                scoringMode: auctionScoringMode.rawValue,
+                rosterPreset: rosterPreset.rawValue,
+                tokenCount: tokenCount,
+                seasonFrom: auctionEra == nil ? nil : auctionFrom,
+                seasonTo: auctionEra == nil ? nil : auctionTo
+            ),
+            wavelength: .init(mode: wavelengthMode.rawValue, preset: wavelengthPreset.rawValue),
+            sabotage: .init(mode: sabotageMode.rawValue)
+        )
+    }
+
+    /// The settings to show for the game on offer: the host's own pickers for
+    /// the host, what the host saved for everybody else.
+    var displayedFormat: LobbyGameFormat {
+        isHost ? currentFormat : (lobby?.gameFormat ?? LobbyGameFormat())
+    }
+
+    /// Wait out a burst of changes (dragging through seasons), then save once.
+    private func formatChanged() {
+        guard !applyingFormat, isHost, stage == .room, let lobbyId = lobby?.id else { return }
+        formatSave?.cancel()
+        formatSave = Task { [weak self, formatSaveDelay] in
+            try? await Task.sleep(for: formatSaveDelay)
+            guard !Task.isCancelled, let self else { return }
+            try? await client.setGameFormat(lobbyId: lobbyId, format: currentFormat)
+        }
+    }
+
+    /// Put the room's saved settings into the pickers, once per room, for a host.
+    /// Eras wait for their bounds (see `loadFormat`).
+    private func hydrateFormatIfNeeded() {
+        guard isHost, !formatHydrated, let saved = lobby?.gameFormat else { return }
+        formatHydrated = true
+        applyingFormat = true
+        defer { applyingFormat = false }
+        if let f = saved.higherOrLower, let mode = ScoringMode(rawValue: f.scoringMode) { scoringMode = mode }
+        if let f = saved.auction {
+            if let mode = ScoringMode(rawValue: f.scoringMode) { auctionScoringMode = mode }
+            if let preset = RosterPreset(rawValue: f.rosterPreset) { rosterPreset = preset }
+            tokenCount = min(max(f.tokenCount, 0), 3)
+        }
+        if let f = saved.wavelength {
+            if let mode = WavelengthMode(rawValue: f.mode) { wavelengthMode = mode }
+            if let preset = WavelengthPreset(rawValue: f.preset) { wavelengthPreset = preset }
+        }
+        if let f = saved.sabotage, let mode = SabotageMode(rawValue: f.mode) { sabotageMode = mode }
+        applySavedEras()
+    }
+
+    /// The saved eras, clamped into the bounds that have loaded. Run when either
+    /// the bounds or the saved format arrives, whichever is second.
+    private func applySavedEras() {
+        guard formatHydrated, let saved = lobby?.gameFormat else { return }
+        applyingFormat = true
+        defer { applyingFormat = false }
+        if let bounds = seasonBounds, let f = saved.higherOrLower, let from = f.seasonFrom, let to = f.seasonTo {
+            seasonTo = min(max(to, bounds.from), bounds.to)
+            seasonFrom = min(max(from, bounds.from), seasonTo)
+        }
+        if let era = auctionEra, let f = saved.auction, let from = f.seasonFrom, let to = f.seasonTo {
+            auctionTo = min(max(to, era.seasonMin), era.seasonMax)
+            auctionFrom = min(max(from, era.seasonMin), auctionTo)
+        }
+    }
+
     // MARK: - Derived state
 
     var lobby: Lobby? { snapshot?.lobby }
     var members: [LobbyMember] { snapshot?.members ?? [] }
     var roomCode: String? { lobby?.code }
+
+    /// One row of the room's scoreboard.
+    struct Standing: Identifiable, Equatable {
+        let member: LobbyMember
+        let wins: Int
+        /// Players with the same wins share a rank (1, 1, 3). Nil until
+        /// somebody has won, since a rank among zeros says nothing.
+        let rank: Int?
+        var id: UUID { member.userId }
+    }
+
+    /// Everyone in the room with their wins, most first. Ties keep join order.
+    var standings: [Standing] {
+        let wins = snapshot?.wins ?? [:]
+        let ordered = members.enumerated()
+            .sorted { (wins[$0.element.userId] ?? 0, $1.offset) > (wins[$1.element.userId] ?? 0, $0.offset) }
+            .map(\.element)
+        return ordered.enumerated().map { index, member in
+            let count = wins[member.userId] ?? 0
+            let rank = (wins.values.reduce(0, +)) == 0 ? nil : (ordered.firstIndex { (wins[$0.userId] ?? 0) == count } ?? index) + 1
+            return Standing(member: member, wins: count, rank: rank)
+        }
+    }
+
+    var totalWins: Int { standings.reduce(0) { $0 + $1.wins } }
     var isHost: Bool { lobby?.hostId == viewerId }
 
     /// Ending the room for everybody is the host's alone — `close_lobby`
@@ -152,17 +311,38 @@ final class LobbyViewModel: ObservableObject {
     /// Why Start is disabled, in the room's own words — or `nil` when it isn't.
     var startBlockedReason: String? {
         guard isHost, stage == .room else { return nil }
-        if selectedGame == nil { return "Pick a game first" }
-        if members.count < 2 { return "Waiting for one more player" }
-        if members.count > 4 { return "That's too many players for one game" }
+        guard let chosen = selectedGame else { return "Pick a game first" }
+        if let reason = headcountReason { return reason }
         if snapshot?.run?.inFlightMatch != nil { return "A game is already running in this room" }
         // The dealer refuses these too; saying so before the tap is what stops
         // it reading as a broken button.
-        if selectedGame == .auctionTeamBuilder, let era = auctionEra {
+        if chosen == .auctionTeamBuilder, let era = auctionEra {
             if auctionTo < auctionFrom { return "The last season has to come after the first" }
             if auctionTo - auctionFrom + 1 < era.minSpan { return "Pick a span of at least \(era.minSpan) seasons" }
         }
+        return wavelengthRosterReason(for: chosen)
+    }
+
+    /// Whether the people in the room suit `game`, for the game's card to say so
+    /// whoever is looking: the host judges by their own picker, everybody else by
+    /// what the host saved.
+    func roomReadiness(for game: MatchGame) -> String? {
+        headcountReason ?? wavelengthRosterReason(for: game)
+    }
+
+    private var headcountReason: String? {
+        if members.count < 2 { return "Waiting for one more player" }
+        if members.count > 4 { return "That's too many players for one game" }
         return nil
+    }
+
+    /// Wavelength seats exactly one pair (co-op) or two (2v2).
+    private func wavelengthRosterReason(for game: MatchGame) -> String? {
+        guard game == .wavelength else { return nil }
+        let raw = displayedFormat.wavelength?.mode ?? WavelengthMode.coop.rawValue
+        let mode = WavelengthMode(rawValue: raw) ?? .coop
+        guard members.count != mode.playerCount else { return nil }
+        return "\(mode.label) needs exactly \(mode.playerCount) players (you have \(members.count))"
     }
 
     /// The seasons the auction picker may offer, in order.
@@ -179,7 +359,7 @@ final class LobbyViewModel: ObservableObject {
 
     // MARK: - Intents
 
-    /// Host a room. The code it comes back with is the whole invitation.
+    /// Host a room. Its link and the friend invites are how people get in.
     func createRoom() async {
         guard !isBusy else { return }
         isBusy = true
@@ -193,14 +373,13 @@ final class LobbyViewModel: ObservableObject {
         }
     }
 
-    /// Join the room whose code is in `code`.
-    func joinRoom() async {
+    /// Join the room a link points at. The server stores codes upper-cased,
+    /// so that is the shape it is asked about.
+    func joinRoom(code: String) async {
         guard !isBusy else { return }
-        // Codes are read aloud across a table and typed back in; the server
-        // stores them upper-cased, so that is the shape one is asked about.
         let typed = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard !typed.isEmpty else {
-            errorMessage = "Enter a room code."
+            errorMessage = "That room link isn't valid."
             return
         }
         isBusy = true
@@ -220,10 +399,14 @@ final class LobbyViewModel: ObservableObject {
         if seasonBounds == nil {
             do {
                 let bounds = try await game.seasonBounds()
+                applyingFormat = true
                 seasonBounds = bounds
                 seasonFrom = bounds.from
                 seasonTo = bounds.to
+                applyingFormat = false
+                applySavedEras()
             } catch {
+                applyingFormat = false
                 // The picker just doesn't appear, and the dealer falls back to the
                 // whole pool — the same non-fatal treatment the web gives it.
             }
@@ -231,10 +414,14 @@ final class LobbyViewModel: ObservableObject {
         if auctionEra == nil {
             do {
                 let era = try await auction.seasonBounds()
+                applyingFormat = true
                 auctionEra = era
                 auctionFrom = era.seasonMin
                 auctionTo = era.seasonMax
+                applyingFormat = false
+                applySavedEras()
             } catch {
+                applyingFormat = false
                 // Same treatment as above: no picker, whole pool.
             }
         }
@@ -282,6 +469,14 @@ final class LobbyViewModel: ObservableObject {
                     era: auctionEra == nil ? nil : SeasonRange(from: auctionFrom, to: auctionTo),
                     tokenCount: tokenCount
                 )
+            case .wavelength:
+                _ = try await wavelength.start(
+                    matchId: matchId,
+                    mode: wavelengthMode,
+                    preset: wavelengthMode == .coop ? wavelengthPreset : nil
+                )
+            case .sabotageDraft:
+                _ = try await sabotage.start(matchId: matchId, mode: sabotageMode)
             }
             // Everybody else is carried in by the run appearing in the room;
             // the host doesn't wait for their own event to come back around.
@@ -338,6 +533,8 @@ final class LobbyViewModel: ObservableObject {
     /// first; `join_lobby`'s answer is not asked for again.
     func adopt(_ lobby: Lobby) async {
         await stopObservingAndWait()
+        formatSave?.cancel()
+        formatHydrated = false
         snapshot = nil
         dismissedMatchId = nil
         errorMessage = nil
@@ -425,6 +622,8 @@ final class LobbyViewModel: ObservableObject {
 
     private func exitRoom() async {
         await stopObservingAndWait()
+        formatSave?.cancel()
+        formatHydrated = false
         snapshot = nil
         errorMessage = nil
         dismissedMatchId = nil
@@ -465,6 +664,7 @@ final class LobbyViewModel: ObservableObject {
     private func apply(_ fresh: LobbySnapshot) {
         snapshot = fresh
         stage = fresh.lobby.isClosed ? .closed : .room
+        hydrateFormatIfNeeded()
     }
 
     /// Maps a raised message to a sentence for the player, the way the web's
@@ -484,7 +684,7 @@ final class LobbyViewModel: ObservableObject {
         "not_host": "Only the host can start or close the game.",
         "not_authenticated": "Sign in first.",
         "account_required": "Multiplayer needs a real account.",
-        "code_generation_failed": "Couldn't find a free room code. Try again.",
+        "code_generation_failed": "Couldn't set up the room. Try again.",
         "lobby_closed": "This room has closed.",
         "bad_player_count": "You need between two and four players.",
         "mode_not_supported": "Party mode isn't ready yet.",

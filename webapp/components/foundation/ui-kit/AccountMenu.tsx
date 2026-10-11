@@ -128,13 +128,13 @@ export function AccountMenu({
           event.preventDefault();
           setOpen(true);
         }}
-        className={`flex cursor-pointer items-center gap-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel ${
+        className={`flex cursor-pointer items-center gap-2.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${
           compact ? "" : "w-full"
         }`}
       >
         <span
           aria-hidden
-          className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-panel font-slab text-base leading-none text-panel-fg shadow-card"
+          className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-fg font-slab text-base leading-none text-surface shadow-card"
         >
           {avatarUrl && !imageFailed ? (
             <motion.img

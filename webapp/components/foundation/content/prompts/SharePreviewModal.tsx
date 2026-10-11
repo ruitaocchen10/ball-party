@@ -59,7 +59,7 @@ export function SharePreviewModal({
             {error ? "Couldn't make image" : "Preview"}
           </p>
         </ModalTitle>
-        <button type="button" onClick={onClose} aria-label="Close preview" className="flex h-8 w-8 items-center justify-center text-fg-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
+        <button type="button" onClick={onClose} aria-label="Close preview" className="flex h-8 w-8 items-center justify-center text-fg-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">
           <X className="h-4 w-4" strokeWidth={1.8} />
         </button>
       </div>
@@ -110,7 +110,7 @@ function ShareFormatField({ format, onChange }: { format: ShareFormat; onChange?
       <legend className="mb-1.5 type-label font-semibold text-fg-muted">Instagram format</legend>
       <div className="grid grid-cols-2 gap-2">
         {(["post", "reel"] as const).map((value) => (
-          <button key={value} type="button" onClick={() => onChange?.(value)} className={`border px-2.5 py-2 text-left ${format === value ? "border-panel bg-panel text-panel-fg" : "border-line bg-surface text-fg-muted"}`}>
+          <button key={value} type="button" onClick={() => onChange?.(value)} className={`rounded-card border px-2.5 py-2 text-left ${format === value ? "border-hidden bg-hidden text-fg" : "border-line bg-surface text-fg-muted"}`}>
             <span className="block type-label font-bold">Instagram {value}</span>
             <span className="mt-0.5 block font-mono text-[10px] opacity-70">{value === "post" ? "4:5 · 1080 × 1350" : "9:16 · 1080 × 1920"}</span>
           </button>
@@ -125,7 +125,7 @@ function ShareHeadlineField({ id, label, value, defaultValue, maxLength, onChang
     <div>
       <label htmlFor={id} className="mb-1.5 block type-label font-semibold text-fg-muted">{label}</label>
       <div className="flex gap-2">
-        <input id={id} value={value} maxLength={maxLength} onChange={(event) => onChange?.(event.target.value)} className={`min-w-0 flex-1 border border-line bg-surface px-2.5 py-2 ${red ? "font-mono text-xs font-semibold tracking-[0.12em] text-[#c9382c]" : "font-slab text-sm text-fg"} uppercase outline-none focus:border-fg-muted`} />
+        <input id={id} value={value} maxLength={maxLength} onChange={(event) => onChange?.(event.target.value)} className={`min-w-0 flex-1 rounded-card border border-line bg-surface px-2.5 py-2 ${red ? "font-mono text-xs font-semibold tracking-[0.12em] text-[#c9382c]" : "font-slab text-sm text-fg"} uppercase outline-none focus:border-fg-muted`} />
         {value !== defaultValue ? <button type="button" onClick={onReset} className="shrink-0 type-label text-fg-muted hover:text-fg">Reset</button> : null}
       </div>
     </div>

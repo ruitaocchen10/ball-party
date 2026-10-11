@@ -8,7 +8,7 @@ import { GameMomentCard } from "@/components/foundation/friends/GameMomentCard";
 import { groupActivity, timeAgo, type ActivityEvent } from "@/lib/foundation/friends/friends";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 
-const LINK = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
+const LINK = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
 
 /**
  * What friends have been doing over the last 30 days, as a feed of cards:

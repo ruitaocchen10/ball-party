@@ -1196,6 +1196,7 @@ export type Database = {
           closed_at: string | null
           code: string
           created_at: string
+          game_format: Json
           host_id: string
           id: string
           selected_game: string | null
@@ -1204,6 +1205,7 @@ export type Database = {
           closed_at?: string | null
           code: string
           created_at?: string
+          game_format?: Json
           host_id: string
           id?: string
           selected_game?: string | null
@@ -1212,6 +1214,7 @@ export type Database = {
           closed_at?: string | null
           code?: string
           created_at?: string
+          game_format?: Json
           host_id?: string
           id?: string
           selected_game?: string | null
@@ -2846,6 +2849,7 @@ export type Database = {
           closed_at: string | null
           code: string
           created_at: string
+          game_format: Json
           host_id: string
           id: string
           selected_game: string | null
@@ -2904,6 +2908,7 @@ export type Database = {
           closed_at: string | null
           code: string
           created_at: string
+          game_format: Json
           host_id: string
           id: string
           selected_game: string | null
@@ -3005,6 +3010,7 @@ export type Database = {
           closed_at: string | null
           code: string
           created_at: string
+          game_format: Json
           host_id: string
           id: string
           selected_game: string | null
@@ -3192,6 +3198,10 @@ export type Database = {
         Returns: undefined
       }
       send_friend_request: { Args: { p_username: string }; Returns: string }
+      set_lobby_game_format: {
+        Args: { p_format: Json; p_lobby_id: string }
+        Returns: undefined
+      }
       set_profile_private: { Args: { p_private: boolean }; Returns: boolean }
       solo_leaderboard: {
         Args: {

@@ -9,16 +9,16 @@ import { springSnappy } from "@/lib/foundation/ui-kit/motion";
 const MotionLink = motion.create(Link);
 
 /**
- * Buttons are cream, because a button is a known thing and everything known in
- * this product sits on a light panel. `ghost` is for the subordinate action on
- * a screen — one primary per view.
+ * Buttons are a light fill on the dark page. `ghost` is for the subordinate
+ * action on a screen — one primary per view.
  *
- * `ink` inverts that for the one place the rule breaks down: a button sitting
- * ON a cream panel, where cream-on-cream would be invisible. The colours swap;
- * the meaning doesn't.
+ * `ink` is the same light fill for a button sitting ON a panel, where a
+ * dark-on-dark button would be invisible.
  *
- * Focus rings are cream rather than red: red is reserved for hidden state, and
- * a focus ring is the opposite of hidden. On a panel it inverts with the rest.
+ * `dark` is the inverse, for a button on a light card.
+ *
+ * Focus rings are the text colour rather than red: red is reserved for hidden
+ * state, and a focus ring is the opposite of hidden.
  */
 // motion.button redefines these few event props with its own animation-aware
 // signatures (see framer-motion's HTMLMotionProps); omitted from the native
@@ -29,7 +29,7 @@ type NativeButtonProps = Omit<
   "onDrag" | "onDragStart" | "onDragEnd" | "onAnimationStart" | "onAnimationEnd" | "onAnimationIteration"
 >;
 
-type Variant = "solid" | "ghost" | "ink" | "text" | "danger";
+type Variant = "solid" | "ghost" | "ink" | "dark" | "text" | "danger";
 type Size = "md" | "sm";
 
 type Props = NativeButtonProps & {
@@ -51,7 +51,7 @@ type Props = NativeButtonProps & {
 const PRESS = { whileTap: { scale: 0.97 }, transition: springSnappy };
 
 const BASE =
-  "cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60 " +
+  "cursor-pointer rounded-card transition-colors disabled:cursor-not-allowed disabled:opacity-60 " +
   "focus-visible:outline-2 focus-visible:outline-offset-2";
 
 const SIZES = {
@@ -60,17 +60,19 @@ const SIZES = {
 } as const;
 
 const VARIANTS = {
-  solid: "bg-panel text-panel-fg hover:bg-panel-hover focus-visible:outline-panel",
+  solid: "bg-fg text-surface hover:bg-panel-ink-hover focus-visible:outline-fg",
   ghost:
     "bg-transparent text-fg ring-1 ring-line ring-inset hover:bg-surface-raised " +
-    "focus-visible:outline-panel",
-  ink: "bg-panel-fg text-panel hover:bg-panel-ink-hover focus-visible:outline-panel-fg",
+    "focus-visible:outline-fg",
+  ink: "bg-panel-fg text-panel hover:bg-panel-ink-hover focus-visible:outline-fg",
+  /** A dark fill for a button on a light card, where `ink` would vanish. */
+  dark: "bg-surface text-fg hover:bg-panel-hover focus-visible:outline-surface",
   /** A destructive action, kept subordinate: ghost in the concealed red. */
   danger:
     "bg-transparent text-hidden-text ring-1 ring-hidden/40 ring-inset hover:bg-hidden/10 " +
     "focus-visible:outline-hidden",
   /** No surface at all: "Cancel", "Back". Pair with `fullWidth={false}`. */
-  text: "bg-transparent text-fg-muted hover:text-fg focus-visible:outline-panel",
+  text: "bg-transparent text-fg-muted hover:text-fg focus-visible:outline-fg",
 } as const;
 
 export function Button({

@@ -17,12 +17,13 @@ struct LobbyServerError: Error, Equatable, Sendable {
 /// A game a room can be set to play.
 ///
 /// `lobbies.selected_game` is free text on the server and the same room may
-/// have been pointed at a game iOS doesn't ship yet (the sabotage draft, the
-/// Wavelength) from the web, so an unrecognised value is a legitimate state to
-/// read back rather than a decoding failure — see `selectedMatchGame`.
+/// have been pointed at a game iOS doesn't ship yet from the web, so an unrecognised value is a legitimate state to read back rather
+/// than a decoding failure — see `selectedMatchGame`.
 enum MatchGame: String, Sendable, Equatable, CaseIterable, Identifiable {
     case higherOrLower = "higher_or_lower"
     case auctionTeamBuilder = "auction_team_builder"
+    case wavelength = "wavelength_2v2"
+    case sabotageDraft = "sabotage_draft"
 
     var id: String { rawValue }
 
@@ -30,13 +31,26 @@ enum MatchGame: String, Sendable, Equatable, CaseIterable, Identifiable {
         switch self {
         case .higherOrLower: "Higher or Lower"
         case .auctionTeamBuilder: "Auction Team Builder"
+        case .wavelength: "2v2 Wavelength"
+        case .sabotageDraft: "Sabotage Draft"
         }
     }
 
+    /// The one-line pitch on the game's card.
     var tagline: String {
         switch self {
-        case .higherOrLower: "Call the next card. Two to four players."
-        case .auctionTeamBuilder: "Bid on mystery fantasy lots to fill a roster. Two to four players."
+        case .higherOrLower: "Call the next card. Make the streak last."
+        case .auctionTeamBuilder: "Bid on mystery fantasy lots to fill a roster."
+        case .wavelength: "Give a one-shot clue and find the hidden target."
+        case .sabotageDraft: "Draft hidden picks, then wreck everyone else's."
+        }
+    }
+
+    /// How many people the game seats.
+    var playersLabel: String {
+        switch self {
+        case .wavelength: "2 or 4 players"
+        case .higherOrLower, .auctionTeamBuilder, .sabotageDraft: "2–4 players"
         }
     }
 }
@@ -44,24 +58,31 @@ enum MatchGame: String, Sendable, Equatable, CaseIterable, Identifiable {
 /// `public.lobbies` — the room itself.
 struct Lobby: Equatable, Sendable, Decodable {
     let id: UUID
-    /// The 5-character join code, from a mishear-resistant alphabet.
+    /// The room's link token: long and random, never shown or typed.
     let code: String
     let hostId: UUID
     /// Raw, so a game iOS can't start still reads back honestly.
     let selectedGame: String?
     let closedAt: Date?
+    /// The host's saved settings for the games on offer, readable by everyone in
+    /// the room. Empty until the host changes something.
+    let gameFormat: LobbyGameFormat
 
     /// The selection, when it is one this app can actually start.
     var selectedMatchGame: MatchGame? { selectedGame.flatMap(MatchGame.init(rawValue:)) }
 
     var isClosed: Bool { closedAt != nil }
 
-    init(id: UUID, code: String, hostId: UUID, selectedGame: String? = nil, closedAt: Date? = nil) {
+    init(
+        id: UUID, code: String, hostId: UUID, selectedGame: String? = nil, closedAt: Date? = nil,
+        gameFormat: LobbyGameFormat = LobbyGameFormat()
+    ) {
         self.id = id
         self.code = code
         self.hostId = hostId
         self.selectedGame = selectedGame
         self.closedAt = closedAt
+        self.gameFormat = gameFormat
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -69,6 +90,7 @@ struct Lobby: Equatable, Sendable, Decodable {
         case hostId = "host_id"
         case selectedGame = "selected_game"
         case closedAt = "closed_at"
+        case gameFormat = "game_format"
     }
 
     init(from decoder: Decoder) throws {
@@ -79,6 +101,128 @@ struct Lobby: Equatable, Sendable, Decodable {
         selectedGame = try container.decodeIfPresent(String.self, forKey: .selectedGame)
         closedAt = try container.decodeIfPresent(String.self, forKey: .closedAt)
             .map { try PostgresTimestamp.parse($0) }
+        // A room from before the column existed, or a read that didn't ask for
+        // it, has no saved settings rather than being unreadable.
+        gameFormat = (try? container.decodeIfPresent(LobbyGameFormat.self, forKey: .gameFormat)) ?? LobbyGameFormat()
+    }
+}
+
+/// `public.lobbies.game_format`: the host's settings for each game the room
+/// can play, kept on the room so everyone in it can see what is being set up.
+///
+/// An object keyed by game, each value that game's own settings. The platform
+/// never reads it (it doesn't know what a game is); the clients write what the
+/// host's pickers hold and read it back for everyone else. Values are raw
+/// strings, not enums, so a setting a newer client wrote still decodes here and
+/// is shown as written.
+struct LobbyGameFormat: Equatable, Sendable, Codable {
+    var higherOrLower: HigherOrLower?
+    var auction: Auction?
+    var wavelength: Wavelength?
+    var sabotage: Sabotage?
+
+    init(
+        higherOrLower: HigherOrLower? = nil, auction: Auction? = nil,
+        wavelength: Wavelength? = nil, sabotage: Sabotage? = nil
+    ) {
+        self.higherOrLower = higherOrLower
+        self.auction = auction
+        self.wavelength = wavelength
+        self.sabotage = sabotage
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case higherOrLower = "higher_or_lower"
+        case auction = "auction_team_builder"
+        case wavelength = "wavelength_2v2"
+        case sabotage = "sabotage_draft"
+    }
+
+    struct HigherOrLower: Equatable, Sendable, Codable {
+        var scoringMode: String
+        /// Nil is the whole pool.
+        var seasonFrom: Int?
+        var seasonTo: Int?
+
+        private enum CodingKeys: String, CodingKey {
+            case scoringMode = "scoring_mode"
+            case seasonFrom = "season_from"
+            case seasonTo = "season_to"
+        }
+    }
+
+    struct Auction: Equatable, Sendable, Codable {
+        var scoringMode: String
+        var rosterPreset: String
+        var tokenCount: Int
+        var seasonFrom: Int?
+        var seasonTo: Int?
+
+        private enum CodingKeys: String, CodingKey {
+            case scoringMode = "scoring_mode"
+            case rosterPreset = "roster_preset"
+            case tokenCount = "token_count"
+            case seasonFrom = "season_from"
+            case seasonTo = "season_to"
+        }
+    }
+
+    struct Wavelength: Equatable, Sendable, Codable {
+        var mode: String
+        var preset: String
+    }
+
+    struct Sabotage: Equatable, Sendable, Codable {
+        var mode: String
+    }
+
+    /// One row of the settings a card shows: "Scoring", "Season total".
+    struct Line: Equatable, Sendable, Identifiable {
+        let label: String
+        let value: String
+        var id: String { label }
+    }
+
+    /// The settings for `game` as plain rows, falling back to the game's defaults
+    /// for anything the host hasn't touched. Both the host's own pickers and
+    /// everyone else's read-only card start from the same defaults, so an
+    /// untouched room reads the same to all of them.
+    func lines(for game: MatchGame) -> [Line] {
+        func era(_ from: Int?, _ to: Int?) -> String {
+            guard let from, let to else { return "All seasons" }
+            return SeasonRange(from: from, to: to).label
+        }
+        func scoring(_ raw: String) -> String { ScoringMode(rawValue: raw)?.label ?? raw }
+
+        switch game {
+        case .higherOrLower:
+            let f = higherOrLower
+            return [
+                Line(label: "Scoring", value: scoring(f?.scoringMode ?? ScoringMode.seasonTotal.rawValue)),
+                Line(label: "Era", value: era(f?.seasonFrom, f?.seasonTo)),
+            ]
+        case .auctionTeamBuilder:
+            let f = auction
+            let preset = f?.rosterPreset ?? RosterPreset.standard.rawValue
+            let tokens = f?.tokenCount ?? 1
+            return [
+                Line(label: "Scoring", value: scoring(f?.scoringMode ?? ScoringMode.weekly.rawValue)),
+                Line(label: "Roster", value: RosterPreset(rawValue: preset)?.label ?? preset),
+                Line(label: "Tokens", value: tokens == 0 ? "Off" : "\(tokens) per player"),
+                Line(label: "Era", value: era(f?.seasonFrom, f?.seasonTo)),
+            ]
+        case .wavelength:
+            let mode = wavelength?.mode ?? WavelengthMode.coop.rawValue
+            let preset = wavelength?.preset ?? WavelengthPreset.short.rawValue
+            var rows = [Line(label: "Mode", value: WavelengthMode(rawValue: mode)?.label ?? mode)]
+            if mode == WavelengthMode.coop.rawValue {
+                rows.append(Line(label: "Length", value: WavelengthPreset(rawValue: preset)?.label ?? preset))
+            }
+            return rows
+        case .sabotageDraft:
+            let mode = sabotage?.mode ?? SabotageMode.full.rawValue
+            return [Line(label: "Mode", value: SabotageMode(rawValue: mode)?.label ?? mode)]
+        }
     }
 }
 
@@ -192,11 +336,27 @@ struct LobbySnapshot: Equatable, Sendable {
     let members: [LobbyMember]
     /// The active run, if a game is under way or being dealt.
     let run: LiveRun?
+    /// Matches each player has won in this room, for as long as it has been
+    /// open. Absent means none. Not a stored stat: the web's `fetchLobbyWins`
+    /// reads the same thing, `placement = 1` on the room's completed matches.
+    let wins: [UUID: Int]
 
-    init(lobby: Lobby, members: [LobbyMember], run: LiveRun? = nil) {
+    init(lobby: Lobby, members: [LobbyMember], run: LiveRun? = nil, wins: [UUID: Int] = [:]) {
         self.lobby = lobby
         self.members = members
         self.run = run
+        self.wins = wins
+    }
+
+    /// One row of `match_players` with `placement = 1`.
+    struct WinRow: Decodable, Equatable, Sendable {
+        let userId: UUID
+        enum CodingKeys: String, CodingKey { case userId = "user_id" }
+    }
+
+    /// user id → win count.
+    static func tallyWins(_ rows: [WinRow]) -> [UUID: Int] {
+        rows.reduce(into: [:]) { $0[$1.userId, default: 0] += 1 }
     }
 }
 
@@ -214,4 +374,32 @@ enum LobbyEvent: Equatable, Sendable {
     case subscribed
     /// A `lobby_members` / `lobbies` / `runs` / `matches` row changed.
     case changed
+}
+
+/// The link a room is shared by. The path must match the web's room route
+/// (`/lobby/[code]`); the clients build it, SQL only owns the code.
+enum RoomLink {
+    static let pathPrefix = "lobby"
+
+    static func url(code: String, base: URL = SiteLinks.home) -> URL {
+        base.appendingPathComponent(pathPrefix).appendingPathComponent(code)
+    }
+
+    /// The room code in a link the app was opened with, or `nil` when the URL
+    /// isn't a room link. Accepts `https://ballparty.social/lobby/<code>` (and
+    /// `www.`), with or without a trailing slash. The code is only
+    /// shape-checked; `join_lobby` decides whether the room exists.
+    static func code(from url: URL, base: URL = SiteLinks.home) -> String? {
+        guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased(),
+              let baseHost = base.host?.lowercased(),
+              host == baseHost || host == "www.\(baseHost)"
+        else { return nil }
+        let parts = url.pathComponents.filter { $0 != "/" }
+        guard parts.count == 2, parts[0] == pathPrefix else { return nil }
+        let code = parts[1]
+        guard (1...64).contains(code.count),
+              code.unicodeScalars.allSatisfy({ $0.isASCII && CharacterSet.alphanumerics.contains($0) })
+        else { return nil }
+        return code.uppercased()
+    }
 }

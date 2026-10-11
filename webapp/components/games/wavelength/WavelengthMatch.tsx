@@ -247,7 +247,7 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
           {board.phase === "fill" && (
             canFill
               ? <BoardPanel card={myFillCard} target={myFillTarget ?? undefined} caption="Only you can see the target" />
-              : <div className="flex w-full items-center justify-center bg-panel p-6 text-center text-sm text-panel-muted shadow-card">Everyone fills out their own cards in private.</div>
+              : <div className="flex w-full items-center justify-center rounded-card bg-panel p-6 text-center text-sm text-panel-muted shadow-card">Everyone fills out their own cards in private.</div>
           )}
           {board.phase === "guess" && (
             <BoardPanel card={currentCard} clue={currentClue} target={isPsychic ? currentTarget : null} needle={needle} setNeedle={moveNeedle} interactive={isGuesser && !locking} />
@@ -345,7 +345,7 @@ function RevealBanner({ round, scores }: { round: WavelengthRound | null; scores
   const skipped = round.status === "skipped";
   const reaction = skipped ? "Clue skipped" : round.points === 4 ? "Bullseye!" : round.points === 3 ? "So close!" : round.points === 2 ? "In the zone" : "Off the mark";
   return (
-    <div role="status" className="animate-sold-headline mt-3 flex w-full max-w-2xl items-center gap-4 border border-panel-fg/15 bg-panel px-4 py-3 text-panel-fg shadow-card">
+    <div role="status" className="animate-sold-headline mt-3 flex w-full max-w-2xl items-center gap-4 rounded-card border border-panel-fg/15 bg-panel px-4 py-3 text-panel-fg shadow-card">
       {!skipped && (
         <div className="w-28 shrink-0">
           <Dial needle={round.guess_position ?? undefined} target={round.revealed_target ?? undefined} label={`Round ${round.round} result`} />
@@ -380,7 +380,7 @@ function BoardPanel({ card, clue, target, needle, setNeedle, interactive, points
     // hugging the content and letting the page background show below the
     // card instead reads as normal breathing room, the way the roster column
     // beside it already does.
-    <div className="flex w-full max-w-2xl flex-col items-center gap-3.5 bg-panel px-6 py-6 text-panel-fg shadow-card">
+    <div className="flex w-full max-w-2xl flex-col items-center gap-3.5 rounded-card bg-panel px-6 py-6 text-panel-fg shadow-card">
       {clue !== undefined && (
         <div className="text-center">
           <p className="type-label-lg text-panel-muted">The clue</p>
@@ -401,14 +401,14 @@ function FillControls({ canFill, myFillWritten, myFillTotal, clue, error, saving
 }) {
   if (!canFill) {
     return (
-      <div className="flex flex-1 flex-col justify-center gap-2 bg-surface-raised p-5 text-sm text-fg-muted shadow-well">
+      <div className="flex flex-1 flex-col justify-center gap-2 rounded-card bg-surface-raised p-5 text-sm text-fg-muted shadow-well">
         <p className="type-label text-fg-muted">Your move</p>
         <p>{myFillTotal > 0 && myFillWritten === myFillTotal ? "Your clues are written. Waiting for the others." : "Your teammate is writing the clues."}</p>
       </div>
     );
   }
   return (
-    <form onSubmit={onSubmit} className="flex flex-1 flex-col gap-3 bg-surface-raised p-5 shadow-well">
+    <form onSubmit={onSubmit} className="flex flex-1 flex-col gap-3 rounded-card bg-surface-raised p-5 shadow-well">
       <div>
         <p className="type-label text-fg-muted">Your move</p>
         <p className="font-slab text-xl">Write your clue{myFillTotal > 1 ? ` (${myFillWritten + 1} of ${myFillTotal})` : ""}</p>
@@ -428,7 +428,7 @@ function GuessControls({ isGuesser, isPsychic, locking, error, onLock, hasCard }
   isGuesser: boolean; isPsychic: boolean; locking: boolean; error: string | null; onLock: () => void; hasCard: boolean;
 }) {
   return (
-    <div className="flex flex-1 flex-col gap-3 bg-surface-raised p-5 shadow-well">
+    <div className="flex flex-1 flex-col gap-3 rounded-card bg-surface-raised p-5 shadow-well">
       <div>
         <p className="type-label text-fg-muted">Your move</p>
         <p className="font-slab text-xl">{isGuesser ? "Place the needle" : "Watching"}</p>
@@ -450,7 +450,7 @@ function GuessControls({ isGuesser, isPsychic, locking, error, onLock, hasCard }
 
 function RevealControls({ round }: { round: WavelengthRound | null }) {
   return (
-    <div className="flex flex-1 flex-col justify-center gap-2 bg-surface-raised p-5 shadow-well">
+    <div className="flex flex-1 flex-col justify-center gap-2 rounded-card bg-surface-raised p-5 shadow-well">
       <p className="type-label text-fg-muted">Round locked</p>
       <p className="font-slab text-xl">{round?.status === "skipped" ? "Clue skipped" : `${round?.points ?? 0} points`}</p>
       <p className="text-sm text-fg-muted">The target is visible to everyone now. Next round starts automatically.</p>
@@ -479,7 +479,7 @@ function TablePanel({ players, board, rounds, statuses, current, viewerId }: {
   return (
     <div className="flex min-h-0 flex-col gap-3">
       {teams.map((team) => (
-        <div key={team} className="border border-line bg-surface-raised p-3">
+        <div key={team} className="rounded-card border border-line bg-surface-raised p-3">
           <div className="flex items-baseline justify-between">
             <p className="font-slab text-base">{board.mode === "coop" ? "Your team" : `Team ${team + 1}`}</p>
             <p className="font-slab font-mono text-xl tabular-nums">{board.teamScores[team] ?? 0}</p>
@@ -504,11 +504,11 @@ function TablePanel({ players, board, rounds, statuses, current, viewerId }: {
 function ResultScreen({ result, scores, roundCount, rounds }: { result: WavelengthResult; scores: number[]; roundCount: number; rounds: WavelengthRound[] }) {
   if (result.mode === "coop") {
     const maximum = ({ short: 16, medium: 24, long: 32 } as const)[result.preset ?? "short"];
-    return <section className="grid gap-4 bg-surface-raised p-5"><p className="font-slab text-2xl">{result.outcome === "win" ? "You won!" : "Not this time"}</p><p className="text-lg">{result.score} / {maximum} points</p><p>{result.bullseyes} {result.bullseyes === 1 ? "bullseye" : "bullseyes"}</p><p aria-label={`${result.stars ?? 0} star tier`} className="font-slab text-xl">{"★".repeat(result.stars ?? 0)}{"☆".repeat(3 - (result.stars ?? 0))}</p></section>;
+    return <section className="grid gap-4 rounded-card bg-surface-raised p-5"><p className="font-slab text-2xl">{result.outcome === "win" ? "You won!" : "Not this time"}</p><p className="text-lg">{result.score} / {maximum} points</p><p>{result.bullseyes} {result.bullseyes === 1 ? "bullseye" : "bullseyes"}</p><p aria-label={`${result.stars ?? 0} star tier`} className="font-slab text-xl">{"★".repeat(result.stars ?? 0)}{"☆".repeat(3 - (result.stars ?? 0))}</p></section>;
   }
   const winner = result.outcome === "team_0_win" ? 0 : 1;
   const settledBy = rounds.length > roundCount ? "Sudden death" : scores[0] === scores[1] ? "Bullseye tiebreak" : null;
-  return <section className="grid gap-4 bg-surface-raised p-5"><p className="font-slab text-2xl">Team {winner + 1} wins!</p><div className="flex gap-4 text-lg"><p>Team 1: {scores[0] ?? 0}</p><p>Team 2: {scores[1] ?? 0}</p></div>{settledBy && <p>{settledBy}</p>}</section>;
+  return <section className="grid gap-4 rounded-card bg-surface-raised p-5"><p className="font-slab text-2xl">Team {winner + 1} wins!</p><div className="flex gap-4 text-lg"><p>Team 1: {scores[0] ?? 0}</p><p>Team 2: {scores[1] ?? 0}</p></div>{settledBy && <p>{settledBy}</p>}</section>;
 }
 function Endpoints({ card }: { card: Card }) { return <div className="flex w-full justify-between gap-4 font-slab text-sm"><span>{card.left_label}</span><span className="text-right">{card.right_label}</span></div>; }
 

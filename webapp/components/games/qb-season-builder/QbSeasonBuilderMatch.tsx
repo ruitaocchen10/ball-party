@@ -242,11 +242,11 @@ function SpinPanel({
   return (
     <section aria-label="The spin" className="mt-5 flex w-full flex-col gap-4">
       {revealed ? (
-        <div className="flex items-center gap-3 border border-line bg-surface-raised p-4">
+        <div className="flex items-center gap-3 rounded-card border border-line bg-surface-raised p-4">
           <TeamSpinIdentity code={spin.franchiseCode} name={franchiseName(spin.franchiseCode)} season={spin.season} />
         </div>
       ) : (
-        <div className="border border-line bg-surface-raised p-4">
+        <div className="rounded-card border border-line bg-surface-raised p-4">
           <SlotReel
             items={reelItems}
             durationMs={SPIN_REVEAL_MS}
@@ -265,7 +265,7 @@ function SpinPanel({
         <div className="flex flex-col gap-4">
           {revealed ? (
             spin.quarterbacks.map((quarterback) => (
-              <fieldset key={quarterback.playerId} className="border border-line bg-surface-raised p-4">
+              <fieldset key={quarterback.playerId} className="rounded-card border border-line bg-surface-raised p-4">
                 <legend className="flex items-center gap-2 px-1 font-slab text-xl uppercase">
                   <span aria-hidden="true">
                     <PlayerPortrait name={quarterback.displayName} headshotUrl={quarterback.headshotUrl} className="h-9 w-9 text-[11px]" />
@@ -383,7 +383,7 @@ function OptionRow({
         taken
           ? "cursor-not-allowed border-line bg-surface opacity-50"
           : active
-            ? "cursor-pointer border-panel bg-panel text-panel-fg"
+            ? "cursor-pointer border-hidden bg-hidden text-fg"
             : "cursor-pointer border-line hover:border-fg-muted"
       }`}
     >
@@ -420,7 +420,7 @@ function FinishedPanel({
   onFinish: () => void;
 }) {
   return (
-    <section aria-label="Your quarterback" className="mt-5 flex w-full flex-col gap-3 border border-line bg-surface-raised p-4">
+    <section aria-label="Your quarterback" className="mt-5 flex w-full flex-col gap-3 rounded-card border border-line bg-surface-raised p-4">
       {board.phase === "complete" ? (
         <p className="font-slab text-[27px] leading-none uppercase">This run is finished.</p>
       ) : (
@@ -452,7 +452,7 @@ function FinishedPanel({
 
 function BuildCard({ board, isGuest }: { board: Board; isGuest: boolean }) {
   return (
-    <section aria-labelledby="qb-build-heading" className="border border-line bg-surface-raised p-4 shadow-well">
+    <section aria-labelledby="qb-build-heading" className="rounded-card border border-line bg-surface-raised p-4 shadow-well">
       <p className="type-label font-semibold text-hidden-text">Your quarterback</p>
       <h2 id="qb-build-heading" className="mt-1 font-slab text-[27px] leading-none uppercase">Your build</h2>
       <ol aria-label="Your build" className="mt-4 divide-y divide-line border-t border-line">

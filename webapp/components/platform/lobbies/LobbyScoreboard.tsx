@@ -44,7 +44,7 @@ export function LobbyScoreboard({
             >
               <span className="flex min-w-0 items-center gap-2">
                 {leading ? (
-                  <Trophy aria-hidden className="h-3.5 w-3.5 shrink-0 text-panel" strokeWidth={1.5} />
+                  <Trophy aria-hidden className="h-3.5 w-3.5 shrink-0 text-fg" strokeWidth={1.5} />
                 ) : null}
                 <span className="truncate font-mono text-xs font-semibold tracking-[0.03em] text-fg uppercase">
                   {member.profiles?.display_name ?? "Player"}

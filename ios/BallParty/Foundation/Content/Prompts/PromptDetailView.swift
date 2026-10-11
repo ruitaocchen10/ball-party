@@ -77,7 +77,8 @@ struct PromptDetailView: View {
                 .monoLabel(11, tracking: 0.1)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
-                .overlay(Rectangle().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
             if post.isMatchupPost {
                 SectionTitle(text: "The games")
                 MatchupCalls(post: post)
@@ -376,10 +377,10 @@ struct SlotPicker: View {
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity)
-                    // A chosen option is a known thing, so it is lit like a
-                    // panel; the rest stay in the well.
-                    .background(isChosen ? Theme.panel : Theme.surfaceRaised)
-                    .overlay(Rectangle().strokeBorder(isChosen ? Color.clear : Theme.line, lineWidth: 1))
+                    // A chosen option is filled red; the rest stay in the well.
+                    .background(isChosen ? Theme.hidden : Theme.surfaceRaised)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(isChosen ? Color.clear : Theme.line, lineWidth: 1))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -469,7 +470,7 @@ private struct SlotResultsView: View {
                             .foregroundStyle(Theme.fg)
                         if position != nil { Text("your pick").monoLabel(10, tracking: 0.08) }
                         Spacer()
-                        if isRight { Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.panel) }
+                        if isRight { Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.fg) }
                         if let pct {
                             Text("\(Int(pct.rounded()))%")
                                 .font(.mono(14, weight: .bold))
@@ -477,7 +478,7 @@ private struct SlotResultsView: View {
                         }
                     }
                     if let pct {
-                        MeterBar(fraction: min(max(pct, 0), 100) / 100, fill: position == nil ? Theme.fgMuted : Theme.panel)
+                        MeterBar(fraction: min(max(pct, 0), 100) / 100, fill: position == nil ? Theme.fgMuted : Theme.fg)
                     }
                 }
                 .accessibilityElement(children: .combine)

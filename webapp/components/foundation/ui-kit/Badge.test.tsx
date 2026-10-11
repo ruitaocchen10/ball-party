@@ -5,10 +5,10 @@ import { Badge } from "./Badge";
 import { EmptyState } from "./EmptyState";
 
 describe("Badge", () => {
-  it("is a cream chip by default", () => {
+  it("is a light chip by default", () => {
     render(<Badge>You</Badge>);
 
-    expect(screen.getByText("You")).toHaveClass("bg-panel", "text-panel-fg");
+    expect(screen.getByText("You")).toHaveClass("bg-fg", "text-surface");
   });
 
   it.each([

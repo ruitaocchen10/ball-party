@@ -6,7 +6,7 @@ export const LOBBY_MESSAGES: Record<string, string> = {
   host_still_active: "The host is still connected. Try again in a moment.",
   not_authenticated: "Sign in first.",
   account_required: "Multiplayer needs a real account — solo is still free to play as a guest.",
-  code_generation_failed: "Couldn't find a free room code. Try again.",
+  code_generation_failed: "Couldn't set up the room. Try again.",
   lobby_closed: "This room has closed.",
   bad_player_count: "You need between two and four players.",
   mode_not_supported: "Party mode isn't ready yet.",

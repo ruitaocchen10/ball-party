@@ -35,6 +35,58 @@ struct ProfileView: View {
         )
     }
 
+    /// Friends, editing, privacy, support and the way out. It sits opposite the
+    /// bell in the header, so it is a button the same size.
+    private var profileMenu: some View {
+        Menu {
+            Button {
+                showFriends = true
+            } label: {
+                Label("Friends", systemImage: "person.2")
+            }
+            Button {
+                editor = ProfileEditorViewModel(
+                    client: profileClient, userId: viewerId,
+                    displayName: viewModel.profile?.displayName ?? "",
+                    avatarURL: viewModel.avatarURL,
+                    username: viewModel.profile?.username
+                )
+            } label: {
+                Label("Edit profile", systemImage: "pencil")
+            }
+            Button {
+                privacy = PrivacySettingsViewModel(
+                    client: profileClient, isPrivate: viewModel.profile?.isPrivate ?? false
+                )
+            } label: {
+                Label("Privacy", systemImage: "lock")
+            }
+            Divider()
+            Link(destination: SiteLinks.privacyPolicy) {
+                Label("Privacy policy", systemImage: "hand.raised")
+            }
+            Link(destination: SiteLinks.support) {
+                Label("Support", systemImage: "questionmark.circle")
+            }
+            Divider()
+            Button(role: .destructive) {
+                Task { await auth.signOut() }
+            } label: {
+                Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+            }
+            Button(role: .destructive) {
+                confirmingDelete = true
+            } label: {
+                Label("Delete account", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(Theme.fg)
+                .frame(width: 44, height: 44)
+        }
+        .accessibilityLabel("Profile menu")
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
@@ -45,57 +97,10 @@ struct ProfileView: View {
             .padding(16)
         }
         .screenBackground()
-        .navigationTitle("Profile")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        showFriends = true
-                    } label: {
-                        Label("Friends", systemImage: "person.2")
-                    }
-                    Button {
-                        editor = ProfileEditorViewModel(
-                            client: profileClient, userId: viewerId,
-                            displayName: viewModel.profile?.displayName ?? "",
-                            avatarURL: viewModel.avatarURL,
-                            username: viewModel.profile?.username
-                        )
-                    } label: {
-                        Label("Edit profile", systemImage: "pencil")
-                    }
-                    Button {
-                        privacy = PrivacySettingsViewModel(
-                            client: profileClient, isPrivate: viewModel.profile?.isPrivate ?? false
-                        )
-                    } label: {
-                        Label("Privacy", systemImage: "lock")
-                    }
-                    Divider()
-                    Link(destination: SiteLinks.privacyPolicy) {
-                        Label("Privacy policy", systemImage: "hand.raised")
-                    }
-                    Link(destination: SiteLinks.support) {
-                        Label("Support", systemImage: "questionmark.circle")
-                    }
-                    Divider()
-                    Button(role: .destructive) {
-                        Task { await auth.signOut() }
-                    } label: {
-                        Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
-                    Button(role: .destructive) {
-                        confirmingDelete = true
-                    } label: {
-                        Label("Delete account", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "line.3.horizontal")
-                        .foregroundStyle(Theme.fg)
-                }
-                .accessibilityLabel("Profile menu")
-            }
+        .screenHeader("Profile") {
+            profileMenu
+        } trailing: {
+            RootBell()
         }
         .navigationDestination(isPresented: $showFriends) { FriendsView() }
         .confirmationDialog(
@@ -133,7 +138,7 @@ struct ProfileView: View {
 
     private var header: some View {
         HStack(spacing: 16) {
-            Portrait(name: viewModel.displayName, url: viewModel.avatarURL)
+            Avatar(name: viewModel.displayName, url: viewModel.avatarURL)
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(viewModel.displayName)
@@ -270,7 +275,7 @@ private struct TakesHistory: View {
 
             switch huddle.phase {
             case .loading:
-                ProgressView().frame(maxWidth: .infinity, alignment: .center)
+                LoadingSpinner().frame(maxWidth: .infinity, alignment: .center)
             case .failed:
                 // The rest of the profile is still useful without Huddle; a
                 // failed read here just leaves the section empty rather than

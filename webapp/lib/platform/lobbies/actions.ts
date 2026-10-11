@@ -335,26 +335,6 @@ export async function postGameChoice(formData: FormData) {
     : code ? `/lobby/${code}` : "/");
 }
 
-/**
- * Join by code is two steps on purpose: this only navigates. The room page
- * decides whether you need to join, which means a pasted invite link and a
- * typed code land on exactly the same path.
- */
-export async function goToLobby(formData: FormData) {
-  const code = normalizeCode(formData.get("code"));
-  if (!code) redirect(`/party?error=${encodeURIComponent("Enter a room code.")}`);
-
-  const supabase = await createClient();
-  const { data: claimsData } = await supabase.auth.getClaims();
-  if (!isSignedInViewer(claimsData?.claims)) redirect(`/lobby/${code}`);
-
-  const result = await joinLobbyRpc(supabase, code);
-  if (result.error) redirect(withError(`/party?code=${code}`, result.error));
-
-  revalidatePath("/", "layout");
-  redirect(`/lobby/${code}`);
-}
-
 export async function joinLobby(formData: FormData) {
   const code = normalizeCode(formData.get("code"));
   const supabase = await createClient();

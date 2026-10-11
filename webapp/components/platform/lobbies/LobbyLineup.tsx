@@ -19,11 +19,14 @@ export function LobbyLineup({
   hostId,
   viewerId,
   stats = {},
+  lobbyId,
 }: {
   members: Member[];
   hostId: string;
   viewerId: string;
   stats?: Record<string, ProfileSummary>;
+  /** Lets an open seat invite a friend. */
+  lobbyId?: string;
 }) {
   return (
     <section aria-labelledby="lineup-heading" className="flex flex-col gap-5 lg:gap-6">
@@ -45,6 +48,7 @@ export function LobbyLineup({
         viewerId={viewerId}
         stats={stats}
         capacity={CAPACITY}
+        lobbyId={lobbyId}
       />
     </section>
   );

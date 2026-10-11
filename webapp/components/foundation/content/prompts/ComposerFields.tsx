@@ -265,7 +265,7 @@ export function CheckboxPoolField<T extends { id: string; label: string; sublabe
             type="button"
             disabled={disabled}
             onClick={() => onToggle(option.id)}
-            className={`flex items-center rounded border text-left font-mono text-[11px] uppercase transition-colors ${roomyTeams ? "gap-2.5 px-3 py-3" : "gap-1.5 px-2.5 py-2"} ${
+            className={`flex items-center rounded-chip border text-left font-mono text-[11px] uppercase transition-colors ${roomyTeams ? "gap-2.5 px-3 py-3" : "gap-1.5 px-2.5 py-2"} ${
               selected
                 ? "border-panel-fg bg-panel-fg text-panel"
                 : "border-panel-line bg-panel-shade text-panel-fg disabled:opacity-40"

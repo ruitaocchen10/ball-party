@@ -24,7 +24,7 @@ export function MatchupTile({ away, home, label, pressed, dimmed, onClick }: { a
       aria-pressed={pressed}
       aria-label={label}
       onClick={onClick}
-      className="group block min-w-0 cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+      className="group block min-w-0 cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
     >
       <PromptTicket className={`min-w-0 ring-1 ring-inset ${pressed ? "ring-fg/70" : "ring-line group-hover:ring-fg/40"}`}>
         <span className="relative grid grid-cols-2 divide-x divide-line">
@@ -50,7 +50,7 @@ export function TeamTile({ code, name, pressed, dimmed, onClick }: { code: strin
       aria-label={name}
       onClick={onClick}
       style={{ ...PROMPT_TICKET_CUT_CORNERS, ...teamSurface(code) }}
-      className={`relative flex h-14 items-center justify-center overflow-hidden border px-3 py-0 text-white shadow-[0_4px_10px_rgb(0_0_0/0.22)] transition-[transform,opacity] hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel ${pressed ? "border-white ring-2 ring-white" : "border-white/20"} ${dimmed ? "opacity-45" : ""} cursor-pointer`}
+      className={`relative flex h-14 items-center justify-center overflow-hidden rounded-card border px-3 py-0 text-white shadow-[0_4px_10px_rgb(0_0_0/0.22)] transition-[transform,opacity] hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${pressed ? "border-white ring-2 ring-white" : "border-white/20"} ${dimmed ? "opacity-45" : ""} cursor-pointer`}
     >
       <PromptTeamLogo code={code} className="h-24 w-24 shrink-0 drop-shadow-[0_5px_7px_rgb(0_0_0/0.5)]" />
       {pressed ? <Check aria-hidden className="absolute top-1.5 right-2 h-4 w-4 text-white drop-shadow" strokeWidth={3} /> : null}

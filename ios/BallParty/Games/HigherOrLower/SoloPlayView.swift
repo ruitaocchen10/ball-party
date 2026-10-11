@@ -168,7 +168,7 @@ struct LadderCardView: View {
                 pointsPanel
             }
             .well()
-            .clipShape(Rectangle())
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
@@ -180,8 +180,8 @@ struct LadderCardView: View {
             // server has not written this card's points yet.
             Concealed(label: "Fantasy points, hidden until this question reveals") {
                 VStack(spacing: 4) {
-                    Text("Fantasy points").monoLabel(10, weight: .bold, tracking: 0.12, color: Theme.panel)
-                    Text("? ? ?").slabTitle(32, color: Theme.panel)
+                    Text("Fantasy points").monoLabel(10, weight: .bold, tracking: 0.12, color: Theme.fg)
+                    Text("? ? ?").slabTitle(32, color: Theme.fg)
                 }
                 .padding(.vertical, 12)
             }
@@ -194,7 +194,7 @@ struct LadderCardView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(Theme.panel)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
         }
     }
 

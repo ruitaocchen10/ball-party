@@ -53,21 +53,21 @@ export function PostGameControls({
           initial="initial"
           animate="animate"
           exit="exit"
-          className="flex flex-col gap-2 overflow-hidden bg-surface-raised p-3 shadow-well"
+          className="flex flex-col gap-2 overflow-hidden rounded-card bg-surface-raised p-3 shadow-well"
         >
           <p className="type-label text-panel-muted">Next auction settings</p>
           {format ? (
             <>
               <label className="flex flex-col gap-1 type-label text-panel-muted">
                 Scoring
-                <select aria-label="Scoring" name="scoring_mode" defaultValue={format.scoringMode} className="min-h-10 border border-panel-line bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case">
+                <select aria-label="Scoring" name="scoring_mode" defaultValue={format.scoringMode} className="min-h-10 rounded-card border border-panel-line bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case">
                   <option value="weekly">Weekly</option>
                   <option value="season_total">Season total</option>
                 </select>
               </label>
               <label className="flex flex-col gap-1 type-label text-panel-muted">
                 Roster
-                <select aria-label="Roster" name="roster_preset" defaultValue={format.rosterPreset} className="min-h-10 border border-panel-line bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case">
+                <select aria-label="Roster" name="roster_preset" defaultValue={format.rosterPreset} className="min-h-10 rounded-card border border-panel-line bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case">
                   <option value="standard">Standard · 20 lots</option>
                   <option value="full">Full · 28 lots</option>
                   <option value="deep">Deep · 40 lots</option>
@@ -121,7 +121,7 @@ function SeasonSelect({
   return (
     <label className="flex flex-1 flex-col gap-1 type-label text-panel-muted">
       {label}
-      <select aria-label={label} name={name} value={value} onChange={(event) => onChange(Number(event.target.value))} className="min-h-10 border border-panel-line bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case">
+      <select aria-label={label} name={name} value={value} onChange={(event) => onChange(Number(event.target.value))} className="min-h-10 rounded-card border border-panel-line bg-panel px-2 text-sm tracking-normal text-panel-fg normal-case">
         {Array.from({ length: era.seasonMax - era.seasonMin + 1 }, (_, i) => era.seasonMin + i).map((season) => (
           <option key={season} value={season}>{season}</option>
         ))}

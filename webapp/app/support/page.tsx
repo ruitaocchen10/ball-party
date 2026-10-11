@@ -9,7 +9,7 @@ export const metadata = { title: "Support" };
 export default function SupportPage() {
   return (
     <PageShell variant="prose">
-      <h1 className="text-3xl font-semibold text-panel">Support</h1>
+      <h1 className="text-3xl font-semibold text-fg">Support</h1>
 
       <div className="mt-10 space-y-10 text-[15px] leading-relaxed text-fg">
         <section>
@@ -18,32 +18,32 @@ export default function SupportPage() {
             we&rsquo;ll get back to you.
           </p>
           <p className="mt-4">
-            <a href="mailto:testytesttesty9021@gmail.com" className="underline underline-offset-2 text-panel">
+            <a href="mailto:testytesttesty9021@gmail.com" className="underline underline-offset-2 text-fg">
               testytesttesty9021@gmail.com
             </a>
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-panel">Common questions</h2>
+          <h2 className="text-lg font-semibold text-fg">Common questions</h2>
           <div className="mt-4 space-y-6">
             <div>
-              <h3 className="font-medium text-panel">How do I delete my account?</h3>
+              <h3 className="font-medium text-fg">How do I delete my account?</h3>
               <p className="mt-1 text-fg-muted">
                 Open Settings in the app, then use Delete Account. If you&rsquo;d rather we do it for you, email us
                 from the address on your account and we&rsquo;ll confirm and remove it.
               </p>
             </div>
             <div>
-              <h3 className="font-medium text-panel">I can&rsquo;t sign in.</h3>
+              <h3 className="font-medium text-fg">I can&rsquo;t sign in.</h3>
               <p className="mt-1 text-fg-muted">
                 Try the same sign-in method you used originally (Apple, Google, or email) — accounts aren&rsquo;t
                 automatically linked across methods. Still stuck? Email us with the address you signed up with.
               </p>
             </div>
             <div>
-              <h3 className="font-medium text-panel">How do I join a friend&rsquo;s party or lobby?</h3>
-              <p className="mt-1 text-fg-muted">Ask them for the lobby code from their Party tab and enter it from yours.</p>
+              <h3 className="font-medium text-fg">How do I join a friend&rsquo;s party or lobby?</h3>
+              <p className="mt-1 text-fg-muted">Ask them to invite you from their Party tab, or to send you their room link. Invites show up at the top of your Party tab.</p>
             </div>
           </div>
         </section>

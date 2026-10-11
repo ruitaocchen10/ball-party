@@ -46,7 +46,7 @@ function PickThread({ post, displayName, avatarUrl, username, viewerCanAnswer }:
       <div className="flex flex-col gap-5">
         {canSubmit ? <TakeComposer post={post} displayName={displayName} avatarUrl={avatarUrl} username={username} /> : null}
         {!canSubmit && !post.viewerAnswered && viewerCanAnswer ? (
-          <p className="border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">You did not make picks for this prompt.</p>
+          <p className="rounded-card border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">You did not make picks for this prompt.</p>
         ) : null}
 
         {youComment ? (

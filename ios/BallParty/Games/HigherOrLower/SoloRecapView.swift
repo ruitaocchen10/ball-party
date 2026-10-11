@@ -22,7 +22,7 @@ struct SoloRecapView: View {
                             Task { await viewModel.playAgain() }
                         } label: {
                             HStack(spacing: 8) {
-                                if viewModel.isBusy { ProgressView() }
+                                if viewModel.isBusy { LoadingSpinner(size: 16) }
                                 Text("Play again")
                             }
                         }
@@ -65,7 +65,7 @@ struct SoloRecapView: View {
     @ViewBuilder
     private func personalBestBanner(_ recap: SoloRunViewModel.Recap) -> some View {
         if recap.isNewPersonalBest {
-            PanelCard(edge: false) {
+            PanelCard {
                 Label("New personal best!", systemImage: "trophy.fill")
                     .font(.slab(24, relativeTo: .title2))
                     .textCase(.uppercase)
@@ -105,9 +105,9 @@ struct SoloRecapView: View {
         return VStack(alignment: .leading, spacing: 6) {
             Text("\(card.ordinal + 1)")
                 .font(.mono(10, weight: .bold))
-                .foregroundStyle(Theme.panelFg)
+                .foregroundStyle(Theme.surface)
                 .frame(width: 22, height: 22)
-                .background(Theme.panel, in: Circle())
+                .background(Theme.fg, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(card.displayName)
                     .slabTitle(15)

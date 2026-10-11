@@ -49,7 +49,7 @@ export function ProfileEditor(props: ProfileEditorProps) {
         ref={trigger}
         type="button"
         onClick={() => setEditing(true)}
-        className="bg-hidden px-3.5 py-3 type-label font-bold text-white transition-colors hover:bg-hidden-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        className="rounded-card bg-hidden px-3.5 py-3 type-label font-bold text-white transition-colors hover:bg-hidden-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
       >
         Edit profile
       </button>
@@ -144,10 +144,10 @@ function ProfileEditorDialog({ displayName, avatarUrl, userId, username, onClose
               type="button"
               aria-label="Change profile photo"
               onClick={() => setEditingPhoto(true)}
-              className="group relative block rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-panel"
+              className="group relative block rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-fg"
             >
               <ProfileAvatar name={displayName} avatarUrl={avatar || null} />
-              <span className="absolute right-0 bottom-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface-raised bg-panel text-panel-fg transition-transform group-hover:scale-105">
+              <span className="absolute right-0 bottom-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface-raised bg-fg text-surface transition-transform group-hover:scale-105">
                 <Camera aria-hidden className="h-4 w-4" strokeWidth={1.8} />
               </span>
             </button>
@@ -207,7 +207,7 @@ function ProfilePhotoChooser({
 }) {
   return (
     <div>
-      <button type="button" onClick={onBack} className="inline-flex items-center gap-1 type-label text-fg-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
+      <button type="button" onClick={onBack} className="inline-flex items-center gap-1 type-label text-fg-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">
         <ArrowLeft aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
         Back to profile
       </button>
@@ -222,7 +222,7 @@ function ProfilePhotoChooser({
         <input type="file" accept="image/*" onChange={onUpload} disabled={uploading} className="sr-only" id="avatar-file-input" />
         <label
           htmlFor="avatar-file-input"
-          className="flex min-h-12 w-full cursor-pointer items-center justify-center border border-line px-3 type-label font-bold text-fg-muted hover:border-fg-muted hover:text-fg aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          className="flex min-h-12 w-full cursor-pointer items-center justify-center rounded-card border border-line px-3 type-label font-bold text-fg-muted hover:border-fg-muted hover:text-fg aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           aria-disabled={uploading}
         >
           {uploading ? "Uploading…" : "Upload from device"}

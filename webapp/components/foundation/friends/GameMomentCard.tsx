@@ -7,7 +7,7 @@ import { formatSoloScore, soloBoardHref, type SoloBoard } from "@/lib/foundation
 import { timeAgo, type ActivityItem } from "@/lib/foundation/friends/friends";
 import { MATCH_GAME_NAMES } from "@/lib/platform/orchestration/catalog";
 
-const LINK = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
+const LINK = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
 
 function gameName(game: string | null) {
   return game && game in MATCH_GAME_NAMES ? MATCH_GAME_NAMES[game as keyof typeof MATCH_GAME_NAMES] : "a game";
@@ -33,7 +33,7 @@ export function beatLine(opponents: string[], you: boolean, count: number): stri
 export function GameMomentCard({ item }: { item: ActivityItem }) {
   const { event } = item;
   return (
-    <article className="border border-line bg-surface-raised">
+    <article className="rounded-card border border-line bg-surface-raised">
       <div className="flex items-center gap-2.5 px-4 pt-3">
         <AuthorAvatar name={event.displayName} avatarUrl={event.avatarUrl} className="h-7 w-7" />
         {event.username ? (

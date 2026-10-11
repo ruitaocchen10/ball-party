@@ -11,7 +11,7 @@ describe("Concealed", () => {
 
     const concealed = screen.getByText("? ? ?");
 
-    expect(concealed).toHaveClass("bg-hidden-ink", "text-panel");
+    expect(concealed).toHaveClass("bg-hidden-ink", "text-fg");
     expect(concealed).not.toHaveClass("bg-hidden");
   });
 
@@ -24,10 +24,10 @@ describe("Concealed", () => {
   it("meets the WCAG AA contrast floor for normal text", async () => {
     const stylesheet = await readFile("app/globals.css", "utf8");
     const concealedSurface = stylesheet.match(/--hidden-ink:\s*(#[0-9a-f]{6})/i)?.[1];
-    const creamText = stylesheet.match(/--panel:\s*(#[0-9a-f]{6})/i)?.[1];
+    const creamText = stylesheet.match(/--fg:\s*(#[0-9a-f]{6})/i)?.[1];
 
     expect(concealedSurface).toBe("#a8291f");
-    expect(creamText).toBe("#f4efe4");
+    expect(creamText).toBe("#e8e3d6");
     expect(contrastRatio(creamText!, concealedSurface!)).toBeGreaterThanOrEqual(4.5);
   });
 });

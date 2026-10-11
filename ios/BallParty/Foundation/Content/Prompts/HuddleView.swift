@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The two tabs at the top of Home.
+/// The two tabs under Home's header.
 enum HomeTab: Hashable, CaseIterable {
     case huddle, friends
 
@@ -40,15 +40,6 @@ struct HuddleScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SegmentedChoice(
-                selection: $tab,
-                options: HomeTab.allCases,
-                title: \.title,
-                accessibilityName: "Home"
-            )
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-
             switch tab {
             case .huddle:
                 HuddleFeedView(viewModel: viewModel)
@@ -58,8 +49,14 @@ struct HuddleScreen: View {
             }
         }
         .screenBackground()
-        .navigationTitle("Home")
-        .navigationBarTitleDisplayMode(.inline)
+        .screenHeader("Home") { RootBell() } tabs: {
+            HeaderTabs(
+                selection: $tab,
+                options: HomeTab.allCases,
+                title: \.title,
+                accessibilityName: "Home"
+            )
+        }
     }
 }
 
@@ -68,24 +65,24 @@ struct HuddleFeedView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        Group {
-            switch viewModel.phase {
-            case .loading:
-                ProgressView {
-                    Text("Loading the feed…").monoLabel(11, tracking: 0.15)
-                }
-            case .failed(let message):
-                ScrollView {
+        ScrollView {
+            VStack(spacing: 0) {
+                switch viewModel.phase {
+                case .loading:
+                    LoadingState(label: "Loading the feed…")
+                    .frame(maxWidth: .infinity, minHeight: 160)
+                case .failed(let message):
                     EmptyState(title: "Couldn't load Huddle", message: message) {
                         Button("Try again") { Task { await viewModel.load() } }
                             .buttonStyle(BPButtonStyle(variant: .ghost, fullWidth: false))
                     }
                     .padding(16)
+                case .loaded:
+                    feed
                 }
-            case .loaded:
-                feed
             }
         }
+        .refreshable { await viewModel.load() }
         .screenBackground()
         // Also runs on coming back from a prompt, which is when the feed is
         // most likely to be stale (a pick was just locked in).
@@ -100,32 +97,26 @@ struct HuddleFeedView: View {
     @ViewBuilder
     private var feed: some View {
         if viewModel.posts.isEmpty {
-            ScrollView {
-                EmptyState(
-                    title: "No prompts yet",
-                    message: "New prompts show up here. Pull down to check again."
-                )
-                .padding(16)
-            }
-            .refreshable { await viewModel.load() }
+            EmptyState(
+                title: "No prompts yet",
+                message: "New prompts show up here. Pull down to check again."
+            )
+            .padding(16)
         } else {
-            ScrollView {
-                LazyVStack(spacing: 20) {
-                    if let message = viewModel.errorMessage {
-                        ErrorBanner(message: message)
-                    }
-                    ForEach(viewModel.posts) { post in
-                        NavigationLink {
-                            PromptDetailView(viewModel: viewModel, postId: post.id)
-                        } label: {
-                            PostCard(post: post, actionLabel: viewModel.callToAction(for: post.id).label)
-                        }
-                        .buttonStyle(.plain)
-                    }
+            LazyVStack(spacing: 20) {
+                if let message = viewModel.errorMessage {
+                    ErrorBanner(message: message)
                 }
-                .padding(16)
+                ForEach(viewModel.posts) { post in
+                    NavigationLink {
+                        PromptDetailView(viewModel: viewModel, postId: post.id)
+                    } label: {
+                        PostCard(post: post, actionLabel: viewModel.callToAction(for: post.id).label)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .refreshable { await viewModel.load() }
+            .padding(16)
         }
     }
 }
@@ -171,7 +162,7 @@ private struct PostCard: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.surface)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.chipRadius))
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
             }
@@ -203,16 +194,17 @@ private struct PostCard: View {
                 .font(.slab(18, relativeTo: .body))
                 .tracking(0.72)
                 .textCase(.uppercase)
-                .foregroundStyle(Theme.panelFg)
+                .foregroundStyle(Theme.surface)
                 .frame(maxWidth: .infinity, minHeight: 48)
-                .background(Theme.panel)
+                .background(Theme.fg, in: RoundedRectangle(cornerRadius: Theme.chipRadius))
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceRaised)
-        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
         .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 10)
         .opacity(post.status == .void ? 0.45 : 1)
     }
@@ -249,25 +241,27 @@ private struct PostCardStatusBadge: View {
     var body: some View {
         if post.viewerAnswered {
             Label("Complete", systemImage: "checkmark")
-                .monoLabel(9, weight: .bold, tracking: 0.1, color: Theme.panel)
+                .monoLabel(9, weight: .bold, tracking: 0.1, color: Theme.fg)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
-                .background(Theme.gradeElite)
+                .background(Theme.gradeElite, in: RoundedRectangle(cornerRadius: Theme.chipRadius))
                 .accessibilityLabel("Complete")
         } else if post.status == .resolved {
             Text("Resolved")
-                .monoLabel(9, weight: .bold, tracking: 0.1, color: Theme.panel)
+                .monoLabel(9, weight: .bold, tracking: 0.1, color: Theme.fg)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
-                .background(Theme.panel.opacity(0.1))
-                .overlay(Rectangle().strokeBorder(Theme.panel.opacity(0.5), lineWidth: 1))
+                .background(Theme.fg.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.fg.opacity(0.5), lineWidth: 1))
         } else if !post.isTakingPicks(at: Date()) {
             Label("Locked", systemImage: "lock.fill")
                 .monoLabel(9, weight: .bold, tracking: 0.1)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
                 .background(Theme.surface)
-                .overlay(Rectangle().strokeBorder(Theme.fgMuted.opacity(0.5), lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.fgMuted.opacity(0.5), lineWidth: 1))
         } else {
             PostStatusLabel(post: post)
                 .monoLabel(10, tracking: 0.14)

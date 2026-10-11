@@ -33,7 +33,7 @@ struct FriendInviteView: View {
     private var content: some View {
         switch viewModel.phase {
         case .loading:
-            ProgressView().frame(maxWidth: .infinity, minHeight: 160)
+            LoadingSpinner().frame(maxWidth: .infinity, minHeight: 160)
         case .unavailable:
             EmptyState(title: FriendInviteViewModel.unavailableTitle, message: FriendInviteViewModel.unavailableMessage)
         case .failed(let message):
@@ -42,7 +42,7 @@ struct FriendInviteView: View {
                     .buttonStyle(.quiet)
             }
         case .loaded(let owner):
-            Portrait(name: owner.player.displayName, url: owner.player.avatarURL, size: 64)
+            Avatar(name: owner.player.displayName, url: owner.player.avatarURL, size: 64)
             Text("Friend invite").monoLabel(10, tracking: 0.12)
             Text("\(owner.player.displayName) invited you")
                 .slabTitle(34)

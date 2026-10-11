@@ -21,11 +21,11 @@ export function PlayerPortrait({
   const [failed, setFailed] = useState(false);
   const showImage = Boolean(headshotUrl) && !failed;
   return (
-    <span className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface ${className}`}>
+    <span className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-card bg-surface ${className}`}>
       {showImage ? (
         <img src={headshotUrl!} alt="" className="h-full w-full object-cover object-top" onError={() => setFailed(true)} />
       ) : (
-        <span className="flex h-full w-full items-center justify-center bg-hidden font-slab text-panel">
+        <span className="flex h-full w-full items-center justify-center bg-hidden font-slab text-fg">
           <span className="font-slab-optical-center">{initials(name)}</span>
         </span>
       )}

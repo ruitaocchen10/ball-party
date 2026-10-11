@@ -154,7 +154,8 @@ struct TakeCardView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(Theme.surface)
-        .overlay(Rectangle().stroke(Theme.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).stroke(Theme.line, lineWidth: 1))
         if let contextDestination {
             NavigationLink { contextDestination() } label: { strip }
                 .buttonStyle(.plain)
@@ -250,7 +251,7 @@ struct TicketView: View {
                         HStack(spacing: 4) {
                             Text(option.label).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
                             switch entry.slot.isCorrect(option.id) {
-                            case .some(true): Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.panel)
+                            case .some(true): Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.fg)
                             case .some(false): Image(systemName: "xmark.circle").foregroundStyle(Theme.fgMuted)
                             case .none: EmptyView()
                             }
@@ -282,7 +283,8 @@ struct UpdateAppNotice: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(Theme.surface)
-        .overlay(Rectangle().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
         .accessibilityElement(children: .combine)
     }
 }

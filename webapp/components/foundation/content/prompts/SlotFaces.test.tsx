@@ -132,7 +132,7 @@ it("keeps a team at the exact empty rank where it is dropped", async () => {
   const target = screen.getByLabelText("Your power rankings").querySelectorAll("ol > li")[7];
   fireEvent.dragStart(team);
   fireEvent.dragOver(target);
-  expect(target).toHaveClass("ring-panel");
+  expect(target).toHaveClass("ring-fg");
   fireEvent.drop(target);
 
   expect(screen.getByLabelText("Your power rankings").querySelectorAll("ol > li")[7]).toHaveTextContent("Team 6");

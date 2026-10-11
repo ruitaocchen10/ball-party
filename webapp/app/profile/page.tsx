@@ -131,14 +131,14 @@ const TAB_LABEL: Record<ProfileTab, string> = { stats: "Stats", takes: "Takes", 
 
 function ProfileTabs({ active, pendingRequests }: { active: ProfileTab; pendingRequests: number }) {
   return (
-    <nav aria-label="Profile sections" className="flex border border-line">
+    <nav aria-label="Profile sections" className="flex overflow-hidden rounded-card border border-line">
       {PROFILE_TABS.map((key) => (
         <Link
           key={key}
           href={key === "stats" ? "/profile" : `/profile?tab=${key}`}
           aria-current={key === active ? "page" : undefined}
-          className={`flex min-h-12 flex-1 items-center justify-center gap-2 font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel ${
-            key === active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
+          className={`flex min-h-12 flex-1 items-center justify-center gap-2 font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg ${
+            key === active ? "bg-hidden text-fg" : "text-fg hover:text-fg-muted"
           }`}
         >
           {TAB_LABEL[key]}
@@ -181,7 +181,7 @@ function SignedOutProfile() {
           <p className="type-label text-hidden-text">Player profile</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Your record starts here</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Sign in to keep a record of your games, wins, and streaks.</p>
-          <Link href="/login?next=/profile" className="mt-6 inline-flex bg-panel px-4 py-3 type-label font-bold text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
+          <Link href="/login?next=/profile" className="mt-6 inline-flex rounded-card bg-fg px-4 py-3 type-label font-bold text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">Sign in</Link>
         </section>
       </PageShell>
     </>
@@ -198,7 +198,7 @@ function NextGame() {
       </p>
       <Link
         href="/"
-        className="mt-5 inline-flex bg-panel px-3.5 py-3 type-label font-bold text-panel-fg transition-colors hover:bg-panel-shade focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        className="mt-5 inline-flex rounded-card bg-fg px-3.5 py-3 type-label font-bold text-surface transition-colors hover:bg-panel-ink-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
       >
         Find a game
       </Link>

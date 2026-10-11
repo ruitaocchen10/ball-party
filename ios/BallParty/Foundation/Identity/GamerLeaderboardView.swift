@@ -128,7 +128,7 @@ private struct BoardContent: View {
     var body: some View {
         switch viewModel.phase {
         case .loading where viewModel.standing == nil:
-            ProgressView().frame(maxWidth: .infinity, minHeight: 160)
+            LoadingSpinner().frame(maxWidth: .infinity, minHeight: 160)
         case .failed:
             EmptyState(title: "Couldn't load the leaderboard", message: "Try again in a moment.") {
                 Button("Retry") { Task { await viewModel.load() } }
@@ -144,7 +144,7 @@ private struct BoardContent: View {
     private func content(_ standing: BoardStanding) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if standing.isRanked {
-                PanelCard(edge: false) {
+                PanelCard {
                     BoardYouRow(rank: standing.rank, detail: standing.detail, value: standing.value)
                 }
             } else {
@@ -209,7 +209,7 @@ struct BoardEntryRowView: View {
 
     var body: some View {
         if row.isMe {
-            PanelCard(edge: false) { content(onPanel: true).padding(.horizontal, 14).padding(.vertical, 12) }
+            PanelCard { content(onPanel: true).padding(.horizontal, 14).padding(.vertical, 12) }
         } else {
             VStack(spacing: 0) {
                 LineRule()

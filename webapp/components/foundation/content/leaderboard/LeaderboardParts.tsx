@@ -17,8 +17,8 @@ import {
   type LeaderboardWindow,
 } from "@/lib/foundation/content/leaderboard/windows";
 
-const FOCUS = "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel";
-const LINK_FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
+const FOCUS = "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg";
+const LINK_FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
 
 /** One row of any board. `detail` is the optional narrow-hidden column (picks, games), `value` the ranked number. */
 export type BoardRow = {
@@ -40,7 +40,7 @@ const ROW_GRID_VALUE_ONLY = "grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-c
 /** The tabs between boards. Switching a board resets the window, the scope and the mode to what the destination defaults to. */
 export function BoardNav({ board, hrefFor }: { board: LeaderboardBoard; hrefFor: (board: LeaderboardBoard) => string }) {
   return (
-    <nav aria-label="Leaderboard" className="mb-3 flex border border-line">
+    <nav aria-label="Leaderboard" className="mb-3 flex overflow-hidden rounded-card border border-line">
       {LEADERBOARD_BOARDS.map((key) => {
         const active = key === board;
         return (
@@ -49,7 +49,7 @@ export function BoardNav({ board, hrefFor }: { board: LeaderboardBoard; hrefFor:
             href={hrefFor(key)}
             aria-current={active ? "page" : undefined}
             className={`flex min-h-10 flex-1 items-center justify-center px-2 type-label-lg font-bold transition-colors ${FOCUS} ${
-              active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
+              active ? "bg-hidden text-fg" : "text-fg hover:text-fg-muted"
             }`}
           >
             {LEADERBOARD_BOARD_COPY[key].label}
@@ -62,7 +62,7 @@ export function BoardNav({ board, hrefFor }: { board: LeaderboardBoard; hrefFor:
 
 export function ScopeNav({ scope, hrefFor }: { scope: LeaderboardScope; hrefFor: (scope: LeaderboardScope) => string }) {
   return (
-    <nav aria-label="Leaderboard scope" className="mb-3 flex border border-line">
+    <nav aria-label="Leaderboard scope" className="mb-3 flex overflow-hidden rounded-card border border-line">
       {LEADERBOARD_SCOPES.map((key) => {
         const active = key === scope;
         return (
@@ -71,7 +71,7 @@ export function ScopeNav({ scope, hrefFor }: { scope: LeaderboardScope; hrefFor:
             href={hrefFor(key)}
             aria-current={active ? "page" : undefined}
             className={`flex min-h-10 flex-1 items-center justify-center type-label-lg font-bold transition-colors ${FOCUS} ${
-              active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
+              active ? "bg-hidden text-fg" : "text-fg hover:text-fg-muted"
             }`}
           >
             {LEADERBOARD_SCOPE_LABEL[key]}
@@ -84,7 +84,7 @@ export function ScopeNav({ scope, hrefFor }: { scope: LeaderboardScope; hrefFor:
 
 export function WindowNav({ window, hrefFor }: { window: LeaderboardWindow; hrefFor: (window: LeaderboardWindow) => string }) {
   return (
-    <nav aria-label="Time window" className="flex border border-line">
+    <nav aria-label="Time window" className="flex overflow-hidden rounded-card border border-line">
       {LEADERBOARD_WINDOWS.map((key) => {
         const active = key === window;
         return (
@@ -93,7 +93,7 @@ export function WindowNav({ window, hrefFor }: { window: LeaderboardWindow; href
             href={hrefFor(key)}
             aria-current={active ? "page" : undefined}
             className={`flex min-h-12 flex-1 items-center justify-center font-slab text-[17px] tracking-[0.04em] uppercase transition-colors ${FOCUS} ${
-              active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
+              active ? "bg-hidden text-fg" : "text-fg hover:text-fg-muted"
             }`}
           >
             {LEADERBOARD_WINDOW_COPY[key].label}
@@ -134,7 +134,7 @@ export function StandingBlock({
   }
   const grid = secondary === undefined ? ROW_GRID_VALUE_ONLY : ROW_GRID_WITH_DETAIL;
   return (
-    <Card edge={false}>
+    <Card>
       <div className={`${grid} px-4 py-2.5`}>
         <span className="font-slab text-[24px] leading-none">{rank}</span>
         <span className="min-w-0">
@@ -193,7 +193,7 @@ function BoardRowView({ row, grid }: { row: BoardRow; grid: string }) {
   const top = row.rank <= 3;
   if (row.isMe) {
     return (
-      <div className="bg-panel text-panel-fg shadow-card">
+      <div className="rounded-card bg-panel text-panel-fg shadow-card">
         <div className={`${grid} px-4 py-2`}>
           <span className="font-slab text-[24px] leading-none">{row.rank}</span>
           <span className="flex min-w-0 items-center gap-3">

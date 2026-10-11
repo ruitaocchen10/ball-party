@@ -56,7 +56,7 @@ export function BallKnowerLeaderboard({
 
       <div className="mt-4">
         {standing.status === "ranked" ? (
-          <Card edge={false}>
+          <Card>
             <YouRow standing={standing} scope={scope} />
           </Card>
         ) : (
@@ -74,7 +74,7 @@ export function BallKnowerLeaderboard({
       {rows.length === 0 && scope === "friends" ? (
         <EmptyState title="No friends on the board yet" className="mt-3">
           Add friends to see how you stack up against them. Friends appear after {standing.minPicks} scored picks in this window.{" "}
-          <Link href="/profile?tab=friends" className="text-fg underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
+          <Link href="/profile?tab=friends" className="text-fg underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">
             Find friends
           </Link>
         </EmptyState>
@@ -109,7 +109,7 @@ function LeaderboardRowView({ row }: { row: LeaderboardRow }) {
   const top = row.rank <= 3;
   if (row.isMe) {
     return (
-      <div className="bg-panel text-panel-fg shadow-card">
+      <div className="rounded-card bg-panel text-panel-fg shadow-card">
         <div className={`${ROW_GRID} px-4 py-2`}>
           <span className="font-slab text-[24px] leading-none">{row.rank}</span>
           <span className="flex min-w-0 items-center gap-3">
@@ -131,7 +131,7 @@ function LeaderboardRowView({ row }: { row: LeaderboardRow }) {
         {row.username ? (
           <Link
             href={`/u/${row.username}`}
-            className="truncate text-base font-medium hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+            className="truncate text-base font-medium hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
           >
             {row.displayName}
           </Link>

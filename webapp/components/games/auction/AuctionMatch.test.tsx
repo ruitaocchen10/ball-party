@@ -818,7 +818,7 @@ describe("the table", () => {
     const table = screen.getByRole("complementary", { name: "The table" });
     expect(within(table).getByText("On the clock")).toBeInTheDocument();
     expect(within(table).getByText("High bid · $6")).toBeInTheDocument();
-    expect(within(table).getByText("Ben").closest("details")).toHaveClass("bg-panel/5");
+    expect(within(table).getByText("Ben").closest("details")).toHaveClass("bg-fg/5");
   });
 
   it("shows who has submitted a sealed bid rather than who is 'on the clock' -- nobody is", () => {
