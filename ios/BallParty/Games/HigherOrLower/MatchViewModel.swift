@@ -400,3 +400,19 @@ final class MatchViewModel: ObservableObject {
         )
     }
 }
+
+extension MatchViewModel {
+    /// The full-screen beat before the final table; nil until there is a winner.
+    var winnerMoment: WinnerMoment? {
+        let winners = finalStandings.filter { $0.rank == 1 }
+        guard !winners.isEmpty else { return nil }
+        let faces = winners.map { row in
+            WinnerMoment.Face(
+                name: row.name,
+                url: snapshot?.players.first { $0.userId == row.userId }?.avatarURL,
+                isMine: row.isViewer
+            )
+        }
+        return WinnerMoment(faces: faces, headline: headline, detail: winners.count == 1 ? winners[0].statLine : nil)
+    }
+}

@@ -43,6 +43,8 @@ struct AuctionMatchScreen: View {
             }
         }
         .screenBackground()
+        .winnerMoment(viewModel.winnerMoment, ready: viewModel.snapshot != nil, complete: viewModel.isFinished)
+        .matchStartCountdown(game: .auctionTeamBuilder, matchId: viewModel.matchId)
         .navigationTitle("Auction")
         .navigationBarTitleDisplayMode(.inline)
         // A live auction is not somewhere to tab away from by accident.
@@ -120,8 +122,6 @@ private struct AuctionHeader: View {
     let turn: AuctionTurn
     let phase: ViewerPhase
 
-    private static let tenthsThresholdMs = 5_000
-
     var body: some View {
         let remaining = clock.remainingMs
         let live = phase == .biddingSelf || phase == .biddingOther || phase == .sealed
@@ -181,8 +181,7 @@ private struct AuctionHeader: View {
 
     private func display(_ remaining: Int?) -> String {
         guard let remaining else { return "—" }
-        if remaining < Self.tenthsThresholdMs { return String(format: "%.1f", Double(remaining) / 1_000) }
-        return "\(Int((Double(remaining) / 1_000).rounded(.up)))"
+        return ClockText.text(ms: remaining)
     }
 }
 
@@ -242,8 +241,8 @@ private struct AuctionTabView: View {
 
 /// The suspense before a lot's player appears: a column of earlier players
 /// scrolls up and lands on this lot's. Mirrors the web's `LotSpinner` (a
-/// `SlotReel` with the same decoy rule and the same overshoot-then-settle
-/// landing as `QbSpinReel`). Decoys come only from lots already presented, so
+/// `SlotReel` with the same decoy rule, minus its overshoot, which would clip
+/// the landing row here). Decoys come only from lots already presented, so
 /// a future player is never spoiled; with fewer than seven, the rest of the
 /// reel is neutral "?" rows. Remount with `.id(lot.seq)` to replay.
 private struct LotReel: View {
@@ -252,18 +251,19 @@ private struct LotReel: View {
 
     private static let rowHeight: CGFloat = 64
     private static let decoyCount = 7
-    /// The same cubic-bezier as the web's `reel-spin` keyframes.
-    private static let timing = (0.16, 0.86, 0.23, 1.0)
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// A snapshot taken at mount: `lots` changes on every realtime refresh,
     /// and re-deriving decoys from it would reshuffle the reel mid-spin.
     @State private var rows: [AuctionLot?]
-    @State private var offset: CGFloat = 0
+    /// When the spin began. Backdated by `elapsed` so a reel that remounts
+    /// mid-spin (the player left the tab and came back) picks up where it is.
+    @State private var start: Date
 
-    init(lot: AuctionLot, lots: [AuctionLot], duration: Double) {
+    init(lot: AuctionLot, lots: [AuctionLot], duration: Double, elapsed: Double = 0) {
         self.lot = lot
         self.duration = duration
+        _start = State(initialValue: Date().addingTimeInterval(-elapsed))
         let settled = lots
             .filter { $0.seq < lot.seq && $0.resolvedAt != nil }
             .shuffled()
@@ -284,16 +284,19 @@ private struct LotReel: View {
             .frame(minHeight: Self.rowHeight)
             .padding(.horizontal, 16)
         } else {
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                    reelRow(row).frame(height: Self.rowHeight, alignment: .leading)
+            // One time-driven offset for the whole column, so a row's portrait
+            // and name are always placed by the same value and move as one.
+            TimelineView(.animation(paused: Date().timeIntervalSince(start) >= duration)) { context in
+                VStack(spacing: 0) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                        reelRow(row).frame(height: Self.rowHeight, alignment: .leading)
+                    }
                 }
+                .offset(y: offset(at: context.date))
+                .frame(height: Self.rowHeight, alignment: .top)
+                .clipped()
             }
-            .offset(y: offset)
-            .frame(height: Self.rowHeight, alignment: .top)
-            .clipped()
             .padding(.horizontal, 16)
-            .onAppear(perform: spin)
         }
     }
 
@@ -301,11 +304,7 @@ private struct LotReel: View {
     private func reelRow(_ row: AuctionLot?) -> some View {
         HStack(spacing: 12) {
             if let row {
-                Portrait(name: row.displayName, url: row.headshotURL, size: 64)
-                Text(row.displayName)
-                    .slabTitle(28, color: Theme.panelFg)
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(1)
+                LotIdentity(lot: row)
             } else {
                 Text("?").slabTitle(40, color: Theme.panelMuted).frame(width: 64)
                 Text("Scanning…").monoLabel(11, weight: .bold, tracking: 0.15, color: Theme.panelMuted)
@@ -314,24 +313,38 @@ private struct LotReel: View {
         }
     }
 
-    private func spin() {
-        offset = 0
-        let n = CGFloat(rows.count)
-        let rest = -(n - 1) * Self.rowHeight
-        // The keyframes' 70%-mark overshoot: 4% of the stacked height past rest.
-        let overshoot = rest - 0.04 * n * Self.rowHeight
-        let (x1, y1, x2, y2) = Self.timing
-        withAnimation(.timingCurve(x1, y1, x2, y2, duration: duration * 0.7)) {
-            offset = overshoot
-        } completion: {
-            withAnimation(.timingCurve(x1, y1, x2, y2, duration: duration * 0.3)) {
-                offset = rest
-            }
-        }
+    /// Decelerates to rest in one move. There is no overshoot: nothing sits
+    /// below the last row, so passing it would clip the landing player.
+    private func offset(at date: Date) -> CGFloat {
+        let t = min(1, max(0, date.timeIntervalSince(start) / duration))
+        let rest = -CGFloat(rows.count - 1) * Self.rowHeight
+        return rest * CGFloat(1 - pow(1 - t, 3))
     }
 }
 
 // MARK: - The lot
+
+/// A lot's portrait beside its name and identity line. The reel's rows and the
+/// revealed lot share it, so the landing row is exactly what stays on screen.
+private struct LotIdentity: View {
+    let lot: AuctionLot
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Portrait(name: lot.displayName, url: lot.headshotURL, size: 64)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(lot.displayName)
+                    .slabTitle(28, color: Theme.panelFg)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(2)
+                Text(lot.identityLine)
+                    .monoLabel(10, tracking: 0.1, color: Theme.panelMuted)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(height: 64)
+    }
+}
 
 /// The lot, kept short so the bid controls stay on the same screen: position and
 /// team on one line, then portrait beside the name, then the hidden points as a
@@ -346,12 +359,18 @@ private struct LotCard: View {
     /// paces when it is shown. Keyed by seq rather than a flag so a new lot is
     /// concealed again from its first frame.
     @State private var revealedSeq: Int?
+    /// Seconds of the preview already gone when this card mounted.
+    @State private var mountElapsed: (seq: Int, seconds: Double)?
 
     private static let revealDuration: Double = 3
-    private static let revealDelay: Duration = .seconds(revealDuration)
 
     var body: some View {
-        let identityShown = revealedSeq == lot.seq
+        // The reveal belongs to the preview phase only. Once bidding has
+        // begun the identity is out, and a card that mounts late (the player
+        // was on another tab) must not replay the suspense.
+        let elapsed = mountElapsed?.seq == lot.seq ? mountElapsed!.seconds : previewElapsed
+        let identityShown = revealedSeq == lot.seq || phase != .lotPreview
+            || elapsed >= Self.revealDuration
         PanelCard {
             VStack(spacing: 0) {
                 HStack {
@@ -362,27 +381,17 @@ private struct LotCard: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
 
-                Reveal(revealed: identityShown) {
-                    LotReel(lot: lot, lots: viewModel.lots, duration: Self.revealDuration)
-                        .id(lot.seq)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Revealing this lot's player")
-                } content: {
-                    HStack(spacing: 12) {
-                        Portrait(name: lot.displayName, url: lot.headshotURL, size: 64)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(lot.displayName)
-                                .slabTitle(28, color: Theme.panelFg)
-                                .minimumScaleFactor(0.7)
-                                .lineLimit(2)
-                            Text(lot.identityLine)
-                                .monoLabel(10, tracking: 0.1, color: Theme.panelMuted)
-                        }
-                        Spacer(minLength: 0)
+                Group {
+                    if identityShown {
+                        LotIdentity(lot: lot)
+                            .padding(.horizontal, 16)
+                            .accessibilityElement(children: .combine)
+                    } else {
+                        LotReel(lot: lot, lots: viewModel.lots, duration: Self.revealDuration, elapsed: elapsed)
+                            .id(lot.seq)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("Revealing this lot's player")
                     }
-                    .frame(minHeight: 64)
-                    .padding(.horizontal, 16)
-                    .accessibilityElement(children: .combine)
                 }
                 .padding(.vertical, 10)
 
@@ -396,45 +405,62 @@ private struct LotCard: View {
             }
         }
         .task(id: lot.seq) {
-            try? await Task.sleep(for: Self.revealDelay)
+            let elapsed = mountElapsed?.seq == lot.seq ? mountElapsed!.seconds : previewElapsed
+            mountElapsed = (lot.seq, elapsed)
+            let wait = Self.revealDuration - elapsed
+            if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
             guard !Task.isCancelled else { return }
             revealedSeq = lot.seq
         }
     }
 
+    /// How far into the lot-preview phase the server clock says we are.
+    /// Negative while the match's start countdown is still running: the first
+    /// preview's clock is pushed back by the countdown, so the reel waits for it.
+    private var previewElapsed: Double {
+        guard phase == .lotPreview, let remaining = viewModel.clock.remainingMs else { return 0 }
+        let total = AuctionTurn.Phase.lotPreview.durationMs
+        return Double(total - remaining) / 1_000
+    }
+
     /// The score is the card's final band: concealed during the contest, then a
     /// bold result.
     private var pointsBand: some View {
-        Reveal(revealed: phase == .sold) {
-            Concealed(label: "Fantasy points, hidden until this lot is won") {
-                HStack(spacing: 10) {
-                    Text("Fantasy points").monoLabel(10, weight: .bold, tracking: 0.15, color: Theme.fg)
-                    Text("? ? ?").slabTitle(30, color: Theme.fg)
-                    // This player's own scouted tier only — the row behind it
-                    // never reaches a client it doesn't belong to.
-                    if let hint = viewModel.myHint {
-                        Text("Scouted: \(hint.tier)")
-                            .monoLabel(10, weight: .bold, tracking: 0.1, color: Theme.fg)
-                            .accessibilityLabel("Scouted: a \(hint.tier) performance")
-                    }
+        VStack(spacing: 10) {
+            Text("Fantasy points").monoLabel(10, weight: .bold, tracking: 0.15, color: Theme.panelMuted)
+            Reveal(revealed: phase == .sold) {
+                Concealed(label: "Fantasy points, hidden until this lot is won", compact: true) {
+                    Text("? ? ?").slabTitle(40, color: Theme.fg)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(.vertical, 10)
-            }
-        } content: {
-            HStack(spacing: 10) {
-                Text("Fantasy points").monoLabel(10, weight: .bold, tracking: 0.15, color: Theme.panelMuted)
+                .frame(width: 120, height: 64)
+            } content: {
                 Text(formatPoints(lot.points))
-                    .slabTitle(34, color: tierColor(lot.revealTier))
+                    .slabTitle(60, color: tierColor(lot.revealTier))
                     .monospacedDigit()
-                if let tier = lot.revealTier {
-                    Text(tier.copy).monoLabel(10, weight: .bold, tracking: 0.1, color: Theme.panelMuted)
-                }
+                    .frame(height: 64)
+                    .accessibilityLabel("\(formatPoints(lot.points)) fantasy points")
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(Theme.panelShade, in: RoundedRectangle(cornerRadius: Theme.chipRadius))
-            .accessibilityElement(children: .combine)
+            if phase == .sold {
+                if let tier = lot.revealTier {
+                    Text(tier.copy).monoLabel(10, weight: .bold, tracking: 0.12, color: tierColor(lot.revealTier))
+                }
+            } else if let hint = viewModel.myHint {
+                // This player's own scouted tier only — the row behind it
+                // never reaches a client it doesn't belong to.
+                Text("Scouted: \(hint.tier)")
+                    .monoLabel(10, weight: .bold, tracking: 0.1, color: Theme.panelFg)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .overlay(Capsule().strokeBorder(Theme.panelLine, lineWidth: 1))
+                    .accessibilityLabel("Scouted: a \(hint.tier) performance")
+            } else {
+                Text("Revealed when sold").monoLabel(10, tracking: 0.1, color: Theme.panelMuted)
+            }
         }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 4)
+        .padding(.bottom, 16)
     }
 }
 
@@ -480,8 +506,6 @@ private struct BidBar: View {
     let phase: ViewerPhase
 
     @State private var customOpen = false
-    @State private var customText = ""
-    @FocusState private var customFocused: Bool
 
     /// The popover is keyed to the interaction rather than to a boolean, which
     /// is what closes it on a turn change, a new price or a sale: the key it was
@@ -506,16 +530,12 @@ private struct BidBar: View {
                         .disabled(!viewModel.canRaise(by: increment))
                     }
                     Button("Custom") {
-                        customText = String(viewModel.minimumBid)
                         customOpen = true
-                        customFocused = true
                     }
                     .buttonStyle(.solid)
                     .disabled(!viewModel.canAct)
                 }
             }
-
-            if customOpen { customBid }
 
             if let message = viewModel.errorMessage {
                 Text(message).monoLabel(11, tracking: 0.05, color: Theme.hiddenText)
@@ -543,29 +563,17 @@ private struct BidBar: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .well()
         .onChange(of: interactionKey) { _, _ in customOpen = false }
-    }
-
-    private var customBid: some View {
-        let amount = Int(customText)
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("Custom bid").fieldLabel()
-            TextField("Amount", text: $customText)
-                .keyboardType(.numberPad)
-                .font(.mono(18, weight: .bold))
-                .fieldStyle()
-                .focused($customFocused)
-            Text("Minimum is $\(viewModel.minimumBid). Your maximum is $\(viewModel.me?.budget ?? 0).")
-                .monoLabel(11, tracking: 0.05)
-            HStack(spacing: 8) {
-                Button("Bid $\(amount ?? 0)") {
-                    guard let amount else { return }
-                    customOpen = false
-                    Task { await viewModel.raise(to: amount) }
-                }
-                .buttonStyle(.ink)
-                .disabled(!viewModel.isValidCustomBid(amount) || viewModel.isBusy)
-                Button("Cancel") { customOpen = false }
-                    .buttonStyle(.quiet)
+        .sheet(isPresented: $customOpen) {
+            AmountSheet(
+                title: "Custom bid",
+                caption: "Standing bid $\(viewModel.price) · Minimum $\(viewModel.minimumBid) · Your maximum $\(viewModel.me?.budget ?? 0)",
+                fieldLabel: "Your bid",
+                initialText: String(viewModel.minimumBid),
+                confirmTitle: { "Bid $\($0 ?? 0)" },
+                isValid: { viewModel.isValidCustomBid($0) && !viewModel.isBusy }
+            ) { amount in
+                customOpen = false
+                Task { await viewModel.raise(to: amount) }
             }
         }
     }
@@ -577,12 +585,10 @@ private struct BidBar: View {
 /// still waiting on, by name and never by amount.
 private struct SealedBidBar: View {
     @ObservedObject var viewModel: AuctionViewModel
-    @State private var text = "0"
+    @State private var entering = false
 
     var body: some View {
         let budget = viewModel.me?.budget ?? 0
-        let amount = Int(text)
-        let valid = amount.map { $0 >= 0 && $0 <= budget } ?? false
 
         VStack(alignment: .leading, spacing: 12) {
             Text("Sealed bid").monoLabel(10, weight: .bold, tracking: 0.14)
@@ -594,19 +600,9 @@ private struct SealedBidBar: View {
                 WaitingNote(text: waiting.isEmpty ? "Everyone's in — resolving…" : "Waiting on \(waiting.joined(separator: ", ")).")
                     .monoLabel(11, tracking: 0.05)
             } else {
-                Text("Amount").fieldLabel()
-                HStack(spacing: 8) {
-                    TextField("0", text: $text)
-                        .keyboardType(.numberPad)
-                        .font(.mono(18, weight: .bold))
-                        .fieldStyle()
-                    Button("Submit") {
-                        guard let amount else { return }
-                        Task { await viewModel.submitSealedBid(amount) }
-                    }
-                    .buttonStyle(BPButtonStyle(variant: .solid, fullWidth: false))
-                    .disabled(!valid || viewModel.isBusy || viewModel.isPaused)
-                }
+                Button("Enter sealed bid") { entering = true }
+                    .buttonStyle(.solid)
+                    .disabled(viewModel.isBusy || viewModel.isPaused)
                 Text(viewModel.errorMessage ?? "Nobody sees this but you until the lot resolves.")
                     .monoLabel(11, tracking: 0.05, color: viewModel.errorMessage == nil ? Theme.fgMuted : Theme.hiddenText)
             }
@@ -614,6 +610,70 @@ private struct SealedBidBar: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .well()
+        .sheet(isPresented: $entering) {
+            AmountSheet(
+                title: "Sealed bid",
+                caption: "Your budget · $\(budget) left · Nobody sees this until the lot resolves",
+                fieldLabel: "Amount",
+                initialText: "0",
+                confirmTitle: { _ in "Submit bid" },
+                isValid: { amount in (amount.map { $0 >= 0 && $0 <= budget } ?? false) && !viewModel.isBusy && !viewModel.isPaused }
+            ) { amount in
+                entering = false
+                Task { await viewModel.submitSealedBid(amount) }
+            }
+        }
+        .onChange(of: viewModel.mySealedBid != nil) { _, submitted in if submitted { entering = false } }
+    }
+}
+
+/// One number, asked for in a sheet: the custom bid and the sealed bid share it
+/// so both read the same. The caller closes it by flipping its own flag.
+private struct AmountSheet: View {
+    let title: String
+    let caption: String
+    let fieldLabel: String
+    let initialText: String
+    let confirmTitle: (Int?) -> String
+    let isValid: (Int?) -> Bool
+    let onConfirm: (Int) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let amount = Int(text)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text(title).slabTitle(28)
+                Spacer()
+                Button("Cancel") { dismiss() }.buttonStyle(.quiet)
+            }
+            Text(caption).monoLabel(11, tracking: 0.06)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(fieldLabel).fieldLabel()
+                TextField("0", text: $text)
+                    .keyboardType(.numberPad)
+                    .font(.mono(18, weight: .bold))
+                    .fieldStyle()
+                    .focused($focused)
+            }
+            Button(confirmTitle(amount)) {
+                guard let amount else { return }
+                onConfirm(amount)
+            }
+            .buttonStyle(.solid)
+            .disabled(!isValid(amount))
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .screenBackground()
+        .presentationDetents([.height(340)])
+        .onAppear {
+            text = initialText
+            focused = true
+        }
     }
 }
 
@@ -661,15 +721,17 @@ private struct TokenRow: View {
         return Button {
             Task { await use() }
         } label: {
-            VStack(spacing: 2) {
-                Image(systemName: state == .used ? "checkmark" : symbol).font(.system(size: 15, weight: .semibold))
-                Text(label).slabTitle(16, color: usable ? Theme.panelFg : Theme.fgMuted)
+            VStack(spacing: 3) {
+                HStack(spacing: 6) {
+                    Image(systemName: state == .used ? "checkmark" : symbol).font(.system(size: 15, weight: .semibold))
+                    Text(label).slabTitle(16, color: usable ? Theme.surface : Theme.fgMuted)
+                }
                 Text(stateText(state))
-                    .monoLabel(8, weight: .bold, tracking: 0.08, color: usable ? Theme.panelMuted : Theme.fgMuted)
+                    .monoLabel(8, weight: .bold, tracking: 0.08, color: usable ? Theme.surface.opacity(0.65) : Theme.fgMuted)
             }
-            .foregroundStyle(usable ? Theme.panelFg : Theme.fgMuted)
+            .foregroundStyle(usable ? Theme.surface : Theme.fgMuted)
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(usable ? Theme.hidden : Theme.surfaceRaised)
+            .background(usable ? Theme.fg : Theme.surfaceRaised)
             .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
             .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: usable ? 0 : 1))
             .contentShape(Rectangle())
@@ -732,91 +794,79 @@ private struct TableTabView: View {
     @ObservedObject var viewModel: AuctionViewModel
     let phase: ViewerPhase
 
+    @State private var selected: UUID?
+
+    /// You first, then everyone else in seat order.
+    private var seats: [AuctionSeat] {
+        viewModel.seats.filter { $0.userId == viewModel.viewerId } + viewModel.seats.filter { $0.userId != viewModel.viewerId }
+    }
+
+    private var current: AuctionSeat? {
+        seats.first { $0.userId == (selected ?? viewModel.viewerId) } ?? seats.first
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                ForEach(viewModel.seats) { seat in
-                    PlayerRow(
+        VStack(spacing: 0) {
+            HeaderTabs(
+                selection: Binding(get: { current?.userId ?? UUID() }, set: { selected = $0 }),
+                options: seats.map(\.userId),
+                title: { id in id == viewModel.viewerId ? "You" : (seats.first { $0.userId == id }?.name ?? "") },
+                badge: { id in viewModel.holder == id ? 1 : 0 },
+                accessibilityName: "Players"
+            )
+            ScrollView {
+                if let seat = current {
+                    PlayerDetail(
                         viewModel: viewModel,
                         seat: seat,
                         justSold: phase == .sold && viewModel.lot?.winnerId == seat.userId ? viewModel.lot : nil
                     )
-                    .well()
+                    .padding(16)
                 }
             }
-            .padding(16)
         }
     }
 }
 
-private struct PlayerRow: View {
+/// One seat in full: what it can still spend, what it is bidding, and its team.
+private struct PlayerDetail: View {
     @ObservedObject var viewModel: AuctionViewModel
     let seat: AuctionSeat
     /// The lot this player just won, when the board is showing its sale.
     let justSold: AuctionLot?
 
-    @State private var expanded: Bool
-
-    init(viewModel: AuctionViewModel, seat: AuctionSeat, justSold: AuctionLot?) {
-        self.viewModel = viewModel
-        self.seat = seat
-        self.justSold = justSold
-        _expanded = State(initialValue: true)
-    }
-
     private var isMine: Bool { seat.userId == viewModel.viewerId }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Button {
-                expanded.toggle()
-            } label: {
-                HStack(spacing: 10) {
-                    Avatar(name: seat.name, url: seat.avatarURL, size: 28, isMine: isMine)
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
-                            Text(isMine ? "You" : seat.name).slabTitle(18).lineLimit(1)
-                            if isMine {
-                                Text("YOU").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
-                            }
-                        }
-                        let highlighted = viewModel.holder == seat.userId || seat.seat == viewModel.turn?.turnSeat
-                        Text(viewModel.status(of: seat))
-                            .monoLabel(10, tracking: 0.07, color: highlighted ? Theme.hiddenText : Theme.fgMuted)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(formatPoints(viewModel.points(of: seat)))
-                            .font(.mono(16, weight: .bold))
-                            .foregroundStyle(Theme.fg)
-                            .monospacedDigit()
-                        HStack(spacing: 6) {
-                            Text("$\(seat.budget)").monoLabel(10, tracking: 0.05)
-                            if let format = viewModel.format, format.tokenCount > 0 {
-                                Text("🎫\(AuctionRules.tokensRemaining(format: format, seat: seat))")
-                                    .monoLabel(10, tracking: 0.05)
-                            }
-                        }
-                    }
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Theme.fgMuted)
-                        .rotationEffect(.degrees(expanded ? 90 : 0))
+        let slots = AuctionRules.rosterSlots(viewModel.format).count
+        let filled = viewModel.lots.filter { $0.winnerId == seat.userId && $0.slot != nil }.count
+        let tokenCount = viewModel.format?.tokenCount ?? 0
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Avatar(name: seat.name, url: seat.avatarURL, size: 44, isMine: isMine)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(isMine ? "You" : seat.name).slabTitle(26).lineLimit(1)
+                    let highlighted = viewModel.holder == seat.userId || seat.seat == viewModel.turn?.turnSeat
+                    Text(viewModel.status(of: seat))
+                        .monoLabel(10, tracking: 0.08, color: highlighted ? Theme.fg : Theme.fgMuted)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
-            .accessibilityHint(expanded ? "Hides their roster" : "Shows their roster")
-
-            if expanded {
-                RosterView(lots: viewModel.lots, userId: seat.userId, format: viewModel.format, highlight: justSold)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 10)
+            HStack(spacing: 8) {
+                StatTile(caption: "Budget left", value: "$\(seat.budget)")
+                StatTile(caption: "Current bid", value: viewModel.holder == seat.userId ? "$\(viewModel.price)" : "—")
             }
+            HStack(spacing: 8) {
+                if let format = viewModel.format, tokenCount > 0 {
+                    StatTile(caption: "Tokens left", value: "\(AuctionRules.tokensRemaining(format: format, seat: seat)) of \(tokenCount)")
+                }
+                StatTile(caption: "Points so far", value: formatPoints(viewModel.points(of: seat)))
+            }
+            Text("Team · \(filled) of \(slots) filled")
+                .monoLabel(10, weight: .bold, tracking: 0.14)
+                .padding(.top, 4)
+            RosterView(lots: viewModel.lots, userId: seat.userId, format: viewModel.format, highlight: justSold)
         }
-        .background(justSold != nil ? Theme.fg.opacity(0.1) : .clear)
     }
 }
 
@@ -990,13 +1040,7 @@ private struct AuctionFinalView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Final").eyebrow()
-                    Text(viewModel.headline)
-                        .slabTitle(44)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                }
+                Text("Final").eyebrow()
 
                 ForEach(viewModel.finalStandings) { row in
                     // The winner is the thing that matters, so the winner is a panel.

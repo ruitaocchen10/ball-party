@@ -265,7 +265,8 @@ private struct HighlightsCard: View {
 // MARK: - Take history
 
 /// "Your takes" — every top-level comment the viewer has left on a Huddle
-/// prompt, newest first, each opening the same `PromptDetailView` the feed does.
+/// prompt, newest first, as the same take cards the prompt screen shows: picks fold
+/// away, the reply row opens the thread and the strip opens the prompt.
 private struct TakesHistory: View {
     @ObservedObject var huddle: HuddleViewModel
 
@@ -295,12 +296,18 @@ private struct TakesHistory: View {
         } else {
             VStack(spacing: 12) {
                 ForEach(mine) { take in
-                    NavigationLink {
-                        PromptDetailView(viewModel: huddle, postId: take.post.id)
-                    } label: {
-                        TakeCardView(post: take.post, comment: take.comment)
-                    }
-                    .buttonStyle(.plain)
+                    // The reply row opens the thread, the strip opens the prompt and
+                    // "View take" folds the picks, so no card-wide link: it would fight
+                    // them for the tap, as in the prompt screen.
+                    TakeCardView(
+                        post: take.post,
+                        comment: take.comment,
+                        showsReplyCount: true,
+                        collapsesPicks: true,
+                        threadDestination: { AnyView(TakeThreadView(viewModel: huddle, postId: take.post.id, takeId: take.comment.id)) },
+                        contextTitle: take.post.caption.trimmingCharacters(in: .whitespaces).isEmpty ? "a prompt" : take.post.caption,
+                        contextDestination: { AnyView(PromptDetailView(viewModel: huddle, postId: take.post.id)) }
+                    )
                 }
             }
         }

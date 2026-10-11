@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 
+import { useWinnerMoment } from "@/components/runtime/game-runtime/WinnerMoment";
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Field, Textarea } from "@/components/foundation/ui-kit/Input";
 import {
@@ -23,7 +24,6 @@ import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 type Initial = { board: Board; players: WavelengthPlayer[]; rounds: WavelengthRound[]; cards: Card[]; clues: Clue[]; clueStatuses: ClueStatus[]; result: WavelengthResult | null };
 const NEEDLE_BROADCAST_INTERVAL_MS = 100; // At most 10 position updates per second.
 const NEEDLE_REPORT_INTERVAL_MS = 1000; // The server only needs the needle for auto-lock, so report it lazily.
-const REVEAL_MS = 5000; // How long a locked round's result stays on screen above the next round.
 
 type NeedleBroadcast = { round: number; position: number };
 
@@ -56,8 +56,7 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
   const [needleRound, setNeedleRound] = useState(initial.board.currentRound);
   if (needleRound !== board.currentRound) { setNeedleRound(board.currentRound); setNeedle(500); setError(null); }
   const [targets, setTargets] = useState<Target[]>([]);
-  const [revealRound, setRevealRound] = useState<number | null>(null);
-  const settledRounds = useRef(new Set(initial.rounds.filter((round) => round.status === "locked" || round.status === "skipped").map((round) => round.round)));
+  const [advancing, setAdvancing] = useState(false);
   const reportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestNeedle = useRef(500);
   const needleChannel = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
@@ -152,18 +151,6 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
     needleView.current = { phase: board.phase, round: board.currentRound, guesserId: current?.guesser_id ?? null };
   }, [board.currentRound, board.phase, current?.guesser_id]);
 
-  // A round that just settled is shown to everyone for a few seconds, above
-  // whatever the table has already moved on to. Rounds already settled when
-  // the screen mounted (or when we rejoin) are not replayed.
-  useEffect(() => {
-    const fresh = rounds.filter((round) => (round.status === "locked" || round.status === "skipped") && !settledRounds.current.has(round.round));
-    if (fresh.length === 0) return;
-    fresh.forEach((round) => settledRounds.current.add(round.round));
-    setRevealRound(Math.max(...fresh.map((round) => round.round)));
-    const timer = setTimeout(() => setRevealRound(null), REVEAL_MS);
-    return () => clearTimeout(timer);
-  }, [rounds]);
-
   // Every round starts from the middle of the dial.
   useEffect(() => {
     latestNeedle.current = 500;
@@ -214,9 +201,40 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
     applyBoard(data); await refetch();
   };
 
+  const nextCard = async () => {
+    setAdvancing(true); setError(null);
+    const { data, error: rpcError } = await getClient().schema("wavelength" as never).rpc("next_card" as never, { p_match_id: matchId } as never);
+    setAdvancing(false);
+    // A second tap, or a refetch that already moved on, is not worth showing.
+    if (rpcError && rpcError.message !== "reveal_not_open") { setError(rpcError.message); return; }
+    if (data) applyBoard(data);
+    await refetch();
+  };
+  const hasNextCard = rounds.some((round) => round.status === "pending");
+
+  const teamFaces = (team: number) => players.filter((player) => player.team === team).map((player) => ({ name: player.display_name, avatarUrl: player.avatar_url }));
+  const winnerMoment = useWinnerMoment(
+    board.phase === "complete",
+    !result
+      ? null
+      : result.mode === "coop"
+        ? {
+            faces: teamFaces(0),
+            headline: result.outcome === "win" ? "You won!" : "Not this time",
+            detail: `${result.score} / ${({ short: 16, medium: 24, long: 32 } as const)[result.preset ?? "short"]} points${result.outcome === "win" && (result.stars ?? 0) > 0 ? ` · ${"★".repeat(result.stars ?? 0)}` : ""}`,
+            celebratory: result.outcome === "win",
+          }
+        : {
+            faces: teamFaces(result.outcome === "team_0_win" ? 0 : 1),
+            headline: `Team ${result.outcome === "team_0_win" ? 1 : 2} wins`,
+            detail: board.teamScores.length === 2 ? board.teamScores.join(" · ") : null,
+          },
+  );
+
   if (board.phase === "complete") {
     return (
       <PageShell variant="narrow">
+        {winnerMoment}
         <header className="border-b border-line pb-4">
           <p className="font-slab text-xs uppercase tracking-[.18em] text-fg-muted">Wavelength</p>
           <h1 className="font-slab text-2xl">{board.mode === "coop" ? "Co-op" : "Team versus"}</h1>
@@ -255,9 +273,6 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
           {board.phase === "reveal" && current && (
             <BoardPanel card={currentCard} clue={currentClue} target={current.revealed_target} needle={current.guess_position ?? undefined} points={current.points} skipped={current.status === "skipped"} />
           )}
-          {revealRound != null && board.phase !== "reveal" && (
-            <RevealBanner round={rounds.find((round) => round.round === revealRound) ?? null} scores={board.teamScores} />
-          )}
         </section>
 
         <section className="flex min-h-0 flex-col gap-3 lg:col-start-1 lg:row-start-1" aria-label="Controls">
@@ -267,7 +282,7 @@ export function WavelengthMatch({ matchId, viewerId, roomCode, isHost, paused = 
           {board.phase === "guess" && (
             <GuessControls isGuesser={isGuesser} isPsychic={isPsychic} locking={locking} error={error} onLock={lockGuess} hasCard={!!currentCard} />
           )}
-          {board.phase === "reveal" && <RevealControls round={current} />}
+          {board.phase === "reveal" && <RevealControls round={current} isHost={isHost} hasNext={hasNextCard} advancing={advancing} error={error} onNext={nextCard} />}
         </section>
 
         <aside className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1" aria-label="The table">
@@ -337,26 +352,8 @@ function UpcomingRoundCell({ roundNumber }: { roundNumber: number }) {
   );
 }
 
-/** A non-blocking flash for a round that just settled while the table has
- * already moved on to the next one — it sits under the board so it never
- * covers the clue or the controls (see the REVEAL_MS effect above). */
-function RevealBanner({ round, scores }: { round: WavelengthRound | null; scores: number[] }) {
-  if (!round) return null;
-  const skipped = round.status === "skipped";
-  const reaction = skipped ? "Clue skipped" : round.points === 4 ? "Bullseye!" : round.points === 3 ? "So close!" : round.points === 2 ? "In the zone" : "Off the mark";
-  return (
-    <div role="status" className="animate-sold-headline mt-3 flex w-full max-w-2xl items-center gap-4 rounded-card border border-panel-fg/15 bg-panel px-4 py-3 text-panel-fg shadow-card">
-      {!skipped && (
-        <div className="w-28 shrink-0">
-          <Dial needle={round.guess_position ?? undefined} target={round.revealed_target ?? undefined} label={`Round ${round.round} result`} />
-        </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-slab text-lg leading-none">{skipped ? reaction : `${reaction} · ${round.points ?? 0} points`}</p>
-        <p className="mt-1 type-label-lg text-panel-muted">Round {round.round} · running score {scores.join(" – ")}</p>
-      </div>
-    </div>
-  );
+function reactionFor(points: number | null | undefined, skipped?: boolean) {
+  return skipped ? "Clue skipped" : points === 4 ? "Bullseye!" : points === 3 ? "So close!" : points === 2 ? "In the zone" : "Off the mark";
 }
 
 /** The board, in all three live phases: the spectrum's endpoints and the
@@ -390,7 +387,7 @@ function BoardPanel({ card, clue, target, needle, setNeedle, interactive, points
       {caption && <p className="text-center type-label-lg text-panel-muted">{caption}</p>}
       {card && <Endpoints card={card} />}
       {card && <Dial needle={needle} setNeedle={setNeedle} target={target ?? undefined} interactive={!!interactive} />}
-      {points !== undefined && <p className="font-slab text-2xl">{skipped ? "Clue skipped" : `${points ?? 0} points`}</p>}
+      {points !== undefined && <p className="font-slab text-2xl">{reactionFor(points, skipped)}</p>}
     </div>
   );
 }
@@ -448,12 +445,17 @@ function GuessControls({ isGuesser, isPsychic, locking, error, onLock, hasCard }
   );
 }
 
-function RevealControls({ round }: { round: WavelengthRound | null }) {
+function RevealControls({ round, isHost, hasNext, advancing, error, onNext }: {
+  round: WavelengthRound | null; isHost: boolean; hasNext: boolean; advancing: boolean; error: string | null; onNext: () => void;
+}) {
   return (
     <div className="flex flex-1 flex-col justify-center gap-2 rounded-card bg-surface-raised p-5 shadow-well">
       <p className="type-label text-fg-muted">Round locked</p>
-      <p className="font-slab text-xl">{round?.status === "skipped" ? "Clue skipped" : `${round?.points ?? 0} points`}</p>
-      <p className="text-sm text-fg-muted">The target is visible to everyone now. Next round starts automatically.</p>
+      <p className="font-slab text-xl">{round?.status === "skipped" ? "Clue skipped" : `+${round?.points ?? 0} points`}</p>
+      {error && <p role="alert" className="text-sm text-hidden-text">{error}</p>}
+      {isHost
+        ? <Button disabled={advancing} onClick={onNext}>{advancing ? "Moving on…" : hasNext ? "Next card" : "See results"}</Button>
+        : <p className="text-sm text-fg-muted">Waiting for the host to continue.</p>}
     </div>
   );
 }

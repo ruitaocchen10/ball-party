@@ -1,5 +1,18 @@
 import Foundation
 
+/// How every visible game timer reads: minutes and seconds, `00:03`, whole
+/// seconds only. Rounds up, so a clock never shows `00:00` while time is left.
+enum ClockText {
+    static func text(seconds: Int) -> String {
+        let s = max(0, seconds)
+        return String(format: "%02d:%02d", s / 60, s % 60)
+    }
+
+    static func text(ms: Int) -> String {
+        text(seconds: Int((Double(max(0, ms)) / 1_000).rounded(.up)))
+    }
+}
+
 /// Tuned constants for the timer/reconciliation state machine. Values and the
 /// reasons behind them are specified in `docs/architecture/game-runtime.md`
 /// ("The timer/reconciliation state machine") — that doc is the spec, and

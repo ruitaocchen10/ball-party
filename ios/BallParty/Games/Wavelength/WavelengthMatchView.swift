@@ -40,6 +40,8 @@ struct WavelengthMatchScreen: View {
             }
         }
         .screenBackground()
+        .winnerMoment(viewModel.winnerMoment, ready: viewModel.snapshot != nil, complete: viewModel.isFinished)
+        .matchStartCountdown(game: .wavelength, matchId: viewModel.matchId)
         .navigationTitle("Wavelength")
         .navigationBarTitleDisplayMode(.inline)
         // A live match is not somewhere to tab away from by accident.
@@ -109,7 +111,7 @@ private struct WavelengthHeader: View {
                 stats: [
                     HeaderStat(caption: "Round", value: "\(min(board.currentRound, board.roundCount)) / \(board.roundCount)"),
                     HeaderStat(caption: board.mode == .coop ? "Team score" : "Team 1 – Team 2", value: scoreText),
-                    HeaderStat(caption: clockCaption, value: display(seconds), urgent: urgent),
+                    HeaderStat(caption: clockCaption, value: board.phase == .reveal ? revealPoints : display(seconds), urgent: urgent),
                 ],
                 fraction: viewModel.clockFraction,
                 tickSeconds: Double(MatchClockConstants.tickMs) / 1_000
@@ -142,14 +144,18 @@ private struct WavelengthHeader: View {
         switch board.phase {
         case .fill: "Clues due"
         case .guess: viewModel.isGuesser ? "Your guess" : "Guess clock"
-        case .reveal: "Next round"
+        case .reveal: "This card"
         case .complete: "Done"
         }
     }
 
+    private var revealPoints: String {
+        viewModel.current?.status == .skipped ? "0" : "+\(viewModel.current?.points ?? 0)"
+    }
+
     private func display(_ seconds: Int?) -> String {
         guard let seconds else { return "—" }
-        return seconds >= 60 ? String(format: "%d:%02d", seconds / 60, seconds % 60) : "\(seconds)"
+        return ClockText.text(seconds: seconds)
     }
 }
 
@@ -169,19 +175,12 @@ private struct WavelengthDialTab: View {
                 if let message = viewModel.errorMessage {
                     ErrorBanner(message: message)
                 }
-                if let round = settledRound, viewModel.board?.phase != .reveal {
-                    WavelengthRevealBanner(round: round, scores: viewModel.board?.teamScores ?? [])
-                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
             .padding(.bottom, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-    }
-
-    private var settledRound: WavelengthRound? {
-        viewModel.revealRound.flatMap { number in viewModel.rounds.first { $0.round == number } }
     }
 
     @ViewBuilder
@@ -320,12 +319,25 @@ private struct WavelengthDialTab: View {
     }
 
     private var revealControls: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Round locked").monoLabel(10, tracking: 0.13)
-            Text(viewModel.current?.status == .skipped ? "Clue skipped" : "\(viewModel.current?.points ?? 0) points")
+            Text(viewModel.current?.status == .skipped ? "Clue skipped" : "+\(viewModel.current?.points ?? 0) points")
                 .slabTitle(22)
-            Text("The target is visible to everyone now. The next round starts automatically.")
-                .font(.sans(14)).foregroundStyle(Theme.fgMuted)
+            if viewModel.isHost {
+                Button {
+                    Task { await viewModel.nextCard() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if viewModel.isAdvancing { LoadingSpinner(size: 16) }
+                        Text(viewModel.isAdvancing ? "Moving on…" : viewModel.hasNextCard ? "Next card" : "See results")
+                    }
+                }
+                .buttonStyle(.solid)
+                .disabled(!viewModel.canAdvance)
+            } else {
+                Text("Waiting for the host to continue.")
+                    .font(.sans(14)).foregroundStyle(Theme.fgMuted)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
@@ -375,7 +387,7 @@ private struct WavelengthBoardPanel: View {
                     WavelengthDial(needle: needle, target: target, interactive: interactive, onMove: onMove)
                 }
                 if let result, let round = result {
-                    Text(round.status == .skipped ? "Clue skipped" : "\(round.points ?? 0) points")
+                    Text(WavelengthRules.reaction(points: round.points, skipped: round.status == .skipped))
                         .slabTitle(24, color: Theme.panelFg)
                 }
             }
@@ -384,38 +396,10 @@ private struct WavelengthBoardPanel: View {
     }
 }
 
-/// A non-blocking flash for a round that just settled while the table has
-/// already moved on, so the last guess is never missed.
-private struct WavelengthRevealBanner: View {
-    let round: WavelengthRound
-    let scores: [Int]
-
-    var body: some View {
-        let skipped = round.status == .skipped
-        PanelCard {
-            HStack(spacing: 14) {
-                if !skipped {
-                    WavelengthDial(needle: round.guessPosition, target: round.revealedTarget)
-                        .frame(width: 110)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(skipped ? WavelengthRules.reaction(points: nil, skipped: true)
-                        : "\(WavelengthRules.reaction(points: round.points, skipped: false)) · \(round.points ?? 0) points")
-                        .slabTitle(20, color: Theme.panelFg)
-                    Text("Round \(round.round) · running score \(scores.map(String.init).joined(separator: " – "))")
-                        .monoLabel(10, tracking: 0.06, color: Theme.panelMuted)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(12)
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
 // MARK: - Dial
 
 enum WavelengthPalette {
+    static let needle = Color(hex: 0x24211C)
     static let base = Color(hex: 0xD7D1C3)
     static let bullseye = Color(hex: 0xD94B45)
     static let near = Color(hex: 0xE49B55)
@@ -468,14 +452,14 @@ struct WavelengthDial: View {
                     line.move(to: pivot)
                     line.addLine(to: point(needle, pivot: pivot, radius: radius - size.width * Self.tipInset))
                     context.stroke(
-                        line, with: .color(Theme.panelFg),
+                        line, with: .color(WavelengthPalette.needle),
                         style: StrokeStyle(lineWidth: max(3, size.width * 0.008), lineCap: .round)
                     )
                 }
                 let hub = max(5, size.width * 0.014)
                 context.fill(
                     Path(ellipseIn: CGRect(x: pivot.x - hub, y: pivot.y - hub, width: hub * 2, height: hub * 2)),
-                    with: .color(Theme.panelFg)
+                    with: .color(WavelengthPalette.needle)
                 )
             }
             .contentShape(Rectangle())
@@ -636,13 +620,7 @@ private struct WavelengthFinalView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Final").eyebrow()
-                    Text(headline)
-                        .slabTitle(44)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                }
+                Text("Final").eyebrow()
 
                 scoreCard
 
@@ -658,13 +636,6 @@ private struct WavelengthFinalView: View {
             }
             .padding(16)
         }
-    }
-
-    private var headline: String {
-        guard let result = viewModel.result else { return "Game over" }
-        if result.mode == .coop { return result.won ? "You won!" : "Not this time" }
-        if let team = viewModel.winningTeam { return "Team \(team + 1) wins" }
-        return "Game over"
     }
 
     @ViewBuilder

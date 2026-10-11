@@ -180,6 +180,8 @@ private struct GameMomentCard: View {
     let item: FriendActivityItem
     let client: FriendsClient
 
+    @Environment(\.openParty) private var openParty
+
     private var event: FriendActivityEvent { item.event }
 
     var body: some View {
@@ -189,7 +191,12 @@ private struct GameMomentCard: View {
             } label: {
                 HStack(spacing: 8) {
                     Avatar(name: event.actor.displayName, url: event.actor.avatarURL, size: 28)
-                    Text(event.actor.displayName).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(event.actor.displayName).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
+                        if let username = event.actor.username.nonEmpty {
+                            Text("@" + username).font(.mono(10)).foregroundStyle(Theme.fgMuted)
+                        }
+                    }
                     Spacer()
                     Text(event.occurredAt, style: .relative).font(.mono(10)).foregroundStyle(Theme.fgMuted)
                 }
@@ -238,10 +245,7 @@ private struct GameMomentCard: View {
                 NavigationLink {
                     SoloLeaderboardScreen(board: board, mode: mode == "hidden" ? .hidden : .visible)
                 } label: {
-                    Text("Beat it")
-                        .monoLabel(10, weight: .semibold, tracking: 0.08)
-                        .frame(minHeight: 32)
-                        .contentShape(Rectangle())
+                    CardLinkLabel(title: "Beat it")
                 }
                 .buttonStyle(.plain)
             }
@@ -277,6 +281,30 @@ private struct GameMomentCard: View {
                     .font(.sans(18, weight: .medium))
                     .foregroundStyle(Theme.fg)
             }
+            Button(action: openParty) {
+                CardLinkLabel(title: "Play")
+            }
+            .buttonStyle(.plain)
         }
+    }
+}
+
+/// A game card's out-link: bordered like the web's small ghost button, label
+/// underlined, with an arrow to say it leaves the feed.
+private struct CardLinkLabel: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(title).monoLabel(10, weight: .semibold, tracking: 0.08).underline()
+            Image(systemName: "arrow.up.right")
+                .font(.system(size: 10, weight: .semibold))
+                .accessibilityHidden(true)
+        }
+        .foregroundStyle(Theme.fg)
+        .padding(.horizontal, 12)
+        .frame(minHeight: 36)
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
+        .contentShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
     }
 }

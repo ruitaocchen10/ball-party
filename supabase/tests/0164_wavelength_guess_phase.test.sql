@@ -63,17 +63,17 @@ select is((select points::int from public.wavelength_rounds where match_id = (se
   'the bullseye boundary scores four');
 select is((select revealed_target::int from public.wavelength_rounds where match_id = (select v from tests.fx where k = 'v') and round = 1), 500,
   'locking copies the target to the public round');
-select is((select current_round::int from public.wavelength_matches where match_id = (select v from tests.fx where k = 'v')), 2,
-  'locking opens the next sequential round');
-select is((select status from public.wavelength_rounds where match_id = (select v from tests.fx where k = 'v') and round = 2), 'open',
-  'the next round is open');
+select is((select phase from public.wavelength_matches where match_id = (select v from tests.fx where k = 'v')), 'reveal',
+  'locking holds the table on the revealed round');
+select is((select status from public.wavelength_rounds where match_id = (select v from tests.fx where k = 'v') and round = 2), 'pending',
+  'the next round stays closed until the host moves on');
 select tests.act_as((select v from tests.fx where k = 'g1'));
 select is((select (wavelength.state((select v from tests.fx where k = 'v'))).team_scores), array[4::smallint, 0::smallint],
   'state carries running totals per team');
 
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select throws_ok(format($$ select wavelength.lock_guess(%L, 2, 500) $$, (select v from tests.fx where k = 'v')),
-  '42501', 'not_guesser', 'only the current round guesser can lock');
+  'P0001', 'guess_not_open', 'no guess can be locked while the reveal is showing');
 select tests.act_as((select v from tests.fx where k = 'g1'));
 select throws_ok(format($$ select wavelength.lock_guess(%L, 1, 500) $$, (select v from tests.fx where k = 'v')),
   'P0001', 'guess_not_open', 'a locked round cannot be guessed twice');
@@ -118,8 +118,8 @@ select tests.act_as((select v from tests.fx where k = 'g7'));
 select wavelength.lock_guess((select v from tests.fx where k = 'v'), 7, 399);
 select tests.act_as_admin();
 select is((select points::int from public.wavelength_rounds where match_id = (select v from tests.fx where k = 'v') and round = 7), 0, 'outside the scoring zone scores zero');
-select is((select phase_deadline is not null from public.wavelength_matches where match_id = (select v from tests.fx where k = 'v')), true,
-  'each newly opened guess has a deadline');
+select is((select phase_deadline is null from public.wavelength_matches where match_id = (select v from tests.fx where k = 'v')), true,
+  'the reveal has no deadline');
 select ok(has_function_privilege('authenticated', 'wavelength.lock_guess(uuid,integer,integer)', 'execute'),
   'authenticated players may lock guesses');
 select ok(not has_function_privilege('anon', 'wavelength.lock_guess(uuid,integer,integer)', 'execute'),
@@ -137,8 +137,14 @@ select 'cg' || round::text, guesser_id from public.wavelength_rounds
  where match_id = (select v from tests.fx where k = 'c') and round <= 3;
 select tests.act_as((select v from tests.fx where k = 'cg1'));
 select wavelength.lock_guess((select v from tests.fx where k = 'c'), 1, 481);
+select tests.act_as_admin();
+update public.wavelength_matches set current_round = 2, phase = 'guess', phase_deadline = now() + interval '30 seconds' where match_id = (select v from tests.fx where k = 'c');
+update public.wavelength_rounds set status = 'open' where match_id = (select v from tests.fx where k = 'c') and round = 2;
 select tests.act_as((select v from tests.fx where k = 'cg2'));
 select wavelength.lock_guess((select v from tests.fx where k = 'c'), 2, 441);
+select tests.act_as_admin();
+update public.wavelength_matches set current_round = 3, phase = 'guess', phase_deadline = now() + interval '30 seconds' where match_id = (select v from tests.fx where k = 'c');
+update public.wavelength_rounds set status = 'open' where match_id = (select v from tests.fx where k = 'c') and round = 3;
 select tests.act_as((select v from tests.fx where k = 'cg3'));
 select wavelength.lock_guess((select v from tests.fx where k = 'c'), 3, 401);
 select tests.act_as_admin();

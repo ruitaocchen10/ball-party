@@ -91,7 +91,7 @@ struct SeasonMenu: View {
             .pickerStyle(.menu)
             .labelsHidden()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .fieldStyle()
+            .menuFieldStyle()
         }
         .frame(maxWidth: .infinity)
     }

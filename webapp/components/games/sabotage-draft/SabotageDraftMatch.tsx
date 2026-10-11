@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from "react";
 
 import { FinalStandings, type FinalStandingsRow } from "@/components/runtime/game-runtime/FinalStandings";
+import { useWinnerMoment } from "@/components/runtime/game-runtime/WinnerMoment";
 import { PauseBanner } from "@/components/runtime/game-runtime/PauseBanner";
 import { PauseButton } from "@/components/runtime/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/runtime/game-runtime/PostGameControls";
@@ -202,7 +203,19 @@ export function SabotageDraftMatch({ matchId, viewerId, roomCode = null, isHost 
       actorName: actorGuess ? (players.find(p => p.user_id === actorGuess.user_id)?.display_name ?? null) : null,
     });
   }, [board.current_round, board.round_count, board.active_user_id, picks, spins, hits, guesses, players, viewerId]);
-  if (standings.length) return <Final roundCount={board.round_count} matchId={matchId} roomCode={roomCode} isHost={isHost} viewerId={viewerId} standings={standings} players={players} tiebreaks={tiebreaks} picks={picks} decisions={decisions} pickAvs={pickAvs} />;
+  const topStanding = [...standings].sort((a, b) => b.wins - a.wins || a.tiebreak_rank - b.tiebreak_rank)[0];
+  const topPlayer = topStanding ? players.find(p => p.user_id === topStanding.user_id) : undefined;
+  const winnerMoment = useWinnerMoment(
+    standings.length > 0,
+    topStanding && topPlayer
+      ? {
+          faces: [{ name: topPlayer.display_name, avatarUrl: topPlayer.avatar_url ?? null }],
+          headline: topStanding.user_id === viewerId ? "You win" : `${topPlayer.display_name} wins`,
+          detail: `${topStanding.wins}-${topStanding.losses}`,
+        }
+      : null,
+  );
+  if (standings.length) return <>{winnerMoment}<Final roundCount={board.round_count} matchId={matchId} roomCode={roomCode} isHost={isHost} viewerId={viewerId} standings={standings} players={players} tiebreaks={tiebreaks} picks={picks} decisions={decisions} pickAvs={pickAvs} /></>;
   const disabled = pending || isPaused;
   // The turn clock's status label. Computed once here, where isActive and
   // activePlayer already live, rather than inside TurnClock -- it's handed

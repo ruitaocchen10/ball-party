@@ -68,8 +68,8 @@ select higher_or_lower.start((select v from tests.fx where k = 'room'));
 select is((select phase from public.higher_or_lower_matches where match_id = (select v from tests.fx where k = 'room')),
   'board_intro', 'a group start still opens on the shared board intro');
 select ok((select phase_deadline from public.higher_or_lower_matches where match_id = (select v from tests.fx where k = 'room'))
-  between now() + interval '4 seconds' and now() + interval '6 seconds',
-  'and still carries its five-second deadline');
+  between now() + interval '7 seconds' and now() + interval '9 seconds',
+  'and still carries its five-second deadline, after the three-second start countdown');
 
 select throws_ok(
   format($$ select higher_or_lower.advance(%L) $$, (select v from tests.fx where k = 'room')),

@@ -48,6 +48,7 @@ struct MainTabView: View {
             // top of the Party tab, so that is where it goes.
             .environment(\.notificationCount, inbox.invites.count)
             .environment(\.openNotifications, { selection = .party })
+            .environment(\.openParty, { selection = .party })
             .onChange(of: pendingRoomCode, initial: true) { _, code in
                 if code != nil { selection = .party }
             }

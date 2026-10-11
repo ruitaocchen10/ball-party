@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 import { AuthorAvatar } from "@/components/foundation/content/prompts/AuthorIdentity";
@@ -6,6 +7,16 @@ import { ButtonLink } from "@/components/foundation/ui-kit/Button";
 import { formatSoloScore, soloBoardHref, type SoloBoard } from "@/lib/foundation/content/leaderboard/boards";
 import { timeAgo, type ActivityItem } from "@/lib/foundation/friends/friends";
 import { MATCH_GAME_NAMES } from "@/lib/platform/orchestration/catalog";
+
+/** The card's out-link label: underlined, with an arrow to say it leaves the feed. */
+function OutLabel({ children }: { children: string }) {
+  return (
+    <>
+      <span className="underline underline-offset-2">{children}</span>
+      <ArrowUpRight aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+    </>
+  );
+}
 
 const LINK = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
 
@@ -36,13 +47,16 @@ export function GameMomentCard({ item }: { item: ActivityItem }) {
     <article className="rounded-card border border-line bg-surface-raised">
       <div className="flex items-center gap-2.5 px-4 pt-3">
         <AuthorAvatar name={event.displayName} avatarUrl={event.avatarUrl} className="h-7 w-7" />
-        {event.username ? (
-          <Link href={`/u/${event.username}`} className={`truncate font-mono text-[15px] font-bold hover:text-fg-muted ${LINK}`}>
-            {event.displayName}
-          </Link>
-        ) : (
-          <span className="truncate font-mono text-[15px] font-bold">{event.displayName}</span>
-        )}
+        <div className="min-w-0 leading-none">
+          {event.username ? (
+            <Link href={`/u/${event.username}`} className={`block truncate font-mono text-[15px] font-bold hover:text-fg-muted ${LINK}`}>
+              {event.displayName}
+            </Link>
+          ) : (
+            <p className="truncate font-mono text-[15px] font-bold">{event.displayName}</p>
+          )}
+          {event.username ? <p className="mt-1 truncate type-label text-fg-muted">@{event.username}</p> : null}
+        </div>
         <span className="ml-auto shrink-0 font-mono text-[10px] tracking-[0.04em] text-fg-muted">{timeAgo(event.occurredAt).toUpperCase()}</span>
       </div>
       {event.type === "high_score" ? <HighScore item={item} /> : <Win item={item} />}
@@ -85,7 +99,7 @@ function HighScore({ item }: { item: ActivityItem }) {
         ) : null}
       </div>
       <ButtonLink href="/solo" variant="ghost" size="sm" fullWidth={false}>
-        Beat it
+        <OutLabel>Beat it</OutLabel>
       </ButtonLink>
     </div>
   );
@@ -112,7 +126,7 @@ function Win({ item }: { item: ActivityItem }) {
         ) : null}
       </div>
       <ButtonLink href="/party" variant="ghost" size="sm" fullWidth={false}>
-        Play
+        <OutLabel>Play</OutLabel>
       </ButtonLink>
     </div>
   );

@@ -58,6 +58,11 @@ the psychic alone. Everyone sees the arc and the clue; exactly one person ever
 sees where the wedges are. The target is revealed to everyone when a guess
 locks.
 
+**Reveal** — a locked guess (by click or by timeout) holds the table on that
+card: the target wedges, the needle, the reaction and the points are shown to
+everyone, with no clock. Only the host moves on, with **Next card** (**See
+results** after the last card), which opens the next guess with a fresh clock.
+
 **Fill phase** — parallel and up front. Every player writes all of their clues
 at once, timed, then guessing runs sequentially, alternating players (and teams,
 in 2v2). A guesser sees the spectrum only when it is their turn to guess; during
@@ -95,8 +100,8 @@ produces skipped and auto-locked rounds until they return or the match finishes.
 published decks are copyrighted, and subject and axis cannot be combined
 randomly (`"A running back" × Cold/Hot` is nonsense).
 
-- The deck is 104 cards in `wavelength_private.deck`, seeded by migration
-  `0161`. `card_id` is stable; a match copies the labels it was dealt, so editing
+- The deck is 68 cards in `wavelength_private.deck`, seeded by migration
+  `0161` and synced to `cards.md` by `0201`. `card_id` is stable; a match copies the labels it was dealt, so editing
   the deck never rewrites a finished match.
 - **Every card is football-related**, with no `nfl`/`general` tag. A good card is
   a spectrum where reasonable people place the same clue at different spots.

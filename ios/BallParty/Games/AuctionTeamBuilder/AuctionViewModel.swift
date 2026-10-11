@@ -566,3 +566,16 @@ final class AuctionViewModel: ObservableObject {
         )
     }
 }
+
+extension AuctionViewModel {
+    /// The full-screen beat before the final table; nil until there is a winner.
+    var winnerMoment: WinnerMoment? {
+        let winners = finalStandings.filter { $0.rank == 1 }
+        guard !winners.isEmpty else { return nil }
+        return WinnerMoment(
+            faces: winners.map { WinnerMoment.Face(name: $0.name, url: $0.avatarURL, isMine: $0.isViewer) },
+            headline: headline,
+            detail: winners.count == 1 ? "\(formatPoints(winners[0].points)) pts" : nil
+        )
+    }
+}

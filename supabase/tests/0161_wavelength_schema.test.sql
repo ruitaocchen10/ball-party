@@ -86,8 +86,8 @@ select ok(
 
 select is(
   (select count(*)::int from wavelength_private.deck),
-  104,
-  'the deck holds the 104 approved cards'
+  68,
+  'the deck holds the 68 approved cards'
 );
 select is(
   (select row(left_label, right_label)::text from wavelength_private.deck where card_id = 1),

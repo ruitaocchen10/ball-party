@@ -29,8 +29,7 @@ final class WavelengthViewModelTests: XCTestCase {
         let partner = client.dealCoop()
         viewModel = WavelengthViewModel(
             client: client, matchId: client.matchId, viewerId: viewerId,
-            roomCode: "BRZWK", isHost: isHost, now: { [unowned self] in localNow },
-            revealDuration: .milliseconds(300)
+            roomCode: "BRZWK", isHost: isHost, now: { [unowned self] in localNow }
         )
         await viewModel.load()
         return partner
@@ -233,26 +232,47 @@ final class WavelengthViewModelTests: XCTestCase {
 
     // MARK: - Reveal
 
-    func test_reveal_aRoundThatSettlesIsShownForAMomentThenCleared() async {
-        await joinTable()
+    func test_reveal_theTableHoldsOnTheLockedCardUntilTheHostMovesOn() async {
+        await joinTable(isHost: true)
         client.beginGuessing(round: 2)
         await eventually { self.viewModel.board?.phase == .guess && self.viewModel.currentCard != nil }
         client.roundSettles(round: 2, position: 600)
-        await eventually { self.viewModel.revealRound == 2 }
+        await eventually { self.viewModel.board?.phase == .reveal }
+        try? await Task.sleep(for: .milliseconds(100))
 
-        await eventually { self.viewModel.revealRound == nil }
+        XCTAssertEqual(viewModel.board?.currentRound, 2)
+        XCTAssertTrue(viewModel.canAdvance)
+        XCTAssertTrue(viewModel.hasNextCard)
+
+        await viewModel.nextCard()
+
+        XCTAssertEqual(client.nextCardCalls, 1)
+        XCTAssertEqual(viewModel.board?.phase, .guess)
+        XCTAssertEqual(viewModel.board?.currentRound, 3)
     }
 
-    func test_reveal_roundsAlreadySettledWhenTheScreenOpensAreNotReplayed() async {
-        client.dealCoop()
+    func test_reveal_onlyTheHostCanMoveOn() async {
+        await joinTable(isHost: false)
         client.beginGuessing(round: 2)
+        await eventually { self.viewModel.board?.phase == .guess && self.viewModel.currentCard != nil }
         client.roundSettles(round: 2, position: 600)
-        viewModel = WavelengthViewModel(
-            client: client, matchId: client.matchId, viewerId: viewerId, now: { [unowned self] in localNow }
-        )
-        await viewModel.load()
+        await eventually { self.viewModel.board?.phase == .reveal }
 
-        XCTAssertNil(viewModel.revealRound)
+        XCTAssertFalse(viewModel.canAdvance)
+        await viewModel.nextCard()
+        XCTAssertEqual(client.nextCardCalls, 0)
+    }
+
+    func test_reveal_aRefusedMoveOnSurfacesTheServersWord() async {
+        await joinTable(isHost: true)
+        client.beginGuessing(round: 2)
+        await eventually { self.viewModel.board?.phase == .guess && self.viewModel.currentCard != nil }
+        client.roundSettles(round: 2, position: 600)
+        await eventually { self.viewModel.board?.phase == .reveal }
+        client.failures["next_card"] = WavelengthServerError(message: "match_not_playing")
+        await viewModel.nextCard()
+
+        XCTAssertEqual(viewModel.errorMessage, "This game isn't accepting moves right now.")
     }
 
     // MARK: - The table

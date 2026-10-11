@@ -114,6 +114,7 @@ features:
     summary: Your takes
     web: done
     ios: done
+    note: The Huddle's take cards, newest first, each with an Answering strip that opens the prompt, the picks folded behind View take, and a reply count that opens the take's thread.
 
   # --- Friends ---------------------------------------------------------------
   - id: friends.list
@@ -134,7 +135,7 @@ features:
     summary: Friends' answers to prompts (with the take they posted, once the prompt locks), multiplayer wins and new solo high scores from the last 30 days
     web: done
     ios: done
-    note: The Friends tab on Home, next to Huddle (web /?view=friends). Real accounts only; guests and signed-out visitors see just the Huddle. While a prompt is open the feed only says a friend answered; the answer appears at the lock. Answers are the Huddle's take cards (the take, with the picks folded behind View take); wins and new bests are lighter game cards (a best shows the number, the friend's rank among you and your friends, and Beat it; a win names who it was over; one friend's wins on a day fold into one card). Losses, one-player matches and solo runs that set no new best are left out. Layout gaps: web pages with an Older link and its Beat it / Play buttons jump to /solo and /party, while iOS pages with Load more and opens the game's board (Beat it) or the friend's profile.
+    note: The Friends tab on Home, next to Huddle (web /?view=friends). Real accounts only; guests and signed-out visitors see just the Huddle. While a prompt is open the feed only says a friend answered; the answer appears at the lock. Answers are the Huddle's take cards (the take, with the picks folded behind View take); wins and new bests are lighter game cards (a best shows the number, the friend's rank among you and your friends, and Beat it; a win names who it was over; one friend's wins on a day fold into one card). Losses, one-player matches and solo runs that set no new best are left out. Beat it and Play are underlined buttons with an arrow-up-right icon on both clients. Layout gaps: web pages with an Older link and its Beat it / Play buttons jump to /solo and /party, while iOS pages with Load more, Beat it opens the game's board and Play switches to the Party tab.
 
   # --- Leaderboard -----------------------------------------------------------
   - id: leaderboard.ball-knower
@@ -163,7 +164,7 @@ features:
     summary: Create a room, join from an invite or a room link, leave, close
     web: done
     ios: done
-    note: iOS opens https://ballparty.social/lobby/<code> as a Universal Link and joins from the Party tab (not when already in a room), and its share button now shares that link. Like the friend invite link, it works only once the apple-app-site-association file (webapp/public/.well-known) is deployed; not yet tested on a device. There is no join code to type on either client: the link token (`lobbies.code`, 16 random characters since migration 0198) is only ever inside a link. Rooms opened before 0198 keep their five-character code until they close.
+    note: iOS opens https://ballparty.social/lobby/<code> as a Universal Link and joins from the Party tab (not when already in a room), and sharing is the link: on iOS the room's invite bar is gone, and the invite sheet (opened from any open seat) starts with the link with Copy and Share, above the friend list. Like the friend invite link, it works only once the apple-app-site-association file (webapp/public/.well-known) is deployed; not yet tested on a device. There is no join code to type on either client: the link token (`lobbies.code`, 16 random characters since migration 0198) is only ever inside a link. Rooms opened before 0198 keep their five-character code until they close.
   - id: friends.room-invites
     summary: Invite friends into a room from the lobby; accept or decline from the Party page
     web: done
@@ -183,7 +184,27 @@ features:
     web: missing
     ios: done
     ticket: BPW-5
-    note: The host's settings are saved on the room (`lobbies.game_format`, `set_lobby_game_format`, migration 0197) as they change. On iOS the Game tab is a row of game cards for everyone; the host's swipe picks the game and the host edits its settings in the card, while a player's swipe only browses and the card shows the host's settings read-only. The Room tab shows the picked game and its settings. Web still keeps the host's settings in the host's browser until Start, so web players cannot see them.
+    note: The host's settings are saved on the room (`lobbies.game_format`, `set_lobby_game_format`, migration 0197) as they change. On iOS the Game tab is a row of full-width game cards of one fixed height for everyone; the host's swipe picks the game, the card shows its current settings as pills, and the host's Adjust settings button opens them in a sheet (pill choices for every either-or setting, dropdowns for seasons, roster and length; each change saves as it is made). A player's swipe only browses and sees the pills with no button. The Room tab shows the picked game and its settings, and the host's Start button is pinned to the bottom of the Room tab with the reason it is disabled (waiting for players, nothing picked) above it; the Game tab only chooses and configures. Web still keeps the host's settings in the host's browser until Start, so web players cannot see them.
+  - id: rooms.seat-form
+    summary: Each seat shows the player's win rate, best streak and last three results ("New" with no games)
+    web: done
+    ios: done
+    note: Read from `lobby_member_match_history` (migration 0080) and summarised like the web's `summarizeProfile`. On iOS it sits under the avatar on the light seat card; a red dot is a win.
+  - id: rooms.start-countdown
+    summary: A 3-2-1 screen before the first phase of a room game, counted down to a start time the server sets
+    web: done
+    ios: done
+    note: Higher or Lower, Auction Team Builder, Wavelength and Sabotage Draft, including a replay. The server owns it (migration 0200). A room match carries `matches.play_starts_at`, three seconds after the host starts it, and every deadline the game set on the way in is pushed back by the same three seconds, so the first phase is full-length once the countdown ends. Each client reads the time with `match_play_start` (which also returns the server's clock) and counts down to it, so every player sees the same numbers and someone who opens the match late sees what is left. Solo runs have none. On iOS the auction's first lot reel plays after the countdown; the web auction still shows the first lot's player at once, as it always has (it only spins later lots).
+  - id: games.winner-moment
+    summary: A full-screen "Maya wins" beat when a room game ends, before the results
+    web: done
+    ios: done
+    note: Higher or Lower, Auction Team Builder, Wavelength and Sabotage Draft. Shows the winner's avatar (both on a tie, the winning team in Wavelength) and a line of why, auto-advances after about three seconds, and a click or key press skips it. A co-op loss shows it muted. Only for a player who watched the match end; rejoining a finished match goes straight to the results, which no longer carry a winner headline.
+  - id: games.timer-format
+    summary: Every visible game clock reads MM:SS in whole seconds (00:03), with no tenths
+    web: missing
+    ios: done
+    note: Header clocks in Auction, Wavelength and Sabotage, and the Higher or Lower countdown. Web ticket still to be filed in BPW.
   - id: rooms.scoreboard
     summary: Wins each player has taken in the room since it opened
     web: done
@@ -212,17 +233,17 @@ features:
     summary: Auction Team Builder (room, 2-4)
     web: done
     ios: done
-    note: 'The whole game plays on iOS: the host picks scoring, roster, tokens and era in the room, then bidding, custom bids, free lots, the Pass, Scout and Seal tokens, sealed rounds and the final table all match the web. Gaps: team logos (iOS shows team codes; the logo PNGs are not bundled), the host Pause button (web only), and the replay format picker (web lets the host change scoring, roster and era on Play again; iOS replays the same format). The lot reveal is the same slot reel as the web.'
+    note: 'The whole game plays on iOS: the host picks scoring, roster, tokens and era in the room, then bidding, custom bids, free lots, the Pass, Scout and Seal tokens, sealed rounds and the final table all match the web. Gaps: team logos (iOS shows team codes; the logo PNGs are not bundled), the host Pause button (web only), and the replay format picker (web lets the host change scoring, roster and era on Play again; iOS replays the same format). The lot reveal is the same slot reel as the web. iOS layout: custom and sealed bids are entered in a sheet, and the Table tab has one tab per player (budget, current bid, tokens, points, team) instead of every roster stacked.'
   - id: game.sabotage-draft
     summary: Sabotage Draft (room, 2-4)
     web: done
     ios: done
-    note: 'The whole game plays on iOS: the host picks Full, Standard or Quick in the room, then the hidden pick, both guess types (player only, player and exact year), pass, the X-Factor decision, the season result with letter grades and the tiebreak bracket all match the web. Laid out as a pinned header (round and slot, your picks, on the clock, the turn clock) over three native tabs, Draft, Rosters and Log, with the guess search as a bottom sheet. Gaps: the host Pause button (web only), the replay format picker (iOS replays the same format), and the web turn-reveal reel and "your pick was sabotaged" swap card (iOS shows hits as badges on Rosters and in the Log).'
+    note: 'The whole game plays on iOS: the host picks Full, Standard or Quick in the room, then the hidden pick, both guess types (player only, player and exact year), pass, the X-Factor decision, the season result with letter grades and the tiebreak bracket all match the web. Laid out as a pinned header (round and slot, your picks, on the clock, the turn clock) over three native tabs, Draft, Rosters and Log, with the guess search as a bottom sheet. Rosters has one tab per player rather than every roster stacked. Gaps: the host Pause button (web only), the replay format picker (iOS replays the same format), and the web turn-reveal reel and "your pick was sabotaged" swap card (iOS shows hits as badges on Rosters and in the Log).'
   - id: game.wavelength
     summary: 2v2 Wavelength (room, 2 or 4)
     web: done
     ios: done
-    note: 'The whole game plays on iOS: the host picks co-op (with a length) or 2v2 in the room, then clue writing, the dial and live needle, locking a guess, the reveal and the result screen (stars in co-op, winner in 2v2) match the web. Laid out as a pinned header (round, score, clock) over two native tabs, Dial and Rounds. Gaps: the host Pause button (web only), and the replay format picker (iOS replays the same format).'
+    note: 'The whole game plays on iOS: the host picks co-op (with a length) or 2v2 in the room, then clue writing, the dial and live needle, locking a guess, the reveal (the table holds on the locked card until the host taps Next card) and the result screen (stars in co-op, winner in 2v2) match the web. Laid out as a pinned header (round, score, clock) over two native tabs, Dial and Rounds. Gaps: the host Pause button (web only), and the replay format picker (iOS replays the same format).'
 
   # --- Platform and support --------------------------------------------------
   - id: support.feedback

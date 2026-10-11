@@ -33,38 +33,38 @@ easy; if no clue can be placed, it isn't a spectrum.
 - [ x ] 007 · nfl · Weak touchdown celebration ↔ Elite touchdown celebration
 - [ x ] 008 · nfl · Cold-weather team ↔ Warm-weather team
 - [ x ] 009 · nfl · Quiet stadium ↔ Loud stadium
-- [ x ] 010 · nfl · Boring play call ↔ Gutsy play call
+- [ - ] 010 · nfl · Boring play call ↔ Gutsy play call
 - [ x ] 011 · nfl · Hard-to-watch offense ↔ Fun-to-watch offense
-- [ x ] 012 · nfl · Soft team ↔ Tough team
+- [ - ] 012 · nfl · Soft team ↔ Tough team
 - [ x ] 013 · nfl · Mild rivalry ↔ Great rivalry
-- [ x ] 014 · nfl · Overrated position ↔ Underrated position
-- [ x ] 015 · nfl · Shrug-it-off loss ↔ Heartbreaking loss
+- [ - ] 014 · nfl · Overrated position ↔ Underrated position
+- [ - ] 015 · nfl · Shrug-it-off loss ↔ Heartbreaking loss
 - [ x ] 016 · nfl · Forgettable Super Bowl ↔ Legendary Super Bowl
 - [ x ] 017 · nfl · Bad halftime show ↔ Great halftime show
 - [ x ] 018 · nfl · Kicker you'd panic over ↔ Kicker you'd trust
 - [ x ] 019 · nfl · Nobody's favorite team ↔ Everybody's favorite team
 - [ x ] 020 · nfl · Coach you'd hate to play for ↔ Coach you'd love to play for
-- [ x ] 021 · nfl · Weak trash talk ↔ Elite trash talk
-- [ x ] 022 · nfl · Average tailgate ↔ Elite tailgate
+- [ - ] 021 · nfl · Weak trash talk ↔ Elite trash talk
+- [ - ] 022 · nfl · Average tailgate ↔ Elite tailgate
 - [ x ] 023 · nfl · Dad's favorite player ↔ Gen Z's favorite player
-- [ x ] 024 · nfl · Old-school football ↔ Modern football
+- [ - ] 024 · nfl · Old-school football ↔ Modern football
 - [ x ] 025 · nfl · Draft bust ↔ Draft steal
 - [ x ] 026 · nfl · Fantasy football bust ↔ Fantasy football hero
 - [ x ] 027 · nfl · Rebuilding team ↔ Super Bowl contender
 - [ x ] 028 · nfl · Player everyone hates ↔ Player everyone loves
-- [ x ] 029 · nfl · Dumb penalty ↔ Smart penalty
-- [ x ] 030 · nfl · Bad mascot ↔ Great mascot
-- [ x ] 031 · nfl · Harmless defense ↔ Terrifying defense
-- [ x ] 032 · nfl · Lineman nobody knows ↔ Lineman everybody knows
+- [ - ] 029 · nfl · Dumb penalty ↔ Smart penalty
+- [ - ] 030 · nfl · Bad mascot ↔ Great mascot
+- [ x ] 031 · nfl · Bad defense ↔ Good defense
+- [ - ] 032 · nfl · Lineman nobody knows ↔ Lineman everybody knows
 - [ x ] 033 · nfl · Worst city to visit for a game ↔ Best city to visit for a game
 - [ x ] 034 · nfl · Bad broadcaster ↔ Great broadcaster
-- [ x ] 035 · nfl · Skippable game ↔ Must-watch game
+- [ - ] 035 · nfl · Skippable game ↔ Must-watch game
 - [ - ] 036 · nfl · Regular-season energy ↔ Playoff energy
-- [ x ] 037 · nfl · Too safe on fourth down ↔ Too reckless on fourth down
+- [ - ] 037 · nfl · Too safe on fourth down ↔ Too reckless on fourth down
 - [ x ] 038 · nfl · Quarterback with no swagger ↔ Quarterback with all the swagger
 - [ x ] 039 · nfl · Player who'd lose a fight ↔ Player who'd win a fight
-- [ x ] 040 · nfl · Lukewarm take ↔ Scorching take
-- [ x ] 041 · nfl · Normal pregame ritual ↔ Bizarre pregame ritual
+- [ - ] 040 · nfl · Lukewarm take ↔ Scorching take
+- [ - ] 041 · nfl · Normal pregame ritual ↔ Bizarre pregame ritual
 - [ x ] 042 · nfl · Easy to root against ↔ Impossible to root against
 
 ### General
@@ -100,65 +100,65 @@ coach or moment, since the two NFL cards you rejected in batch 1 were vague
 - [ x ] 062 · Pocket passer ↔ Scrambler
 - [ x ] 063 · Bruiser running back ↔ Elusive running back
 - [ x ] 064 · Possession receiver ↔ Deep threat
-- [ x ] 065 · Finesse pass rusher ↔ Power pass rusher
+- [ - ] 065 · Finesse pass rusher ↔ Power pass rusher
 - [ x ] 066 · Quiet professional ↔ Loud personality
-- [ x ] 067 · Mistake-prone ↔ Mistake-free
+- [ - ] 067 · Mistake-prone ↔ Mistake-free
 - [ x ] 068 · One-hit wonder ↔ Longevity king
-- [ x ] 069 · Unknown rookie ↔ Household name
+- [ - ] 069 · Unknown rookie ↔ Household name
 - [ x ] 070 · Fantasy sleeper ↔ Fantasy first-rounder
-- [ x ] 071 · Clean player ↔ Dirty player
+- [ - ] 071 · Clean player ↔ Dirty player
 - [ x ] 072 · Chokes in big games ↔ Clutch in big games
 - [ x ] 073 · Locker-room cancer ↔ Locker-room leader
-- [ x ] 074 · Overpaid ↔ Underpaid
+- [ - ] 074 · Overpaid ↔ Underpaid
 - [ x ] 075 · Injury-prone ↔ Iron man
 - [ x ] 076 · Washed ↔ Still elite
-- [ x ] 077 · Gadget player ↔ Every-down player
-- [ x ] 078 · Stat-padder ↔ Winner
-- [ x ] 079 · Combine warrior ↔ Plays better than he tests
-- [ x ] 080 · Beloved by the media ↔ Hated by the media
-- [ x ] 081 · Preseason hero ↔ Actual contributor
-- [ x ] 082 · Pickup-game MVP ↔ Pickup-game liability
-- [ x ] 083 · Backup QB you'd fear ↔ Backup QB you'd trust
-- [ x ] 084 · Madden rating too low ↔ Madden rating too high
-- [ x ] 085 · Boring on social media ↔ Entertaining on social media
-- [ x ] 086 · Wooden in commercials ↔ Natural in commercials
-- [ x ] 087 · Boring when mic'd up ↔ Hilarious when mic'd up
-- [ x ] 088 · Terrible analyst ↔ Great analyst
+- [ - ] 077 · Gadget player ↔ Every-down player
+- [ - ] 078 · Stat-padder ↔ Winner
+- [ - ] 079 · Combine warrior ↔ Plays better than he tests
+- [ - ] 080 · Beloved by the media ↔ Hated by the media
+- [ - ] 081 · Preseason hero ↔ Actual contributor
+- [ - ] 082 · Pickup-game MVP ↔ Pickup-game liability
+- [ x ] 083 · Backup QB who stinks ↔ Backup QB you'd trust
+- [ - ] 084 · Madden rating too low ↔ Madden rating too high
+- [ - ] 085 · Boring on social media ↔ Entertaining on social media
+- [ - ] 086 · Wooden in commercials ↔ Natural in commercials
+- [ - ] 087 · Boring when mic'd up ↔ Hilarious when mic'd up
+- [ - ] 088 · Terrible analyst ↔ Great analyst
 
 ### Teams, coaches and front offices
 
-- [ x ] 089 · Boring dynasty ↔ Fun dynasty
+- [ - ] 089 · Boring dynasty ↔ Fun dynasty
 - [ x ] 090 · Perennial loser ↔ Perennial winner
 - [ x ] 091 · Small-market team ↔ Big-market team
 - [ x ] 092 · Franchise in chaos ↔ Franchise with stability
-- [ x ] 093 · Front-office clown ↔ Front-office genius
-- [ x ] 094 · Team you'd never bet on ↔ Team you'd bet the house on
-- [ x ] 095 · Old and charming stadium ↔ New and shiny stadium
-- [ x ] 096 · Players' coach ↔ Disciplinarian
+- [ - ] 093 · Front-office clown ↔ Front-office genius
+- [ - ] 094 · Team you'd never bet on ↔ Team you'd bet the house on
+- [ - ] 095 · Old and charming stadium ↔ New and shiny stadium
+- [ - ] 096 · Players' coach ↔ Disciplinarian
 - [ x ] 097 · Hot-seat coach ↔ Untouchable coach
-- [ x ] 098 · Fanbase with no patience ↔ Fanbase with endless patience
-- [ x ] 099 · Matchup you dread ↔ Matchup you want
-- [ x ] 100 · Free-agency overspend ↔ Free-agency bargain
-- [ x ] 101 · Draft pick fans booed ↔ Draft pick fans cheered
+- [ - ] 098 · Fanbase with no patience ↔ Fanbase with endless patience
+- [ - ] 099 · Matchup you dread ↔ Matchup you want
+- [ - ] 100 · Free-agency overspend ↔ Free-agency bargain
+- [ - ] 101 · Draft pick fans booed ↔ Draft pick fans cheered
 - [ x ] 102 · Jersey nobody owns ↔ Jersey everybody owns
 
 ### Plays, games and rules
 
-- [ x ] 103 · Forgettable play ↔ Iconic play
+- [ - ] 103 · Forgettable play ↔ Iconic play
 - [ x ] 104 · Terrible trade ↔ Great trade
-- [ x ] 105 · Obvious call ↔ Controversial call
-- [ x ] 106 · Snoozer blowout ↔ Instant classic
-- [ x ] 107 · Terrible rule ↔ Great rule
-- [ x ] 108 · Easy-to-explain rule ↔ Impossible-to-explain rule
-- [ x ] 109 · Glamour position ↔ Grunt position
-- [ x ] 110 · Ground-and-pound ↔ Air raid
-- [ x ] 111 · Bend-don't-break defense ↔ Blitz-happy defense
-- [ x ] 112 · Trick play too cute ↔ Trick play genius
-- [ x ] 113 · Ugly win ↔ Beautiful win
-- [ x ] 114 · Wasted timeout ↔ Perfectly timed timeout
-- [ x ] 115 · Lucky play ↔ Skilled play
-- [ x ] 116 · Playing for the paycheck ↔ Playing for the love of the game
-- [ x ] 117 · Coin-flip game ↔ Lock of the week
+- [ - ] 105 · Obvious call ↔ Controversial call
+- [ - ] 106 · Snoozer blowout ↔ Instant classic
+- [ - ] 107 · Terrible rule ↔ Great rule
+- [ - ] 108 · Easy-to-explain rule ↔ Impossible-to-explain rule
+- [ - ] 109 · Glamour position ↔ Grunt position
+- [ - ] 110 · Ground-and-pound ↔ Air raid
+- [ - ] 111 · Bend-don't-break defense ↔ Blitz-happy defense
+- [ - ] 112 · Trick play too cute ↔ Trick play genius
+- [ - ] 113 · Ugly win ↔ Beautiful win
+- [ - ] 114 · Wasted timeout ↔ Perfectly timed timeout
+- [ - ] 115 · Lucky play ↔ Skilled play
+- [ - ] 116 · Playing for the paycheck ↔ Playing for the love of the game
+- [ - ] 117 · Coin-flip game ↔ Lock of the week
 
 ### Culture
 
@@ -171,11 +171,35 @@ coach or moment, since the two NFL cards you rejected in batch 1 were vague
 Eight cards to close the gap from 97 to 100, with a little room for rejections.
 All football; players, teams and coaches, which is what you've been approving.
 
-- [ x ] 121 · Shutdown corner ↔ Ball-hawking gambler
-- [ x ] 122 · Sack artist ↔ Run stopper
-- [ x ] 123 · Blocking tight end ↔ Receiving tight end
-- [ x ] 124 · Homegrown star ↔ Hired gun
+- [ - ] 121 · Shutdown corner ↔ Ball-hawking gambler
+- [ - ] 122 · Sack artist ↔ Run stopper
+- [ - ] 123 · Blocking tight end ↔ Receiving tight end
+- [ - ] 124 · Homegrown star ↔ Hired gun
 - [ - ] 125 · Justified holdout ↔ Selfish holdout
-- [ x ] 126 · Fades late ↔ Finishes strong
-- [ x ] 127 · Top-heavy roster ↔ Deep roster
+- [ - ] 126 · Fades late ↔ Finishes strong
+- [ - ] 127 · Top-heavy roster ↔ Deep roster
 - [ x ] 128 · Rookie who needs time ↔ Rookie ready now
+- [ x ] 129 · Overrated QB vs. Underrated QB
+- [ x ] 130 · Overrated RB vs. Underrated RB
+- [ x ] 131 · Overrated WR vs. Underrated WR
+- [ x ] 132 · Overrated backup QB vs. Underrated backup QB
+- [ x ] 133 · Overrated RB2 vs. Underrated RB2
+- [ x ] 134 · Overrated WR2 vs. Underrated WR2
+- [ x ] 135 · Overrated TE vs. Underrated TE
+- [ x ] 136 · Overrated defensive player vs. Underrated defensive player
+- [ x ] 137 · Overrated coach vs. Underrated coach
+- [ x ] 138 · Overrated team vs. Underrated team
+- [ x ] 139 · Bad QB vs. Good QB
+- [ x ] 140 · Bad backup QB vs. Good backup QB
+- [ x ] 141 · Bad RB1 vs. Good RB1
+- [ x ] 142 · Bad RB2 vs. Good RB2
+- [ x ] 143 · Bad WR1 vs. Good WR1
+- [ x ] 144 · Bad WR2 vs. Good WR2
+- [ x ] 145 · Bad TE vs. Good TE
+- [ x ] 146 · Bad defensive player vs. Good defensive player
+- [ x ] 147 · Bad coach vs. Good coach
+- [ x ] 148 · Bad team vs. Good team
+- [ x ] 149 · Slow QB vs. Fast QB
+- [ x ] 150 · Slow RB vs. Fast RB
+- [ x ] 151 · Slow WR vs. Fast WR
+

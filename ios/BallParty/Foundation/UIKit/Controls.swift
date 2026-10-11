@@ -110,8 +110,8 @@ extension View {
     /// A text field, picker or menu sitting in a recessed well with a hairline
     /// border. The border rather than the inset shadow because a field
     /// changes state on focus; the border is carrying that state.
-    func fieldStyle() -> some View {
-        font(.sans(16))
+    func fieldStyle(font: Font = .sans(16)) -> some View {
+        self.font(font)
             .foregroundStyle(Theme.fg)
             .tint(Theme.fg)
             .padding(.horizontal, 12)
@@ -124,6 +124,13 @@ extension View {
     /// The small uppercase caption above a field.
     func fieldLabel() -> some View {
         monoLabel(10, weight: .bold, tracking: 0.14)
+    }
+
+    /// `fieldStyle` for a dropdown: its value is set in the slab face, like the
+    /// buttons and segmented choices around it, not in body type.
+    func menuFieldStyle() -> some View {
+        textCase(.uppercase)
+            .fieldStyle(font: .slab(18, relativeTo: .body))
     }
 }
 

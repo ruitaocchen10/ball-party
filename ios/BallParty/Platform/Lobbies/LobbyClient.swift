@@ -53,9 +53,18 @@ protocol LobbyClient: Sendable {
     /// (`realtime.md`, "Presence is a heartbeat RPC").
     func heartbeat(lobbyId: UUID) async throws
 
+    /// `lobby_member_match_history(p_lobby_id)` — every completed match of
+    /// everyone currently seated, for the form shown under each seat.
+    func memberHistory(lobbyId: UUID) async throws -> [LobbyMatchHistoryRow]
+
     /// The `lobby:${lobbyId}` channel, as a stream the screen can consume.
     /// Cancelling the consuming task tears the channel down.
     func events(lobbyId: UUID) -> AsyncStream<LobbyEvent>
+}
+
+extension LobbyClient {
+    /// Seat form is a nicety: a client that has no history simply shows "New".
+    func memberHistory(lobbyId: UUID) async throws -> [LobbyMatchHistoryRow] { [] }
 }
 
 struct SupabaseLobbyClient: LobbyClient {
@@ -154,6 +163,13 @@ struct SupabaseLobbyClient: LobbyClient {
 
     func heartbeat(lobbyId: UUID) async throws {
         try await wrapped { _ = try await client.rpc("heartbeat_lobby", params: LobbyParam(p_lobby_id: lobbyId)).execute() }
+    }
+
+    func memberHistory(lobbyId: UUID) async throws -> [LobbyMatchHistoryRow] {
+        try await wrapped {
+            try await client.rpc("lobby_member_match_history", params: LobbyParam(p_lobby_id: lobbyId))
+                .execute().value
+        }
     }
 
     func events(lobbyId: UUID) -> AsyncStream<LobbyEvent> {

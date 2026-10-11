@@ -256,8 +256,8 @@ private struct LobbyEntryView: View {
 // MARK: - The room
 
 /// The three views of a room under the header. Everyone sees all three: the
-/// Game tab is where the host picks and starts, and where everybody else sees
-/// what the host has picked.
+/// Game tab is where the host picks a game and sets it up, and where everybody
+/// else sees what the host has picked. Starting it is on the Room tab.
 private enum RoomTab: Hashable, CaseIterable {
     case room, game, scoreboard
 
@@ -294,6 +294,13 @@ private struct LobbyRoomView: View {
             await viewModel.refresh()
             await viewModel.loadFormat()
         }
+        // The invite sheet: the room link and the friend list. Any open seat
+        // opens it.
+        .sheet(isPresented: $inviting) {
+            if let lobbyId = viewModel.lobby?.id {
+                InviteFriendsSheet(lobbyId: lobbyId, roomCode: viewModel.roomCode ?? "")
+            }
+        }
     }
 
     private var roomContent: some View {
@@ -302,7 +309,6 @@ private struct LobbyRoomView: View {
                 RoomInvitesInboxSection(viewModel: inbox, hasRoom: true) { lobby in
                     Task { await viewModel.adopt(lobby) }
                 }
-                code
                 roster
 
                 if let matchId = viewModel.rejoinableMatch {
@@ -332,11 +338,19 @@ private struct LobbyRoomView: View {
             .padding(16)
         }
         .refreshable { await inbox.load() }
+        // Start is the room's one call to action, so it stays in reach under
+        // the seats and says what is missing above it. Not while a game is
+        // under way: the room then offers to rejoin it instead.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if viewModel.isHost, viewModel.snapshot?.run?.inFlightMatch == nil {
+                GameStartBar(viewModel: viewModel)
+            }
+        }
     }
 
     /// The Game tab: a row of game cards. The host's swipe picks and their
     /// controls set the game up; everybody else browses and reads the host's
-    /// settings. Start sits under it for the host.
+    /// settings. Starting it is on the Room tab.
     private var gameContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -356,9 +370,6 @@ private struct LobbyRoomView: View {
                 }
             }
             .padding(.vertical, 16)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if viewModel.isHost { GameStartBar(viewModel: viewModel) }
         }
     }
 
@@ -437,38 +448,6 @@ private struct LobbyRoomView: View {
         .refreshable { await viewModel.refresh() }
     }
 
-    /// How people get in: friends are invited, anyone else gets the link.
-    private var code: some View {
-        let roomCode = viewModel.roomCode ?? ""
-        return PanelCard {
-            HStack(spacing: 12) {
-                Text("Invite to the room")
-                    .monoLabel(10, weight: .bold, tracking: 0.16, color: Theme.panelMuted)
-                Spacer(minLength: 0)
-                ShareLink(
-                    item: RoomLink.url(code: roomCode),
-                    message: Text("Join my Ball Party room")
-                ) {
-                    Image(systemName: "square.and.arrow.up")
-                        .frame(width: 24)
-                }
-                .buttonStyle(BPButtonStyle(variant: .ink, fullWidth: false))
-                .accessibilityLabel("Share the room link")
-                if let lobbyId = viewModel.lobby?.id {
-                    Button { inviting = true } label: {
-                        Image(systemName: "person.badge.plus")
-                            .frame(width: 24)
-                    }
-                    .buttonStyle(BPButtonStyle(variant: .ink, fullWidth: false))
-                    .accessibilityLabel("Invite friends")
-                    .sheet(isPresented: $inviting) { InviteFriendsSheet(lobbyId: lobbyId) }
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
-    }
-
     /// The four seats as a 2x2 grid: a card per player, then an open-seat card
     /// for each place still free, which opens the invite sheet.
     private var roster: some View {
@@ -485,7 +464,7 @@ private struct LobbyRoomView: View {
     }
 
     private static let seatCount = 4
-    private static let seatHeight: CGFloat = 176
+    private static let seatHeight: CGFloat = 208
 
     /// A player's seat: a light card, so the people at the table stand out from
     /// the dark screen and from the open seats around them.
@@ -516,6 +495,8 @@ private struct LobbyRoomView: View {
             Text(isYou ? "you" : "at the table")
                 .monoLabel(9, tracking: 0.1, color: muted)
                 .padding(.top, 4)
+            SeatForm(form: viewModel.memberForm[member.userId], ink: ink, muted: muted)
+                .padding(.top, 8)
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: Self.seatHeight)
@@ -526,7 +507,8 @@ private struct LobbyRoomView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "Seat \(seat), \(member.displayName)\(isHost ? ", host" : "")\(isYou ? ", you" : "")"
+            "Seat \(seat), \(member.displayName)\(isHost ? ", host" : "")\(isYou ? ", you" : ""). "
+                + SeatForm.spoken(viewModel.memberForm[member.userId])
         )
     }
 
@@ -567,5 +549,50 @@ private struct ClosedRoomView: View {
         }
         .padding(16)
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// A player's form under their seat, as on web: win rate, best streak and their
+/// last few results (a red dot is a win), or "New" before their first game.
+private struct SeatForm: View {
+    let form: LobbyMemberForm?
+    let ink: Color
+    let muted: Color
+
+    var body: some View {
+        if let form, !form.isNew {
+            VStack(spacing: 6) {
+                HStack(spacing: 12) {
+                    stat("trophy", "\(form.winRate)%")
+                    stat("flame", "\(form.bestStreak)")
+                }
+                HStack(spacing: 4) {
+                    ForEach(Array(form.recent.enumerated()), id: \.offset) { _, won in
+                        Circle()
+                            .fill(won ? Theme.hiddenInk : ink.opacity(0.28))
+                            .frame(width: 6, height: 6)
+                    }
+                }
+            }
+            .accessibilityHidden(true)
+        } else {
+            Text("New").monoLabel(9, weight: .bold, tracking: 0.12, color: muted)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private func stat(_ symbol: String, _ value: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.hiddenInk)
+            Text(value).monoLabel(11, weight: .bold, tracking: 0.02, color: ink)
+        }
+    }
+
+    static func spoken(_ form: LobbyMemberForm?) -> String {
+        guard let form, !form.isNew else { return "New player" }
+        let recent = form.recent.map { $0 ? "win" : "loss" }.joined(separator: ", ")
+        return "\(form.winRate) percent win rate, best streak \(form.bestStreak). Recent: \(recent)"
     }
 }

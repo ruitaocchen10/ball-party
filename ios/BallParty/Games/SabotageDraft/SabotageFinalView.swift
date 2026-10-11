@@ -15,13 +15,7 @@ struct SabotageFinalView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Final").eyebrow()
-                    Text(headline)
-                        .slabTitle(44)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                }
+                Text("Final").eyebrow()
 
                 VStack(spacing: 12) {
                     ForEach(Array(viewModel.rankedStandings.enumerated()), id: \.element.userId) { index, standing in
@@ -38,13 +32,6 @@ struct SabotageFinalView: View {
             }
             .padding(16)
         }
-    }
-
-    private var headline: String {
-        guard let first = viewModel.rankedStandings.first, let winner = viewModel.player(first.userId) else {
-            return "Season over"
-        }
-        return winner.userId == viewModel.viewerId ? "You win" : "\(winner.name) wins"
     }
 
     // MARK: Standings

@@ -1319,6 +1319,7 @@ export type Database = {
           game: string
           id: string
           paused_at: string | null
+          play_starts_at: string | null
           run_id: string
           seq: number
           started_at: string | null
@@ -1329,6 +1330,7 @@ export type Database = {
           game: string
           id?: string
           paused_at?: string | null
+          play_starts_at?: string | null
           run_id: string
           seq: number
           started_at?: string | null
@@ -1339,6 +1341,7 @@ export type Database = {
           game?: string
           id?: string
           paused_at?: string | null
+          play_starts_at?: string | null
           run_id?: string
           seq?: number
           started_at?: string | null
@@ -3088,6 +3091,7 @@ export type Database = {
           username: string
         }[]
       }
+      match_play_start: { Args: { p_match_id: string }; Returns: Json }
       my_ball_knower_standing: {
         Args: { p_scope?: string; p_window: string }
         Returns: {
@@ -3145,6 +3149,7 @@ export type Database = {
           game: string
           id: string
           paused_at: string | null
+          play_starts_at: string | null
           run_id: string
           seq: number
           started_at: string | null
@@ -3171,6 +3176,7 @@ export type Database = {
           game: string
           id: string
           paused_at: string | null
+          play_starts_at: string | null
           run_id: string
           seq: number
           started_at: string | null
@@ -3232,6 +3238,7 @@ export type Database = {
           game: string
           id: string
           paused_at: string | null
+          play_starts_at: string | null
           run_id: string
           seq: number
           started_at: string | null
@@ -3251,6 +3258,7 @@ export type Database = {
           game: string
           id: string
           paused_at: string | null
+          play_starts_at: string | null
           run_id: string
           seq: number
           started_at: string | null
@@ -3485,6 +3493,16 @@ export type Database = {
     Functions: {
       lock_guess: {
         Args: { p_match_id: string; p_position: number; p_round: number }
+        Returns: Database["wavelength"]["CompositeTypes"]["board"]
+        SetofOptions: {
+          from: "*"
+          to: "board"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      next_card: {
+        Args: { p_match_id: string }
         Returns: Database["wavelength"]["CompositeTypes"]["board"]
         SetofOptions: {
           from: "*"

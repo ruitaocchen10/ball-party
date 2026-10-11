@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link";
 
 import { FinalStandings, type FinalStandingsRow } from "@/components/runtime/game-runtime/FinalStandings";
+import { useWinnerMoment } from "@/components/runtime/game-runtime/WinnerMoment";
 import { PauseBanner } from "@/components/runtime/game-runtime/PauseBanner";
 import { PauseButton } from "@/components/runtime/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/runtime/game-runtime/PostGameControls";
@@ -276,6 +277,20 @@ export function HigherOrLowerMatch({
     if (error) setAdvanceError(error.message);
   };
 
+  const ranked = byPlacement(standings);
+  const winners = ranked.filter((s) => s.placement === 1);
+  const winnerOf = (userId: string) => players.find((p) => p.user_id === userId);
+  const winnerMoment = useWinnerMoment(
+    board.phase === "complete" && !isSolo,
+    winners.length === 0
+      ? null
+      : {
+          faces: winners.map((w) => ({ name: winnerOf(w.user_id)?.display_name ?? "Unknown player", avatarUrl: winnerOf(w.user_id)?.avatar_url ?? null })),
+          headline: winners.length === 1 ? `${winnerOf(winners[0].user_id)?.display_name ?? "Unknown player"} wins` : `${winners.map((w) => winnerOf(w.user_id)?.display_name ?? "Unknown player").join(" & ")} tie`,
+          detail: winners.length === 1 && winnerOf(winners[0].user_id) ? `${winnerOf(winners[0].user_id)!.correct_count} correct · ${winnerOf(winners[0].user_id)!.best_streak} best` : null,
+        },
+  );
+
   if (board.phase === "complete") {
     if (isSolo) {
       return <SoloFinalScreen player={players.find((player) => player.user_id === viewerId) ?? null} matchId={matchId} cards={cards} calls={calls} viewerId={viewerId} allTimeHigh={allTimeHigh} />;
@@ -283,6 +298,7 @@ export function HigherOrLowerMatch({
 
     return (
       <PageShell variant="narrow">
+        {winnerMoment}
         <FinalScreen
           standings={standings}
           players={players}
