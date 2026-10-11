@@ -175,6 +175,8 @@ struct MarginGame: Equatable, Sendable {
 /// A take (top-level comment) or a reply to one.
 struct PromptComment: Identifiable, Equatable, Sendable {
     let id: UUID
+    /// Who wrote it; nil for a take built without one.
+    var authorId: UUID? = nil
     let author: String
     /// The author's profile picture; without one the card draws their initial.
     var authorAvatarURL: URL? = nil

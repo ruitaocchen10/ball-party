@@ -1,4 +1,5 @@
 import type { Comment, LifecycleStatus, Option, OptionMargin, Post, Slot, SlotShape, TemplateKind } from "@/lib/foundation/content/prompts/types";
+import { fetchFriendIds } from "@/lib/foundation/content/prompts/friends";
 import type { Database } from "@/lib/supabase/database.types";
 import type { createClient } from "@/lib/supabase/server";
 
@@ -59,6 +60,7 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
       : Promise.resolve([] as ExclusionRow[]),
   ]);
 
+  const friendIds = await fetchFriendIds(supabase, viewerId);
   const authorIds = new Set<string>();
   postRows.forEach((row) => authorIds.add(row.author_id));
   commentRows.forEach((row) => authorIds.add(row.author_id));
@@ -154,6 +156,7 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
     avatarById,
     usernameById,
     viewerId,
+    friendIds,
     aggregateByPost,
     powerRankingTopFiveByPost,
     revealedByPost,
@@ -189,6 +192,7 @@ function mapPost(
     avatarById: Map<string, string | null>;
     usernameById: Map<string, string | null>;
     viewerId: string | null;
+    friendIds: Set<string>;
     aggregateByPost: Map<string, { slot_id: string; option_id: string; pct: number | null; total_responses: number | null }[]>;
     powerRankingTopFiveByPost: Map<string, { option_id: string; top_five_count: number | null; average_rank: number | null }[]>;
     revealedByPost: Map<string, RevealedResponseRow[]>;
@@ -239,7 +243,7 @@ function mapPost(
     choices[response.slot_id] = response.chosen_option_ids;
     revealedByAuthor.set(response.profile_id, choices);
   }
-  const comments = buildCommentTree(ctx.commentsByPost.get(row.id) ?? [], ctx.nameById, ctx.avatarById, ctx.usernameById, ctx.viewerId, revealedByAuthor);
+  const comments = buildCommentTree(ctx.commentsByPost.get(row.id) ?? [], ctx.nameById, ctx.avatarById, ctx.usernameById, ctx.viewerId, ctx.friendIds, revealedByAuthor);
 
   const aggregateRows = ctx.aggregateByPost.get(row.id);
   const powerRankingTopFive = ctx.powerRankingTopFiveByPost.get(row.id)?.map((team) => ({
@@ -294,7 +298,7 @@ function mapPost(
  * surfaces as a top-level take rather than being silently dropped.
  */
 function buildCommentTree(
-  rows: CommentRow[], nameById: Map<string, string>, avatarById: Map<string, string | null>, usernameById: Map<string, string | null>, viewerId: string | null, revealedByAuthor: Map<string, Record<string, string[]>>,
+  rows: CommentRow[], nameById: Map<string, string>, avatarById: Map<string, string | null>, usernameById: Map<string, string | null>, viewerId: string | null, friendIds: Set<string>, revealedByAuthor: Map<string, Record<string, string[]>>,
 ): Comment[] {
   const toComment = (row: CommentRow): Comment => ({
     id: row.id,
@@ -304,6 +308,7 @@ function buildCommentTree(
     body: row.body,
     createdAt: row.created_at,
     isViewer: row.author_id === viewerId,
+    isFriend: friendIds.has(row.author_id),
     postedWithPick: row.posted_with_pick,
     response: row.posted_with_pick ? revealedByAuthor.get(row.author_id) : undefined,
     replies: [],

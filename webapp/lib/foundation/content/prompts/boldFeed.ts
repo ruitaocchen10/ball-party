@@ -1,5 +1,6 @@
 import { fetchWeekAfter } from "@/lib/foundation/content/nfl/schedule";
 import { toBoldPrediction, type BoldPredictionBoardData } from "@/lib/foundation/content/prompts/boldPredictions";
+import { fetchFriendIds } from "@/lib/foundation/content/prompts/friends";
 import type { PlayerResult } from "@/lib/foundation/content/prompts/players";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 import type { createClient } from "@/lib/supabase/server";
@@ -20,9 +21,10 @@ export async function fetchBoldPredictionBoard(
   post: Pick<Post, "id" | "lockAt">,
   viewerId: string | null,
 ): Promise<BoldPredictionBoardData> {
-  const [{ data: rows }, weekGames] = await Promise.all([
+  const [{ data: rows }, weekGames, friendIds] = await Promise.all([
     supabase.schema("prompts").rpc("bold_predictions_for_post", { p_post_id: post.id }),
     fetchWeekAfter(supabase, post.lockAt).catch(() => []),
+    fetchFriendIds(supabase, viewerId),
   ]);
   const predictionRows = rows ?? [];
 
@@ -42,5 +44,5 @@ export async function fetchBoldPredictionBoard(
     };
   }
 
-  return { predictions: predictionRows.map((row) => toBoldPrediction(row, viewerId, nameById, usernameById)), weekGames, players };
+  return { predictions: predictionRows.map((row) => toBoldPrediction(row, viewerId, nameById, usernameById, friendIds)), weekGames, players };
 }

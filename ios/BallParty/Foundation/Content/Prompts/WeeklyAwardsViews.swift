@@ -17,48 +17,52 @@ enum ChoiceTileState {
     }
 }
 
-/// A club as a tile: its logo over its name, flooded with its colour when chosen.
+/// A club as a tile — the web's `TeamTile`: its colours behind an oversized,
+/// cropped logo, with a check and a white ring when chosen. The club is named
+/// for VoiceOver only; the mark says it for everyone else.
 struct AwardTeamTile: View {
     let code: String
     let name: String
     var state: ChoiceTileState = .idle
     let action: () -> Void
 
+    private static let cut = TicketShape(cutX: 10, cutY: 6)
+
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 4) {
-                TeamLogo(code: code, size: 44)
-                Text(name)
-                    .font(.sans(12, weight: .semibold))
-                    .foregroundStyle(state == .selected ? Color.white : Theme.fg)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 4)
-            .frame(maxWidth: .infinity, minHeight: 76)
-            .background(background)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
-            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(state == .selected ? Color.clear : Theme.line, lineWidth: 1))
-            .opacity(state == .dimmed ? 0.45 : 1)
-            .contentShape(Rectangle())
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background {
+                    LinearGradient(
+                        colors: [NFLTeams.primaryColor(for: code) ?? Theme.surfaceRaised, Theme.surface],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                }
+                .overlay { TeamLogo(code: code, size: 88).shadow(color: .black.opacity(0.5), radius: 4, y: 3) }
+                .overlay(alignment: .topTrailing) {
+                    if state == .selected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .black))
+                            .foregroundStyle(.white)
+                            .shadow(radius: 1)
+                            .padding(5)
+                    }
+                }
+                .clipShape(Self.cut)
+                .overlay { Self.cut.stroke(state == .selected ? Color.white : Color.white.opacity(0.2), lineWidth: state == .selected ? 2 : 1) }
+                .opacity(state == .dimmed ? 0.45 : 1)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(name)
         .accessibilityAddTraits(state == .selected ? .isSelected : [])
     }
-
-    @ViewBuilder
-    private var background: some View {
-        if state == .selected, let color = NFLTeams.primaryColor(for: code) {
-            LinearGradient(colors: [color, Theme.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
-        } else {
-            Theme.surfaceRaised
-        }
-    }
 }
 
-/// A game as a tile: both clubs' logos and the matchup in words.
+/// A game as the compact ticket the winner picker uses, but tagging the whole
+/// game rather than a side — the web's `MatchupTile`. Both halves flood with
+/// their club's colour when chosen; the other games fade back.
 struct AwardGameTile: View {
     let away: String
     let home: String
@@ -66,32 +70,68 @@ struct AwardGameTile: View {
     var state: ChoiceTileState = .idle
     let action: () -> Void
 
+    private static let logoSize: CGFloat = 80
+    private var selected: Bool { state == .selected }
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                TeamLogo(code: away, size: 40)
-                Text("@").font(.mono(11, weight: .bold)).foregroundStyle(state == .selected ? Theme.panelMuted : Theme.fgMuted)
-                TeamLogo(code: home, size: 40)
-                Text(label)
-                    .font(.slab(18, relativeTo: .body))
-                    .textCase(.uppercase)
-                    .foregroundStyle(state == .selected ? Theme.panelFg : Theme.fg)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            PromptTicket(ringed: true) {
+                VStack(spacing: 0) {
+                    ZStack {
+                        HStack(spacing: 0) {
+                            half(away)
+                            Theme.line.frame(width: 1)
+                            half(home)
+                        }
+                        Text("@")
+                            .font(.mono(10, weight: .bold))
+                            .foregroundStyle(Theme.fgMuted)
+                            .frame(width: 24, height: 24)
+                            .background(Theme.surface, in: Circle())
+                            .overlay(Circle().stroke(Theme.line, lineWidth: 1))
+                            .accessibilityHidden(true)
+                    }
+                    .frame(height: 64)
+                    .overlay(alignment: .topTrailing) {
+                        if selected {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .black))
+                                .foregroundStyle(.white)
+                                .shadow(radius: 1)
+                                .padding(6)
+                        }
+                    }
+                    Theme.line.opacity(0.7).frame(height: 1).padding(.horizontal, 8).padding(.top, 8)
+                        .accessibilityHidden(true)
+                }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, minHeight: 56)
-            .background(state == .selected ? Theme.hidden : Theme.surfaceRaised)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
-            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(state == .selected ? Color.clear : Theme.line, lineWidth: 1))
-            .opacity(state == .dimmed ? 0.45 : 1)
+            .overlay { if selected { TicketShape().stroke(Theme.fg.opacity(0.7), lineWidth: 1) } }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
-        .accessibilityAddTraits(state == .selected ? .isSelected : [])
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    // The logo sits in an overlay so its size, far bigger than the strip, is
+    // cropped rather than setting the half's width.
+    private func half(_ code: String) -> some View {
+        Color.clear
+            .frame(maxWidth: .infinity)
+            .frame(height: 64)
+            .background {
+                if selected, let color = NFLTeams.primaryColor(for: code) {
+                    LinearGradient(colors: [color, Theme.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
+                } else {
+                    Theme.surface.opacity(0.85)
+                }
+            }
+            .overlay {
+                TeamLogo(code: code, size: Self.logoSize)
+                    .grayscale(state == .dimmed ? 1 : 0)
+                    .opacity(state == .dimmed ? 0.4 : 1)
+            }
+            .clipped()
     }
 }
 
@@ -109,7 +149,8 @@ struct WeeklyAwardsPicker: View {
     @State private var openSlot: UUID?
     @State private var started = false
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 3)
+    private let teamColumns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+    private let gameColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 2)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -202,7 +243,7 @@ struct WeeklyAwardsPicker: View {
                 }
             )
         } else if !slot.options.isEmpty, slot.options.allSatisfy({ $0.gameTeamCodes != nil }) {
-            VStack(spacing: 8) {
+            LazyVGrid(columns: gameColumns, spacing: 8) {
                 ForEach(slot.options) { option in
                     if let game = option.gameTeamCodes {
                         AwardGameTile(
@@ -213,7 +254,7 @@ struct WeeklyAwardsPicker: View {
                 }
             }
         } else if !slot.options.isEmpty, slot.options.allSatisfy({ $0.teamCode != nil }) {
-            LazyVGrid(columns: columns, spacing: 6) {
+            LazyVGrid(columns: teamColumns, spacing: 6) {
                 ForEach(slot.options) { option in
                     AwardTeamTile(
                         code: option.teamCode ?? "", name: option.label,

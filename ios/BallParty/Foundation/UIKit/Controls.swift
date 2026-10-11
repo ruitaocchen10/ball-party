@@ -195,3 +195,108 @@ struct Avatar: View {
         .accessibilityHidden(true)
     }
 }
+
+
+// MARK: - Pills
+
+/// Lays its children in rows, wrapping to the next row when one fills.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(width: proposal.width ?? .infinity, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let placed = arrange(width: bounds.width, subviews: subviews)
+        for (subview, origin) in zip(subviews, placed.origins) {
+            subview.place(at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y), proposal: .unspecified)
+        }
+    }
+
+    private func arrange(width: CGFloat, subviews: Subviews) -> (size: CGSize, origins: [CGPoint]) {
+        var origins: [CGPoint] = []
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, widest: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > width {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            origins.append(CGPoint(x: x, y: y))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+            widest = max(widest, x - spacing)
+        }
+        return (CGSize(width: widest, height: y + rowHeight), origins)
+    }
+}
+
+/// A read-only setting: a red-outlined pill, as on a game's card.
+struct SettingPill: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .monoLabel(10, weight: .bold, tracking: 0.06, color: Theme.hiddenText)
+            .textCase(.uppercase)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .overlay(Capsule().strokeBorder(Theme.hidden, lineWidth: 1))
+    }
+}
+
+/// Mutually exclusive options as pills that wrap. The chosen one is a red fill,
+/// like a pressed key in `SegmentedChoice`; the rest are outlined.
+struct PillChoice<Value: Hashable>: View {
+    @Binding var selection: Value
+    let options: [Value]
+    let title: (Value) -> String
+    /// Read by VoiceOver as the group's name.
+    var accessibilityName: String = ""
+
+    var body: some View {
+        FlowLayout(spacing: 8) {
+            ForEach(options, id: \.self) { option in
+                let isSelected = option == selection
+                Button {
+                    selection = option
+                } label: {
+                    Text(title(option))
+                        .monoLabel(11, weight: .bold, tracking: 0.06, color: Theme.fg)
+                        .textCase(.uppercase)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(isSelected ? Theme.hidden : .clear, in: Capsule())
+                        .overlay(Capsule().strokeBorder(isSelected ? Theme.hidden : Theme.line, lineWidth: 1))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilityName)
+    }
+}
+
+
+/// A captioned figure on a raised tile: the per-seat numbers on a player's tab.
+struct StatTile: View {
+    let caption: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(caption).monoLabel(9, weight: .bold, tracking: 0.12)
+            Text(value).slabTitle(26).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Theme.surfaceRaised, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+}

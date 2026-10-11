@@ -101,11 +101,16 @@ struct PromptDetailView: View {
     /// Everybody else's takes. The viewer's own is in their card.
     @ViewBuilder
     private func takes(_ post: PromptPost) -> some View {
-        let others = viewModel.otherTakes(on: post.id)
-        if !others.isEmpty {
+        takeSection("Friend takes", post: post, takes: viewModel.friendTakes(on: post.id))
+        takeSection("Other takes", post: post, takes: viewModel.otherTakes(on: post.id))
+    }
+
+    @ViewBuilder
+    private func takeSection(_ title: String, post: PromptPost, takes: [PromptComment]) -> some View {
+        if !takes.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                SectionTitle(text: "Other takes")
-                ForEach(others) { take in
+                SectionTitle(text: title)
+                ForEach(takes) { take in
                     TakeCardView(
                         post: post, comment: take, showsReplyCount: true,
                         collapsesPicks: true,

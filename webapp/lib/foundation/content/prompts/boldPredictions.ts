@@ -19,6 +19,8 @@ export type BoldPrediction = {
   author: string;
   authorUsername: string | null;
   isViewer: boolean;
+  /** True when the signed-in reader is friends with the author. */
+  isFriend?: boolean;
   body: string;
   target: BoldTarget;
   createdAt: string;
@@ -53,12 +55,13 @@ export function describeTarget(target: BoldTarget, data: Pick<BoldPredictionBoar
 type Client = SupabaseClient<Database>;
 type PredictionRow = Database["public"]["Tables"]["bold_predictions"]["Row"];
 
-export function toBoldPrediction(row: PredictionRow, viewerId: string | null, nameById: Map<string, string>, usernameById: Map<string, string | null>): BoldPrediction {
+export function toBoldPrediction(row: PredictionRow, viewerId: string | null, nameById: Map<string, string>, usernameById: Map<string, string | null>, friendIds: Set<string> = new Set()): BoldPrediction {
   return {
     id: row.id,
     author: nameById.get(row.author_id) ?? "Unknown",
     authorUsername: usernameById.get(row.author_id) ?? null,
     isViewer: row.author_id === viewerId,
+    isFriend: friendIds.has(row.author_id),
     body: row.body,
     target: { type: row.target_type as BoldTargetType, id: row.target_id },
     createdAt: row.created_at,

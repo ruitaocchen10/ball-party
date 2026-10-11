@@ -37,6 +37,10 @@ features:
     summary: Post takes and replies, take thread
     web: done
     ios: done
+  - id: huddle.friend-takes
+    summary: Friends' takes lead a prompt's discussion, above Other takes
+    web: done
+    ios: done
   - id: huddle.search
     summary: Search the feed
     web: done

@@ -78,6 +78,8 @@ export type Comment = {
   createdAt: string;
   /** True only for the signed-in reader's comment. */
   isViewer: boolean;
+  /** True when the signed-in reader is friends with the author. */
+  isFriend?: boolean;
   /** Whether the take was submitted at the same time as a pick. */
   postedWithPick: boolean;
   /** The author's choices, revealed only after the prompt has locked. */

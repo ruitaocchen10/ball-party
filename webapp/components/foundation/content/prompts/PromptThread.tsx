@@ -31,7 +31,9 @@ function PickThread({ post, displayName, avatarUrl, username, viewerCanAnswer }:
   // A response remains the social contract for account readers. Public
   // visitors have no way to make a response, so the discussion is readable
   // rather than presenting an inaccessible gated feed.
-  const otherTakes = post.comments.filter((item) => !item.isViewer);
+  const otherTakes = post.comments.filter((item) => !item.isViewer && !item.isFriend);
+  // A friend's take is read before anyone else's.
+  const friendTakes = post.comments.filter((item) => !item.isViewer && item.isFriend);
   const points = totalPoints(post);
 
   // A viewer who answered without leaving a take still gets a card up top —
@@ -73,22 +75,32 @@ function PickThread({ post, displayName, avatarUrl, username, viewerCanAnswer }:
           <ShareTakeButton post={post} responses={post.viewerResponse ?? {}} />
         ) : null}
 
-        {(post.viewerAnswered || !viewerCanAnswer) && otherTakes.length ? (
-          <div className="flex flex-col gap-3" aria-label="Other takes">
-            <h2 className="px-1 type-label text-fg-muted">Other takes</h2>
-            {otherTakes.map((take) => (
-              <TakeCard
-                key={take.id}
-                comment={take}
-                commentHref={`/prompts/${post.id}/takes/${take.id}`}
-                collapsedByDefault={Boolean(take.response)}
-              >
-                {take.response ? <TakeResponse post={post} response={take.response} isViewer={false} /> : null}
-              </TakeCard>
-            ))}
-          </div>
+        {(post.viewerAnswered || !viewerCanAnswer) ? (
+          <>
+            <TakeList label="Friend takes" post={post} takes={friendTakes} />
+            <TakeList label="Other takes" post={post} takes={otherTakes} />
+          </>
         ) : null}
       </div>
     </section>
+  );
+}
+
+function TakeList({ label, post, takes }: { label: string; post: Post; takes: Comment[] }) {
+  if (!takes.length) return null;
+  return (
+    <div className="flex flex-col gap-3" aria-label={label}>
+      <h2 className="px-1 type-label text-fg-muted">{label}</h2>
+      {takes.map((take) => (
+        <TakeCard
+          key={take.id}
+          comment={take}
+          commentHref={`/prompts/${post.id}/takes/${take.id}`}
+          collapsedByDefault={Boolean(take.response)}
+        >
+          {take.response ? <TakeResponse post={post} response={take.response} isViewer={false} /> : null}
+        </TakeCard>
+      ))}
+    </div>
   );
 }
