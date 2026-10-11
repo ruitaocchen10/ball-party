@@ -4,23 +4,25 @@ import type { ReactNode } from "react";
  * A small label that tags a thing: "You", "Complete", "Locked". It names a
  * state; it is not a control, so it never takes a click.
  *
- * Tones follow the rest of the kit. `solid` is a cream chip, the strongest
- * one, for the viewer's own mark. `soft` is the same cream as an outline.
+ * Tones follow the rest of the kit. `solid` is a light chip, the strongest
+ * one, for the viewer's own mark. `soft` is the same light tone as an outline.
  * `muted` and `outline` sit quietly on the background. `success` is the green
  * of a completed state, and `hidden` is red, which is reserved for concealed
- * things, so use it only for those.
+ * things, so use it only for those. `ink` is a dark chip for sitting on a
+ * light card.
  *
  * `xs` is the denser size, for chips that sit beside a heading or a stat.
  */
-type Tone = "solid" | "soft" | "muted" | "outline" | "success" | "hidden";
+type Tone = "solid" | "soft" | "muted" | "outline" | "success" | "hidden" | "ink";
 
 const TONES: Record<Tone, string> = {
-  solid: "bg-panel text-panel-fg",
-  soft: "border border-panel/50 bg-panel/10 text-panel",
+  solid: "bg-fg text-surface",
+  soft: "border border-fg/50 bg-fg/10 text-fg",
   muted: "bg-surface text-fg-muted ring-1 ring-line ring-inset",
   outline: "border border-fg-muted/50 bg-surface text-fg-muted",
-  success: "bg-grade-elite text-panel-hover",
-  hidden: "bg-hidden text-panel/90",
+  success: "bg-grade-elite text-fg",
+  hidden: "bg-hidden text-fg/90",
+  ink: "bg-surface text-fg",
 };
 
 const SIZES = {
@@ -43,7 +45,7 @@ export function Badge({
 }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 font-bold ${TONES[tone]} ${SIZES[size]} ${className}`.trim()}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-chip font-bold ${TONES[tone]} ${SIZES[size]} ${className}`.trim()}
     >
       {icon}
       {children}

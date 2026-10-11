@@ -8,9 +8,9 @@ The kit lives in `webapp/components/foundation/ui-kit/`. The tokens live in `web
 
 1. **Use the kit before writing markup.** If there is a component for it, use it.
 2. **A second use is a promotion.** When a pattern appears a second time, move it into the kit instead of copying it.
-3. **No literals in components.** No hex colors, no raw `text-[Npx]` sizes, no `rounded`. Use a token or a kit class. A literal that has to stay (a team-color gradient, a share-card canvas that is exported as an image) gets a comment saying why.
-4. **Red means concealed.** Anything one player knows and another doesn't is red, and it turns cream when revealed. Don't use red for anything else, with one exception: error text, which reuses `hidden-text` rather than adding a second alarm color.
-5. **Dark only.** There is no light variant. Panels are the only light surfaces, so what matters goes on a panel and everything else is background.
+3. **No literals in components.** No hex colors, no raw `text-[Npx]` sizes, no bare `rounded` (use `rounded-card` or `rounded-chip`). Use a token or a kit class. A literal that has to stay (a team-color gradient, a share-card canvas that is exported as an image) gets a comment saying why.
+4. **Red means concealed.** Anything one player knows and another doesn't is red, and it turns the normal text color when revealed. Don't use red for anything else, with one exception: error text, which reuses `hidden-text` rather than adding a second alarm color.
+5. **Dark only.** There is no light variant. Panels are raised dark surfaces, a step lighter than the background, so what matters goes on a panel and everything else is background.
 
 ## Tokens
 
@@ -26,15 +26,17 @@ Each is a Tailwind color (`bg-panel`, `text-fg-muted`, `border-line`, …) backe
 | `surface-raised` | Inset wells: inputs inside a raised surface, bid bars, dialogs, empty states. |
 | `fg`, `fg-muted` | Text on the background, and its secondary text. |
 | `line` | Borders and rules on the background. |
-| `panel` | The light surface: cards, cream buttons, chips. |
+| `panel` | The raised surface: cards, menus, chips. |
 | `panel-shade` | A subdued band inside a panel. Also a field's fill on a panel. |
 | `panel-fg`, `panel-muted`, `panel-soft` | Text on a panel: primary, secondary, and body copy. |
 | `panel-line` | Borders and rules on a panel. |
-| `panel-hover`, `panel-ink-hover` | Hover fills for a cream button and an ink button. |
+| `panel-hover`, `panel-ink-hover` | Hover fills for a pressable panel and an ink button. |
 | `hidden` | Concealed values and unfilled spots, as a surface. |
 | `hidden-text` | The same red, lifted to stay legible on the background. Also error text. |
-| `hidden-ink` | The same red, darkened to stay legible on a cream panel. |
+| `hidden-ink` | The same red, darkened: a hovered or pressed red surface. |
 | `grade-elite/strong/even/rough` | Sabotage Draft's revealed grades. Deliberately not red. |
+
+A selected pill, tab or option is filled `hidden` red with `fg` text; a primary button is a `fg` fill with `surface` text.
 
 Pick the text color by what it sits on: `fg*` on the background, `panel-*` on a panel, `hidden-text` on the background but `hidden-ink` on a panel.
 
@@ -58,7 +60,8 @@ Don't write `font-mono text-[10px] tracking-[…] uppercase` by hand.
 
 ### Shape and depth
 
-- **Corners are square.** `rounded-card` is 0px. Use `rounded-full` only for things that are actually round, like avatars and dots.
+- **Corners are rounded in two tiers.** `rounded-card` is 8px (`Theme.cardRadius` on iOS): cards, buttons, inputs, selects, menus, modals, wells, and player photos. `rounded-chip` is 4px (`Theme.chipRadius`): badges, banners, and small things nested inside a card. A small player photo takes the chip corner.
+- **Round on purpose.** `rounded-full` (`Circle`, `Capsule` on iOS) is only for things that are actually round: user avatars, dots, pill tabs, meters. Don't mix a pill and an 8px control in the same row.
 - `shadow-card` (with `shadow-card-hover` for a pressable one) is for raised panels, which read as lit objects.
 - `shadow-well` is for passive surfaces: a notice, an empty state, a static container. Don't put it on anything interactive, since a control's border carries its state.
 - `shadow-concealed` is for red concealed surfaces.
@@ -100,14 +103,14 @@ The shell puts its children in a single 760px column, so a page never sets its o
 
 | I need | Use |
 | --- | --- |
-| A button | `Button`. `variant`: `solid` (cream, the one primary per view), `ghost` (subordinate), `ink` (on a cream panel), `text` (no surface: Cancel, Back), `danger` (destructive, kept quiet). `size`: `md` (default) or `sm` (compact mono, for card and dialog footers). Full width by default; pass `fullWidth={false}` to sit inline. |
+| A button | `Button`. `variant`: `solid` (light fill, the one primary per view), `ghost` (subordinate), `ink` (a light fill on a panel), `text` (no surface: Cancel, Back), `danger` (destructive, kept quiet). `size`: `md` (default) or `sm` (compact mono, for card and dialog footers). Full width by default; pass `fullWidth={false}` to sit inline. |
 | A button that navigates | `ButtonLink`. Same variants and sizes. A `<button>` inside an `<a>` is invalid. |
 
 **Forms**
 
 | I need | Use |
 | --- | --- |
-| A text field | `Input` / `Textarea`. `variant`: `dark` (on the background, default), `well` (inset in a raised surface), `panel` (on a cream card). |
+| A text field | `Input` / `Textarea`. `variant`: `dark` (on the background, default), `well` (inset in a raised surface), `panel` (on a card). |
 | A label, hint and error around it | `Field`. It wraps the control in a `<label>`, so no `id` pairing is needed. |
 | A dropdown | `Select`, not `<select>`: the native popup can't be themed. `variant`: `panel` or `dark`. |
 | A status or error line under a form | `AnimatedMessage` (`role="alert"` or `"status"`). |
@@ -117,10 +120,10 @@ The shell puts its children in a single 760px column, so a page never sets its o
 
 | I need | Use |
 | --- | --- |
-| A panel with a title and stats | `Card`, with `CardTitle`, `CardMeta`, `CardStats` and `Stat`. `edge` (default on) draws the red strip that marks a card with something concealed behind it. |
+| A panel with a title and stats | `Card`, with `CardTitle`, `CardMeta`, `CardStats` and `Stat`. A raised dark surface with a hairline edge. `tone="light"` is the `fg` cream with `surface` text, for the people in a room (a taken seat) against dark surfaces around them. |
 | A dialog | `Modal` with a `ModalTitle` (its accessible name). Escape and overlay-click close it, focus is trapped and returned, and scroll is locked. `initialFocusRef` sets the first focus. |
 | An empty list or feed | `EmptyState`. |
-| A small tag ("You", "Locked") | `Badge`. `tone`: `solid`, `soft`, `muted`, `outline`, `success`, `hidden` (red, concealed things only). `size`: `sm` or `xs`. |
+| A small tag ("You", "Locked") | `Badge`. `tone`: `solid`, `soft`, `muted`, `outline`, `success`, `hidden` (red, concealed things only), `ink` (a dark chip for a light card). `size`: `sm` or `xs`. |
 | A page heading | `PageHeader` (title, optional eyebrow, description, and back link). |
 | A secondary side panel on a dashboard | `DashboardRail`. |
 

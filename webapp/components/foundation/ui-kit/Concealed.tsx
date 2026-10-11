@@ -34,12 +34,12 @@ export function Concealed({
     <div
       aria-label={children ? undefined : label}
       role={children ? undefined : "img"}
-      className={`${compact ? "pattern-concealed-compact" : "pattern-concealed"} relative rounded-card bg-hidden-ink text-panel ${compact ? "shadow-concealed-compact" : "shadow-concealed"} ${className}`}
+      className={`${compact ? "pattern-concealed-compact" : "pattern-concealed"} relative rounded-card bg-hidden-ink text-fg ${compact ? "shadow-concealed-compact" : "shadow-concealed"} ${className}`}
     >
       {/* the inset hairline that reads the weave as a deliberate surface */}
       <span
         aria-hidden
-        className={`pointer-events-none absolute ${compact ? "inset-[2px]" : "inset-[4px]"} border border-panel/35`}
+        className={`pointer-events-none absolute ${compact ? "inset-[2px]" : "inset-[4px]"} rounded-chip border border-fg/35`}
       />
       {children}
     </div>

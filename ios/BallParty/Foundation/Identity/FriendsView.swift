@@ -83,7 +83,7 @@ struct FriendsView: View {
     private var content: some View {
         switch viewModel.phase {
         case .loading where section == .friends || section == .requests:
-            ProgressView().frame(maxWidth: .infinity, minHeight: 160)
+            LoadingSpinner().frame(maxWidth: .infinity, minHeight: 160)
         case .failed where section == .friends || section == .requests:
             EmptyState(title: "Couldn’t load your friends", message: "Try again in a moment.") {
                 Button("Retry") { Task { await viewModel.load() } }
@@ -240,7 +240,7 @@ struct FriendsView: View {
         case .idle:
             EmptyView()
         case .searching:
-            ProgressView().frame(maxWidth: .infinity)
+            LoadingSpinner().frame(maxWidth: .infinity)
         case .invalid(let message):
             Text(message).font(.sans(14)).foregroundStyle(Theme.hiddenText)
         case .failed:
@@ -299,7 +299,7 @@ struct FriendsView: View {
                     .buttonStyle(BPButtonStyle(variant: .ghost, fullWidth: false))
                 }
             } else {
-                ProgressView().frame(maxWidth: .infinity)
+                LoadingSpinner().frame(maxWidth: .infinity)
             }
         }
         .task { await viewModel.loadInviteCode() }

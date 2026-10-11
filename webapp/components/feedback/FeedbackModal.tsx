@@ -63,7 +63,7 @@ function FeedbackTypeButton({ kind, selected, onSelect }: { kind: FeedbackKind; 
   const Icon = kind === "bug" ? Bug : Lightbulb;
   const label = kind === "bug" ? "Report a bug" : "Request a feature";
   return (
-    <button type="button" onClick={() => onSelect(kind)} aria-pressed={selected} className={`flex items-center gap-2 border px-3 py-3 text-left font-mono text-xs font-semibold tracking-[0.06em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel ${selected ? "border-panel bg-panel text-panel-fg" : "border-line text-fg-muted hover:border-fg-muted hover:text-fg"}`}>
+    <button type="button" onClick={() => onSelect(kind)} aria-pressed={selected} className={`flex items-center gap-2 rounded-card border px-3 py-3 text-left font-mono text-xs font-semibold tracking-[0.06em] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${selected ? "border-hidden bg-hidden text-fg" : "border-line text-fg-muted hover:border-fg-muted hover:text-fg"}`}>
       <Icon className="h-5 w-5 shrink-0" strokeWidth={1.5} />
       {label}
     </button>

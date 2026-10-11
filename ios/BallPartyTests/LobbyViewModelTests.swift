@@ -11,6 +11,8 @@ final class LobbyViewModelTests: XCTestCase {
     private var client: FakeLobbyClient!
     private var game: FakeHigherOrLowerClient!
     private var auction: FakeAuctionClient!
+    private var wavelength: FakeWavelengthClient!
+    private var sabotage: FakeSabotageClient!
     private var viewModel: LobbyViewModel!
 
     override func setUp() async throws {
@@ -18,7 +20,9 @@ final class LobbyViewModelTests: XCTestCase {
         client = FakeLobbyClient(viewerId: viewerId)
         game = FakeHigherOrLowerClient(viewerId: viewerId)
         auction = FakeAuctionClient(viewerId: viewerId)
-        viewModel = LobbyViewModel(client: client, game: game, auction: auction, viewerId: viewerId)
+        wavelength = FakeWavelengthClient(viewerId: viewerId)
+        sabotage = FakeSabotageClient(viewerId: viewerId)
+        viewModel = LobbyViewModel(client: client, game: game, auction: auction, wavelength: wavelength, sabotage: sabotage, viewerId: viewerId, formatSaveDelay: .zero)
     }
 
     override func tearDown() async throws {
@@ -47,7 +51,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     // MARK: - Getting into a room
 
-    func test_hosting_showsTheCodeToShareAndSeatsTheHost() async {
+    func test_hosting_seatsTheHostInTheNewRoom() async {
         await viewModel.createRoom()
 
         XCTAssertEqual(viewModel.stage, .room)
@@ -59,8 +63,7 @@ final class LobbyViewModelTests: XCTestCase {
     func test_joining_byCodeShowsTheRosterAlreadyInTheRoom() async {
         client.roomHostedBySomebodyElse(code: "QRTZW", hostName: "Dana")
 
-        viewModel.code = "qrtzw"
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "qrtzw")
 
         XCTAssertEqual(viewModel.stage, .room)
         XCTAssertFalse(viewModel.isHost)
@@ -73,8 +76,7 @@ final class LobbyViewModelTests: XCTestCase {
     func test_joining_aFullRoomSaysSoAndStaysOnTheEntryScreen() async {
         client.failures["join_lobby"] = LobbyServerError(message: "lobby_full")
 
-        viewModel.code = "QRTZW"
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "QRTZW")
 
         XCTAssertEqual(viewModel.stage, .entry)
         XCTAssertEqual(viewModel.errorMessage, "That room is already full.")
@@ -83,15 +85,13 @@ final class LobbyViewModelTests: XCTestCase {
     func test_joining_anUnknownRefusalSurfacesRawRatherThanAsAFriendlyLie() async {
         client.failures["join_lobby"] = LobbyServerError(message: "some_new_rule")
 
-        viewModel.code = "QRTZW"
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "QRTZW")
 
         XCTAssertEqual(viewModel.errorMessage, "some_new_rule")
     }
 
     func test_joining_needsACode() async {
-        viewModel.code = "  "
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "  ")
 
         XCTAssertEqual(viewModel.stage, .entry)
         XCTAssertEqual(viewModel.errorMessage, "Enter a room code.")
@@ -118,6 +118,153 @@ final class LobbyViewModelTests: XCTestCase {
         await eventually { self.memberNames == ["You"] }
     }
 
+    func test_scoreboard_ranksTheRoomByWinsAndKeepsJoinOrderForTies() async {
+        await viewModel.createRoom()
+        let sam = client.anotherPlayerJoins(named: "Sam")
+        client.anotherPlayerJoins(named: "Alex")
+        await eventually { self.memberNames.count == 3 }
+        XCTAssertEqual(viewModel.standings.map(\.wins), [0, 0, 0])
+        XCTAssertEqual(viewModel.standings.map(\.rank), [nil, nil, nil])
+        XCTAssertEqual(viewModel.standings.map(\.member.displayName), ["You", "Sam", "Alex"])
+
+        client.playerWinsAMatch(sam)
+
+        await eventually { self.viewModel.totalWins == 1 }
+        XCTAssertEqual(viewModel.standings.map(\.member.displayName), ["Sam", "You", "Alex"])
+        XCTAssertEqual(viewModel.standings.map(\.wins), [1, 0, 0])
+        XCTAssertEqual(viewModel.standings.map(\.rank), [1, 2, 2])
+    }
+
+    func test_scoreboard_tiedPlayersShareARank() async {
+        await viewModel.createRoom()
+        let sam = client.anotherPlayerJoins(named: "Sam")
+        let alex = client.anotherPlayerJoins(named: "Alex")
+        await eventually { self.memberNames.count == 3 }
+
+        client.playerWinsAMatch(sam)
+        client.playerWinsAMatch(alex)
+        client.playerWinsAMatch(sam)
+        client.playerWinsAMatch(alex)
+
+        await eventually { self.viewModel.totalWins == 4 }
+        XCTAssertEqual(viewModel.standings.map(\.member.displayName), ["Sam", "Alex", "You"])
+        XCTAssertEqual(viewModel.standings.map(\.rank), [1, 1, 3])
+    }
+
+    func test_scoreboard_tallyCountsOneWinPerRow() {
+        let a = UUID(), b = UUID()
+        let rows = [a, b, a].map { LobbySnapshot.WinRow(userId: $0) }
+        XCTAssertEqual(LobbySnapshot.tallyWins(rows), [a: 2, b: 1])
+    }
+
+    // MARK: - The host's settings, saved on the room
+
+    func test_format_aHostsChangeIsSavedOnTheRoom() async {
+        await viewModel.createRoom()
+
+        viewModel.wavelengthMode = .versus
+
+        await eventually { !self.client.formatSaves.isEmpty }
+        XCTAssertEqual(client.savedFormat.wavelength?.mode, "versus")
+        // The whole blob goes up, so the other games' settings ride along.
+        XCTAssertEqual(client.savedFormat.higherOrLower?.scoringMode, "season_total")
+    }
+
+    func test_format_loadingTheDefaultsIsNotAChange() async {
+        await viewModel.createRoom()
+
+        await viewModel.loadFormat()
+
+        XCTAssertTrue(client.formatSaves.isEmpty)
+    }
+
+    func test_format_aReturningHostFindsTheirSettingsAsTheyLeftThem() async {
+        client.hostHadSavedFormat(LobbyGameFormat(
+            auction: .init(scoringMode: "season_total", rosterPreset: "deep", tokenCount: 3),
+            wavelength: .init(mode: "versus", preset: "long"),
+            sabotage: .init(mode: "quick")
+        ))
+
+        await viewModel.createRoom()
+
+        XCTAssertEqual(viewModel.auctionScoringMode, .seasonTotal)
+        XCTAssertEqual(viewModel.rosterPreset, .deep)
+        XCTAssertEqual(viewModel.tokenCount, 3)
+        XCTAssertEqual(viewModel.wavelengthMode, .versus)
+        XCTAssertEqual(viewModel.wavelengthPreset, .long)
+        XCTAssertEqual(viewModel.sabotageMode, .quick)
+        XCTAssertTrue(client.formatSaves.isEmpty, "restoring settings is not a change to save")
+    }
+
+    func test_format_aSavedEraWaitsForItsBoundsAndIsClampedIntoThem() async {
+        game.bounds = SeasonRange(from: 2000, to: 2020)
+        client.hostHadSavedFormat(LobbyGameFormat(
+            higherOrLower: .init(scoringMode: "weekly", seasonFrom: 1990, seasonTo: 2010)
+        ))
+
+        await viewModel.createRoom()
+        await viewModel.loadFormat()
+
+        XCTAssertEqual(viewModel.scoringMode, .weekly)
+        XCTAssertEqual(viewModel.seasonFrom, 2000)
+        XCTAssertEqual(viewModel.seasonTo, 2010)
+    }
+
+    func test_format_aPlayerSeesWhatTheHostSavedAndFollowsChanges() async {
+        client.roomHostedBySomebodyElse()
+        await viewModel.joinRoom(code: "QRTZW")
+        XCTAssertEqual(
+            viewModel.displayedFormat.lines(for: .higherOrLower).map(\.value), ["Season total", "All seasons"],
+            "an untouched room reads as the defaults"
+        )
+
+        client.hostSavesFormat(LobbyGameFormat(higherOrLower: .init(scoringMode: "weekly", seasonFrom: 2010, seasonTo: 2024)))
+
+        await eventually { self.viewModel.displayedFormat.higherOrLower?.scoringMode == "weekly" }
+        XCTAssertEqual(
+            viewModel.displayedFormat.lines(for: .higherOrLower).map(\.value), ["Weekly", "2010–2024"]
+        )
+        XCTAssertTrue(client.formatSaves.isEmpty, "a player never writes the room's settings")
+    }
+
+    func test_format_aGamesCardSaysWhenTheRoomDoesNotSuitIt() async {
+        client.roomHostedBySomebodyElse()
+        await viewModel.joinRoom(code: "QRTZW")
+        client.anotherPlayerJoins(named: "Sam")
+        await eventually { self.memberNames.count == 3 }
+
+        // Three players: fine for the drafts, but Wavelength seats two or four.
+        XCTAssertNil(viewModel.roomReadiness(for: .higherOrLower))
+        XCTAssertEqual(
+            viewModel.roomReadiness(for: .wavelength),
+            "Co-op needs exactly 2 players (you have 3)"
+        )
+
+        client.hostSavesFormat(LobbyGameFormat(wavelength: .init(mode: "versus", preset: "short")))
+        await eventually { self.viewModel.roomReadiness(for: .wavelength) == "2v2 needs exactly 4 players (you have 3)" }
+    }
+
+    func test_format_linesNameEachGamesSettings() {
+        let format = LobbyGameFormat(
+            auction: .init(scoringMode: "season_total", rosterPreset: "full", tokenCount: 0, seasonFrom: 2005, seasonTo: 2005),
+            wavelength: .init(mode: "coop", preset: "medium"),
+            sabotage: .init(mode: "quick")
+        )
+
+        XCTAssertEqual(format.lines(for: .auctionTeamBuilder).map(\.value), ["Season total", "Full · 28 lots", "Off", "2005"])
+        XCTAssertEqual(format.lines(for: .wavelength).map(\.value), ["Co-op", "Medium · 6 rounds · target 12"])
+        XCTAssertEqual(format.lines(for: .sabotageDraft).map(\.value), ["Quick"])
+        // 2v2 has no length to show.
+        XCTAssertEqual(LobbyGameFormat(wavelength: .init(mode: "versus", preset: "short")).lines(for: .wavelength).map(\.label), ["Mode"])
+    }
+
+    func test_format_aNewerSettingStillDecodesAndIsShownAsWritten() throws {
+        let json = #"{"id":"00000000-0000-0000-0000-000000000001","code":"ABCDE","host_id":"00000000-0000-0000-0000-000000000002","game_format":{"sabotage_draft":{"mode":"mythic"},"cards":{"x":1}}}"#
+        let lobby = try JSONDecoder().decode(Lobby.self, from: Data(json.utf8))
+
+        XCTAssertEqual(lobby.gameFormat.lines(for: .sabotageDraft).map(\.value), ["mythic"])
+    }
+
     func test_room_reconnectingReReadsTheWholeRoom() async {
         await viewModel.createRoom()
         await eventually { self.client.isObserved }
@@ -133,8 +280,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_room_theRoomClosingUnderYouEndsTheScreen() async {
         client.roomHostedBySomebodyElse()
-        viewModel.code = "QRTZW"
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "QRTZW")
 
         client.roomCloses()
 
@@ -143,7 +289,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_room_renewsItsPresenceLeaseWhileTheScreenIsOpen() async {
         viewModel = LobbyViewModel(
-            client: client, game: game, auction: auction, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
+            client: client, game: game, auction: auction, wavelength: wavelength, sabotage: sabotage, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
         )
         await viewModel.createRoom()
 
@@ -154,7 +300,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_room_aBackgroundedScreenLetsItsLeaseLapseAndRenewsOnReturn() async {
         viewModel = LobbyViewModel(
-            client: client, game: game, auction: auction, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
+            client: client, game: game, auction: auction, wavelength: wavelength, sabotage: sabotage, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
         )
         await viewModel.createRoom()
         await eventually { self.client.heartbeatCount >= 1 }
@@ -193,8 +339,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_room_onlyTheHostIsOfferedTheRoomsControls() async {
         client.roomHostedBySomebodyElse()
-        viewModel.code = "QRTZW"
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "QRTZW")
 
         XCTAssertFalse(viewModel.isHost)
         XCTAssertFalse(viewModel.canClose)
@@ -410,8 +555,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_startingAGame_carriesEverySeatedPlayerIn() async {
         client.roomHostedBySomebodyElse()
-        viewModel.code = "QRTZW"
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "QRTZW")
 
         // Somebody else's tap on Start. This player finds out only because the
         // room changed under them.
@@ -423,8 +567,7 @@ final class LobbyViewModelTests: XCTestCase {
     func test_startingAGame_aPlayerWhoArrivedAfterTheFreezeWaitsForTheNextOne() async {
         client.roomHostedBySomebodyElse()
         let seated = client.anotherPlayerJoins(named: "Sam")
-        viewModel.code = "QRTZW"
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "QRTZW")
 
         client.hostStartsARun(seating: [seated])
 
@@ -434,8 +577,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_startingAGame_aFinishedMatchStopsPullingAnybodyIn() async {
         client.roomHostedBySomebodyElse()
-        viewModel.code = "QRTZW"
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "QRTZW")
         client.hostStartsARun()
         await eventually { self.viewModel.matchToEnter != nil }
 
@@ -447,8 +589,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_startingAGame_comingBackToTheRoomDoesNotYankYouIntoTheSameMatch() async {
         client.roomHostedBySomebodyElse()
-        viewModel.code = "QRTZW"
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "QRTZW")
         let first = client.hostStartsARun()
         await eventually { self.viewModel.matchToEnter != nil }
 
@@ -463,8 +604,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_startingAGame_aPlayerWhoSteppedOutOfTheirGameIsOfferedTheWayBack() async {
         client.roomHostedBySomebodyElse()
-        viewModel.code = "QRTZW"
-        await viewModel.joinRoom()
+        await viewModel.joinRoom(code: "QRTZW")
         let matchId = client.hostStartsARun()
         await eventually { self.viewModel.matchToEnter == matchId }
 

@@ -53,7 +53,7 @@ export function BoldTagPicker({ value, onChange, weekGames, players, onPlayerFou
             type="button"
             aria-pressed={mode === type}
             onClick={() => switchMode(type)}
-            className={`cursor-pointer px-3 py-3 text-center font-slab text-sm uppercase ${mode === type ? "bg-panel text-panel-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
+            className={`cursor-pointer px-3 py-3 text-center font-slab text-sm uppercase ${mode === type ? "bg-hidden text-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
           >
             {label}
           </button>

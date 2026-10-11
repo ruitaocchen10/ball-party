@@ -25,7 +25,7 @@ export function HuddleSearchField() {
       <label className="sr-only" htmlFor="dashboard-search">
         Search social posts
       </label>
-      <div className="flex h-10 items-center gap-2.5 bg-surface-raised px-3 ring-1 ring-line ring-inset transition-colors focus-within:ring-fg-muted">
+      <div className="flex h-10 items-center gap-2.5 rounded-card bg-surface-raised px-3 ring-1 ring-line ring-inset transition-colors focus-within:ring-fg-muted">
         <Search aria-hidden className="h-4 w-4 shrink-0 text-fg-muted" strokeWidth={1.8} />
         <input
           id="dashboard-search"
@@ -36,7 +36,7 @@ export function HuddleSearchField() {
           onChange={search ? (event) => search.setQuery(event.target.value) : undefined}
           className="min-w-0 flex-1 bg-transparent font-mono text-xs tracking-[0.02em] text-fg outline-none placeholder:text-fg-muted"
         />
-        {search ? null : <kbd className="hidden border border-line px-1.5 py-0.5 font-mono text-[9px] text-fg-muted lg:block">↵</kbd>}
+        {search ? null : <kbd className="hidden rounded-chip border border-line px-1.5 py-0.5 font-mono text-[9px] text-fg-muted lg:block">↵</kbd>}
       </div>
     </form>
   );

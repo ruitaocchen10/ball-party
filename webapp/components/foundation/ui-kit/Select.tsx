@@ -63,7 +63,7 @@ export function Select({
     >
       <RadixSelect.Trigger
         aria-label={ariaLabel}
-        className={`flex h-10 items-center justify-between gap-2 border px-2 font-mono text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass} ${focusClass}`}
+        className={`flex h-10 items-center justify-between gap-2 rounded-card border px-2 font-mono text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60 ${triggerClass} ${focusClass}`}
       >
         <RadixSelect.Value />
         <RadixSelect.Icon>
@@ -75,7 +75,7 @@ export function Select({
         <RadixSelect.Content
           position="popper"
           sideOffset={4}
-          className={`z-50 w-[var(--radix-select-trigger-width)] overflow-hidden border font-mono ${contentClass}`}
+          className={`z-50 w-[var(--radix-select-trigger-width)] overflow-hidden rounded-card border font-mono ${contentClass}`}
         >
           <RadixSelect.ScrollUpButton className={`flex h-6 items-center justify-center ${dark ? "bg-surface-raised" : "bg-panel"}`}>
             <ChevronUp className={`h-4 w-4 ${mutedTextClass}`} strokeWidth={1.75} />
@@ -88,7 +88,7 @@ export function Select({
               <RadixSelect.Item
                 key={option.value}
                 value={option.value}
-                className={`flex cursor-pointer items-center justify-between gap-3 px-2 py-1.5 text-sm outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-60 ${itemClass} ${focusClass}`}
+                className={`flex cursor-pointer items-center justify-between gap-3 rounded-chip px-2 py-1.5 text-sm outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-60 ${itemClass} ${focusClass}`}
               >
                 <RadixSelect.ItemText>{option.label}</RadixSelect.ItemText>
                 <RadixSelect.ItemIndicator>

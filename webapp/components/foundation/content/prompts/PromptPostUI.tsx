@@ -106,7 +106,7 @@ function PostCardC({
       : null;
 
   return (
-    <Card edge={false} className={`rounded-none border border-line !bg-surface-raised !text-fg !shadow-[0_10px_24px_rgb(0_0_0/0.4)] ${void_ ? "opacity-45" : ""}`}>
+    <Card className={void_ ? "opacity-45" : ""}>
       <div className="flex items-start gap-3 px-4 pt-4">
         <h2 className="min-w-0 flex-1 font-slab text-2xl leading-[1.05] uppercase">{post.promptText}</h2>
         {statusChip ?? <span className="shrink-0 pt-0.5 type-label text-fg-muted">{timingLabel}</span>}
@@ -114,7 +114,7 @@ function PostCardC({
       <p className="px-4 pt-1 text-[13px] text-fg-muted">{post.caption}</p>
 
       {void_ ? (
-        <p className="mx-4 mt-3 flex items-center gap-2 bg-surface px-3 py-2 type-label text-fg-muted">
+        <p className="mx-4 mt-3 flex items-center gap-2 rounded-chip bg-surface px-3 py-2 type-label text-fg-muted">
           {post.voidReason}
         </p>
       ) : null}
@@ -129,7 +129,7 @@ function PostCardC({
       </div>
       <div className="px-4 pt-3 pb-4">
         {(bold ? promptOpen : canAnswer) && !viewerCanAnswer ? (
-          <Link href="/login?next=/" className="flex h-12 items-center justify-center bg-panel px-4 font-slab text-[15px] tracking-[0.04em] text-panel-fg uppercase hover:bg-panel-hover">
+          <Link href="/login?next=/" className="flex h-12 items-center justify-center rounded-card bg-fg px-4 font-slab text-[15px] tracking-[0.04em] text-surface uppercase hover:bg-panel-ink-hover">
             Sign up to answer
           </Link>
         ) : (
@@ -286,15 +286,15 @@ function WeeklyMatchupCarousel({ post, gameContexts }: { post: Post; gameContext
     <section data-testid="multi-game-matchup-preview" aria-label={`${post.templateName} matchup carousel`} className="mx-4 mt-4">
       <MatchupPicker slot={slot} context={gameContexts.find((game) => game.id === slot.sourceGameId)} variant="featured" mode="preview" />
       <div className="mt-2 flex items-center justify-between gap-3 px-1">
-        <button type="button" onClick={() => goTo(activeIndex - 1)} aria-label="Previous matchup" className="flex h-8 w-8 items-center justify-center border border-line bg-surface text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
+        <button type="button" onClick={() => goTo(activeIndex - 1)} aria-label="Previous matchup" className="flex h-8 w-8 items-center justify-center rounded-chip border border-line bg-surface text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">
           <ChevronLeft className="h-4 w-4" strokeWidth={2} />
         </button>
         <div className="flex items-center gap-1.5" aria-label={`Showing matchup ${activeIndex + 1} of ${total}`}>
           {post.slots.map((matchup, index) => (
-            <button key={matchup.id} type="button" onClick={() => goTo(index)} aria-label={`Show matchup ${index + 1}`} aria-current={index === activeIndex ? "true" : undefined} className={`h-1.5 transition-[width,background-color] ${index === activeIndex ? "w-6 bg-panel" : "w-1.5 bg-line hover:bg-fg-muted"}`} />
+            <button key={matchup.id} type="button" onClick={() => goTo(index)} aria-label={`Show matchup ${index + 1}`} aria-current={index === activeIndex ? "true" : undefined} className={`h-1.5 transition-[width,background-color] ${index === activeIndex ? "w-6 bg-fg" : "w-1.5 bg-line hover:bg-fg-muted"}`} />
           ))}
         </div>
-        <button type="button" onClick={() => goTo(activeIndex + 1)} aria-label="Next matchup" className="flex h-8 w-8 items-center justify-center border border-line bg-surface text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
+        <button type="button" onClick={() => goTo(activeIndex + 1)} aria-label="Next matchup" className="flex h-8 w-8 items-center justify-center rounded-chip border border-line bg-surface text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">
           <ChevronRight className="h-4 w-4" strokeWidth={2} />
         </button>
       </div>
@@ -543,7 +543,7 @@ export function PromptPostComposer({
       <PostCardC post={previewPost} viewerCanAnswer onOpenAnswer={() => {}} />
       <div className="mt-3">
         {error ? <p role="alert" className="mb-2 type-label text-grade-rough">{error}</p> : null}
-        <ul className="mb-3 flex flex-col gap-1.5 border border-line px-3 py-2.5">
+        <ul className="mb-3 flex flex-col gap-1.5 rounded-chip border border-line px-3 py-2.5">
           {checklist.map((item) => (
             <li key={item.label} className={`flex items-center gap-2 text-sm ${item.ok ? "text-fg" : "text-fg-muted"}`}>
               <span aria-hidden className="w-3 text-center font-mono text-xs">{item.ok ? "✓" : "○"}</span>
@@ -619,7 +619,7 @@ export function PromptPostComposer({
           </Button>
           <Link
             href="/"
-            className="flex h-12 items-center bg-panel px-4 font-slab text-[15px] tracking-[0.04em] text-panel-fg uppercase hover:bg-panel-hover"
+            className="flex h-12 items-center rounded-card bg-fg px-4 font-slab text-[15px] tracking-[0.04em] text-surface uppercase hover:bg-panel-ink-hover"
           >
             View feed
           </Link>
@@ -642,7 +642,7 @@ export function PromptPostComposer({
                 key={t.kind}
                 type="button"
                 onClick={() => pickTemplate(t.kind)}
-                className={`px-3 py-2 font-slab text-xs uppercase ${kind === t.kind ? "bg-panel text-panel-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
+                className={`px-3 py-2 font-slab text-xs uppercase ${kind === t.kind ? "bg-hidden text-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
               >
                 {t.name}
               </button>
@@ -657,9 +657,9 @@ export function PromptPostComposer({
             role="checkbox"
             aria-checked={isOpinion}
             onClick={toggleOpinion}
-            className={`flex w-full items-start gap-3 border px-3.5 py-3 text-left ${isOpinion ? "border-fg" : "border-line"}`}
+            className={`flex w-full items-start gap-3 rounded-card border px-3.5 py-3 text-left ${isOpinion ? "border-fg" : "border-line"}`}
           >
-            <span aria-hidden className={`mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center border ${isOpinion ? "border-fg bg-fg text-surface" : "border-fg-muted"}`}>
+            <span aria-hidden className={`mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-chip border ${isOpinion ? "border-fg bg-fg text-surface" : "border-fg-muted"}`}>
               {isOpinion ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
             </span>
             <span>
@@ -743,7 +743,7 @@ export function PromptPostComposer({
                     key={target}
                     type="button"
                     onClick={() => { setRankingTarget(target); setRankingIds([]); setRankCount(1); }}
-                    className={`px-3 py-2 font-slab text-xs uppercase ${rankingTarget === target ? "bg-panel text-panel-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
+                    className={`px-3 py-2 font-slab text-xs uppercase ${rankingTarget === target ? "bg-hidden text-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
                   >
                     {target}
                   </button>
@@ -796,7 +796,7 @@ export function PromptPostComposer({
                 value={effectiveRankCount || 1}
                 disabled={rankingIds.length === 0}
                 onChange={(event) => setRankCount(Math.max(1, Math.min(Number(event.target.value) || 1, rankingIds.length)))}
-                className="w-24 border border-line bg-surface-raised px-3 py-2 text-sm disabled:opacity-40"
+                className="w-24 rounded-card border border-line bg-surface-raised px-3 py-2 text-sm disabled:opacity-40"
               />
               <p className="mt-1 text-xs text-fg-muted">People will order their top {effectiveRankCount || "N"} from the {rankingIds.length} candidates you selected.</p>
             </FieldBlock>
@@ -821,7 +821,7 @@ export function PromptPostComposer({
           <FieldBlock label="Points per slot">
             <div className="flex flex-col gap-2">
               {slots.map((slot) => (
-                <label key={slot.id} className="flex items-center justify-between gap-4 border border-line bg-surface-raised px-3 py-2 text-sm">
+                <label key={slot.id} className="flex items-center justify-between gap-4 rounded-card border border-line bg-surface-raised px-3 py-2 text-sm">
                   <span>{slot.label}</span>
                   <span className="flex shrink-0 items-center gap-2 text-fg-muted">
                     <input
@@ -836,7 +836,7 @@ export function PromptPostComposer({
                         if (!Number.isInteger(points) || points < 0 || points > 32767) return;
                         setPointsBySlot((current) => ({ ...current, [slot.id]: points }));
                       }}
-                      className="w-20 border border-line bg-surface px-2 py-1 text-right text-sm text-fg"
+                      className="w-20 rounded-card border border-line bg-surface px-2 py-1 text-right text-sm text-fg"
                     />
                     <span className="type-label">pts</span>
                   </span>
@@ -851,7 +851,7 @@ export function PromptPostComposer({
             type="datetime-local"
             value={lockAt}
             onChange={(e) => setLockAt(e.target.value)}
-            className="w-full border border-line bg-surface-raised px-3 py-2 text-sm"
+            className="w-full rounded-card border border-line bg-surface-raised px-3 py-2 text-sm"
           />
           {lockInPast ? (
             <p className="mt-1 type-label-xs text-grade-rough">Pick a time in the future</p>
@@ -887,7 +887,7 @@ export function PromptPostComposer({
 /** A numbered card grouping one stage of the form, so the composer reads as four steps rather than one long column. */
 function Section({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
-    <section className="border border-line">
+    <section className="overflow-hidden rounded-card border border-line">
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
         <span aria-hidden className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-fg-muted font-mono text-[11px] text-fg-muted">{n}</span>
         <h2 className="font-slab text-lg leading-none uppercase">{title}</h2>
@@ -934,7 +934,7 @@ function PlayerCandidatePicker({
         {selected.length ? (
           <div className="flex flex-wrap gap-1.5">
             {selected.map((option) => (
-              <button key={option.id} type="button" onClick={() => onToggle(option.id)} className="flex items-center gap-1.5 border border-panel-fg bg-panel-fg px-2 py-1.5 text-left text-panel">
+              <button key={option.id} type="button" onClick={() => onToggle(option.id)} className="flex items-center gap-1.5 rounded-card border border-panel-fg bg-panel-fg px-2 py-1.5 text-left text-panel">
                 <OptionIcon option={option} className="h-5 w-5" />
                 <span className="font-mono text-[10px] uppercase">{option.label}</span>
                 <span aria-hidden className="font-mono text-xs">×</span>
@@ -951,7 +951,7 @@ function PlayerCandidatePicker({
               key={value}
               type="button"
               onClick={() => onPositionChange(value)}
-              className={`px-3 py-2 font-slab text-xs uppercase ${position === value ? "bg-panel text-panel-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
+              className={`px-3 py-2 font-slab text-xs uppercase ${position === value ? "bg-hidden text-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
             >
               {value === "all" ? "All positions" : value === "other" ? "Other positions" : value}
             </button>
@@ -962,14 +962,14 @@ function PlayerCandidatePicker({
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Search player or team"
-          className="w-full border border-line bg-surface-raised px-3 py-2 text-sm"
+          className="w-full rounded-card border border-line bg-surface-raised px-3 py-2 text-sm"
         />
       </div>
       </FieldBlock>
       <FieldBlock label={narrowed ? `Matching players — ${matchingOptions.length} found` : "Matching players"}>
         {!narrowed ? <p className="text-sm text-fg-muted">Choose a position or search by player or team to browse.</p> : (
           <>
-            <div className="max-h-80 overflow-y-auto border border-line">
+            <div className="max-h-80 overflow-y-auto rounded-card border border-line">
               {results.map((option) => {
                 const selected_ = selectedIds.includes(option.id);
                 return (

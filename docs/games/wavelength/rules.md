@@ -74,9 +74,10 @@ descriptions of the position.
 
 **Timers**
 
-- Fill phase: one clock for the whole phase, 40 seconds per clue the player has
-  to write (Short 80s, Medium 120s, Long 160s; 2v2 uses two clues per player).
-- Guess phase: 30 seconds per guess.
+- Fill phase: one clock for the whole phase, 90 seconds per clue the player has
+  to write (Short 180s, Medium 270s, Long 360s; 2v2 uses two clues per player,
+  so 180s).
+- Guess phase: 60 seconds per guess.
 
 **Timeouts**
 

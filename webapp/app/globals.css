@@ -4,11 +4,12 @@
    Ball Party — dark
 
    Three rules the tokens exist to enforce:
-     1. The background is dark. Panels are the only light surfaces, so if
-        something matters it goes on a panel and everything else is background.
+     1. The background is dark. Panels are slightly lighter dark surfaces, so
+        if something matters it goes on a panel and everything else is
+        background.
      2. Red means concealed. Anything one player knows and another doesn't is
         red — the unrevealed Wavelength target, a lot's fantasy points during
-        bidding, an unfilled spot. When a thing is revealed it turns cream.
+        bidding, an unfilled spot. When a thing is revealed it turns the normal text colour.
      3. Dark only. There is no light variant, so there is no
         prefers-color-scheme branch to keep in sync.
    ───────────────────────────────────────────────────────────────────────── */
@@ -20,20 +21,20 @@
   --surface: #111311; /* near-black with a faint green cast */
   --surface-raised: #191c18; /* inset wells: inputs, bid bars */
 
-  /* the panels */
-  --panel: #f4efe4;
-  --panel-shade: #e7e0cf; /* a subdued band inside a panel */
-  --panel-fg: #17150f;
-  --panel-muted: #6b665a; /* secondary text on a panel */
-  --panel-soft: #4c4739; /* body copy on a panel: darker than muted, softer than fg */
-  --panel-line: #c7bfac; /* rules and borders on a panel */
-  --panel-hover: #fffdf7; /* a cream button's hover: the panel, one step lighter */
-  --panel-ink-hover: #2c2921; /* an ink button's hover */
+  /* the panels: raised dark surfaces, one step above the background */
+  --panel: #191c18;
+  --panel-shade: #111311; /* a subdued band inside a panel */
+  --panel-fg: #e8e3d6;
+  --panel-muted: #8f8b7f; /* secondary text on a panel */
+  --panel-soft: #bdb8aa; /* body copy on a panel: softer than fg, brighter than muted */
+  --panel-line: rgb(232 227 214 / 0.13); /* rules and borders on a panel */
+  --panel-hover: #20241f; /* a pressable panel's hover: one step lighter */
+  --panel-ink-hover: #cfcabc; /* an ink button's hover */
 
   /* the one accent */
   --hidden: #c9382c; /* as a surface: concealed values, unfilled spots */
-  --hidden-text: #e86759; /* same red lifted to stay legible on the background */
-  --hidden-ink: #a8291f; /* same red darkened to stay legible ON a cream panel */
+  --hidden-text: #ff5a4a; /* same red lifted to stay legible on the background */
+  --hidden-ink: #a8291f; /* the same red darkened: a pressed or hovered red surface */
 
   /* Sabotage Draft's revealed roster grades. These deliberately steer clear
      of --hidden / red: that accent means information is still concealed,
@@ -93,10 +94,9 @@ html[data-sidebar-collapsed] {
   --font-slab: var(--font-bebas-neue);
   --font-mono: var(--font-jetbrains-mono);
 
-  /* Panels are lit objects: a drop shadow plus a 1px top highlight. The
-     highlight is why they read as raised rather than as pale rectangles. */
+  /* Panels are raised: a hairline edge and a soft drop shadow. */
   --shadow-card:
-    0 10px 24px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.7);
+    0 10px 24px rgb(0 0 0 / 0.4), inset 0 0 0 1px rgb(232 227 214 / 0.13);
   --shadow-concealed: 0 10px 24px rgb(0 0 0 / 0.5);
   /* The card-scale shadow above, sized down for a chip-sized <Concealed
      compact>: a hint of lift instead of a blur that blooms past the chip. */
@@ -112,11 +112,16 @@ html[data-sidebar-collapsed] {
      state, not just an edge. */
   --shadow-well: inset 0 2px 6px rgb(0 0 0 / 0.4);
 
-  /* A panel you can press. Same light, one step closer to it. */
+  /* A panel you can press. Same edge, a brighter hairline and a deeper shadow. */
   --shadow-card-hover:
-    0 16px 34px rgb(0 0 0 / 0.62), inset 0 1px 0 rgb(255 255 255 / 0.8);
+    0 16px 34px rgb(0 0 0 / 0.5), inset 0 0 0 1px rgb(232 227 214 / 0.28);
 
-  --radius-card: 0px;
+  /* Two corner tiers. `card` is the large one: cards, buttons, inputs, menus,
+     modals, wells, photos. `chip` is the small one: badges, banners, and
+     anything nested inside a card. Fully round shapes (avatars, dots, pill
+     tabs, meters) use `rounded-full` instead. */
+  --radius-card: 8px;
+  --radius-chip: 4px;
 
   /* The sold acknowledgement, which is an event rather than a state: it fires
      once and stops. A looping pulse would keep insisting after the payoff has

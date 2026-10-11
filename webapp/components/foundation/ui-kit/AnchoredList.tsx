@@ -46,7 +46,7 @@ export function AnchoredList({
     <ul
       {...props}
       style={{ position: "fixed", top: rect.top + 4, left: rect.left, width: rect.width }}
-      className={`z-50 max-h-72 overflow-y-auto border border-line bg-surface-raised shadow-[0_10px_24px_rgb(0_0_0/0.4)] ${className}`}
+      className={`z-50 max-h-72 overflow-y-auto rounded-card border border-line bg-surface-raised shadow-[0_10px_24px_rgb(0_0_0/0.4)] ${className}`}
     >
       {children}
     </ul>,

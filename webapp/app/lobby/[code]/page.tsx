@@ -138,7 +138,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
       <LobbyRealtime lobbyId={lobby.id} />
 
       {inFlight ? (
-        <p className="bg-surface-raised px-3.5 py-2.5 text-sm text-fg-muted shadow-well">
+        <p className="rounded-card bg-surface-raised px-3.5 py-2.5 text-sm text-fg-muted shadow-well">
           A game is in progress. You&apos;re in for the next one.
         </p>
       ) : null}
@@ -151,7 +151,7 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
           there's room for three columns side by side. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(6rem,0.4fr)_minmax(0,2.4fr)_minmax(20rem,1fr)] lg:items-start lg:gap-10">
         <div className="lg:order-2">
-          <LobbyLineup members={members} hostId={lobby.host_id} viewerId={claims.sub} stats={Object.fromEntries(memberStats)} />
+          <LobbyLineup members={members} hostId={lobby.host_id} viewerId={claims.sub} stats={Object.fromEntries(memberStats)} lobbyId={lobby.id} />
         </div>
 
         <div className="lg:order-1 lg:sticky lg:top-14">
@@ -185,12 +185,6 @@ export default async function LobbyPage(props: PageProps<"/lobby/[code]">) {
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="type-label text-fg-muted">{children}</p>
-  );
-}
-
 function Shell({
   code,
   error,
@@ -215,28 +209,14 @@ function Shell({
       <LobbyTopStrip lobbyId={lobbyId} code={code} isHost={isHost} displayName={displayName} email={email} avatarUrl={avatarUrl} />
 
       <div className="flex flex-1 flex-col gap-6 pt-4 pb-12 sm:pt-6 lg:gap-8 lg:pt-8">
-        {/* Once a real room exists, LobbyTopStrip's InviteSuite carries the
-            code instead — always in reach there, rather than a heading that
-            scrolls away with the roster. This plain heading stays visible
-            only for the states before that: signed out, no room found yet,
-            or closed — screens where there's no invite to make. It still
-            renders (just off-screen) once a room exists, so the page keeps
-            exactly one <h1> either way. */}
-        {!lobbyId ? (
-          <header className="flex flex-col gap-2">
-            <Label>Join code</Label>
-            <h1 className="font-mono text-[34px] leading-none font-semibold tracking-[0.16em] text-fg sm:text-[40px]">
-              {code}
-            </h1>
-          </header>
-        ) : (
-          <h1 className="sr-only">Room {code}</h1>
-        )}
+        {/* The room has no name to show: the link is the way in, and the
+            code in it is not something anyone reads out. */}
+        <h1 className="sr-only">Party room</h1>
 
         {error ? (
           <p
             role="alert"
-            className="border border-hidden/40 bg-hidden/10 px-3.5 py-2.5 text-sm text-hidden-text"
+            className="rounded-card border border-hidden/40 bg-hidden/10 px-3.5 py-2.5 text-sm text-hidden-text"
           >
             {error}
           </p>

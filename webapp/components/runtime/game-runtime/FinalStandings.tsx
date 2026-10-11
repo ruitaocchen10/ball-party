@@ -105,7 +105,7 @@ function StandingsRow({ row, index, total }: { row: FinalStandingsRow; index: nu
         animate={isWinner ? "animate" : undefined}
         className="rounded-card"
       >
-        <Card edge={false} className={isWinner ? "ring-1 ring-panel-fg/20" : undefined}>
+        <Card className={isWinner ? "ring-1 ring-panel-fg/20" : undefined}>
           {row.roster ? (
             <details className="final-standings-roster">
               <summary className="cursor-pointer">{header}</summary>

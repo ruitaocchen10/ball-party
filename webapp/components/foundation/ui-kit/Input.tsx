@@ -14,13 +14,13 @@ import type { ComponentPropsWithoutRef, ReactNode, Ref } from "react";
 type Variant = "dark" | "well" | "panel";
 
 const BASE =
-  "block w-full min-w-0 border px-3 font-sans text-sm normal-case tracking-normal outline-none " +
+  "block w-full min-w-0 rounded-card border px-3 font-sans text-sm normal-case tracking-normal outline-none " +
   "transition-colors disabled:cursor-not-allowed disabled:opacity-60";
 
 const VARIANTS: Record<Variant, string> = {
-  dark: "border-line bg-surface text-fg placeholder:text-fg-muted focus:border-panel",
-  well: "border-line bg-surface-raised text-fg placeholder:text-fg-muted focus:border-panel",
-  panel: "border-panel-line bg-panel-shade text-panel-fg placeholder:text-panel-muted focus:border-panel-fg",
+  dark: "border-line bg-surface text-fg placeholder:text-fg-muted focus:border-fg",
+  well: "border-line bg-surface-raised text-fg placeholder:text-fg-muted focus:border-fg",
+  panel: "border-panel-line bg-panel-shade text-panel-fg placeholder:text-panel-muted focus:border-fg-fg",
 };
 
 type Shared = { variant?: Variant };

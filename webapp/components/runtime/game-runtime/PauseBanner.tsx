@@ -6,7 +6,7 @@ import { Card, CardMeta, CardTitle } from "@/components/foundation/ui-kit/Card";
  */
 export function PauseBanner() {
   return (
-    <Card edge={false} className="text-center">
+    <Card className="text-center">
       <CardTitle>Paused</CardTitle>
       <CardMeta>The host paused the game. Hang tight.</CardMeta>
     </Card>

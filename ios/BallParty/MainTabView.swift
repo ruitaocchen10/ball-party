@@ -5,6 +5,8 @@ import SwiftUI
 /// on. See `docs/architecture/architecture.md` for what lands next.
 struct MainTabView: View {
     @ObservedObject var viewModel: AuthViewModel
+    /// A room code from a room link; the Party tab joins it and clears it.
+    @Binding var pendingRoomCode: String?
 
     private enum Tab: Hashable {
         case home, games, party, profile
@@ -13,6 +15,13 @@ struct MainTabView: View {
     @State private var selection: Tab = .home
     /// The one-time "confirm your username" sheet; nil once dealt with.
     @State private var usernamePrompt: UsernameConfirmViewModel?
+    /// Pending room invites. Held here rather than on the Party tab so the bell
+    /// on every tab can show the count.
+    @StateObject private var inbox = RoomInvitesInboxViewModel(
+        client: SupabaseRoomInvitesClient(client: SupabaseConfig.client)
+    )
+    /// The viewer's picture for the Profile tab's icon.
+    @StateObject private var avatar = TabAvatarModel()
 
     var body: some View {
         // `AuthGateView` only builds this with a session, but the session can
@@ -27,13 +36,27 @@ struct MainTabView: View {
                     .tabItem { Label("Games", systemImage: "gamecontroller") }
                     .tag(Tab.games)
 
-                NavigationStack { LobbyScreen(viewerId: user.id) }
+                NavigationStack { LobbyScreen(viewerId: user.id, inbox: inbox, pendingRoomCode: $pendingRoomCode) }
                     .tabItem { Label("Party", systemImage: "person.3") }
                     .tag(Tab.party)
 
                 NavigationStack { ProfileView(auth: viewModel, viewerId: user.id, email: user.email) }
-                    .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+                    .tabItem { profileTabLabel }
                     .tag(Tab.profile)
+            }
+            // For now the bell is the room invites, and they are listed at the
+            // top of the Party tab, so that is where it goes.
+            .environment(\.notificationCount, inbox.invites.count)
+            .environment(\.openNotifications, { selection = .party })
+            .onChange(of: pendingRoomCode, initial: true) { _, code in
+                if code != nil { selection = .party }
+            }
+            .task(id: user.id) { await inbox.load() }
+            .task(id: user.id) { await inbox.observe(recipientId: user.id) }
+            .task(id: user.id) { await loadAvatar(userId: user.id, email: user.email) }
+            // A photo changed on the Profile tab shows once you leave it.
+            .onChange(of: selection) { old, _ in
+                if old == .profile { Task { await loadAvatar(userId: user.id, email: user.email) } }
             }
             .task(id: user.id) {
                 usernamePrompt = await UsernameConfirmViewModel.make(
@@ -45,6 +68,31 @@ struct MainTabView: View {
                     .presentationBackground(Theme.surface)
             }
         }
+    }
+}
+
+extension MainTabView {
+    /// The viewer's avatar once it has loaded (ringed while you are on the tab),
+    /// the stock symbol until then.
+    @ViewBuilder fileprivate var profileTabLabel: some View {
+        if let image = selection == .profile ? avatar.ringed : avatar.plain {
+            Label {
+                Text("Profile")
+            } icon: {
+                Image(uiImage: image).renderingMode(.original)
+            }
+        } else {
+            Label("Profile", systemImage: "person.crop.circle")
+        }
+    }
+
+    /// Same name and picture the Profile screen itself shows.
+    fileprivate func loadAvatar(userId: UUID, email: String?) async {
+        let summary = try? await SupabaseProfileClient(client: SupabaseConfig.client).profile(userId: userId)
+        await avatar.load(
+            name: summary?.displayName ?? email ?? "Player",
+            url: summary?.avatarURL
+        )
     }
 }
 
@@ -104,8 +152,7 @@ private struct GamesScreen: View {
             .padding(16)
         }
         .screenBackground()
-        .navigationTitle("Games")
-        .navigationBarTitleDisplayMode(.inline)
+        .screenHeader("Games") { RootBell() }
         .task { await higherOrLowerFormat.loadBounds() }
     }
 }
@@ -163,7 +210,8 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
                     .foregroundStyle(Theme.fgMuted)
                     .frame(width: 36, height: 36)
                     .background(Theme.surface)
-                    .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
                     .accessibilityHidden(true)
                 Spacer()
                 Text("1 player")
@@ -171,7 +219,8 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Theme.surface)
-                    .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
             }
 
             VStack(alignment: .leading, spacing: -4) {
@@ -217,7 +266,8 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceRaised)
-        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
     }
 }
 
@@ -302,7 +352,8 @@ private struct StackedChoice<Option: Identifiable & Hashable>: View {
                     .padding(.vertical, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(isSelected ? Theme.surface : .clear)
-                    .overlay(Rectangle().strokeBorder(isSelected ? Theme.fg : Theme.line, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(isSelected ? Theme.fg : Theme.line, lineWidth: 1))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -337,7 +388,8 @@ private struct EraChoice: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                             .background(isSelected ? Theme.surface : .clear)
-                            .overlay(Rectangle().strokeBorder(isSelected ? Theme.fg : Theme.line, lineWidth: 1))
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(isSelected ? Theme.fg : Theme.line, lineWidth: 1))
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

@@ -4,12 +4,9 @@ import { useState } from "react";
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { InviteFriendsModal } from "@/components/platform/lobbies/InviteFriendsModal";
 
-const FOCUS =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
-
 /**
- * The room's one invite surface: the code, and a one-tap way to hand someone
- * a working link instead of five characters to read out over a call.
+ * The room's one invite surface: invite a friend, or hand anyone a working
+ * link. There is no code to read out; the link is the way in.
  * /lobby/[code] already handles a cold landing — InviteAccountGate and
  * AutoJoinRoom (see app/lobby/[code]/page.tsx) are exactly what a stranger
  * following this link hits — so there is nothing new to wire up
@@ -24,28 +21,13 @@ const FOCUS =
  */
 export function InviteSuite({ code, lobbyId }: { code: string; lobbyId: string }) {
   const [friendsOpen, setFriendsOpen] = useState(false);
-  const [status, setStatus] = useState<"idle" | "copied-code" | "copied-link">("idle");
+  const [linkCopied, setLinkCopied] = useState(false);
 
-  function flash(next: "copied-code" | "copied-link") {
-    setStatus(next);
-    setTimeout(() => setStatus("idle"), 1800);
-  }
-
-  async function copyCode() {
-    try {
-      await navigator.clipboard.writeText(code);
-      flash("copied-code");
-    } catch {
-      // Clipboard blocked (no permission, insecure context) — the code is
-      // already on screen to read out, so there's no fallback needed.
-    }
-  }
-
-  async function invite() {
+  async function shareLink() {
     const url = `${window.location.origin}/lobby/${code}`;
     if (typeof navigator.share === "function") {
       try {
-        await navigator.share({ title: "Join my Ball Party room", text: `Join my room — code ${code}`, url });
+        await navigator.share({ title: "Join my Ball Party room", text: "Join my Ball Party room", url });
       } catch {
         // Cancelled share sheet — not an error worth surfacing.
       }
@@ -53,36 +35,21 @@ export function InviteSuite({ code, lobbyId }: { code: string; lobbyId: string }
     }
     try {
       await navigator.clipboard.writeText(url);
-      flash("copied-link");
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1800);
     } catch {
       // Nothing to fall back to if the clipboard itself is blocked.
     }
   }
 
   return (
-    <div className="flex flex-col items-center gap-1.5 sm:flex-row sm:gap-3">
-      <button
-        type="button"
-        onClick={copyCode}
-        aria-label="Copy join code"
-        className={`text-center transition-colors hover:text-fg-muted ${FOCUS}`}
-      >
-        <span className="block type-label-xs text-fg-muted">
-          {status === "copied-code" ? "Copied" : "Join code"}
-        </span>
-        <span className="block font-mono text-lg leading-none font-semibold tracking-[0.16em] text-fg">
-          {code}
-        </span>
-      </button>
-
-      <div className="flex items-center gap-2">
-        <Button size="sm" fullWidth={false} type="button" onClick={() => setFriendsOpen(true)}>
-          Invite friends
-        </Button>
-        <Button size="sm" variant="ghost" fullWidth={false} type="button" onClick={invite}>
-          {status === "copied-link" ? "Link copied" : "Share link"}
-        </Button>
-      </div>
+    <div className="flex items-center gap-2">
+      <Button size="sm" fullWidth={false} type="button" onClick={() => setFriendsOpen(true)}>
+        Invite friends
+      </Button>
+      <Button size="sm" variant="ghost" fullWidth={false} type="button" onClick={shareLink}>
+        {linkCopied ? "Link copied" : "Share link"}
+      </Button>
 
       {friendsOpen ? <InviteFriendsModal lobbyId={lobbyId} onClose={() => setFriendsOpen(false)} /> : null}
     </div>

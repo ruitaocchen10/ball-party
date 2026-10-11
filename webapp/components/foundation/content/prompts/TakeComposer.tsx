@@ -62,7 +62,7 @@ export function TakeComposer({ post, displayName, avatarUrl, username = null }: 
 
   return (
     <section aria-label="Make your picks" className="flex flex-col">
-      <div className="relative flex flex-1 flex-col overflow-hidden border border-line bg-surface-raised text-fg shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
+      <div className="relative flex flex-1 flex-col overflow-hidden rounded-card border border-line bg-surface-raised text-fg shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
         <div className="flex items-center gap-2.5 px-4 pt-4">
           <AuthorIdentity name={displayName} avatarUrl={avatarUrl} username={username} />
           <Badge>You</Badge>
@@ -78,7 +78,7 @@ export function TakeComposer({ post, displayName, avatarUrl, username = null }: 
             maxLength={280}
             rows={2}
             placeholder="Share your reasoning…"
-            className="mt-2 block w-full resize-none border border-line bg-surface px-3 py-2 text-lg leading-6 text-fg placeholder:text-fg-muted focus:border-fg focus:outline-none"
+            className="mt-2 block w-full resize-none rounded-card border border-line bg-surface px-3 py-2 text-lg leading-6 text-fg placeholder:text-fg-muted focus:border-fg focus:outline-none"
           />
         </div>
         {isPicksPost(post) && post.slots.length === 1 ? (

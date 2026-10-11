@@ -21,7 +21,7 @@ export default async function AuthCodeErrorPage({
       </p>
       <Link
         href="/login"
-        className="inline-flex min-h-12 items-center justify-center bg-panel px-4 font-slab text-[15px] tracking-[0.04em] text-panel-fg uppercase transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+        className="inline-flex min-h-12 items-center justify-center rounded-card bg-fg px-4 font-slab text-[15px] tracking-[0.04em] text-surface uppercase transition-colors hover:bg-panel-ink-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
       >
         Back to sign in
       </Link>

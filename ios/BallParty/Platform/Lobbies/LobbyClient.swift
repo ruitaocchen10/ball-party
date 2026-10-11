@@ -31,6 +31,11 @@ protocol LobbyClient: Sendable {
     /// `select_lobby_game(p_lobby_id, p_game)` — host-only, advisory "next up".
     func selectGame(lobbyId: UUID, game: MatchGame) async throws
 
+    /// `set_lobby_game_format(p_lobby_id, p_format)` — host-only. Saves the
+    /// host's settings on the room (replacing what was there) so everybody in it
+    /// can see them.
+    func setGameFormat(lobbyId: UUID, format: LobbyGameFormat) async throws
+
     /// `start_run(p_lobby_id, 'arcade', p_game)` — host-only. Freezes the
     /// roster and returns the id of the `'setup'` match the game then deals
     /// into.
@@ -79,7 +84,7 @@ struct SupabaseLobbyClient: LobbyClient {
     func snapshot(lobbyId: UUID) async throws -> LobbySnapshot {
         try await wrapped {
             async let lobby: Lobby = client.from("lobbies")
-                .select("id, code, host_id, closed_at, selected_game")
+                .select("id, code, host_id, closed_at, selected_game, game_format")
                 .eq("id", value: lobbyId)
                 .single()
                 .execute().value
@@ -97,7 +102,17 @@ struct SupabaseLobbyClient: LobbyClient {
                 .eq("lobby_id", value: lobbyId)
                 .eq("status", value: "active")
                 .execute().value
-            return try await LobbySnapshot(lobby: lobby, members: members, run: runs.first)
+            // The room's wins: every game writes `placement` on finish, and
+            // 1 is the winner whatever the game (the web reads it the same way).
+            async let wins: [LobbySnapshot.WinRow] = client.from("match_players")
+                .select("user_id, matches!inner(status, runs!inner(lobby_id))")
+                .eq("placement", value: 1)
+                .eq("matches.status", value: "complete")
+                .eq("matches.runs.lobby_id", value: lobbyId)
+                .execute().value
+            return try await LobbySnapshot(
+                lobby: lobby, members: members, run: runs.first, wins: LobbySnapshot.tallyWins(wins)
+            )
         }
     }
 
@@ -106,6 +121,15 @@ struct SupabaseLobbyClient: LobbyClient {
         try await wrapped {
             _ = try await client.rpc(
                 "select_lobby_game", params: Params(p_lobby_id: lobbyId, p_game: game.rawValue)
+            ).execute()
+        }
+    }
+
+    func setGameFormat(lobbyId: UUID, format: LobbyGameFormat) async throws {
+        struct Params: Encodable, Sendable { let p_lobby_id: UUID; let p_format: LobbyGameFormat }
+        try await wrapped {
+            _ = try await client.rpc(
+                "set_lobby_game_format", params: Params(p_lobby_id: lobbyId, p_format: format)
             ).execute()
         }
     }

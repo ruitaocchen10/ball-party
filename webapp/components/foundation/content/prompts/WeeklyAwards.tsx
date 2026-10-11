@@ -51,7 +51,7 @@ export function WeeklyAwardsSlots({
           const option = slot.options.find((candidate) => candidate.id === response[0]);
           const summary = chosen?.name ?? (response.length ? response.map((id) => slot.options.find((candidate) => candidate.id === id)?.label ?? id).join(", ") : null);
           return (
-            <div key={slot.id} className="flex items-center gap-3 border border-line bg-surface-raised px-3.5 py-3">
+            <div key={slot.id} className="flex items-center gap-3 rounded-card border border-line bg-surface-raised px-3.5 py-3">
               <div className="min-w-0 flex-1">
                 <p className="type-label text-fg-muted">{slot.label}</p>
                 <p className="mt-0.5 flex min-w-0 items-center gap-2 font-slab text-lg uppercase">
@@ -121,7 +121,7 @@ export function WeeklyAwardsBallot({ post, response }: { post: Post; response: R
           <div
             key={slot.id}
             style={{ ...PROMPT_TICKET_CUT_CORNERS, ...(code ? teamSurface(code) : {}) }}
-            className={`flex min-w-0 flex-col gap-2 border px-3.5 py-3 sm:min-h-32 ${code ? "border-white/20 text-white shadow-[0_4px_10px_rgb(0_0_0/0.22)]" : "border-line bg-surface-raised"}`}
+            className={`flex min-w-0 flex-col gap-2 rounded-card border px-3.5 py-3 sm:min-h-32 ${code ? "border-white/20 text-white shadow-[0_4px_10px_rgb(0_0_0/0.22)]" : "border-line bg-surface-raised"}`}
           >
             <dt className={`font-mono text-[10px] tracking-[0.08em] uppercase ${code ? "text-white/70" : "text-fg-muted"}`}>{slot.label}</dt>
             <dd className="flex min-w-0 items-center gap-2.5">

@@ -22,7 +22,7 @@ export function DashboardHeader({
   return (
     <header className="fixed inset-x-0 top-0 z-30 hidden h-[68px] border-b border-line bg-surface/95 backdrop-blur md:block">
       <div className="flex h-full w-full items-center gap-4 px-5">
-        <Link href="/" aria-label="Ball Party home" className="flex w-[var(--sidebar-w)] shrink-0 items-center text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">
+        <Link href="/" aria-label="Ball Party home" className="flex w-[var(--sidebar-w)] shrink-0 items-center text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">
           <BrandMark className="h-8 w-8 shrink-0" />
         </Link>
         <HuddleSearchField />
@@ -30,7 +30,7 @@ export function DashboardHeader({
         <div className="flex shrink-0 items-center gap-1.5">
           <Link
             href="/party"
-            className="flex h-10 items-center gap-2 bg-panel px-3.5 type-label font-bold text-panel-fg transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+            className="flex h-10 items-center gap-2 rounded-card bg-fg px-3.5 type-label font-bold text-surface transition-colors hover:bg-panel-ink-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
           >
             <Plus aria-hidden className="h-4 w-4" strokeWidth={2} />
             <span className="hidden lg:inline">Start a party</span>
@@ -39,7 +39,7 @@ export function DashboardHeader({
             type="button"
             aria-label="Notifications"
             title="Notifications are coming soon"
-            className="flex h-10 w-10 items-center justify-center text-fg-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+            className="flex h-10 w-10 items-center justify-center text-fg-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
           >
             <Bell aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.6} />
           </button>
@@ -48,7 +48,7 @@ export function DashboardHeader({
           ) : (
             <Link
               href="/login"
-              className="ml-1 type-label font-semibold text-fg-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+              className="ml-1 type-label font-semibold text-fg-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
             >
               Sign in
             </Link>

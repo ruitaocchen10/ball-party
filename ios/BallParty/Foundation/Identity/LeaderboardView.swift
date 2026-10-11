@@ -82,7 +82,7 @@ struct LeaderboardView: View {
     private var content: some View {
         switch viewModel.phase {
         case .loading where viewModel.standing == nil:
-            ProgressView().frame(maxWidth: .infinity, minHeight: 160)
+            LoadingSpinner().frame(maxWidth: .infinity, minHeight: 160)
         case .failed:
             EmptyState(title: "Couldn't load the leaderboard", message: "Try again in a moment.") {
                 Button("Retry") { Task { await viewModel.load() } }
@@ -101,7 +101,7 @@ struct LeaderboardView: View {
             // depends on scrolling to find. Someone on the list is also
             // highlighted in place below.
             if standing.status == .ranked {
-                PanelCard(edge: false) {
+                PanelCard {
                     BoardYouRow(
                         rank: standing.rank,
                         detail: standing.copy(for: viewModel.scope).detail,

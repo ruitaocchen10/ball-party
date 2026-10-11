@@ -264,6 +264,13 @@ final class AuctionViewModel: ObservableObject {
         return "\(wonCount)/\(AuctionRules.rosterSlots(format).count) filled"
     }
 
+    /// Whether the line under the bid bar is a wait on another seat, which gets
+    /// a spinner.
+    var isWaitingOnOthers: Bool {
+        guard !isPaused, let turn, turn.phase == .bidding else { return false }
+        return blocked == .notYourTurn
+    }
+
     /// The line under the bid bar: why it is off, or what a win would do.
     var statusLine: String {
         guard let turn, let lot else { return "" }

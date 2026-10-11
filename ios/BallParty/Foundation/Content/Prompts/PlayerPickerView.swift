@@ -46,7 +46,7 @@ struct PlayerPickerView: View {
         } else if trimmedQuery.isEmpty {
             EmptyView()
         } else if isSearching && results.isEmpty {
-            ProgressView().frame(maxWidth: .infinity, minHeight: 44)
+            LoadingSpinner().frame(maxWidth: .infinity, minHeight: 44)
         } else if results.isEmpty {
             Text("No players found.").font(.sans(14)).foregroundStyle(Theme.fgMuted)
         } else {
@@ -64,7 +64,8 @@ struct PlayerPickerView: View {
                 }
             }
             .background(Theme.surfaceRaised)
-            .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
         }
     }
 
@@ -102,7 +103,7 @@ struct PlayerPickerView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(Theme.panel)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
         .accessibilityElement(children: .contain)
     }
 

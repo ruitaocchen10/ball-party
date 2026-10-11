@@ -156,18 +156,35 @@ features:
 
   # --- Rooms -----------------------------------------------------------------
   - id: rooms.create-join
-    summary: Create a room, join by code, leave, close
+    summary: Create a room, join from an invite or a room link, leave, close
     web: done
     ios: done
+    note: iOS opens https://ballparty.social/lobby/<code> as a Universal Link and joins from the Party tab (not when already in a room), and its share button now shares that link. Like the friend invite link, it works only once the apple-app-site-association file (webapp/public/.well-known) is deployed; not yet tested on a device. There is no join code to type on either client: the link token (`lobbies.code`, 16 random characters since migration 0198) is only ever inside a link. Rooms opened before 0198 keep their five-character code until they close.
   - id: friends.room-invites
     summary: Invite friends into a room from the lobby; accept or decline from the Party page
     web: done
     ios: done
     note: Invites appear live on an open Party page / tab (Realtime on the recipient's own room_invites rows, then a re-read of list_room_invites). There is no push notification, so a closed app or tab sees them on next open.
+  - id: notifications.bell
+    summary: A bell in the header with a badge for pending room invites
+    web: missing
+    ios: done
+    note: The bell is on every iOS root tab and, for now, only counts room invites; tapping it opens the Party tab, where they are listed. Web shows invites on the Party page only; its desktop top bar has a bell that is an inert placeholder ("Notifications are coming soon"). The iOS header layout, Home header tabs and avatar tab icon are platform layout and are not tracked here. Web ticket still to be filed in BPW.
   - id: rooms.pick-game
     summary: Host picks the game and starts a run
     web: done
     ios: done
+  - id: rooms.game-settings
+    summary: Everyone in a room can see the game the host picked and how the host has set it up
+    web: missing
+    ios: done
+    ticket: BPW-5
+    note: The host's settings are saved on the room (`lobbies.game_format`, `set_lobby_game_format`, migration 0197) as they change. On iOS the Game tab is a row of game cards for everyone; the host's swipe picks the game and the host edits its settings in the card, while a player's swipe only browses and the card shows the host's settings read-only. The Room tab shows the picked game and its settings. Web still keeps the host's settings in the host's browser until Start, so web players cannot see them.
+  - id: rooms.scoreboard
+    summary: Wins each player has taken in the room since it opened
+    web: done
+    ios: done
+    note: Counts `placement = 1` on the room's completed matches, so it resets when the room closes. On iOS it is the Scoreboard tab beside Room, under the Party header; on web it is a section on the room page. iOS reads it in the same snapshot as the roster. The tab shows a dot when somebody has won since you last looked.
   - id: rooms.party-mode
     summary: Multi-game party with points and a target score
     web: missing
@@ -191,17 +208,17 @@ features:
     summary: Auction Team Builder (room, 2-4)
     web: done
     ios: done
-    note: 'The whole game plays on iOS: the host picks scoring, roster, tokens and era in the room, then bidding, custom bids, free lots, the Pass, Scout and Seal tokens, sealed rounds and the final table all match the web. Gaps: team logos (iOS shows team codes; the logo PNGs are not bundled), the host Pause button (web only), and the replay format picker (web lets the host change scoring, roster and era on Play again; iOS replays the same format). The lot reveal is a short suspense beat rather than the web slot reel.'
+    note: 'The whole game plays on iOS: the host picks scoring, roster, tokens and era in the room, then bidding, custom bids, free lots, the Pass, Scout and Seal tokens, sealed rounds and the final table all match the web. Gaps: team logos (iOS shows team codes; the logo PNGs are not bundled), the host Pause button (web only), and the replay format picker (web lets the host change scoring, roster and era on Play again; iOS replays the same format). The lot reveal is the same slot reel as the web.'
   - id: game.sabotage-draft
     summary: Sabotage Draft (room, 2-4)
     web: done
-    ios: missing
-    ticket: BPMO-13
+    ios: done
+    note: 'The whole game plays on iOS: the host picks Full, Standard or Quick in the room, then the hidden pick, both guess types (player only, player and exact year), pass, the X-Factor decision, the season result with letter grades and the tiebreak bracket all match the web. Laid out as a pinned header (round and slot, your picks, on the clock, the turn clock) over three native tabs, Draft, Rosters and Log, with the guess search as a bottom sheet. Gaps: the host Pause button (web only), the replay format picker (iOS replays the same format), and the web turn-reveal reel and "your pick was sabotaged" swap card (iOS shows hits as badges on Rosters and in the Log).'
   - id: game.wavelength
     summary: 2v2 Wavelength (room, 2 or 4)
     web: done
-    ios: missing
-    ticket: BPMO-14
+    ios: done
+    note: 'The whole game plays on iOS: the host picks co-op (with a length) or 2v2 in the room, then clue writing, the dial and live needle, locking a guess, the reveal and the result screen (stars in co-op, winner in 2v2) match the web. Laid out as a pinned header (round, score, clock) over two native tabs, Dial and Rounds. Gaps: the host Pause button (web only), and the replay format picker (iOS replays the same format).'
 
   # --- Platform and support --------------------------------------------------
   - id: support.feedback

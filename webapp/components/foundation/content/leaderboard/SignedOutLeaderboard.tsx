@@ -17,7 +17,7 @@ export function SignedOutLeaderboard({ next, body }: { next: string; body: strin
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">{body}</p>
           <Link
             href={`/login?next=${encodeURIComponent(next)}`}
-            className="mt-6 inline-flex bg-panel px-4 py-3 type-label font-bold text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+            className="mt-6 inline-flex rounded-card bg-fg px-4 py-3 type-label font-bold text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
           >
             Sign in
           </Link>

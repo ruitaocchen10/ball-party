@@ -7,7 +7,7 @@ import { Button } from "@/components/foundation/ui-kit/Button";
 import { closeLobby, leaveLobby } from "@/lib/platform/lobbies/actions";
 
 const FOCUS =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel";
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg";
 
 /**
  * The lobby's own chrome — everything the persistent app rail would
@@ -53,7 +53,7 @@ export function LobbyTopStrip({
       <Link
         href="/"
         aria-label="Home"
-        className={`order-1 flex h-9 w-9 items-center justify-center bg-surface-raised text-fg ring-1 ring-line ring-inset transition-colors hover:text-fg-muted ${FOCUS}`}
+        className={`order-1 flex h-9 w-9 items-center justify-center rounded-card bg-surface-raised text-fg ring-1 ring-line ring-inset transition-colors hover:text-fg-muted ${FOCUS}`}
       >
         <House className="h-[18px] w-[18px]" strokeWidth={1.5} />
       </Link>

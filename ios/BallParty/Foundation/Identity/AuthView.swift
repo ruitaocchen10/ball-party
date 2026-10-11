@@ -60,7 +60,7 @@ struct AuthView: View {
     /// VoiceOver skips it.
     private var gradeChips: some View {
         HStack(spacing: 8) {
-            gradeChip("Called it", symbol: "checkmark", badge: Theme.gradeElite, ink: Theme.panelFg, fill: Theme.panel)
+            gradeChip("Called it", symbol: "checkmark", badge: Theme.gradeElite, ink: Theme.surface, fill: Theme.fg)
             gradeChip("Missed it", symbol: "xmark", badge: Theme.gradeRough, ink: Theme.fg, fill: nil)
         }
         .accessibilityHidden(true)
@@ -71,7 +71,7 @@ struct AuthView: View {
         HStack(spacing: 7) {
             Image(systemName: symbol)
                 .font(.system(size: 8, weight: .black))
-                .foregroundStyle(Theme.panel)
+                .foregroundStyle(Theme.fg)
                 .frame(width: 14, height: 14)
                 .background(badge, in: Circle())
             Text(text)
@@ -82,9 +82,9 @@ struct AuthView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(fill ?? .clear)
+        .background(fill ?? .clear, in: RoundedRectangle(cornerRadius: Theme.chipRadius))
         .overlay {
-            if fill == nil { Rectangle().strokeBorder(Theme.line, lineWidth: 1) }
+            if fill == nil { RoundedRectangle(cornerRadius: Theme.chipRadius).strokeBorder(Theme.line, lineWidth: 1) }
         }
     }
 
@@ -101,7 +101,7 @@ struct AuthView: View {
             }
             .signInWithAppleButtonStyle(.white)
             .frame(height: 48)
-            .clipShape(Rectangle())
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
             .disabled(viewModel.isBusy)
 
             Button {

@@ -143,7 +143,7 @@ export function SlotFaceC({
             return (
               <li
                 key={id}
-                className={`flex items-center gap-2.5 rounded border-2 px-2.5 py-2 ${
+                className={`flex items-center gap-2.5 rounded-chip border-2 px-2.5 py-2 ${
                   slot.correct ? (isCorrectPosition ? "border-grade-elite" : "border-grade-rough") : "border-line bg-surface"
                 }`}
               >
@@ -173,7 +173,7 @@ export function SlotFaceC({
                 key={option.id}
                 type="button"
                 onClick={() => onChange([...order, option.id])}
-                className="flex items-center gap-2 border border-line bg-surface px-2 py-2 text-left"
+                className="flex items-center gap-2 rounded-card border border-line bg-surface px-2 py-2 text-left"
               >
                 <OptionIcon option={option} className="h-5 w-5" />
                 <span className="min-w-0 truncate font-slab text-xs uppercase">{option.label}</span>
@@ -217,7 +217,7 @@ export function SlotFaceC({
               type="button"
               disabled={disabled || (taken && !selected)}
               onClick={() => toggle(option.id)}
-              className={`flex flex-col items-center gap-1 rounded border-2 px-2 py-2 disabled:opacity-40 ${
+              className={`flex flex-col items-center gap-1 rounded-chip border-2 px-2 py-2 disabled:opacity-40 ${
                 slot.correct
                   ? isCorrect
                     ? "border-grade-elite"
@@ -343,7 +343,7 @@ export function PowerRankingsSlot({
           </div>
           <div className="flex shrink-0 gap-1" aria-label="Number of teams to rank">
             {([5, 10, 32] as const).map((count) => (
-              <button key={count} type="button" disabled={disabled} onClick={() => setRankCount(count)} className={`px-2.5 py-2 font-mono text-[10px] uppercase disabled:cursor-default ${rankCount === count ? "bg-panel text-panel-fg" : "border border-line bg-surface text-fg-muted"}`}>
+              <button key={count} type="button" disabled={disabled} onClick={() => setRankCount(count)} className={`rounded-card px-2.5 py-2 font-mono text-[10px] uppercase disabled:cursor-default ${rankCount === count ? "bg-hidden text-fg" : "border border-line bg-surface text-fg-muted"}`}>
                 Top {count}
               </button>
             ))}
@@ -362,7 +362,7 @@ export function PowerRankingsSlot({
                 setDropTargetIndex(index);
               }}
               onDrop={(event) => !disabled && onDrop(event, index)}
-              className={`flex h-14 min-w-0 items-center gap-3 border border-dashed bg-surface-raised/50 px-3 text-fg-muted transition-colors ${dropTargetIndex === index && draggedId ? "border-panel ring-1 ring-panel" : "border-line"}`}
+              className={`flex h-14 min-w-0 items-center gap-3 rounded-card border border-dashed bg-surface-raised/50 px-3 text-fg-muted transition-colors ${dropTargetIndex === index && draggedId ? "border-fg ring-1 ring-fg" : "border-line"}`}
             >
               <span className="w-5 font-mono text-sm tabular-nums">{index + 1}</span>
               <span className="type-label">Choose a team</span>
@@ -390,7 +390,7 @@ export function PowerRankingsSlot({
                 ...PROMPT_TICKET_CUT_CORNERS,
                 ...(option.teamCode ? { background: `linear-gradient(135deg, ${teamPrimaryColor(option.teamCode) ?? "#252722"}, #171914 72%)` } : {}),
               }}
-              className={`relative grid h-14 min-w-0 ${showMovement ? "grid-cols-[2.1rem_minmax(0,1fr)_2rem]" : "grid-cols-[2.1rem_minmax(0,1fr)]"} overflow-hidden border text-white shadow-[0_4px_10px_rgb(0_0_0/0.28)] transition-[border-color,box-shadow] ${dropTargetIndex === index && draggedId ? "border-panel ring-1 ring-panel" : "border-white/25"} ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
+              className={`relative grid h-14 min-w-0 ${showMovement ? "grid-cols-[2.1rem_minmax(0,1fr)_2rem]" : "grid-cols-[2.1rem_minmax(0,1fr)]"} overflow-hidden rounded-card border text-white shadow-[0_4px_10px_rgb(0_0_0/0.28)] transition-[border-color,box-shadow] ${dropTargetIndex === index && draggedId ? "border-fg ring-1 ring-fg" : "border-white/25"} ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
             >
               <span className="z-10 flex items-center justify-center border-r border-white/20 bg-black/45 font-slab text-2xl leading-none text-white tabular-nums">{index + 1}</span>
               <span className="relative flex min-w-0 items-center justify-center overflow-hidden">
@@ -412,7 +412,7 @@ export function PowerRankingsSlot({
       {!disabled ? (
         <div className="mt-4" onDragOver={(event) => event.preventDefault()} onDrop={returnToAvailable}>
           <p className="mb-1.5 type-label text-fg-muted">{draggedId && placements.includes(draggedId) ? "Drop here to remove" : "Available teams"}</p>
-          <div className={`grid grid-cols-2 gap-1.5 sm:grid-cols-4 ${draggedId && placements.includes(draggedId) ? "ring-1 ring-dashed ring-panel" : ""}`}>
+          <div className={`grid grid-cols-2 gap-1.5 sm:grid-cols-4 ${draggedId && placements.includes(draggedId) ? "ring-1 ring-dashed ring-fg" : ""}`}>
             {unranked.map((option) => (
               <button
                 key={option.id}
@@ -433,14 +433,14 @@ export function PowerRankingsSlot({
                   ...(option.teamCode ? { background: `linear-gradient(135deg, ${teamPrimaryColor(option.teamCode) ?? "#252722"}, #171914 72%)` } : {}),
                 }}
                 aria-label={`Add ${option.label}`}
-                className="group relative flex h-14 items-center justify-center overflow-hidden border border-white/20 px-3 py-0 text-white shadow-[0_4px_10px_rgb(0_0_0/0.22)] transition-transform hover:-translate-y-0.5 disabled:opacity-40"
+                className="group relative flex h-14 items-center justify-center overflow-hidden rounded-card border border-white/20 px-3 py-0 text-white shadow-[0_4px_10px_rgb(0_0_0/0.22)] transition-transform hover:-translate-y-0.5 disabled:opacity-40"
               >
                 <OptionIcon option={option} className="h-24 w-24 drop-shadow-[0_5px_7px_rgb(0_0_0/0.5)]" />
                 <span className="sr-only">{option.label}</span>
                 <span aria-hidden className="absolute right-2 bottom-0.5 font-mono text-xl leading-none font-black text-white/85 group-hover:text-white">+</span>
               </button>
             ))}
-            {!unranked.length ? <div className="col-span-full flex h-14 items-center justify-center border border-dashed border-line bg-surface-raised/50 type-label text-fg-muted">Drop a team here to remove it</div> : null}
+            {!unranked.length ? <div className="col-span-full flex h-14 items-center justify-center rounded-card border border-dashed border-line bg-surface-raised/50 type-label text-fg-muted">Drop a team here to remove it</div> : null}
           </div>
         </div>
       ) : null}

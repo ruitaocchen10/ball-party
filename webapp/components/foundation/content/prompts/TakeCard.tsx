@@ -50,7 +50,7 @@ export function TakeCard({
   const hasBottomRow = Boolean(commentHref || canCollapseTake || footer);
 
   return (
-    <article className="relative border border-line bg-surface-raised shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
+    <article className="relative rounded-card border border-line bg-surface-raised shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
       <div className="flex items-center gap-2.5 px-4 pt-4">
         <AuthorIdentity name={comment.author} avatarUrl={avatarUrl ?? comment.authorAvatarUrl ?? null} username={comment.authorUsername} />
         {isYou ? <Badge>You</Badge> : null}

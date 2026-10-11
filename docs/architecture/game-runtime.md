@@ -38,6 +38,12 @@ The lobby RPCs live in `public`, owned by the lobbies module (see
   active run.
 - `select_lobby_game(id, game)` records the host's pick (advisory; it starts
   nothing).
+- `set_lobby_game_format(id, format)` is host-only and replaces
+  `lobbies.game_format`, the host's settings for the games on offer, so the
+  rest of the room can see them before Start. An object keyed by game name, each
+  value that game's own settings; the platform never reads it (capped at 4KB,
+  object only). The game's own `start` is still what takes the settings the
+  match is dealt with.
 - `start_run(lobby_id, mode, game)` is host-only and returns a `matches` row in
   `status = 'setup'`. It needs 2-4 active members, accepts only `mode =
   'arcade'` (`mode_not_supported` otherwise; party mode does not exist), and

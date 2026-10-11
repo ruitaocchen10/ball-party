@@ -126,14 +126,14 @@ function HomeTabs({ active }: { active: HomeView }) {
     { key: "friends", label: "Friends", href: "/?view=friends" },
   ];
   return (
-    <nav aria-label="Home sections" className="mt-4 flex border border-line">
+    <nav aria-label="Home sections" className="mt-4 flex overflow-hidden rounded-card border border-line">
       {tabs.map(({ key, label, href }) => (
         <Link
           key={key}
           href={href}
           aria-current={key === active ? "page" : undefined}
-          className={`flex min-h-12 flex-1 items-center justify-center font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel ${
-            key === active ? "bg-panel text-panel-fg" : "text-fg hover:text-fg-muted"
+          className={`flex min-h-12 flex-1 items-center justify-center font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg ${
+            key === active ? "bg-hidden text-fg" : "text-fg hover:text-fg-muted"
           }`}
         >
           {label}

@@ -410,7 +410,7 @@ export function HigherOrLowerMatch({
         {matchContent}
 
         <aside aria-label="The table" className="min-h-0 overflow-y-auto lg:col-start-3 lg:row-start-1">
-          <div className="flex flex-col border border-line bg-surface-raised">
+          <div className="flex flex-col rounded-card border border-line bg-surface-raised">
             <header className="flex items-baseline justify-between gap-2 px-3 py-2">
               <h2 className="type-label font-bold text-fg-muted">Standings</h2>
               <span className="type-label-xs text-fg-muted">Correct · best</span>
@@ -421,7 +421,7 @@ export function HigherOrLowerMatch({
                 return (
                   <li
                     key={player.user_id}
-                    className={`grid grid-cols-[1.55rem_1.85rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5 transition-col ${rank === 1 ? "bg-panel/5" : "hover:bg-panel/5"}`}
+                    className={`grid grid-cols-[1.55rem_1.85rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5 transition-col ${rank === 1 ? "bg-fg/5" : "hover:bg-panel/5"}`}
                   >
                     <span className={`font-mono text-xs font-bold tabular-nums ${rank === 1 ? "text-hidden-text" : "text-fg-muted"}`}>{tied ? "T-" : "#"}{rank}</span>
                     <StandingsAvatar name={player.display_name} avatarUrl={player.avatar_url} mine={player.user_id === viewerId} />
@@ -536,7 +536,7 @@ function SoloFinalScreen({
         title="Higher or lower"
         description="Your run is in the books."
       />
-      <section aria-label="Your final result" className="mt-5 w-full overflow-hidden border border-line bg-surface-raised shadow-well">
+      <section aria-label="Your final result" className="mt-5 w-full overflow-hidden rounded-card border border-line bg-surface-raised shadow-well">
         <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
           <p className="type-label font-semibold text-hidden-text">Run complete</p>
           <h2 className="mt-1 font-slab text-4xl leading-none uppercase sm:text-5xl">{correct} correct</h2>
@@ -569,8 +569,8 @@ function SoloFinalScreen({
 function LadderRecapCard({ card, priorCard, call }: { card: LadderCard; priorCard: LadderCard | null; call: Call | null }) {
   const outcome = recapOutcome(card, priorCard, call);
   return (
-    <li className="relative flex min-w-0 flex-col items-center border border-line bg-surface px-2 py-3 text-center">
-      <span className="absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full bg-panel font-mono text-[9px] font-bold text-panel-fg tabular-nums">{card.ordinal + 1}</span>
+    <li className="relative flex min-w-0 flex-col items-center rounded-card border border-line bg-surface px-2 py-3 text-center">
+      <span className="absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full bg-fg font-mono text-[9px] font-bold text-surface tabular-nums">{card.ordinal + 1}</span>
       <LadderPortrait name={card.display_name} headshotUrl={card.headshot_url} className="h-14 w-14" initialClassName="text-xl" />
       <strong className="mt-2 w-full truncate font-slab text-base leading-none uppercase">{card.display_name}</strong>
       <span className="mt-1 w-full truncate font-mono text-[8px] tracking-[0.07em] text-fg-muted uppercase">{card.position} · {cardIdentityLine(card)}</span>
@@ -797,11 +797,11 @@ function MatchClock({
         ? "The answer is revealed"
         : "Match complete";
   return (
-    <section aria-label="Clock" className={`bg-surface-raised p-3 shadow-well ${className}`}>
+    <section aria-label="Clock" className={`rounded-card bg-surface-raised p-3 shadow-well ${className}`}>
       <p className="type-label-lg text-fg-muted">{label}</p>
       <p className="mt-1 font-slab text-3xl leading-none tabular-nums" aria-hidden>{seconds === null ? "—" : `${seconds}s`}</p>
       <div role="timer" aria-label={seconds === null ? "No timer" : `${seconds} seconds left`} className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
-        <div className="h-full bg-panel transition-[width]" style={{ width: `${fraction * 100}%`, transitionDuration: `${TICK_MS}ms` }} />
+        <div className="h-full bg-fg transition-[width]" style={{ width: `${fraction * 100}%`, transitionDuration: `${TICK_MS}ms` }} />
       </div>
     </section>
   );
@@ -850,7 +850,7 @@ function LadderCardPanel({
       {/* Keep the player identity and the score as one card. This matches the
           auction lot's portrait-forward hierarchy while the score remains the
           distinct reveal beat Higher or Lower depends on. */}
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden border border-line bg-surface-raised text-center shadow-well">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-surface-raised text-center shadow-well">
         <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{card.position}</span>
         {logoCode ? <TeamLogo code={logoCode} className="absolute top-3 right-3 h-8 w-8" /> : <span className="absolute top-3 right-3 type-label-lg font-bold text-fg-muted">{card.team}</span>}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-5">
@@ -873,17 +873,17 @@ function LadderCardPanel({
           <Reveal
             revealed={card.points !== null}
             concealed={
-              <Concealed label="Fantasy points, hidden until this question reveals" className="rounded-none px-3.5 py-4">
+              <Concealed label="Fantasy points, hidden until this question reveals" className="px-3.5 py-4">
                 <div aria-hidden className="relative flex flex-col items-center gap-1 text-center">
-                  <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel uppercase">
+                  <span className="font-mono text-xs font-bold tracking-[0.15em] text-fg uppercase">
                     Fantasy points
                   </span>
-                  <span className="font-slab text-4xl leading-none text-panel">? ? ?</span>
+                  <span className="font-slab text-4xl leading-none text-fg">? ? ?</span>
                 </div>
               </Concealed>
             }
           >
-            <div aria-hidden className="flex flex-col items-center gap-1 bg-panel px-3.5 py-4 text-center text-panel-fg">
+            <div aria-hidden className="flex flex-col items-center gap-1 rounded-card bg-fg px-3.5 py-4 text-center text-surface">
               <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel-muted uppercase">
                 Fantasy points
               </span>
@@ -926,7 +926,7 @@ function LadderMatchup({ card }: { card: LadderCard }) {
   );
 }
 
-/** The same resilient, circular identity treatment used by auction lots. */
+/** The same resilient identity treatment used by auction lots. */
 function LadderPortrait({
   name,
   headshotUrl,
@@ -945,12 +945,12 @@ function LadderPortrait({
         src={headshotUrl}
         alt=""
         onError={() => setFailed(true)}
-        className={`${className} shrink-0 rounded-full bg-panel-shade object-cover object-top`}
+        className={`${className} shrink-0 rounded-card bg-panel-shade object-cover object-top`}
       />
     );
   }
   return (
-    <span aria-hidden className={`flex ${className} shrink-0 items-center justify-center rounded-full bg-hidden font-slab ${initialClassName} text-panel`}>
+    <span aria-hidden className={`flex ${className} shrink-0 items-center justify-center rounded-card bg-hidden font-slab ${initialClassName} text-fg`}>
       <span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span>
     </span>
   );

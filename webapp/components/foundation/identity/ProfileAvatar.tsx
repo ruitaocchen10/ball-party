@@ -26,7 +26,7 @@ export function ProfileAvatar({ name, avatarUrl }: { name: string; avatarUrl: st
           initial="initial"
           animate="animate"
           exit="exit"
-          className="h-20 w-20 shrink-0 rounded-full border-4 border-panel object-cover shadow-card"
+          className="h-20 w-20 shrink-0 rounded-full border-4 border-fg object-cover shadow-card"
         />
       ) : (
         <motion.div
@@ -36,7 +36,7 @@ export function ProfileAvatar({ name, avatarUrl }: { name: string; avatarUrl: st
           initial="initial"
           animate="animate"
           exit="exit"
-          className="grid h-20 w-20 shrink-0 place-items-center rounded-full border-4 border-panel bg-hidden font-slab text-2xl text-panel shadow-card"
+          className="grid h-20 w-20 shrink-0 place-items-center rounded-full border-4 border-fg bg-hidden font-slab text-2xl text-fg shadow-card"
         >
           <GeneratedAvatar name={name} size={80} />
         </motion.div>

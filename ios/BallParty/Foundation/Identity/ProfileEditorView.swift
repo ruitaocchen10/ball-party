@@ -91,7 +91,7 @@ struct ProfileEditorView: View {
             Circle().fill(Theme.hidden)
             Image(systemName: "camera.fill")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.panel)
+                .foregroundStyle(Theme.fg)
         }
         .frame(width: 30, height: 30)
         .overlay(Circle().strokeBorder(Theme.surface, lineWidth: 2))

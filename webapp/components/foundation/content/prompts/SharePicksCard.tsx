@@ -71,8 +71,8 @@ function ShareFeaturedMatchup({ slot, response }: { slot: Slot; response: string
         {pickedId === away.id ? <div aria-hidden className="absolute inset-y-0 left-0 w-1/2" style={surface(away)} /> : null}
         {pickedId === home.id ? <div aria-hidden className="absolute inset-y-0 right-0 w-1/2" style={surface(home)} /> : null}
         <div className="relative z-10 flex items-center justify-between px-5 pt-5 type-label font-semibold text-fg/70">
-          <span className={pickedId === away.id ? "text-panel/80" : ""}>Your call</span>
-          <span className={pickedId === home.id ? "text-panel/80" : ""}>Pick the winner</span>
+          <span className={pickedId === away.id ? "text-fg/80" : ""}>Your call</span>
+          <span className={pickedId === home.id ? "text-fg/80" : ""}>Pick the winner</span>
         </div>
         <div aria-hidden className="absolute top-11 bottom-0 left-1/2 z-10 w-px bg-fg/20" />
         <div className="relative z-10 grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-5 px-5 py-3">

@@ -103,7 +103,7 @@ function SelectedGame({
   return (
     <Card className="flex flex-col">
       <div className="flex flex-col gap-2 p-3.5">
-        <p className="type-label text-hidden-ink">
+        <p className="type-label text-hidden-text">
           {game.kind}
         </p>
         <p className="text-sm leading-5 text-panel-soft">{game.tagline}</p>
@@ -116,7 +116,7 @@ function SelectedGame({
         <button
           type="button"
           onClick={onChange}
-          className="border-t border-panel-line px-3.5 py-2.5 text-left type-label text-panel-muted transition-colors hover:text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+          className="border-t border-panel-line px-3.5 py-2.5 text-left type-label text-panel-muted transition-colors hover:text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
         >
           Change game
         </button>
@@ -153,7 +153,7 @@ function GamePicker({
               <input type="hidden" name="game" value={game.match ?? ""} />
               <button
                 type="submit"
-                className="flex w-full flex-col gap-1 rounded-card bg-panel px-3.5 py-3 text-left text-panel-fg shadow-card transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+                className="flex w-full flex-col gap-1 rounded-card bg-panel px-3.5 py-3 text-left text-panel-fg shadow-card transition-colors hover:bg-panel-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
               >
                 <span className="font-slab text-lg leading-none uppercase">{game.name.join(" ")}</span>
                 <span className="type-label text-panel-muted">

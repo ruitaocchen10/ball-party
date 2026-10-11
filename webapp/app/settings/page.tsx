@@ -95,7 +95,7 @@ function SignedOutSettings() {
           <p className="type-label text-hidden-text">Settings</p>
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Sign in for settings</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Sign in to manage your credentials and account.</p>
-          <Link href="/login?next=/settings" className="mt-6 inline-flex bg-panel px-4 py-3 type-label font-bold text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel">Sign in</Link>
+          <Link href="/login?next=/settings" className="mt-6 inline-flex rounded-card bg-fg px-4 py-3 type-label font-bold text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">Sign in</Link>
         </section>
       </PageShell>
     </>

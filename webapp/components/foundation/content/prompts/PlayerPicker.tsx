@@ -70,7 +70,7 @@ export function PlayerPicker({ value, onChange, label, search, disabled }: Props
     return (
       <div
         style={{ ...PROMPT_TICKET_CUT_CORNERS, background: `linear-gradient(135deg, ${teamPrimaryColor(value.team) ?? "#252722"}, #171914 72%)` }}
-        className="relative flex items-center gap-3 overflow-hidden border border-white/25 px-3 py-2 text-white shadow-[0_4px_10px_rgb(0_0_0/0.28)]"
+        className="relative flex items-center gap-3 overflow-hidden rounded-card border border-white/25 px-3 py-2 text-white shadow-[0_4px_10px_rgb(0_0_0/0.28)]"
       >
         <PlayerPortrait name={value.name} headshotUrl={value.headshotUrl} className="h-11 w-11 ring-2 ring-white/70" />
         <PlayerSummary player={value} onDark />
@@ -112,7 +112,7 @@ export function PlayerPicker({ value, onChange, label, search, disabled }: Props
             else if (event.key === "Enter" && showList && results[active]) { event.preventDefault(); pick(results[active]); }
             else if (event.key === "Escape") setOpen(false);
           }}
-          className="w-full border border-line bg-surface py-2 pr-3 pl-9 text-base text-fg placeholder:text-fg-muted focus:border-fg focus:outline-none disabled:opacity-60"
+          className="w-full rounded-card border border-line bg-surface py-2 pr-3 pl-9 text-base text-fg placeholder:text-fg-muted focus:border-fg focus:outline-none disabled:opacity-60"
         />
       </div>
       <AnchoredList anchor={anchorRef} open={showList} id={listId} role="listbox" aria-label={`${label} results`}>

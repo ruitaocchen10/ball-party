@@ -59,7 +59,8 @@ struct BoldQuote<Actions: View>: View {
             .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
         }
         .background(Theme.surface)
-        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
         .clipped()
         .accessibilityElement(children: .contain)
     }
@@ -258,7 +259,7 @@ private struct BoldTagPicker: View {
     @ViewBuilder
     private var matchups: some View {
         if viewModel.boldBoards[postId] == nil {
-            ProgressView().frame(maxWidth: .infinity, minHeight: 44)
+            LoadingSpinner().frame(maxWidth: .infinity, minHeight: 44)
         } else if viewModel.boldBoard(for: postId).weekGames.isEmpty {
             Text("No games are scheduled for this week.").font(.sans(14)).foregroundStyle(Theme.fgMuted)
         } else {
@@ -345,7 +346,8 @@ private struct BoldRevealed: View {
                 .foregroundStyle(Theme.fgMuted)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
-                .overlay(Rectangle().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
         } else {
             VStack(alignment: .leading, spacing: 20) {
                 ForEach(groups.filter(\.isViewer)) { card($0, board: board) }

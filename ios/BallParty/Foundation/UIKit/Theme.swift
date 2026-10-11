@@ -7,11 +7,12 @@ import UIKit
 // when one changes there, change it here (and the other way round).
 //
 // Three rules the tokens exist to enforce (same as the web):
-//   1. The background is dark. Panels are the only light surfaces, so if
-//      something matters it goes on a panel and everything else is background.
+//   1. The background is dark. Panels are slightly lighter dark surfaces, so
+//      if something matters it goes on a panel and everything else is
+//      background.
 //   2. Red means concealed. Anything one player knows and another doesn't is
 //      red — the unrevealed challenger points, an unfilled spot. When a thing
-//      is revealed it turns cream.
+//      is revealed it turns the normal text colour.
 //   3. Dark only. There is no light variant, so nothing here branches on the
 //      colour scheme.
 
@@ -20,20 +21,20 @@ enum Theme {
     static let surface = Color(hex: 0x111311)  // near-black with a faint green cast
     static let surfaceRaised = Color(hex: 0x191C18)  // inset wells: inputs, bid bars
 
-    // The panels.
-    static let panel = Color(hex: 0xF4EFE4)
-    static let panelShade = Color(hex: 0xE7E0CF)  // a subdued band inside a panel
-    static let panelFg = Color(hex: 0x17150F)
-    static let panelMuted = Color(hex: 0x6B665A)  // secondary text on a panel
-    static let panelSoft = Color(hex: 0x4C4739)  // body copy on a panel: darker than muted, softer than fg
-    static let panelLine = Color(hex: 0xC7BFAC)  // rules and borders on a panel
-    static let panelHover = Color(hex: 0xFFFDF7)  // a cream button's hover: the panel, one step lighter
-    static let panelInkHover = Color(hex: 0x2C2921)  // an ink button's hover
+    // The panels: raised dark surfaces, one step above the background.
+    static let panel = Color(hex: 0x191C18)
+    static let panelShade = Color(hex: 0x111311)  // a subdued band inside a panel
+    static let panelFg = Color(hex: 0xE8E3D6)
+    static let panelMuted = Color(hex: 0x8F8B7F)  // secondary text on a panel
+    static let panelSoft = Color(hex: 0xBDB8AA)  // body copy on a panel: softer than fg, brighter than muted
+    static let panelLine = Color(hex: 0xE8E3D6, opacity: 0.13)  // rules and borders on a panel
+    static let panelHover = Color(hex: 0x20241F)  // a pressable panel's hover: one step lighter
+    static let panelInkHover = Color(hex: 0xCFCABC)  // an ink button's hover
 
     // The one accent.
     static let hidden = Color(hex: 0xC9382C)  // as a surface: concealed values, unfilled spots
-    static let hiddenText = Color(hex: 0xE86759)  // same red lifted to stay legible on the background
-    static let hiddenInk = Color(hex: 0xA8291F)  // same red darkened to stay legible ON a cream panel
+    static let hiddenText = Color(hex: 0xFF5A4A)  // same red lifted to stay legible on the background
+    static let hiddenInk = Color(hex: 0xA8291F)  // the same red darkened: a pressed or hovered red surface
 
     // Public feedback on a revealed result. These steer clear of red on
     // purpose: red means information is still concealed, a grade is public.
@@ -47,8 +48,13 @@ enum Theme {
     static let fgMuted = Color(hex: 0x8F8B7F)
     static let line = Color(hex: 0xE8E3D6, opacity: 0.13)
 
-    /// `--radius-card` is 0: panels are square.
-    static let cardRadius: CGFloat = 0
+    /// `--radius-card`: the large tier. Cards, buttons, fields, wells, menus and
+    /// photos. Fully round things (avatars, dots, pill tabs, meters) use Circle
+    /// or Capsule instead.
+    static let cardRadius: CGFloat = 8
+    /// `--radius-chip`: the small tier. Badges, banners, and anything nested
+    /// inside a card.
+    static let chipRadius: CGFloat = 4
 }
 
 extension Color {
@@ -174,7 +180,7 @@ extension Theme {
         UINavigationBar.appearance().compactAppearance = bar
         UINavigationBar.appearance().scrollEdgeAppearance = bar
 
-        // Same dark bar with a hairline above it; the selected tab is cream,
+        // Same dark bar with a hairline above it; the selected tab is the text colour,
         // the rest recede.
         let tabs = UITabBarAppearance()
         tabs.configureWithOpaqueBackground()

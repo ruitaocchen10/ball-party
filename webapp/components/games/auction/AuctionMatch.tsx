@@ -615,7 +615,7 @@ export function AuctionMatch({
       {/* A portrait-forward featured card, borrowing Sabotage Draft's
           tenured-player treatment without confusing the lot's slot with a
           player rank. The concealed score remains its own auction-only beat. */}
-      <div className="relative flex flex-none flex-col items-center border border-line bg-surface-raised px-4 py-5 text-center shadow-well">
+      <div className="relative flex flex-none flex-col items-center rounded-card border border-line bg-surface-raised px-4 py-5 text-center shadow-well">
         <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{lot.position}</span>
         {lotTeamLogo ? <TeamLogo code={lotTeamLogo} className="absolute top-3 right-3 h-8 w-8" /> : null}
         {/* A brief suspense beat before the lot's player appears, mirroring
@@ -628,7 +628,7 @@ export function AuctionMatch({
           concealed={
             <div aria-label="Revealing this lot's player" className="flex min-h-64 w-full flex-col items-center justify-center gap-2">
               <LotSpinner lot={lot} lots={lots} currentLot={turn.currentLot} />
-              <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel uppercase">Revealing…</span>
+              <span className="font-mono text-xs font-bold tracking-[0.15em] text-fg uppercase">Revealing…</span>
             </div>
           }
         >
@@ -646,10 +646,10 @@ export function AuctionMatch({
           <Reveal
             revealed={phase === "sold"}
             concealed={
-              <Concealed label="Fantasy points, hidden until this lot is won" className="rounded-none px-3.5 py-4">
+              <Concealed label="Fantasy points, hidden until this lot is won" className="px-3.5 py-4">
                 <div className="relative flex flex-col items-center gap-1 text-center">
-                  <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel uppercase">Fantasy points</span>
-                  <span className="font-slab text-4xl leading-none text-panel">? ? ?</span>
+                  <span className="font-mono text-xs font-bold tracking-[0.15em] text-fg uppercase">Fantasy points</span>
+                  <span className="font-slab text-4xl leading-none text-fg">? ? ?</span>
                   {/* This player's own scouted tier only -- the row behind it
                       never reaches a client it doesn't belong to (0159), so
                       there's no cross-viewer leak to guard against here. The
@@ -872,7 +872,7 @@ function SettledBoardCell({ lot, players }: { lot: Lot; players: Player[] }) {
   return (
     <StripCell tone="settled" width={92} ariaLabel={`Lot ${lot.seq}, ${lot.display_name}, ${lot.slot ?? "unfilled"}, ${price}, ${winnerCopy}`}>
       <StripCellTop left={lot.slot ?? "—"} right={lot.price === null ? "—" : `$${lot.price}`} />
-      <StripCellMedia>{lot.headshot_url ? <img src={lot.headshot_url} alt="" className="h-full w-full object-cover object-top" /> : null}</StripCellMedia>
+      <StripCellMedia square>{lot.headshot_url ? <img src={lot.headshot_url} alt="" className="h-full w-full object-cover object-top" /> : null}</StripCellMedia>
       <StripCellName center>{abbreviate(lot.display_name)}</StripCellName>
       <StripCellCaption center>{winner?.display_name ?? "No bids"}</StripCellCaption>
     </StripCell>
@@ -975,11 +975,11 @@ function LotSpinner({ lot, lots, currentLot }: { lot: Lot; lots: Lot[]; currentL
           {item ? (
             <>
               <LotPortrait name={item.display_name} headshotUrl={item.headshot_url} className="h-20 w-20 text-2xl" />
-              <span className="max-w-[85%] truncate font-slab text-lg tracking-[0.02em] text-panel uppercase">{item.display_name}</span>
+              <span className="max-w-[85%] truncate font-slab text-lg tracking-[0.02em] text-fg uppercase">{item.display_name}</span>
             </>
           ) : (
             <>
-              <span aria-hidden className="flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-panel-muted font-slab text-4xl text-panel-muted">?</span>
+              <span aria-hidden className="flex h-20 w-20 items-center justify-center rounded-card border border-dashed border-panel-muted font-slab text-4xl text-panel-muted">?</span>
               <span className="font-mono text-xs tracking-[0.15em] text-panel-muted uppercase">Scanning…</span>
             </>
           )}
@@ -992,9 +992,9 @@ function LotSpinner({ lot, lots, currentLot }: { lot: Lot; lots: Lot[]; currentL
 function LotPortrait({ name, headshotUrl, className = "h-16 w-16 text-2xl" }: { name: string; headshotUrl: string | null; className?: string }) {
   const [failed, setFailed] = useState(false);
   if (headshotUrl && !failed) {
-    return <img src={headshotUrl} alt="" onError={() => setFailed(true)} className={`shrink-0 rounded-full bg-panel-shade object-cover object-top ${className}`} />;
+    return <img src={headshotUrl} alt="" onError={() => setFailed(true)} className={`shrink-0 rounded-card bg-panel-shade object-cover object-top ${className}`} />;
   }
-  return <span aria-hidden className={`flex shrink-0 items-center justify-center rounded-full bg-hidden font-slab text-panel ${className}`}><span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span></span>;
+  return <span aria-hidden className={`flex shrink-0 items-center justify-center rounded-card bg-hidden font-slab text-fg ${className}`}><span className="font-slab-optical-center">{name.slice(0, 1).toUpperCase()}</span></span>;
 }
 
 function AuctionTeam({ code }: { code: string }) {
@@ -1033,14 +1033,14 @@ function SoldHeadline({ lot, players }: { lot: Lot; players: Player[] }) {
 
   if (!lot.winner_id) {
     return (
-      <p className="bg-surface-raised px-3.5 py-2 type-label-lg text-fg-muted shadow-well">
+      <p className="rounded-card bg-surface-raised px-3.5 py-2 type-label-lg text-fg-muted shadow-well">
         No sale
       </p>
     );
   }
 
   return (
-    <div aria-hidden className="animate-sold-headline border border-panel bg-panel px-3.5 py-2.5 text-panel-fg shadow-card">
+    <div aria-hidden className="animate-sold-headline rounded-card border border-fg bg-panel px-3.5 py-2.5 text-panel-fg shadow-card">
       <p className="type-label text-panel-muted">Sold to</p>
       <p className="mt-1 flex items-baseline justify-between gap-3 font-slab text-xl leading-none uppercase">
         <span className="truncate">{winner?.display_name ?? "Unknown buyer"}</span>
@@ -1053,7 +1053,7 @@ function SoldHeadline({ lot, players }: { lot: Lot; players: Player[] }) {
 function PointsReveal({ lot, tier }: { lot: Lot; tier: ReturnType<typeof weeklyRevealTier> }) {
   const copy = tier === "rough" ? "Rough outing" : tier === "solid" ? "Solid game" : tier === "great" ? "Big game" : null;
   return (
-    <div aria-hidden className={`auction-points-reveal auction-points-reveal--${tier ?? "season"} flex flex-col items-center gap-1 bg-panel px-3.5 py-4 text-center text-panel-fg`}>
+    <div aria-hidden className={`auction-points-reveal auction-points-reveal--${tier ?? "season"} flex flex-col items-center gap-1 rounded-card bg-panel px-3.5 py-4 text-center text-panel-fg`}>
       <span className="font-mono text-xs font-bold tracking-[0.15em] text-panel-muted uppercase">
         Fantasy points
       </span>
@@ -1098,7 +1098,7 @@ function PlayerRail({
   submittedSeats?: number[];
 }) {
   return (
-    <div className="auction-roster-board mt-2 flex flex-col divide-y divide-line border border-line bg-surface-raised">
+    <div className="auction-roster-board mt-2 flex flex-col divide-y divide-line rounded-card border border-line bg-surface-raised">
       {players.map((player) => {
         const acting = player.seat === turnSeat;
         const total = revealedTotal(lots, player.user_id);
@@ -1123,11 +1123,11 @@ function PlayerRail({
             open={mine}
             className={`transition-colors ${
               soldLot?.winner_id === player.user_id
-                ? "bg-panel/10 motion-safe:animate-sold-once"
+                ? "bg-fg/10 motion-safe:animate-sold-once"
                 : holding
-                  ? "bg-panel/5"
+                  ? "bg-fg/5"
                   : acting
-                    ? "bg-panel/5"
+                    ? "bg-fg/5"
                     : "bg-transparent"
             }`}
           >
@@ -1159,7 +1159,7 @@ function PlayerRail({
               <Chevron className="roster-chev h-4 w-4 shrink-0 text-fg-muted transition-transform" />
             </summary>
             <div className="px-2.5 pb-2.5">
-              <div className="flex flex-col gap-1.5 bg-panel p-1.5 text-panel-fg">
+              <div className="flex flex-col gap-1.5 rounded-card bg-panel p-1.5 text-panel-fg">
                 <Roster lots={lots} userId={player.user_id} format={format} highlightLot={highlightLot} />
               </div>
             </div>
@@ -1192,11 +1192,11 @@ function Roster({ lots, userId, format, highlightLot = null }: { lots: Lot[]; us
         const tone = won ? "border-panel-fg/10 bg-panel-fg/[0.02]" : "border-dashed border-panel-fg/10";
 
         return (
-          <div key={`${slot}-${index}`} className={`flex min-h-10 items-center justify-between gap-3 rounded border px-2.5 py-2 ${tone} ${justAdded ? "ring-2 ring-panel motion-safe:animate-player-to-roster" : ""}`}>
+          <div key={`${slot}-${index}`} className={`flex min-h-10 items-center justify-between gap-3 rounded-chip border px-2.5 py-2 ${tone} ${justAdded ? "ring-2 ring-fg motion-safe:animate-player-to-roster" : ""}`}>
             <span className="shrink-0 type-label text-panel-muted">{label}</span>
             {won ? (
               <span role="img" aria-label={`${label} slot, ${won.display_name}, ${fmt(won.points)} points`} className="flex min-w-0 items-center gap-2 text-sm">
-                {won.headshot_url ? <img src={won.headshot_url} alt="" className="h-6 w-6 shrink-0 rounded-full bg-panel-shade object-cover object-top" /> : <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-hidden font-slab text-[9px] text-panel">{won.display_name.slice(0, 1)}</span>}
+                {won.headshot_url ? <img src={won.headshot_url} alt="" className="h-6 w-6 shrink-0 rounded-chip bg-panel-shade object-cover object-top" /> : <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-hidden font-slab text-[9px] text-fg">{won.display_name.slice(0, 1)}</span>}
                 <span className="truncate font-semibold">{won.display_name}</span>
                 <span className="shrink-0 font-mono text-[11px] tabular-nums text-panel-muted">{fmt(won.points)}</span>
               </span>
@@ -1234,7 +1234,7 @@ function AuctionClock({ phase, remainingMs, onClock, isMine }: { phase: AuctionP
     : isMine ? "Your turn" : `${onClock?.display_name ?? "Someone"} is deciding`;
 
   return (
-    <section aria-label="Clock" className={`border p-3 transition-colors ${tone}`}>
+    <section aria-label="Clock" className={`rounded-card border p-3 transition-colors ${tone}`}>
       <p className="type-label-lg text-fg-muted">{label}</p>
       <p className={`mt-1 font-mono text-5xl leading-none tabular-nums ${urgent ? "text-hidden-text" : ""}`} aria-hidden>{display}</p>
       <p aria-live="polite" className="sr-only">{announcement}</p>
@@ -1283,7 +1283,7 @@ function TokenTray({ remaining, total, tokens }: { remaining: number; total: num
         {active ? (
           <div
             role="tooltip"
-            className="pointer-events-none absolute top-full left-0 z-20 mt-1.5 w-48 bg-panel px-2.5 py-2 text-left font-sans text-[11px] leading-snug font-normal normal-case tracking-normal text-panel-fg shadow-card"
+            className="pointer-events-none absolute top-full left-0 z-20 mt-1.5 w-48 rounded-card bg-panel px-2.5 py-2 text-left font-sans text-[11px] leading-snug font-normal normal-case tracking-normal text-panel-fg shadow-card"
           >
             <span className="block type-label-xs font-bold text-panel-muted">{active.label} · {TOKEN_STATE_TEXT[active.state]}</span>
             {active.description}
@@ -1301,7 +1301,7 @@ const TOKEN_STATE_TEXT: Record<TokenState, string> = {
 };
 
 const TOKEN_TONE: Record<TokenState, string> = {
-  usable: "border-panel bg-panel text-panel-fg shadow-card",
+  usable: "border-fg bg-panel text-panel-fg shadow-card",
   used: "border-line bg-surface text-fg-muted/35",
   inactive: "border-line bg-surface text-fg-muted/70",
 };
@@ -1415,7 +1415,7 @@ function SealedBidBar({
   const invalid = !Number.isInteger(Number(amount)) || Number(amount) < 0 || Number(amount) > budget;
 
   return (
-    <section aria-label="Sealed bid" className="border border-line bg-surface px-3 py-3">
+    <section aria-label="Sealed bid" className="rounded-card border border-line bg-surface px-3 py-3">
       <p className="type-label-lg text-fg-muted">Sealed bid</p>
       <p className="mt-1 font-mono text-[11px] text-fg-muted tabular-nums">Your budget · ${budget} left</p>
       {mine ? (
@@ -1443,7 +1443,7 @@ function SealedBidBar({
               step="1"
               inputMode="numeric"
               disabled={pending || paused}
-              className="mt-1 block w-full border border-line bg-surface-raised px-2 py-2 font-mono text-lg font-bold"
+              className="mt-1 block w-full rounded-card border border-line bg-surface-raised px-2 py-2 font-mono text-lg font-bold"
             />
           </label>
           <Button type="submit" disabled={invalid || pending || paused} fullWidth={false}>Submit</Button>
@@ -1551,7 +1551,7 @@ function BidBar({
       ref={surface}
       tabIndex={-1}
       aria-label="Bid controls"
-      className="relative border border-line bg-surface px-3 py-3 outline-none"
+      className="relative rounded-card border border-line bg-surface px-3 py-3 outline-none"
     >
       <div className="flex items-baseline justify-between gap-3">
         <span className="type-label-lg text-fg-muted">Standing bid</span>
@@ -1604,10 +1604,10 @@ function BidBar({
             onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); closeCustom(); } }}
           >
             <label className="block type-label-lg text-panel-muted">Custom bid
-              <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
+              <input ref={input} value={amount} onChange={(event) => setAmount(event.target.value)} type="number" min={minimum} max={budget} step="1" inputMode="numeric" className="mt-2 block w-full rounded-card border border-panel-muted bg-[#fffdf7] px-2 py-2 font-mono text-lg font-bold" />
             </label>
             <p className="mt-1 text-xs text-panel-muted">Minimum is ${minimum}. Your maximum is ${budget}.</p>
-            {error ? <p role="alert" className="mt-1 text-xs text-hidden-ink">{error}</p> : null}
+            {error ? <p role="alert" className="mt-1 text-xs text-hidden-text">{error}</p> : null}
             <div className="mt-2 flex gap-2"><Button type="submit" variant="ink" fullWidth={false} disabled={invalid || pending}>Bid ${amount}</Button><button type="button" onClick={closeCustom} className="text-xs text-panel-muted underline">Cancel</button></div>
           </motion.form>
         )}

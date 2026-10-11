@@ -121,7 +121,7 @@ export function QbSeasonBuilderResult({
 
 function Panel({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <section aria-label={label} className="border border-line bg-surface-raised p-4">
+    <section aria-label={label} className="rounded-card border border-line bg-surface-raised p-4">
       <h2 className="type-label font-semibold text-hidden-text">{label}</h2>
       <div className="mt-2">{children}</div>
     </section>
@@ -213,7 +213,7 @@ function AwardIcons({ awards }: { awards: SeasonResult["awards"] }) {
       ) : (
         <ul aria-label="Awards" className="mt-2 flex flex-wrap gap-2">
           {won.map((award) => (
-            <li key={award} className="border border-line px-2.5 py-1 font-slab text-lg uppercase">
+            <li key={award} className="rounded-chip border border-line px-2.5 py-1 font-slab text-lg uppercase">
               {AWARD_LABELS[award]}
             </li>
           ))}
@@ -265,7 +265,7 @@ function PickedPlayer({ pick, grades }: { pick: DraftPick; grades: Partial<Recor
   const name = pick.displayName ?? franchiseName(pick.franchiseCode);
   const slots = [...QUALITIES, "supporting_cast" as const].filter((slot) => grades[slot] !== undefined);
   return (
-    <button type="button" className="group relative block rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel" aria-label={`${name}, ${SLOT_LABELS[pick.slot]}`}>
+    <button type="button" className="group relative block rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg" aria-label={`${name}, ${SLOT_LABELS[pick.slot]}`}>
       {pick.playerId !== null ? (
         <PlayerPortrait name={name} headshotUrl={pick.headshotUrl} className="h-12 w-12 text-[12px] ring-1 ring-line" />
       ) : (
@@ -273,7 +273,7 @@ function PickedPlayer({ pick, grades }: { pick: DraftPick; grades: Partial<Recor
           <TeamLogo code={pick.franchiseCode} className="h-8 w-8" />
         </span>
       )}
-      <span className="pointer-events-none absolute top-full left-1/2 z-20 mt-2 w-56 -translate-x-1/2 bg-panel p-3 text-left text-panel-fg opacity-0 shadow-card transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+      <span className="pointer-events-none absolute top-full left-1/2 z-20 mt-2 w-56 -translate-x-1/2 rounded-card bg-panel p-3 text-left text-panel-fg opacity-0 shadow-card transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
         <span className="block font-slab text-base uppercase">{name}</span>
         <span className="mt-0.5 block type-label text-panel-muted">{pick.season} {franchiseName(pick.franchiseCode)}</span>
         {slots.length > 0 ? (

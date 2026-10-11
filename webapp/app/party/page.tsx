@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { CurrentRoom, type RoomSummary } from "@/components/home/CurrentRoom";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { RoomInvitesInbox } from "@/components/home/RoomInvitesInbox";
-import { JoinRoom } from "@/components/home/JoinRoom";
 import { StartRoom } from "@/components/home/StartRoom";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { DashboardRail } from "@/components/foundation/ui-kit/DashboardRail";
@@ -25,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * The room flow: start a room, or join one by code. The game is picked inside
+ * The room flow: start a room, or join one from a friend’s invite or link. The game is picked inside
  * the room once people are in (see GameSelector), so this page doesn't list
  * games. Split out of the home page once Party, Solo and Social each got a
  * section of their own — this page is what "Party" in the sidebar points at.
@@ -75,7 +74,7 @@ export default async function PartyPage(props: PageProps<"/party">) {
           description={
             room
               ? "Your room is ready when everyone is. Start or join another one below when you’re set."
-              : "Start a room for your crew, or use a code to jump into one that’s already going."
+              : "Start a room and invite your crew, or accept an invite to jump into one that’s already going."
           }
         />
 
@@ -128,12 +127,10 @@ async function pendingInvites(supabase: Client): Promise<RoomInvite[]> {
 }
 
 /**
- * The two ways into a room: host one, or join one by code.
+ * Starting a room. Joining one has no form of its own: it happens from a
+ * friend's invite (see RoomInvitesInbox) or a room link.
  *
- * Hosting is the cream card because opening a room is the primary path; joining
- * is its dark companion. Neither carries the red edge: a room you have not
- * opened yet is not concealed information, and red means one thing here. The
- * game is picked inside the room, once people are in (see GameSelector).
+ * The game is picked inside the room, once people are in (see GameSelector).
  *
  * When you are already in a room the section steps down below it and warns
  * what either action will cost you.
@@ -150,9 +147,8 @@ function ActionStrip({ hasRoom, canCreateLobby }: { hasRoom: boolean; canCreateL
         </>
       ) : null}
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-4">
+      <div className="mt-6 max-w-xl">
         <StartRoom canCreateLobby={canCreateLobby} />
-        <JoinRoom />
       </div>
     </section>
   );
@@ -161,7 +157,7 @@ function ActionStrip({ hasRoom, canCreateLobby }: { hasRoom: boolean; canCreateL
 /** A short promise of what follows the entry actions, not a tutorial. */
 function PartyGuide() {
   const steps = [
-    ["01", "Get together", "Open a room or use your friend’s code."],
+    ["01", "Get together", "Open a room and invite your friends."],
     ["02", "Pick a game", "Choose once everyone has made it in."],
     ["03", "Make it count", "Play the round, settle the score."],
   ];

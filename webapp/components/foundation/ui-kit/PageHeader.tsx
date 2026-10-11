@@ -24,7 +24,7 @@ export function PageHeader({
         <div className="mb-4">
           <Link
             href={backHref}
-            className="inline-flex shrink-0 items-center gap-1 border-b border-fg/50 pb-1 type-label text-fg transition-colors hover:border-fg hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-panel"
+            className="inline-flex shrink-0 items-center gap-1 border-b border-fg/50 pb-1 type-label text-fg transition-colors hover:border-fg hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-fg"
           >
             <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} />
             {backLabel}

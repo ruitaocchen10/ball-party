@@ -46,7 +46,7 @@ already in place in `0032` — including its hidden state, which the auction
 still keeps in `private`. See [`supabase/README.md`](../../supabase/README.md).
 
 **Web UI layer — Next.js deployed in Vercel.** Durable, navigational actions —
-create a room, join by code — are server actions ending in a redirect. A move
+create a room, join by link — are server actions ending in a redirect. A move
 inside a match is not that shape: it is a client component calling `rpc()`
 straight from the browser, keeping Vercel out of the hot path. Safe because the
 RPC derives identity from `auth.uid()` and validates the move itself, which is
@@ -73,7 +73,7 @@ the contract is wrong.
 | Module | Doc | Owns |
 | --- | --- | --- |
 | Identity | `webapp/lib/foundation/identity/` | Accounts, profiles, display names, guest vs. authed play |
-| Lobbies | [`lobbies/lobbies.md`](./lobbies/lobbies.md) | Room, join code, membership, the lobby→run→match records |
+| Lobbies | [`lobbies/lobbies.md`](./lobbies/lobbies.md) | Room, link token, membership, the lobby→run→match records |
 | Orchestration | `webapp/lib/platform/orchestration/` | The game catalog today. The party loop (pick next game, award points, decide the win) is not built; arcade is the one-match case |
 | Game runtime | [`game-runtime.md`](./game-runtime.md) | **The contract.** Match state, action validation, per-action deadlines, hidden-state projection |
 | Realtime | [`realtime.md`](./realtime.md) | Subscription lifecycle, presence, reconnect and mid-match rejoin, connection state in the UI |

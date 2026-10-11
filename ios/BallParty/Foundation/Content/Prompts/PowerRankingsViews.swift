@@ -210,7 +210,8 @@ private struct PowerRankRow: View {
         }
         .frame(height: height)
         .background(teamGradient(option.teamCode))
-        .overlay(Rectangle().strokeBorder(Color.white.opacity(0.22), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Color.white.opacity(0.22), lineWidth: 1))
         .accessibilityElement(children: .combine)
     }
 }
@@ -256,7 +257,8 @@ private struct EmptyRankSlot: View {
         .padding(.horizontal, layout == .tiny ? 0 : 12)
         .frame(maxWidth: .infinity, minHeight: layout.rowHeight, maxHeight: layout.rowHeight)
         .background(Theme.surfaceRaised.opacity(0.5))
-        .overlay(Rectangle().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Place \(rank), empty")
     }
@@ -288,7 +290,8 @@ private struct TinyRankCell: View {
         }
         .frame(height: height)
         .background(teamGradient(option.teamCode))
-        .overlay(Rectangle().strokeBorder(Color.white.opacity(0.22), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Color.white.opacity(0.22), lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(rank), \(option.label)")
     }
@@ -332,8 +335,9 @@ struct PowerRankingsPicker: View {
                     Text(count == 32 ? "All 32" : "Top \(count)")
                         .monoLabel(11, weight: .bold, tracking: 0.1, color: isSelected ? Theme.panelFg : Theme.fgMuted)
                         .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(isSelected ? Theme.panel : Theme.surface)
-                        .overlay(Rectangle().strokeBorder(isSelected ? Color.clear : Theme.line, lineWidth: 1))
+                        .background(isSelected ? Theme.hidden : Theme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(isSelected ? Color.clear : Theme.line, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -373,7 +377,7 @@ struct PowerRankingsPicker: View {
             }
         }
         .overlay {
-            if dropTarget == index { Rectangle().strokeBorder(Theme.panel, lineWidth: 2) }
+            if dropTarget == index { RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.fg, lineWidth: 2) }
         }
         .dropDestination(for: String.self) { items, _ in
             guard let raw = items.first, let id = UUID(uuidString: raw), let from = chosen.firstIndex(of: id)

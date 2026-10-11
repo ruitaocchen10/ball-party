@@ -57,9 +57,9 @@ export function SoloGrid({ higherOrLowerEra = null }: { higherOrLowerEra?: SoloE
  */
 function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: SoloEra | null }) {
   return (
-    <article className="group flex w-full flex-col border border-line bg-surface-raised p-4 transition-colors hover:border-fg-muted">
+    <article className="group flex w-full flex-col rounded-card border border-line bg-surface-raised p-4 transition-colors hover:border-fg-muted">
       <div className="flex items-start justify-between gap-2">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-surface text-fg-muted ring-1 ring-line ring-inset transition-colors group-hover:text-fg">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-chip bg-surface text-fg-muted ring-1 ring-line ring-inset transition-colors group-hover:text-fg">
           <Gamepad2 aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.6} />
         </span>
         <Badge tone="muted" size="xs">1 player</Badge>
@@ -106,7 +106,7 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
 function SoloSettings({ children }: { children: ReactNode }) {
   return (
     <details className="group/settings mb-3">
-      <summary className="flex cursor-pointer list-none items-center justify-between type-label-xs font-semibold text-fg-muted transition-colors marker:hidden hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between type-label-xs font-semibold text-fg-muted transition-colors marker:hidden hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg [&::-webkit-details-marker]:hidden">
         Settings
         <ChevronDown
           aria-hidden
@@ -136,7 +136,7 @@ function RadioChoice({ name, legend, options }: { name: string; legend: string; 
       {options.map((option, index) => (
         <label
           key={option.value}
-          className="flex cursor-pointer items-start gap-2 border border-line px-2.5 py-2 transition-colors has-checked:border-fg has-checked:bg-surface has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-panel"
+          className="flex cursor-pointer items-start gap-2 rounded-chip border border-line px-2.5 py-2 transition-colors has-checked:border-fg has-checked:bg-surface has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-fg"
         >
           <input
             type="radio"

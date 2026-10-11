@@ -72,7 +72,7 @@ struct QbResultView: View {
                 Task { await viewModel.newSeason() }
             } label: {
                 HStack(spacing: 8) {
-                    if viewModel.isBusy { ProgressView() }
+                    if viewModel.isBusy { LoadingSpinner(size: 16) }
                     Text("New season")
                 }
             }
@@ -105,7 +105,8 @@ private struct ResultPanel<Content: View>: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceRaised)
-        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
         .transition(.opacity)
     }
 }
@@ -177,7 +178,8 @@ private struct PlayerBuildPanel: View {
                         .slabTitle(19)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
                 }
             }
         }
@@ -314,12 +316,13 @@ private struct QbPickedPlayerCard: View {
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
-                    .background(line.isPicked ? Theme.panel : .clear)
+                    .background(line.isPicked ? Theme.hidden : .clear)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(line.slot.label) \(line.grade.spoken)\(line.isPicked ? ", picked" : "")")
                 }
             }
-            .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
             Spacer(minLength: 0)
         }
         .padding(20)

@@ -19,7 +19,7 @@ export function DashboardRail({
 }) {
   return (
     <aside aria-labelledby={headingId} className={`sticky top-[92px] ${className}`}>
-      <div className="border border-line bg-surface-raised p-4 shadow-well">
+      <div className="rounded-card border border-line bg-surface-raised p-4 shadow-well">
         <p className="type-label font-semibold text-hidden-text">{eyebrow}</p>
         <h2 id={headingId} className="mt-1 font-slab text-[27px] leading-none uppercase">{title}</h2>
         {children}

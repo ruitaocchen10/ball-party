@@ -189,7 +189,7 @@ export function PlayerRow({
       {link && player.username ? (
         <Link
           href={`/u/${player.username}`}
-          className="min-w-0 flex-1 hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel"
+          className="min-w-0 flex-1 hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
         >
           {identity}
         </Link>

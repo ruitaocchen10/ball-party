@@ -228,7 +228,7 @@ struct MatchupPoster: View {
     @ViewBuilder
     private func side(_ option: PromptOption) -> some View {
         let isSelected = selected == option.id
-        let ink = isSelected ? Theme.panel : Theme.fg
+        let ink = isSelected ? Theme.fg : Theme.fg
         let face = VStack(spacing: 6) {
             if let code = option.teamCode {
                 TeamLogo(code: code, size: 64)
@@ -379,16 +379,16 @@ struct MatchupTile: View {
                 if let verdict {
                     Image(systemName: verdict ? "checkmark" : "xmark")
                         .font(.system(size: 9, weight: .black))
-                        .foregroundStyle(Theme.panel)
+                        .foregroundStyle(Theme.fg)
                         .frame(width: 16, height: 16)
                         .background(verdict ? Theme.gradeElite : Theme.gradeRough, in: Circle())
                         .padding(5)
                 }
             }
-            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
             .overlay {
                 if let verdict {
-                    Rectangle().strokeBorder(verdict ? Theme.gradeElite : Theme.gradeRough, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(verdict ? Theme.gradeElite : Theme.gradeRough, lineWidth: 1)
                 }
             }
 
@@ -442,8 +442,8 @@ struct MatchupCarousel: View {
             }
             HStack(spacing: 6) {
                 ForEach(slots.indices, id: \.self) { position in
-                    Rectangle()
-                        .fill(position == index ? Theme.panel : Theme.line)
+                    Capsule()
+                        .fill(position == index ? Theme.fg : Theme.line)
                         .frame(width: position == index ? 24 : 6, height: 6)
                 }
             }

@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <PageShell variant="prose">
       <p className="text-sm text-fg-muted">Last updated {LAST_UPDATED}</p>
-      <h1 className="mt-2 text-3xl font-semibold text-panel">Privacy Policy</h1>
+      <h1 className="mt-2 text-3xl font-semibold text-fg">Privacy Policy</h1>
 
       <div className="mt-10 space-y-10 text-[15px] leading-relaxed text-fg">
         <section>
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-panel">Information we collect</h2>
+          <h2 className="text-lg font-semibold text-fg">Information we collect</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>
               <strong>Account information.</strong> When you sign up we store your email address and a display name.
@@ -50,7 +50,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-panel">How we use it</h2>
+          <h2 className="text-lg font-semibold text-fg">How we use it</h2>
           <p className="mt-3">We use the information above only to run the product:</p>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>Creating and authenticating your account, and letting you sign in on more than one device.</li>
@@ -62,7 +62,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-panel">Who we share it with</h2>
+          <h2 className="text-lg font-semibold text-fg">Who we share it with</h2>
           <p className="mt-3">
             We use Supabase to host our database, authentication, and file storage, and Apple/Google only as
             sign-in providers you choose to use. We don&rsquo;t share your data with advertisers, data brokers, or
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-panel">Your choices</h2>
+          <h2 className="text-lg font-semibold text-fg">Your choices</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>Edit your display name and profile at any time from Settings.</li>
             <li>
@@ -86,19 +86,19 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-panel">Children</h2>
+          <h2 className="text-lg font-semibold text-fg">Children</h2>
           <p className="mt-3">Ball Party is not directed at children under 13, and we don&rsquo;t knowingly collect information from them.</p>
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-panel">Changes to this policy</h2>
+          <h2 className="text-lg font-semibold text-fg">Changes to this policy</h2>
           <p className="mt-3">
             If this policy changes in a material way, we&rsquo;ll update the date at the top of this page.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-panel">Contact</h2>
+          <h2 className="text-lg font-semibold text-fg">Contact</h2>
           <p className="mt-3">
             Questions about this policy or your data:{" "}
             <a href="mailto:testytesttesty9021@gmail.com" className="underline underline-offset-2">

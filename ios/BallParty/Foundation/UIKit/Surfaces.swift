@@ -32,40 +32,26 @@ extension View {
 
 // MARK: - Panel card
 
-/// A card is the only light surface in the product. If something matters it
-/// goes on a card; everything else is background.
-///
-/// The red strip along the top edge marks a card with concealed information
-/// behind it, which is why it doesn't break the rule that red means hidden.
-/// Pass `edge: false` when nothing is being withheld.
+/// A card is a raised dark surface: a step lighter than the background, with a
+/// hairline edge. If something matters it goes on a card; everything else is
+/// background.
 struct PanelCard<Content: View>: View {
-    var edge = true
     @ViewBuilder var content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if edge {
-                Theme.hidden
-                    .frame(height: 5)
-                    .accessibilityHidden(true)
-            }
-            content
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .foregroundStyle(Theme.panelFg)
-        .tint(Theme.panelFg)
-        // Panels are lit objects: a drop shadow plus a 1px top highlight. The
-        // highlight is why they read as raised rather than as pale rectangles.
-        .background {
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .foregroundStyle(Theme.panelFg)
+            .tint(Theme.panelFg)
             // The shadow lives on the background layer alone, so it can only
             // ever be the panel's silhouette and never leaks onto its text.
-            ZStack(alignment: .top) {
-                Theme.panel
-                Color.white.opacity(0.7).frame(height: 1)
+            .background {
+                RoundedRectangle(cornerRadius: Theme.cardRadius)
+                    .fill(Theme.panel)
+                    .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 10)
             }
-            .shadow(color: .black.opacity(0.55), radius: 12, x: 0, y: 10)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
     }
 }
 
@@ -121,6 +107,7 @@ struct Concealed<Content: View>: View {
                     Theme.hiddenInk
                     ConcealedWeave(band: compact ? 4 : 6, period: compact ? 8 : 12)
                 }
+                .clipShape(RoundedRectangle(cornerRadius: compact ? Theme.chipRadius : Theme.cardRadius))
                 .shadow(
                     color: .black.opacity(compact ? 0.35 : 0.5),
                     radius: compact ? 2 : 12,
@@ -130,7 +117,7 @@ struct Concealed<Content: View>: View {
             }
             // The inset hairline that reads the weave as a deliberate surface.
             .overlay {
-                Rectangle()
+                RoundedRectangle(cornerRadius: compact ? Theme.chipRadius : Theme.cardRadius)
                     .inset(by: compact ? 2 : 4)
                     .stroke(Theme.panel.opacity(0.35), lineWidth: 1)
                     .allowsHitTesting(false)
@@ -202,11 +189,11 @@ extension View {
     /// plain border instead.
     func well(bordered: Bool = true) -> some View {
         background {
-            Rectangle().fill(Theme.surfaceRaised.shadow(.inner(color: .black.opacity(0.4), radius: 3, x: 0, y: 2)))
+            RoundedRectangle(cornerRadius: Theme.cardRadius).fill(Theme.surfaceRaised.shadow(.inner(color: .black.opacity(0.4), radius: 3, x: 0, y: 2)))
         }
         .overlay {
             if bordered {
-                Rectangle().strokeBorder(Theme.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1)
             }
         }
     }
@@ -276,8 +263,8 @@ struct ErrorBanner: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(Theme.hidden.opacity(0.10), in: RoundedRectangle(cornerRadius: 4))
-            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.hidden.opacity(0.4), lineWidth: 1))
+            .background(Theme.hidden.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.chipRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.chipRadius).strokeBorder(Theme.hidden.opacity(0.4), lineWidth: 1))
             .accessibilityAddTraits(.isStaticText)
     }
 }
@@ -355,7 +342,7 @@ struct ResultBadge: View {
             .monoLabel(11, weight: .bold, tracking: 0.12, color: Theme.panel)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(tone.fill)
+            .background(tone.fill, in: RoundedRectangle(cornerRadius: Theme.chipRadius))
     }
 }
 
@@ -383,5 +370,77 @@ struct EmptyState<Actions: View>: View {
 extension EmptyState where Actions == EmptyView {
     init(title: String, message: String) {
         self.init(title: title, message: message) { EmptyView() }
+    }
+}
+
+// MARK: - Loading
+
+/// The app's busy indicator: a short arc turning in the current tint. It
+/// replaces the stock `ProgressView`, which draws pale spokes at the system's
+/// secondary grey and is nearly invisible on the dark page. It takes the
+/// ambient tint, so inside a button it picks up the button's own foreground
+/// (`BPButtonBody` sets it) and elsewhere it is the text colour.
+struct LoadingSpinner: View {
+    var size: CGFloat = 22
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var animating = false
+
+    var body: some View {
+        let line = max(2, size / 9)
+        ZStack {
+            Circle().stroke(.tint.opacity(0.18), lineWidth: line)
+            Circle()
+                .trim(from: 0, to: 0.28)
+                .stroke(.tint, style: StrokeStyle(lineWidth: line, lineCap: .round))
+                .rotationEffect(.degrees(!reduceMotion && animating ? 360 : 0))
+        }
+        .frame(width: size, height: size)
+        // Reduce Motion gets a slow pulse in place of the rotation.
+        .opacity(reduceMotion && animating ? 0.4 : 1)
+        .animation(
+            reduceMotion
+                ? .easeInOut(duration: 0.9).repeatForever()
+                : .linear(duration: 0.8).repeatForever(autoreverses: false),
+            value: animating
+        )
+        .onAppear { animating = true }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Loading")
+    }
+}
+
+/// A status line for a screen that is waiting on someone else: a small spinner
+/// beside the text, so a still screen reads as "in progress" rather than stuck.
+struct WaitingNote: View {
+    let text: String
+    var size: CGFloat = 14
+
+    var body: some View {
+        HStack(spacing: 8) {
+            LoadingSpinner(size: size)
+            Text(text)
+        }
+        // The spinner is decoration; VoiceOver reads the sentence.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
+    }
+}
+
+/// A full-area wait: the spinner over a mono caption, centred. For a screen
+/// that has nothing to show until its first load lands.
+struct LoadingState: View {
+    var label: String?
+
+    var body: some View {
+        VStack(spacing: 12) {
+            LoadingSpinner(size: 28)
+            if let label {
+                Text(label).monoLabel(11, tracking: 0.15)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(label ?? "Loading")
     }
 }

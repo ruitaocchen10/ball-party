@@ -13,7 +13,7 @@ lobby        the room — people, code, durable
 
 **Why not collapse lobby and run?** A group will play a quick arcade game and
 then want a full party. If the room _is_ the party, switching modes means
-leaving, re-creating, re-sharing the code, and everyone rejoining — right when
+leaving, re-creating, re-sharing the link, and everyone rejoining — right when
 the group is warmed up and most likely to keep playing.
 
 ## Decided

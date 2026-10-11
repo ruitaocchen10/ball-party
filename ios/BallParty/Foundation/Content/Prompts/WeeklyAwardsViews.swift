@@ -38,7 +38,8 @@ struct AwardTeamTile: View {
             .padding(.horizontal, 4)
             .frame(maxWidth: .infinity, minHeight: 76)
             .background(background)
-            .overlay(Rectangle().strokeBorder(state == .selected ? Color.clear : Theme.line, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(state == .selected ? Color.clear : Theme.line, lineWidth: 1))
             .opacity(state == .dimmed ? 0.45 : 1)
             .contentShape(Rectangle())
         }
@@ -82,8 +83,9 @@ struct AwardGameTile: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(state == .selected ? Theme.panel : Theme.surfaceRaised)
-            .overlay(Rectangle().strokeBorder(state == .selected ? Color.clear : Theme.line, lineWidth: 1))
+            .background(state == .selected ? Theme.hidden : Theme.surfaceRaised)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(state == .selected ? Color.clear : Theme.line, lineWidth: 1))
             .opacity(state == .dimmed ? 0.45 : 1)
             .contentShape(Rectangle())
         }
@@ -182,7 +184,8 @@ struct WeeklyAwardsPicker: View {
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceRaised)
-        .overlay(Rectangle().strokeBorder(Theme.line, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
     }
 
     @ViewBuilder
@@ -296,7 +299,8 @@ struct WeeklyAwardsBallot: View {
                 Theme.surfaceRaised
             }
         }
-        .overlay(Rectangle().strokeBorder(color == nil ? Theme.line : Color.white.opacity(0.2), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(color == nil ? Theme.line : Color.white.opacity(0.2), lineWidth: 1))
         .accessibilityElement(children: .combine)
     }
 }

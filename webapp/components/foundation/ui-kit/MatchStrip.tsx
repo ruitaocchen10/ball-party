@@ -65,11 +65,11 @@ const TONE_CLASS: Record<Tone, string> = {
   // row. "current" and "upcoming" already had one; this brings "settled" in
   // line with them instead of being the one tone with no defined edge.
   settled:
-    "flex-col justify-between border border-line bg-surface-raised shadow-well",
+    "flex-col justify-between rounded-card border border-line bg-surface-raised shadow-well",
   current:
-    "flex-row items-center gap-2.5 border border-panel/45 bg-panel/10 px-2.5",
+    "flex-row items-center gap-2.5 rounded-card border border-fg/45 bg-fg/10 px-2.5",
   upcoming:
-    "flex-col items-center justify-between border border-line bg-transparent",
+    "flex-col items-center justify-between rounded-card border border-line bg-transparent",
 };
 
 export function StripCell({
@@ -120,13 +120,16 @@ export function StripCellTop({
 export function StripCellMedia({
   children,
   className = "h-7 w-7",
+  square = false,
 }: {
   children: ReactNode;
   className?: string;
+  /** Rounded-rectangle instead of a circle: for a photo, where avatars stay round. */
+  square?: boolean;
 }) {
   return (
     <span
-      className={`mx-auto mt-1 block shrink-0 overflow-hidden rounded-full bg-panel-shade ${className}`}
+      className={`mx-auto mt-1 block shrink-0 overflow-hidden ${square ? "rounded-chip" : "rounded-full"} bg-panel-shade ${className}`}
     >
       {children}
     </span>
@@ -249,7 +252,7 @@ export function StripCellBadge({ children }: { children: ReactNode }) {
  */
 export function StripCellMediaBadge({ children }: { children: ReactNode }) {
   return (
-    <span className="absolute -bottom-1 left-1/2 z-10 w-max -translate-x-1/2 rounded-full bg-hidden px-1.5 py-0.5 font-mono text-[7px] leading-none tracking-[0.05em] text-panel uppercase shadow-well">
+    <span className="absolute -bottom-1 left-1/2 z-10 w-max -translate-x-1/2 rounded-full bg-hidden px-1.5 py-0.5 font-mono text-[7px] leading-none tracking-[0.05em] text-fg uppercase shadow-well">
       {children}
     </span>
   );

@@ -34,7 +34,7 @@ export function SoloBestScores({ scores }: { scores: SoloBestScore[] | null }) {
             <Link
               key={`${score.game}-${score.detail ?? ""}`}
               href={score.href}
-              className="flex items-center justify-between gap-3 border-b border-line py-3.5 transition-colors last:border-b-0 hover:bg-surface-raised focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-panel"
+              className="flex items-center justify-between gap-3 border-b border-line py-3.5 transition-colors last:border-b-0 hover:bg-surface-raised focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg"
             >
               <span className="min-w-0">
                 <span className="block type-label font-semibold text-fg">{score.game}</span>
