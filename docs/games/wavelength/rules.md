@@ -95,8 +95,8 @@ produces skipped and auto-locked rounds until they return or the match finishes.
 published decks are copyrighted, and subject and axis cannot be combined
 randomly (`"A running back" × Cold/Hot` is nonsense).
 
-- The deck is 104 cards in `wavelength_private.deck`, seeded by migration
-  `0161`. `card_id` is stable; a match copies the labels it was dealt, so editing
+- The deck is 68 cards in `wavelength_private.deck`, seeded by migration
+  `0161` and synced to `cards.md` by `0201`. `card_id` is stable; a match copies the labels it was dealt, so editing
   the deck never rewrites a finished match.
 - **Every card is football-related**, with no `nfl`/`general` tag. A good card is
   a spectrum where reasonable people place the same clue at different spots.
