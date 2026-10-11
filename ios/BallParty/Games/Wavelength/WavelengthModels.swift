@@ -31,6 +31,7 @@ struct WavelengthServerError: Error, Equatable, Sendable {
         "clue_deadline_passed": "Time ran out before that clue landed.",
         "guess_deadline_passed": "Time ran out before that guess landed.",
         "not_guesser": "It isn't your turn to guess.",
+        "reveal_not_open": "That card has already moved on.",
         "match_not_playing": "This game isn't accepting moves right now.",
         "not_a_participant": "You're not in this game.",
         "not_authenticated": "Sign in first.",

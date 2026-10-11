@@ -5,6 +5,7 @@ import { ProfileEditor } from "@/components/foundation/identity/ProfileEditor";
 import { ProfileHeader } from "@/components/foundation/identity/ProfileHeader";
 import { ProfileHighlightsCard } from "@/components/foundation/identity/ProfileHighlights";
 import { SlotFaceC, YourCalls } from "@/components/foundation/content/prompts/SlotFaces";
+import { TakePromptStrip } from "@/components/foundation/content/prompts/TakePromptStrip";
 import { TakeCard } from "@/components/foundation/content/prompts/TakeCard";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
@@ -227,6 +228,7 @@ function TakeHistoryItem({
         comment={comment}
         isYou
         avatarUrl={avatarUrl}
+        context={<TakePromptStrip postId={post.id} caption={post.caption.trim() || "a prompt"} />}
         commentHref={`/prompts/${post.id}/takes/${comment.id}`}
         collapsedByDefault={hasPickDetails}
       >

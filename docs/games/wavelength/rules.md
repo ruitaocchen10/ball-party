@@ -58,6 +58,11 @@ the psychic alone. Everyone sees the arc and the clue; exactly one person ever
 sees where the wedges are. The target is revealed to everyone when a guess
 locks.
 
+**Reveal** — a locked guess (by click or by timeout) holds the table on that
+card: the target wedges, the needle, the reaction and the points are shown to
+everyone, with no clock. Only the host moves on, with **Next card** (**See
+results** after the last card), which opens the next guess with a fresh clock.
+
 **Fill phase** — parallel and up front. Every player writes all of their clues
 at once, timed, then guessing runs sequentially, alternating players (and teams,
 in 2v2). A guesser sees the spectrum only when it is their turn to guess; during

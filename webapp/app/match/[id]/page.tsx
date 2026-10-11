@@ -10,6 +10,7 @@ import { SabotageDraftMatch } from "@/components/games/sabotage-draft/SabotageDr
 import { WavelengthMatch } from "@/components/games/wavelength/WavelengthMatch";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
+import { MatchStartCountdown } from "@/components/runtime/game-runtime/MatchStartCountdown";
 import type { AuctionFormat, Player, Turn } from "@/lib/games/auction/board";
 import type { Board } from "@/lib/games/higher-or-lower/board";
 import { QbSeasonBuilderResult } from "@/components/games/qb-season-builder/QbSeasonBuilderResult";
@@ -147,13 +148,13 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     if (!row || row.round_count == null || row.current_round == null || !row.slot || !row.server_now) {
       return <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
     }
-    return <SabotageDraftMatch matchId={id} viewerId={claims.sub} roomCode={code} isHost={isHost} paused={match.status === "paused"} initial={{
+    return <><SabotageDraftMatch matchId={id} viewerId={claims.sub} roomCode={code} isHost={isHost} paused={match.status === "paused"} initial={{
       board: row,
       players: (playersResult.data ?? []).map(({ profiles, ...player }: any) => ({ ...player, display_name: profiles?.display_name ?? "Unknown player", avatar_url: profiles?.avatar_url ?? null })),
       spins: spinsResult.data ?? [],
       picks: picksResult.data ?? [], statuses: statusesResult.data ?? [], hits: hitsResult.data ?? [], guesses: guessesResult.data ?? [], passes: passesResult.data ?? [],
       decisions: decisionsResult.data ?? [], standings: standingsResult.data ?? [], tiebreaks: tiebreaksResult.data ?? [], pickAvs: avResult.data ?? [],
-    }} />;
+    }} /><MatchStartCountdown matchId={id} game="sabotage_draft" /></>;
   }
 
   if (match.game === "wavelength_2v2") {
@@ -173,11 +174,11 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     if (!board) {
       return <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
     }
-    return <WavelengthMatch matchId={id} viewerId={claims.sub} roomCode={code} isHost={isHost} paused={match.status === "paused"} initial={{
+    return <><WavelengthMatch matchId={id} viewerId={claims.sub} roomCode={code} isHost={isHost} paused={match.status === "paused"} initial={{
       board,
       players: (playersResult.data ?? []).map(({ profiles, ...player }: any) => ({ ...player, display_name: profiles?.display_name ?? "Unknown player", avatar_url: profiles?.avatar_url ?? null })),
       rounds: roundsResult.data ?? [], cards: cardsResult.data ?? [], clues: cluesResult.data ?? [], clueStatuses: statusesResult.data ?? [], result: resultResult.data ?? null,
-    }} />;
+    }} /><MatchStartCountdown matchId={id} game="wavelength_2v2" /></>;
   }
 
   if (match.game === "higher_or_lower") {
@@ -216,6 +217,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
     }
 
     const matchScreen = (
+      <>
       <HigherOrLowerMatch
         matchId={id}
         viewerId={claims.sub}
@@ -245,6 +247,8 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
           allTimeHigh: statsResult.data?.all_time_high ?? 0,
         }}
       />
+      <MatchStartCountdown matchId={id} game="higher_or_lower" />
+      </>
     );
 
     // Solo is a personal challenge, not a room that needs the full-bleed
@@ -355,6 +359,7 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   const format = auctionFormat(formatResult.data);
 
   return (
+    <>
     <AuctionMatch
         matchId={id}
         viewerId={claims.sub}
@@ -381,6 +386,8 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
           : null,
         }}
     />
+    <MatchStartCountdown matchId={id} game="auction_team_builder" />
+    </>
   );
 }
 

@@ -206,13 +206,13 @@ function BoldPredictionsCover() {
       ariaLabel="Bold Predictions"
       title={["Bold", "Predictions"]}
       subtitle="Call it before it happens"
-      leftGlow="bg-[radial-gradient(ellipse_at_left,rgb(245_158_11_/_0.24),transparent_70%)]"
+      leftGlow="bg-[radial-gradient(ellipse_at_left,rgb(59_130_246_/_0.24),transparent_70%)]"
       rightGlow="bg-[radial-gradient(ellipse_at_right,rgb(239_68_68_/_0.22),transparent_70%)]"
       art={
         <>
-          <CoverShape shape="bolt" className="top-2 left-4 h-28 w-24 rotate-[-12deg] text-amber-400/75 sm:h-32 sm:w-28" />
-          <CoverShape shape="bolt" className="top-24 left-24 h-16 w-14 rotate-[10deg] text-amber-400/45" />
-          <CoverShape shape="bolt" className="bottom-3 left-3 h-14 w-12 rotate-[-6deg] text-amber-400/30" />
+          <CoverShape shape="bolt" className="top-2 left-4 h-28 w-24 rotate-[-12deg] text-blue-500/75 sm:h-32 sm:w-28" />
+          <CoverShape shape="bolt" className="top-24 left-24 h-16 w-14 rotate-[10deg] text-blue-500/45" />
+          <CoverShape shape="bolt" className="bottom-3 left-3 h-14 w-12 rotate-[-6deg] text-blue-500/30" />
           <CoverShape shape="bolt" className="right-4 bottom-2 h-28 w-24 rotate-[168deg] text-red-500/75 sm:h-32 sm:w-28" />
           <CoverShape shape="bolt" className="top-6 right-24 h-16 w-14 rotate-[190deg] text-red-500/45" />
           <CoverShape shape="bolt" className="top-3 right-3 h-14 w-12 rotate-[174deg] text-red-500/30" />
@@ -229,13 +229,13 @@ function WeeklyAwardsCover() {
       ariaLabel="Weekly Awards"
       title={["Weekly", "Awards"]}
       subtitle="Hand out the hardware"
-      leftGlow="bg-[radial-gradient(ellipse_at_left,rgb(250_204_21_/_0.24),transparent_70%)]"
+      leftGlow="bg-[radial-gradient(ellipse_at_left,rgb(59_130_246_/_0.24),transparent_70%)]"
       rightGlow="bg-[radial-gradient(ellipse_at_right,rgb(239_68_68_/_0.22),transparent_70%)]"
       art={
         <>
-          <CoverShape shape="star" className="top-2 left-4 h-28 w-28 rotate-[-12deg] text-yellow-400/75 sm:h-32 sm:w-32" />
-          <CoverShape shape="star" className="top-24 left-24 h-16 w-16 rotate-[10deg] text-yellow-400/45" />
-          <CoverShape shape="star" className="bottom-3 left-3 h-14 w-14 rotate-[-6deg] text-yellow-400/30" />
+          <CoverShape shape="star" className="top-2 left-4 h-28 w-28 rotate-[-12deg] text-blue-500/75 sm:h-32 sm:w-32" />
+          <CoverShape shape="star" className="top-24 left-24 h-16 w-16 rotate-[10deg] text-blue-500/45" />
+          <CoverShape shape="star" className="bottom-3 left-3 h-14 w-14 rotate-[-6deg] text-blue-500/30" />
           <CoverShape shape="star" className="right-4 bottom-2 h-28 w-28 rotate-[12deg] text-red-500/75 sm:h-32 sm:w-32" />
           <CoverShape shape="star" className="top-6 right-24 h-16 w-16 rotate-[-10deg] text-red-500/45" />
           <CoverShape shape="star" className="top-3 right-3 h-14 w-14 rotate-[6deg] text-red-500/30" />

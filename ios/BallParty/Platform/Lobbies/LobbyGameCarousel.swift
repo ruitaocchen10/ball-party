@@ -3,8 +3,9 @@ import SwiftUI
 // The room's Game tab: a swipeable row of cards, one per game the room can
 // play. The host's swipe is the pick (it points the room at that game); a
 // player's is only browsing, since the game actually being played is shown on
-// the Room tab. A card lists what the game is and how it is set up: the host
-// edits it there, and everybody else reads what the host saved.
+// the Room tab. A card is a fixed height whatever the game: what the game is,
+// its current settings as pills, and for the host an Adjust settings button
+// that opens them in a sheet. Everybody else reads what the host saved.
 
 /// What a card in the row stands for.
 enum GameCardID: Hashable {
@@ -23,7 +24,7 @@ struct LobbyGameCarousel: View {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(MatchGame.allCases) { game in
                         GameCard(game: game, viewModel: viewModel)
-                            .containerRelativeFrame(.horizontal) { length, _ in length - 48 }
+                            .containerRelativeFrame(.horizontal) { length, _ in length - 32 }
                             .id(GameCardID.game(game))
                     }
                 }
@@ -34,6 +35,8 @@ struct LobbyGameCarousel: View {
             .contentMargins(.horizontal, 16, for: .scrollContent)
 
             dots
+            Text(viewModel.isHost ? "Swipe to choose a game" : "Swipe to browse the games")
+                .monoLabel(9, tracking: 0.12)
         }
         .onAppear {
             guard position == nil else { return }
@@ -81,9 +84,10 @@ struct LobbyGameCarousel: View {
 private struct GameCard: View {
     let game: MatchGame
     @ObservedObject var viewModel: LobbyViewModel
-    /// Collapsed by default so a card doesn't tower over the screen; the
-    /// summary under it already says what is set.
-    @State private var editing = false
+    @State private var adjusting = false
+
+    /// Every card is this tall, so the row never changes height as it is swiped.
+    private static let height: CGFloat = 360
 
     private var isSelected: Bool { viewModel.selectedGame == game }
 
@@ -120,79 +124,80 @@ private struct GameCard: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 8)
 
-            if let reason = viewModel.roomReadiness(for: game) {
-                Text(reason)
-                    .monoLabel(10, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 10)
-            }
+            Spacer(minLength: 14)
 
             settings
                 .padding(.top, 12)
                 .overlay(alignment: .top) { LineRule() }
-                .padding(.top, 14)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: Self.height)
         .background(Theme.surfaceRaised)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.cardRadius)
                 .strokeBorder(isSelected ? Theme.fg : Theme.line, lineWidth: isSelected ? 1.5 : 1)
         )
+        .sheet(isPresented: $adjusting) {
+            GameSettingsSheet(game: game, viewModel: viewModel)
+        }
     }
 
-    /// The host can change these; everybody else reads what the host saved.
-    @ViewBuilder private var settings: some View {
+    /// The current settings as pills, with the host's way to change them.
+    /// Everybody else reads what the host saved.
+    private var settings: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text("Settings").monoLabel(9, weight: .semibold, tracking: 0.1)
+            FlowLayout(spacing: 6) {
+                ForEach(viewModel.displayedFormat.lines(for: game)) { line in
+                    SettingPill(text: line.value)
+                }
+            }
+            // Room for two rows of pills, so a game with one setting and a
+            // game with four put the button in the same place.
+            .frame(maxWidth: .infinity, minHeight: 68, alignment: .topLeading)
+            .accessibilityElement(children: .combine)
+
             if viewModel.isHost {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { editing.toggle() }
+                    adjusting = true
                 } label: {
-                    HStack {
-                        Text("Settings").monoLabel(9, weight: .semibold, tracking: 0.1)
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.fgMuted)
-                            .rotationEffect(.degrees(editing ? 180 : 0))
-                            .accessibilityHidden(true)
-                    }
-                    .contentShape(Rectangle())
+                    Label("Adjust settings", systemImage: "slider.horizontal.3")
                 }
-                .buttonStyle(.plain)
-                .accessibilityValue(editing ? "Expanded" : "Collapsed")
-            } else {
-                Text("Settings").monoLabel(9, weight: .semibold, tracking: 0.1)
-            }
-
-            if viewModel.isHost && editing {
-                GameSettingsEditor(game: game, viewModel: viewModel)
-            } else {
-                SettingsLines(lines: viewModel.displayedFormat.lines(for: game))
+                .buttonStyle(BPButtonStyle(variant: .ghost))
             }
         }
     }
 }
 
-/// The settings as label and value rows.
-struct SettingsLines: View {
-    let lines: [LobbyGameFormat.Line]
+/// The host's settings for one game, in a sheet over the Game tab. Each change
+/// saves onto the room as it is made (see `LobbyViewModel`), so Done only
+/// closes the sheet.
+private struct GameSettingsSheet: View {
+    let game: MatchGame
+    @ObservedObject var viewModel: LobbyViewModel
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(lines) { line in
-                HStack(alignment: .firstTextBaseline) {
-                    Text(line.label).monoLabel(10, tracking: 0.1)
-                    Spacer(minLength: 8)
-                    Text(line.value)
-                        .font(.sans(15, weight: .medium))
-                        .foregroundStyle(Theme.fg)
-                        .multilineTextAlignment(.trailing)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Adjust settings").monoLabel(10, weight: .bold, tracking: 0.14)
+                    Text(game.label).slabTitle(24)
+                        .accessibilityAddTraits(.isHeader)
                 }
+                LineRule()
+                GameSettingsEditor(game: game, viewModel: viewModel)
+                Button("Done") { dismiss() }
+                    .buttonStyle(.solid)
+                    .padding(.top, 8)
             }
+            .padding(20)
         }
-        .accessibilityElement(children: .combine)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Theme.surfaceRaised)
     }
 }
 
@@ -215,12 +220,15 @@ private struct GameSettingsEditor: View {
 
     private var higherOrLower: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SegmentedChoice(
-                selection: $viewModel.scoringMode,
-                options: ScoringMode.allCases,
-                title: { $0.label },
-                accessibilityName: "Scoring"
-            )
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Scoring").fieldLabel()
+                PillChoice(
+                    selection: $viewModel.scoringMode,
+                    options: ScoringMode.allCases,
+                    title: { $0.label },
+                    accessibilityName: "Scoring"
+                )
+            }
 
             if !viewModel.seasonChoices.isEmpty {
                 HStack(spacing: 12) {
@@ -235,7 +243,7 @@ private struct GameSettingsEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Scoring").fieldLabel()
-                SegmentedChoice(
+                PillChoice(
                     selection: $viewModel.auctionScoringMode,
                     options: [ScoringMode.weekly, .seasonTotal],
                     title: { $0.label },
@@ -253,12 +261,12 @@ private struct GameSettingsEditor: View {
                 .pickerStyle(.menu)
                 .labelsHidden()
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .fieldStyle()
+                .menuFieldStyle()
             }
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Tokens per player").fieldLabel()
-                SegmentedChoice(
+                PillChoice(
                     selection: $viewModel.tokenCount,
                     options: [0, 1, 2, 3],
                     title: { $0 == 0 ? "Off" : String($0) },
@@ -279,7 +287,7 @@ private struct GameSettingsEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Mode").fieldLabel()
-                SegmentedChoice(
+                PillChoice(
                     selection: $viewModel.wavelengthMode,
                     options: WavelengthMode.allCases,
                     title: { "\($0.label) · \($0.playerCount) players" },
@@ -298,7 +306,7 @@ private struct GameSettingsEditor: View {
                     .pickerStyle(.menu)
                     .labelsHidden()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .fieldStyle()
+                    .menuFieldStyle()
                 }
             }
         }
@@ -307,7 +315,7 @@ private struct GameSettingsEditor: View {
     private var sabotage: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Mode").fieldLabel()
-            SegmentedChoice(
+            PillChoice(
                 selection: $viewModel.sabotageMode,
                 options: SabotageMode.allCases,
                 title: { $0.label },
@@ -320,8 +328,9 @@ private struct GameSettingsEditor: View {
 
 // MARK: - Start
 
-/// The host's Start, pinned under the carousel so choosing and starting are
-/// one place. Says why it is disabled rather than just greying out.
+/// The host's Start, pinned to the bottom of the Room tab. Says why it is
+/// disabled (not enough players, nothing picked) above the button rather than
+/// just greying out.
 struct GameStartBar: View {
     @ObservedObject var viewModel: LobbyViewModel
 

@@ -403,3 +403,74 @@ enum RoomLink {
         return code.uppercased()
     }
 }
+
+// MARK: - Seat form
+
+/// One row of `lobby_member_match_history` (migration 0080): a completed match
+/// of someone currently seated in the room.
+struct LobbyMatchHistoryRow: Decodable, Equatable, Sendable {
+    let userId: UUID?
+    let endedAt: Date?
+    let placement: Int?
+
+    private enum CodingKeys: String, CodingKey {
+        case userId = "user_id", endedAt = "ended_at", placement
+    }
+
+    init(userId: UUID?, endedAt: Date?, placement: Int?) {
+        self.userId = userId
+        self.endedAt = endedAt
+        self.placement = placement
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try c.decodeIfPresent(UUID.self, forKey: .userId)
+        endedAt = try c.decodeTimestampIfPresent(forKey: .endedAt)
+        placement = try c.decodeIfPresent(Int.self, forKey: .placement)
+    }
+}
+
+/// What a player brings into the room, shown under their seat: win rate, best
+/// streak and how their last few games went. The Swift counterpart of the web's
+/// `summarizeProfile` as the lobby roster reads it (`MemberRoster`'s `PlayerForm`).
+struct LobbyMemberForm: Equatable, Sendable {
+    /// How many recent results the dots show — the web's `recentMatches` default.
+    static let recentLimit = 3
+
+    let gamesPlayed: Int
+    /// Whole percent of games won.
+    let winRate: Int
+    /// The longest run of consecutive wins, over everything played.
+    let bestStreak: Int
+    /// Newest first: `true` for a win.
+    let recent: [Bool]
+
+    /// A player with no completed games yet reads "New".
+    var isNew: Bool { gamesPlayed == 0 }
+
+    /// Rows for several players at once, grouped by player.
+    static func summaries(from rows: [LobbyMatchHistoryRow]) -> [UUID: LobbyMemberForm] {
+        var byUser: [UUID: [LobbyMatchHistoryRow]] = [:]
+        for row in rows {
+            guard let userId = row.userId, row.endedAt != nil else { continue }
+            byUser[userId, default: []].append(row)
+        }
+        return byUser.mapValues { summarize($0) }
+    }
+
+    static func summarize(_ rows: [LobbyMatchHistoryRow]) -> LobbyMemberForm {
+        let oldestFirst = rows.sorted { ($0.endedAt ?? .distantPast) < ($1.endedAt ?? .distantPast) }
+        let wins = oldestFirst.filter { $0.placement == 1 }.count
+        var best = 0, run = 0
+        for row in oldestFirst {
+            if row.placement == 1 { run += 1; best = max(best, run) } else { run = 0 }
+        }
+        return LobbyMemberForm(
+            gamesPlayed: oldestFirst.count,
+            winRate: oldestFirst.isEmpty ? 0 : Int((Double(wins) / Double(oldestFirst.count) * 100).rounded()),
+            bestStreak: best,
+            recent: oldestFirst.reversed().prefix(recentLimit).map { $0.placement == 1 }
+        )
+    }
+}

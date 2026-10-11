@@ -25,14 +25,13 @@ final class WavelengthViewModel: ObservableObject {
     @Published private(set) var snapshot: WavelengthSnapshot?
     @Published private(set) var isSaving = false
     @Published private(set) var isLocking = false
+    @Published private(set) var isAdvancing = false
     @Published private(set) var errorMessage: String?
     /// The clue being typed. Kept here, not in the view, so it survives a tab
     /// switch.
     @Published var clueDraft = ""
     /// The needle as the guesser has it, and as spectators see it.
     @Published private(set) var needle = WavelengthRules.needleStart
-    /// A round that just settled, shown above whatever the table moved on to.
-    @Published private(set) var revealRound: Int?
 
     let matchId: UUID
     let viewerId: UUID
@@ -40,7 +39,6 @@ final class WavelengthViewModel: ObservableObject {
     let isHost: Bool
     private let client: WavelengthClient
     private let now: () -> Date
-    private let revealDuration: Duration
 
     private(set) lazy var clock = MatchClockDriver(
         now: now,
@@ -49,11 +47,9 @@ final class WavelengthViewModel: ObservableObject {
     )
 
     private var observation: Task<Void, Never>?
-    private var revealTask: Task<Void, Never>?
     private var readsIssued = 0
     private var latestApplied = 0
     private var finalReadRequested = false
-    private var settledRounds: Set<Int>?
     private var needleRound: Int?
     private var lastBroadcastAt = Date.distantPast
     private var lastReportAt = Date.distantPast
@@ -71,8 +67,7 @@ final class WavelengthViewModel: ObservableObject {
         viewerId: UUID,
         roomCode: String? = nil,
         isHost: Bool = false,
-        now: @escaping () -> Date = Date.init,
-        revealDuration: Duration = .seconds(5)
+        now: @escaping () -> Date = Date.init
     ) {
         self.client = client
         self.matchId = matchId
@@ -80,12 +75,10 @@ final class WavelengthViewModel: ObservableObject {
         self.roomCode = roomCode
         self.isHost = isHost
         self.now = now
-        self.revealDuration = revealDuration
     }
 
     deinit {
         observation?.cancel()
-        revealTask?.cancel()
         pendingReport?.cancel()
     }
 
@@ -136,6 +129,14 @@ final class WavelengthViewModel: ObservableObject {
     var canLock: Bool {
         board?.phase == .guess && isGuesser && currentCard != nil && !isLocking && !isPaused
     }
+
+    /// The host can leave a revealed card; nobody else can.
+    var canAdvance: Bool {
+        board?.phase == .reveal && isHost && !isAdvancing && !isPaused
+    }
+
+    /// Whether another card follows the revealed one, or the match ends.
+    var hasNextCard: Bool { rounds.contains { $0.status == .pending } }
 
     /// The clue draft's problem, if any — shown as the player types.
     var clueProblem: String? {
@@ -272,6 +273,23 @@ final class WavelengthViewModel: ObservableObject {
         }
     }
 
+    func nextCard() async {
+        guard canAdvance else { return }
+        isAdvancing = true
+        errorMessage = nil
+        defer { isAdvancing = false }
+        do {
+            apply(board: try await client.nextCard(matchId: matchId))
+            await reconcile()
+        } catch {
+            // A second tap, or a read that already moved on, needs no message.
+            if (error as? WavelengthServerError)?.message != "reveal_not_open" {
+                errorMessage = WavelengthServerError.describe(error)
+            }
+            await reconcile()
+        }
+    }
+
     func choosePostGame(_ choice: PostGameAction.Choice) async {
         guard canChoosePostGame else { return }
         isSaving = true
@@ -345,7 +363,6 @@ final class WavelengthViewModel: ObservableObject {
 
     private func apply(_ fresh: WavelengthSnapshot) {
         snapshot = fresh
-        noteSettledRounds()
         resetNeedleIfRoundChanged()
         observeClock()
         requestFinalReadIfNeeded()
@@ -366,23 +383,6 @@ final class WavelengthViewModel: ObservableObject {
         errorMessage = nil
         pendingReport?.cancel()
         pendingReport = nil
-    }
-
-    /// A round that just settled is shown to everyone for a few seconds above
-    /// whatever the table has moved on to. Rounds already settled when the
-    /// screen mounted (or on rejoin) are not replayed.
-    private func noteSettledRounds() {
-        let settled = Set(rounds.filter(WavelengthRules.settled).map(\.round))
-        defer { settledRounds = settled }
-        guard let known = settledRounds else { return }
-        guard let fresh = settled.subtracting(known).max() else { return }
-        revealRound = fresh
-        revealTask?.cancel()
-        revealTask = Task { [weak self, revealDuration] in
-            try? await Task.sleep(for: revealDuration)
-            guard !Task.isCancelled else { return }
-            self?.revealRound = nil
-        }
     }
 
     private func requestFinalReadIfNeeded() {
@@ -424,5 +424,32 @@ final class WavelengthViewModel: ObservableObject {
 private extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
+    }
+}
+
+extension WavelengthViewModel {
+    /// The full-screen beat before the final screen; nil until the result is in.
+    var winnerMoment: WinnerMoment? {
+        guard let result else { return nil }
+        func faces(_ team: Int) -> [WinnerMoment.Face] {
+            teamPlayers(team).map { WinnerMoment.Face(name: $0.name, url: $0.avatarURL, isMine: $0.userId == viewerId) }
+        }
+        if result.mode == .coop {
+            let maximum = (result.preset ?? .short).maxScore
+            let stars = result.stars ?? 0
+            return WinnerMoment(
+                faces: faces(0),
+                headline: result.won ? "You won!" : "Not this time",
+                detail: "\(result.score) / \(maximum) points" + (result.won && stars > 0 ? " · " + String(repeating: "★", count: stars) : ""),
+                celebratory: result.won
+            )
+        }
+        guard let team = winningTeam else { return nil }
+        let scores = board?.teamScores ?? []
+        return WinnerMoment(
+            faces: faces(team),
+            headline: "Team \(team + 1) wins",
+            detail: scores.count == 2 ? scores.map(String.init).joined(separator: " · ") : settledBy
+        )
     }
 }

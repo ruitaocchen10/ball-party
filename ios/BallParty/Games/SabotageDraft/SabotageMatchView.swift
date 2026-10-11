@@ -40,6 +40,8 @@ struct SabotageMatchScreen: View {
             }
         }
         .screenBackground()
+        .winnerMoment(viewModel.winnerMoment, ready: viewModel.snapshot != nil, complete: viewModel.isFinished)
+        .matchStartCountdown(game: .sabotageDraft, matchId: viewModel.matchId)
         .navigationTitle("Sabotage Draft")
         .navigationBarTitleDisplayMode(.inline)
         // A live match is not somewhere to tab away from by accident.
@@ -127,11 +129,9 @@ private struct SabotageHeader: View {
         )
     }
 
-    /// Whole seconds, then tenths in the last five — a shot clock's convention.
     private func display(_ remaining: Int?) -> String {
         guard let remaining else { return "—" }
-        if remaining < 5_000 { return String(format: "%.1f", Double(remaining) / 1_000) }
-        return "\(Int((Double(remaining) / 1_000).rounded(.up)))"
+        return ClockText.text(ms: remaining)
     }
 }
 
@@ -478,13 +478,7 @@ private struct PoolField: View {
 
 private struct SabotageRostersTab: View {
     @ObservedObject var viewModel: SabotageViewModel
-    @State private var opened: Set<UUID>
-
-    init(viewModel: SabotageViewModel) {
-        self.viewModel = viewModel
-        // Yours is the one roster always worth checking.
-        _opened = State(initialValue: [viewModel.viewerId])
-    }
+    @State private var selected: UUID?
 
     /// The viewer first, then seat order.
     private var ordered: [SabotagePlayer] {
@@ -492,74 +486,69 @@ private struct SabotageRostersTab: View {
         return mine + viewModel.players.filter { $0.userId != viewModel.viewerId }
     }
 
+    private var current: SabotagePlayer? {
+        ordered.first { $0.userId == (selected ?? viewModel.viewerId) } ?? ordered.first
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                ForEach(ordered) { player in
-                    rosterCard(player)
+        VStack(spacing: 0) {
+            HeaderTabs(
+                selection: Binding(get: { current?.userId ?? UUID() }, set: { selected = $0 }),
+                options: ordered.map(\.userId),
+                title: { id in id == viewModel.viewerId ? "You" : (ordered.first { $0.userId == id }?.name ?? "") },
+                badge: { id in viewModel.board?.activeUserId == id ? 1 : 0 },
+                accessibilityName: "Players"
+            )
+            ScrollView {
+                if let player = current {
+                    rosterDetail(player)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                        .padding(.bottom, 24)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
-            .padding(.bottom, 24)
         }
     }
 
-    private func rosterCard(_ player: SabotagePlayer) -> some View {
+    private func rosterDetail(_ player: SabotagePlayer) -> some View {
         let mine = player.userId == viewModel.viewerId
         let active = player.userId == viewModel.board?.activeUserId
         let hits = viewModel.hitCount(on: player)
-        let isOpen = opened.contains(player.userId)
         let roundCount = viewModel.roundCount
 
-        return VStack(spacing: 0) {
-            Button {
-                if isOpen { opened.remove(player.userId) } else { opened.insert(player.userId) }
-            } label: {
-                HStack(spacing: 10) {
-                    Avatar(name: player.name, url: player.avatarURL, size: 36, isMine: mine)
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Text(mine ? "You" : player.name).slabTitle(18).lineLimit(1)
-                            if player.absent {
-                                Text("AWAY").monoLabel(8, weight: .bold, tracking: 0.07)
-                            }
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Avatar(name: player.name, url: player.avatarURL, size: 44, isMine: mine)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(mine ? "You" : player.name).slabTitle(26).lineLimit(1)
+                        if player.absent {
+                            Text("AWAY").monoLabel(8, weight: .bold, tracking: 0.07)
                         }
-                        Text(active ? "On the clock" : "\(viewModel.filledCount(of: player))/\(roundCount) filled")
-                            .monoLabel(9, tracking: 0.07, color: active ? Theme.hiddenText : Theme.fgMuted)
                     }
-                    Spacer(minLength: 8)
-                    Text(hits == 0 ? "No hits" : "\(hits) hit\(hits == 1 ? "" : "s")")
-                        .monoLabel(10, weight: hits == 0 ? .regular : .bold, tracking: 0.07, color: hits == 0 ? Theme.fgMuted : Theme.hiddenText)
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Theme.fgMuted)
+                    Text(active ? "On the clock" : "Waiting")
+                        .monoLabel(10, tracking: 0.08, color: active ? Theme.fg : Theme.fgMuted)
                 }
-                .padding(12)
-                .background(active ? Theme.hiddenInk.opacity(0.14) : Color.clear)
-                .contentShape(Rectangle())
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
-            .accessibilityHint(isOpen ? "Collapses this roster" : "Expands this roster")
-
-            if isOpen {
-                VStack(spacing: 6) {
-                    ForEach(1...max(roundCount, 1), id: \.self) { round in
-                        RosterRow(
-                            slot: SabotageRules.slot(forRound: round, roundCount: roundCount),
-                            player: player,
-                            mine: mine,
-                            value: viewModel.cell(for: player, round: round)
-                        )
-                    }
+            HStack(spacing: 8) {
+                StatTile(caption: "Picks", value: "\(viewModel.filledCount(of: player)) / \(roundCount)")
+                StatTile(caption: "Hits taken", value: "\(hits)")
+            }
+            Text("Roster").monoLabel(10, weight: .bold, tracking: 0.14).padding(.top, 4)
+            VStack(spacing: 6) {
+                ForEach(1...max(roundCount, 1), id: \.self) { round in
+                    RosterRow(
+                        slot: SabotageRules.slot(forRound: round, roundCount: roundCount),
+                        player: player,
+                        mine: mine,
+                        value: viewModel.cell(for: player, round: round)
+                    )
                 }
-                .padding(8)
-                .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
-                .padding(.horizontal, 10)
-                .padding(.bottom, 10)
             }
+            .padding(8)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
         }
-        .well()
     }
 }
 

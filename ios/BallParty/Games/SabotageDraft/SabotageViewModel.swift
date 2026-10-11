@@ -556,3 +556,16 @@ final class SabotageViewModel: ObservableObject {
         )
     }
 }
+
+extension SabotageViewModel {
+    /// The full-screen beat before the final table; nil until the season is simmed.
+    var winnerMoment: WinnerMoment? {
+        guard let first = rankedStandings.first, let winner = player(first.userId) else { return nil }
+        let mine = winner.userId == viewerId
+        return WinnerMoment(
+            faces: [WinnerMoment.Face(name: winner.name, url: winner.avatarURL, isMine: mine)],
+            headline: mine ? "You win" : "\(winner.name) wins",
+            detail: "\(first.wins)-\(first.losses)"
+        )
+    }
+}

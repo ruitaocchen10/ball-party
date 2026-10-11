@@ -22,8 +22,8 @@ const players = [
 const rounds = [{ match_id: MATCH, round: 1, psychic_id: "u0", guesser_id: "u1", status: "pending" as const, points: null, revealed_target: null, guess_position: null }];
 const cards = [{ match_id: MATCH, round: 1, card_id: 1, left_label: "Overrated QB", right_label: "Underrated QB" }];
 
-function match(phase: Board["phase"] = board.phase, viewerId = "u0", initialResult: WavelengthResult | null = null, initialRounds: WavelengthRound[] = rounds, initialBoard: Board = board, clueStatuses: { match_id: string; round: number }[] = [], initialCards = cards) {
-  return render(<WavelengthMatch matchId={MATCH} viewerId={viewerId} roomCode="ABCD" isHost={false} initial={{ board: { ...initialBoard, phase }, players, rounds: initialRounds, cards: initialCards, clues: [], clueStatuses, result: initialResult }} />);
+function match(phase: Board["phase"] = board.phase, viewerId = "u0", initialResult: WavelengthResult | null = null, initialRounds: WavelengthRound[] = rounds, initialBoard: Board = board, clueStatuses: { match_id: string; round: number }[] = [], initialCards = cards, isHost = false) {
+  return render(<WavelengthMatch matchId={MATCH} viewerId={viewerId} roomCode="ABCD" isHost={isHost} initial={{ board: { ...initialBoard, phase }, players, rounds: initialRounds, cards: initialCards, clues: [], clueStatuses, result: initialResult }} />);
 }
 
 describe("WavelengthMatch", () => {
@@ -74,45 +74,27 @@ describe("WavelengthMatch", () => {
     expect(supabase.send).toHaveBeenCalledWith({ type: "broadcast", event: "needle", payload: { round: 1, position: 250 } });
   });
 
-  it("flashes a reveal banner for a round that just settled without hiding the next round's live board", async () => {
+  const revealed = [{ ...rounds[0], status: "locked" as const, points: 3, revealed_target: 650, guess_position: 680 }, { ...rounds[0], round: 2, status: "pending" as const }];
+
+  it("holds on a locked card with its result and waits for the host", () => {
+    match("reveal", "u0", null, revealed, board, [], cards, false);
+    expect(screen.getByText("So close!")).toBeInTheDocument();
+    expect(screen.getByText("+3 points")).toBeInTheDocument();
+    expect(screen.getByText("Waiting for the host to continue.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Next card" })).not.toBeInTheDocument();
+  });
+
+  it("lets the host move on to the next card", async () => {
+    const user = userEvent.setup();
     const supabase = globalThis.__supabaseMock as ReturnType<typeof supabaseMock>;
-    const baseFrom = supabase.from.getMockImplementation()!;
-    // Round 1 settles server-side -- the server itself jumps straight from
-    // round 1's "guess" phase to round 2's, never pausing at "reveal" (see
-    // wavelength_private.settle_guess), so this banner is the only reveal a
-    // mid-match round ever gets.
-    const settledRound1 = { ...rounds[0], status: "locked" as const, points: 3, revealed_target: 650, guess_position: 680 };
-    const openRound2 = { ...rounds[0], round: 2, psychic_id: "u1", guesser_id: "u0", status: "open" as const };
-    supabase.from.mockImplementation((table: string) => {
-      const query = baseFrom(table) as { then: (resolve: (value: { data: unknown; error: null }) => unknown) => unknown };
-      if (table === "wavelength_rounds") query.then = (resolve) => Promise.resolve({ data: [settledRound1, openRound2], error: null }).then(resolve);
-      return query;
-    });
-    // Only the deliberate "state" refetch below gets a board back. Answering
-    // every RPC this way -- including the clock's own unconditional
-    // heartbeat tick -- would hand that heartbeat a *fresh* phase_deadline on
-    // every ask, which resets the clock's jitter and fires the next ask
-    // immediately: a self-sustaining render loop that starves the DOM update
-    // this test is waiting for. A real `tick` doesn't manufacture a new
-    // deadline out of nothing, so neither does this mock.
-    supabase.rpc.mockImplementation(async (...args: unknown[]) => {
-      if (args[0] !== "state") return { data: null, error: null };
-      return {
-        data: { match_id: MATCH, mode: "coop", preset: "short", round_count: 4, current_round: 2, phase: "guess", phase_deadline: new Date(Date.now() + 30_000).toISOString(), server_now: new Date().toISOString(), team_scores: [3] },
-        error: null,
-      };
-    });
-    const round2Card = { ...cards[0], round: 2, card_id: 2, left_label: "Left 2", right_label: "Right 2" };
-    match("guess", "u0", null, [{ ...rounds[0], status: "open" }], board, [], [cards[0], round2Card]);
-    await waitFor(() => expect(supabase.channel).toHaveBeenCalled());
-    // Any change to the match row is enough to make the client reconcile --
-    // this is how a settle another player triggered reaches this screen too.
-    await act(async () => { supabase.emit("wavelength_matches", {}); });
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("So close!"));
-    expect(screen.getByRole("status")).toHaveTextContent("3 points");
-    // Round 2's own board, underneath the banner, is still fully live.
-    expect(screen.getByRole("slider", { name: "Guess needle" })).toBeInTheDocument();
-    expect(screen.getByText("Left 2")).toBeInTheDocument();
+    match("reveal", "u0", null, revealed, board, [], cards, true);
+    await user.click(screen.getByRole("button", { name: "Next card" }));
+    expect(supabase.rpc).toHaveBeenCalledWith("next_card", { p_match_id: MATCH });
+  });
+
+  it("offers the results instead on the last card", () => {
+    match("reveal", "u0", null, [revealed[0]], board, [], cards, true);
+    expect(screen.getByRole("button", { name: "See results" })).toBeInTheDocument();
   });
 
   it("lets a psychic who owns several rounds write each clue in turn", async () => {

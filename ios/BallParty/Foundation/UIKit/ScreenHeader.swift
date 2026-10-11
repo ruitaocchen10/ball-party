@@ -51,6 +51,10 @@ private struct NotificationCountKey: EnvironmentKey {
 
 typealias NotificationAction = @MainActor @Sendable () -> Void
 
+private struct OpenPartyKey: EnvironmentKey {
+    static let defaultValue: NotificationAction = {}
+}
+
 private struct OpenNotificationsKey: EnvironmentKey {
     static let defaultValue: NotificationAction = {}
 }
@@ -61,6 +65,12 @@ extension EnvironmentValues {
     var notificationCount: Int {
         get { self[NotificationCountKey.self] }
         set { self[NotificationCountKey.self] = newValue }
+    }
+
+    /// Switches to the Party tab. Set by the tab shell, which owns the tabs.
+    var openParty: NotificationAction {
+        get { self[OpenPartyKey.self] }
+        set { self[OpenPartyKey.self] = newValue }
     }
 
     /// Where the bell goes. Set by the tab shell, which owns the tabs.

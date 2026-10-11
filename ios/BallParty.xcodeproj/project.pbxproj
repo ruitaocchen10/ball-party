@@ -92,6 +92,7 @@
 		90F2251F7109C292E0DC970E /* FakeHigherOrLowerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5D8B8B6428330FD95153F92 /* FakeHigherOrLowerClient.swift */; };
 		979ABEF8B06D0C1FAD4B1174 /* ComingSoonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEBF9C390AB10C9BB64C5105 /* ComingSoonView.swift */; };
 		9BE94B78BD1BF5D19AC0824D /* MatchClockDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A0DE7337F22222970FCDC21 /* MatchClockDriver.swift */; };
+		FF04A1DD8AAE33C388802854 /* MatchStart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4981A8DC57E7AD1C169939F7 /* MatchStart.swift */; };
 		9E15AFC0A523D03D45FEDF50 /* QbSeasonBuilderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD72D72AA73FBDAE66723D0 /* QbSeasonBuilderView.swift */; };
 		9E20A42E7556F994025D5FF9 /* QbSeasonBuilderModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90C8A4302CFCA2351E5A6EC8 /* QbSeasonBuilderModelsTests.swift */; };
 		A0D1F65F57265585AC256C6B /* BeamAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C58679A448DCF8DA55B4626 /* BeamAvatar.swift */; };
@@ -137,6 +138,7 @@
 		DE165F7E7550F0498C813C64 /* LadderStandingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0EF4EE33EB14B2F5356C940 /* LadderStandingsTests.swift */; };
 		DE9734EC8DC2E2B1DC813F1F /* LobbyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669C2A35E7839D1D31ECC38E /* LobbyClient.swift */; };
 		E8AA9D45F9222D5143645E63 /* MatchClockDriverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDCC5165583848E439A00359 /* MatchClockDriverTests.swift */; };
+		5334B47992262FE63BC5B4E7 /* MatchStartTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A4029385814F2BB2567891 /* MatchStartTests.swift */; };
 		EA115712F243CC3939D2E466 /* MatchClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4200B45788AE681B1DD5A5C6 /* MatchClock.swift */; };
 		EC750D5C2C3586D4CCDBD62F /* AppleSignInNonceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB3B711B5508796FC1E770E /* AppleSignInNonceTests.swift */; };
 		F4FC2AB5616DE1E8EF1B97A6 /* FakeHuddleClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5B06101F9DA4507EEDA1C9 /* FakeHuddleClient.swift */; };
@@ -210,6 +212,7 @@
 		3FD826920DC17F0A393DE271 /* Ball Party.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Ball Party.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4200B45788AE681B1DD5A5C6 /* MatchClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchClock.swift; sourceTree = "<group>"; };
 		4A0DE7337F22222970FCDC21 /* MatchClockDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchClockDriver.swift; sourceTree = "<group>"; };
+		4981A8DC57E7AD1C169939F7 /* MatchStart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchStart.swift; sourceTree = "<group>"; };
 		4BC029C1C2EA489541067B8E /* BeamAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeamAvatarView.swift; sourceTree = "<group>"; };
 		4C0F03FB0146D1A206056BBE /* SoloRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoloRunView.swift; sourceTree = "<group>"; };
 		4D3D79552B3DAB01A9BDC949 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
@@ -311,6 +314,7 @@
 		E4B9FF71111FD9D9735FE017 /* Surfaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Surfaces.swift; sourceTree = "<group>"; };
 		EA4DD01C8089C840287C3ADF /* PromptModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptModels.swift; sourceTree = "<group>"; };
 		EDCC5165583848E439A00359 /* MatchClockDriverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchClockDriverTests.swift; sourceTree = "<group>"; };
+		F2A4029385814F2BB2567891 /* MatchStartTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchStartTests.swift; sourceTree = "<group>"; };
 		EEB0816A1860592796A6B1F7 /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
 		F0159F22D001D7CBDDDE860A /* HuddleViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuddleViewModel.swift; sourceTree = "<group>"; };
 		F06ED444F3FC870054ED36B7 /* AuthViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModelTests.swift; sourceTree = "<group>"; };
@@ -442,6 +446,7 @@
 				B57366732C868289247B5FC0 /* IdentityConstantsTests.swift */,
 				5A865AEEE5F77E725C7C0A7B /* ThemeTests.swift */,
 				EDCC5165583848E439A00359 /* MatchClockDriverTests.swift */,
+				F2A4029385814F2BB2567891 /* MatchStartTests.swift */,
 				A00AEBECD0570CBE0D379EDC /* MatchClockTests.swift */,
 				177C2F17C639CEAB760F662C /* SoloRunViewModelTests.swift */,
 				0E5B06101F9DA4507EEDA1C9 /* FakeHuddleClient.swift */,
@@ -628,6 +633,7 @@
 			children = (
 				4200B45788AE681B1DD5A5C6 /* MatchClock.swift */,
 				4A0DE7337F22222970FCDC21 /* MatchClockDriver.swift */,
+				4981A8DC57E7AD1C169939F7 /* MatchStart.swift */,
 			);
 			path = GameRuntime;
 			sourceTree = "<group>";
@@ -867,6 +873,7 @@
 				90F2251F7109C292E0DC970E /* FakeHigherOrLowerClient.swift in Sources */,
 				159B8BF503F1CC21B45981B9 /* HigherOrLowerModelsTests.swift in Sources */,
 				E8AA9D45F9222D5143645E63 /* MatchClockDriverTests.swift in Sources */,
+				5334B47992262FE63BC5B4E7 /* MatchStartTests.swift in Sources */,
 				5287614E79BF16F2EB918984 /* MatchClockTests.swift in Sources */,
 				334E6F05EE834AD8FAFEAB2B /* SoloRunViewModelTests.swift in Sources */,
 				F4FC2AB5616DE1E8EF1B97A6 /* FakeHuddleClient.swift in Sources */,
@@ -976,6 +983,7 @@
 				44FE4E9A179B13DD8151B513 /* ProfileEditorView.swift in Sources */,
 				EA115712F243CC3939D2E466 /* MatchClock.swift in Sources */,
 				9BE94B78BD1BF5D19AC0824D /* MatchClockDriver.swift in Sources */,
+				FF04A1DD8AAE33C388802854 /* MatchStart.swift in Sources */,
 				75476BEA2728BB02F0FBDC76 /* HigherOrLowerClient.swift in Sources */,
 				AAC965AFE8910F89BA432045 /* HigherOrLowerModels.swift in Sources */,
 				9000A31F9F6233E199CD51B4 /* SoloPlayView.swift in Sources */,

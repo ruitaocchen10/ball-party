@@ -27,6 +27,9 @@ final class LobbyViewModel: ObservableObject {
     @Published private(set) var snapshot: LobbySnapshot?
     @Published private(set) var isBusy = false
     @Published private(set) var errorMessage: String?
+    /// Each seated player's career form, for the line under their seat. Empty
+    /// until it loads; a missing player reads "New".
+    @Published private(set) var memberForm: [UUID: LobbyMemberForm] = [:]
 
     // MARK: The host's format picker
     //
@@ -610,6 +613,14 @@ final class LobbyViewModel: ObservableObject {
             // A failed background re-read leaves the last good screen up; the
             // next event, write, or foreground tries again.
         }
+        await loadMemberForm()
+    }
+
+    /// Re-reads everyone's match history. Failing keeps what was shown.
+    private func loadMemberForm() async {
+        guard let lobbyId = lobby?.id,
+              let rows = try? await client.memberHistory(lobbyId: lobbyId) else { return }
+        memberForm = LobbyMemberForm.summaries(from: rows)
     }
 
     // MARK: - Private
@@ -618,6 +629,7 @@ final class LobbyViewModel: ObservableObject {
         let fresh = try await client.snapshot(lobbyId: lobby.id)
         apply(fresh)
         observe()
+        await loadMemberForm()
     }
 
     private func exitRoom() async {
@@ -625,6 +637,7 @@ final class LobbyViewModel: ObservableObject {
         formatSave?.cancel()
         formatHydrated = false
         snapshot = nil
+        memberForm = [:]
         errorMessage = nil
         dismissedMatchId = nil
         stage = .entry

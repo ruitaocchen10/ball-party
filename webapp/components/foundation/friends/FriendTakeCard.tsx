@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-
 import { TakeCard } from "@/components/foundation/content/prompts/TakeCard";
+import { TakePromptStrip } from "@/components/foundation/content/prompts/TakePromptStrip";
 import { TakeResponse } from "@/components/foundation/content/prompts/TakeResponse";
 import type { Post } from "@/lib/foundation/content/prompts/types";
 import type { ActivityEvent } from "@/lib/foundation/friends/friends";
@@ -33,19 +32,7 @@ export function FriendTakeCard({ event, post }: { event: ActivityEvent; post: Po
           replies: [],
         }}
         replyCount={event.replyCount}
-        context={
-          event.postId ? (
-            <Link
-              href={`/prompts/${event.postId}`}
-              className="block rounded-card border border-line bg-surface px-3 py-2 transition-colors hover:border-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
-            >
-              <span className="block type-label-xs text-fg-muted">Answering</span>
-              <span className="mt-0.5 line-clamp-2 block text-[15px] leading-5 font-medium text-fg">{caption}</span>
-            </Link>
-          ) : (
-            <p className="rounded-card border border-line bg-surface px-3 py-2 text-[15px] leading-5 text-fg-muted">{caption}</p>
-          )
-        }
+        context={<TakePromptStrip postId={event.postId || null} caption={caption} />}
         collapsedByDefault
         // A friend who answered without posting a take has no thread of their own; the icon opens the prompt's discussion.
         commentHref={event.postId ? (event.commentId ? `/prompts/${event.postId}/takes/${event.commentId}` : `/prompts/${event.postId}`) : undefined}

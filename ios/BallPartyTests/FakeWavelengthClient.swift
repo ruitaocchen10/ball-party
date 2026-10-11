@@ -35,6 +35,7 @@ final class FakeWavelengthClient: WavelengthClient, @unchecked Sendable {
     private(set) var reportedNeedles: [(round: Int, position: Int)] = []
     private(set) var sentNeedles: [(round: Int, position: Int)] = []
     private(set) var tickCount = 0
+    private(set) var nextCardCalls = 0
     private(set) var postGameChoices: [PostGameAction.Choice] = []
     private(set) var startCalls: [(mode: WavelengthMode, preset: WavelengthPreset?)] = []
 
@@ -169,6 +170,18 @@ final class FakeWavelengthClient: WavelengthClient, @unchecked Sendable {
         try fail("lock_guess")
         lockedGuesses.append((round, position))
         settle(round: round, position: position)
+        return board
+    }
+
+    func nextCard(matchId: UUID) async throws -> WavelengthBoard {
+        try fail("next_card")
+        nextCardCalls += 1
+        guard board.phase == .reveal else { throw WavelengthServerError(message: "reveal_not_open") }
+        if let next = rounds.first(where: { $0.status == .pending && $0.round > board.currentRound }) {
+            beginGuessing(round: next.round)
+        } else {
+            setBoard(phase: .complete, round: board.currentRound, deadline: nil)
+        }
         return board
     }
 

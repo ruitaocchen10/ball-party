@@ -1,7 +1,7 @@
 -- Pinned-deadline coverage for Wavelength's expiry and presence contract.
 
 begin;
-select plan(20);
+select plan(21);
 
 \ir support/harness.psql
 
@@ -62,12 +62,16 @@ select ok((select not absent from public.wavelength_players where match_id = (se
 update public.wavelength_targets set target = 500 where match_id = (select v from tests.fx where k = 'm') and round = 2;
 update public.wavelength_matches set phase_deadline = now() - interval '1 second', phase_started_at = now() - interval '1 minute' where match_id = (select v from tests.fx where k = 'm');
 select tests.act_as((select v from tests.fx where k = 'p1'));
-select is((wavelength.tick((select v from tests.fx where k = 'm'))).phase, 'complete', 'expired guess records the completed match when every remaining round was skipped');
+select is((wavelength.tick((select v from tests.fx where k = 'm'))).phase, 'reveal', 'an expired guess parks the table on the reveal');
 select tests.act_as_admin();
 select is((select status from public.wavelength_rounds where match_id = (select v from tests.fx where k = 'm') and round = 2), 'locked', 'expired guess auto-locks');
 select is((select points::int from public.wavelength_rounds where match_id = (select v from tests.fx where k = 'm') and round = 2), 4, 'auto-lock scores through the ordinary lock path');
 select ok((select revealed_target is not null from public.wavelength_rounds where match_id = (select v from tests.fx where k = 'm') and round = 2), 'auto-lock produces a normal public reveal');
 select is((select count(*)::int from public.wavelength_players where match_id = (select v from tests.fx where k = 'm')), 2, 'absence never removes a co-op seat');
+select tests.act_as_admin();
+insert into tests.fx (k, v) select 'host', host_id from public.lobbies where id = (select lobby_id from public.runs where id = (select run_id from public.matches where id = (select v from tests.fx where k = 'm')));
+select tests.act_as((select v from tests.fx where k = 'host'));
+select is((wavelength.next_card((select v from tests.fx where k = 'm'))).phase, 'complete', 'the host moving on records the completed match when every remaining round was skipped');
 select tests.act_as((select v from tests.fx where k = 'p1'));
 select throws_ok(format($$ select wavelength.tick(%L) $$, (select v from tests.fx where k = 'm')), 'P0001', 'match_not_playing', 'a completed match rejects further ticks');
 select ok(has_function_privilege('authenticated', 'wavelength.tick(uuid)', 'EXECUTE'), 'authenticated players may tick');

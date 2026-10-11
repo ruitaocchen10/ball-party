@@ -18,8 +18,8 @@ select lives_ok(
 select is((select phase from higher_or_lower.state((select v from tests.fx where k = 'm'))), 'board_intro',
   'it opens in the shared board intro');
 select ok((select phase_deadline from higher_or_lower.state((select v from tests.fx where k = 'm')))
-  between now() + interval '4 seconds' and now() + interval '6 seconds',
-  'and the intro carries a five-second server deadline');
+  between now() + interval '7 seconds' and now() + interval '9 seconds',
+  'and the intro carries a five-second server deadline, after the three-second start countdown');
 select isnt((select server_now from higher_or_lower.state((select v from tests.fx where k = 'm'))), null,
   'state ships the server clock used to render that deadline');
 

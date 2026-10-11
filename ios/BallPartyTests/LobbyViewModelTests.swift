@@ -620,3 +620,28 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.rejoinableMatch)
     }
 }
+
+final class ClockTextAndSeatFormTests: XCTestCase {
+    func test_clockText_isMinutesAndSeconds_roundedUp() {
+        XCTAssertEqual(ClockText.text(seconds: 3), "00:03")
+        XCTAssertEqual(ClockText.text(seconds: 84), "01:24")
+        XCTAssertEqual(ClockText.text(ms: 1_800), "00:02")
+        XCTAssertEqual(ClockText.text(ms: 0), "00:00")
+        XCTAssertEqual(ClockText.text(ms: -50), "00:00")
+    }
+
+    func test_memberForm_winRateBestStreakAndRecent() {
+        let player = UUID()
+        let t = Date(timeIntervalSince1970: 1_700_000_000)
+        func row(_ minutes: Double, _ placement: Int) -> LobbyMatchHistoryRow {
+            LobbyMatchHistoryRow(userId: player, endedAt: t.addingTimeInterval(minutes * 60), placement: placement)
+        }
+        // Oldest to newest: win, win, loss, win.
+        let form = LobbyMemberForm.summaries(from: [row(3, 1), row(0, 1), row(2, 2), row(1, 1)])[player]
+        XCTAssertEqual(form?.gamesPlayed, 4)
+        XCTAssertEqual(form?.winRate, 75)
+        XCTAssertEqual(form?.bestStreak, 2)
+        XCTAssertEqual(form?.recent, [true, false, true])
+        XCTAssertNil(LobbyMemberForm.summaries(from: [])[player])
+    }
+}

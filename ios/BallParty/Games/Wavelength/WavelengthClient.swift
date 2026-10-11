@@ -24,6 +24,10 @@ protocol WavelengthClient: Sendable {
     /// `wavelength.lock_guess` — the position here is the authoritative one.
     func lockGuess(matchId: UUID, round: Int, position: Int) async throws -> WavelengthBoard
 
+    /// `wavelength.next_card` — the host leaves a revealed card: the next one
+    /// opens, or the match finishes after the last.
+    func nextCard(matchId: UUID) async throws -> WavelengthBoard
+
     /// `wavelength.report_needle` — lazy, best-effort: it only tells the
     /// server where to auto-lock if the clock runs out.
     func reportNeedle(matchId: UUID, round: Int, position: Int) async throws
@@ -114,6 +118,10 @@ struct SupabaseWavelengthClient: WavelengthClient {
         }
     }
 
+    func nextCard(matchId: UUID) async throws -> WavelengthBoard {
+        try await wrapped { try await game.rpc("next_card", params: MatchParam(p_match_id: matchId)).execute().value }
+    }
+
     func reportNeedle(matchId: UUID, round: Int, position: Int) async throws {
         try await wrapped {
             try await game.rpc("report_needle", params: PositionParams(p_match_id: matchId, p_round: round, p_position: position))
@@ -129,7 +137,7 @@ struct SupabaseWavelengthClient: WavelengthClient {
         // The channel `events` subscribed; asking for the same private topic
         // returns that instance. A needle sent before it has joined would fall
         // back to REST, which isn't worth a request for a cosmetic update.
-        let channel = client.realtimeV2.channel("wavelength:\(matchId)") { $0.isPrivate = true }
+        let channel = client.realtimeV2.channel("wavelength:\(matchId.uuidString.lowercased())") { $0.isPrivate = true }
         guard channel.status == .subscribed else { return }
         struct Needle: Codable, Sendable { let round: Int; let position: Int }
         try? await channel.broadcast(event: "needle", message: Needle(round: round, position: position))
@@ -185,7 +193,7 @@ struct SupabaseWavelengthClient: WavelengthClient {
                         // The needle rides a private broadcast channel, as on
                         // the web; its policy needs the socket authenticated
                         // before the join.
-                        let channel = client.realtimeV2.channel("wavelength:\(matchId)") { $0.isPrivate = true }
+                        let channel = client.realtimeV2.channel("wavelength:\(matchId.uuidString.lowercased())") { $0.isPrivate = true }
                         let needles = channel.broadcastStream(event: "needle")
                         await client.realtimeV2.setAuth(try? await client.auth.session.accessToken)
                         try? await channel.subscribeWithError()
@@ -200,7 +208,7 @@ struct SupabaseWavelengthClient: WavelengthClient {
                         }
                     }
                 }
-                let channel = client.realtimeV2.channel("wavelength:\(matchId)") { $0.isPrivate = true }
+                let channel = client.realtimeV2.channel("wavelength:\(matchId.uuidString.lowercased())") { $0.isPrivate = true }
                 await client.realtimeV2.removeChannel(channel)
             }
             continuation.onTermination = { _ in task.cancel() }

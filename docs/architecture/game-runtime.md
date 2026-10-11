@@ -62,6 +62,28 @@ The lobby RPCs live in `public`, owned by the lobbies module (see
 The returned match's `id` is what every game RPC and Realtime channel keys off.
 The game's own `start` RPC then deals it into `playing`.
 
+### The start countdown
+
+A room match opens with a 3-2-1 that the server owns. As the last step of each
+game's `start` (and of the replay branch of `choose_post_game`), the game calls
+`private.begin_match_countdown(match_id)`. For an `arcade` run it sets
+`matches.play_starts_at = now() + 3s` (`private.match_start_lead()`) and pushes
+every deadline the game just set back by the same interval, the same columns
+`resume_match` shifts by the time spent paused. A solo run is left alone
+(`play_starts_at` stays null). The first phase is therefore full-length once the
+countdown ends, however long a client takes to load.
+
+Clients read it with `match_play_start(match_id)`, which returns
+`{play_starts_at, server_now}` for a participant, and count down to
+`play_starts_at` against the server's clock (`server_now` plus the time since
+the answer arrived), never their own. Everyone sees the same numbers, and a
+player who opens the match late sees what is left. A failed read means no
+countdown, since the match is already running underneath. The web is
+`useMatchStartCountdown` and `MatchStartCountdown`, iOS is
+`matchStartCountdown` in `Runtime/GameRuntime/MatchStart.swift`. A new
+timed game must call `private.begin_match_countdown` at the end of its `start`
+and add its deadline columns to that function.
+
 ## Higher or Lower's write API
 
 `supabase.schema("higher_or_lower").rpc(...)` with `start`, `state`, `call`,

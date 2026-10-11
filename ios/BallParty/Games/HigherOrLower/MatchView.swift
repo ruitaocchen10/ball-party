@@ -38,6 +38,8 @@ struct MatchScreen: View {
             }
         }
         .screenBackground()
+        .winnerMoment(viewModel.winnerMoment, ready: viewModel.board != nil, complete: viewModel.isComplete)
+        .matchStartCountdown(game: .higherOrLower, matchId: viewModel.matchId)
         .navigationTitle("Higher or Lower")
         .navigationBarTitleDisplayMode(.inline)
         // A live match is not somewhere to tab away from by accident.
@@ -201,13 +203,7 @@ private struct MatchFinalView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Final").eyebrow()
-                    Text(viewModel.headline)
-                        .slabTitle(44)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                }
+                Text("Final").eyebrow()
 
                 ForEach(viewModel.finalStandings) { row in
                     // The winner is the thing that matters, so the winner is a panel.

@@ -65,25 +65,25 @@ private struct MotifCover: View {
     }
 }
 
-/// Gold stars on one side, red on the other.
+/// Blue stars on one side, red on the other.
 struct WeeklyAwardsCover: View {
     var body: some View {
         MotifCover(
             label: "Weekly Awards", symbol: "star.fill",
             title: ("Weekly", "Awards"), subtitle: "Hand out the hardware",
-            leftTint: Color(hex: 0xFACC15), rightTint: Color(hex: 0xEF4444),
+            leftTint: Color(hex: 0x3B82F6), rightTint: Color(hex: 0xEF4444),
             leftAngles: [-12, 10, -6], rightAngles: [12, -10, 6]
         )
     }
 }
 
-/// Amber bolts on one side, red on the other, the red set flipped to strike back.
+/// Blue bolts on one side, red on the other, the red set flipped to strike back.
 struct BoldPredictionsCover: View {
     var body: some View {
         MotifCover(
             label: "Bold Predictions", symbol: "bolt.fill",
             title: ("Bold", "Predictions"), subtitle: "Call it before it happens",
-            leftTint: Color(hex: 0xFBBF24), rightTint: Color(hex: 0xEF4444),
+            leftTint: Color(hex: 0x3B82F6), rightTint: Color(hex: 0xEF4444),
             leftAngles: [-12, 10, -6], rightAngles: [168, 190, 174]
         )
     }

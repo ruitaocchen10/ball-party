@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ball Party iOS: Game States</title>
+<!--
+  Every game state and screen on iOS, drawn with the app's own tokens and kit.
+
+  Source of truth: ios/BallParty (SwiftUI). Tokens are copied from
+  Foundation/UIKit/Theme.swift; the helper functions in the script below mirror
+  the kit in Foundation/UIKit (PanelCard, Concealed, HeaderStats, BPButtonStyle,
+  well(), EmptyState, ...) one for one, so a change to a kit piece is a change to
+  one function. Each frame has an id (e.g. hol-solo-call) to talk about it by.
+
+  Not pixel-perfect: SF Symbols are approximated, NFL logos show the team-code
+  fallback the app uses while a logo loads, avatars and headshots are placeholders.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* The app's bundled faces, when this file sits in docs/design/. */
+  @font-face { font-family:'Bebas Neue'; src:local('Bebas Neue'), url('../../ios/BallParty/Resources/Fonts/BebasNeue-Regular.ttf'); }
+  @font-face { font-family:'Barlow'; font-weight:400; src:local('Barlow'), url('../../ios/BallParty/Resources/Fonts/Barlow-Regular.ttf'); }
+  @font-face { font-family:'Barlow'; font-weight:500; src:local('Barlow Medium'), url('../../ios/BallParty/Resources/Fonts/Barlow-Medium.ttf'); }
+  @font-face { font-family:'Barlow'; font-weight:600; src:local('Barlow SemiBold'), url('../../ios/BallParty/Resources/Fonts/Barlow-SemiBold.ttf'); }
+  @font-face { font-family:'Barlow'; font-weight:700; src:local('Barlow Bold'), url('../../ios/BallParty/Resources/Fonts/Barlow-Bold.ttf'); }
+  @font-face { font-family:'JetBrains Mono'; font-weight:400; src:local('JetBrains Mono'), url('../../ios/BallParty/Resources/Fonts/JetBrainsMono-Regular.ttf'); }
+  @font-face { font-family:'JetBrains Mono'; font-weight:700; src:local('JetBrains Mono Bold'), url('../../ios/BallParty/Resources/Fonts/JetBrainsMono-Bold.ttf'); }
+
+  /* Theme.swift, verbatim. */
+  :root {
+    --surface:#111311; --raised:#191C18;
+    --panel:#191C18; --panel-shade:#111311; --panel-fg:#E8E3D6; --panel-muted:#8F8B7F; --panel-soft:#BDB8AA;
+    --panel-line:rgba(232,227,214,.13); --panel-hover:#20241F; --panel-ink-hover:#CFCABC;
+    --hidden:#C9382C; --hidden-text:#FF5A4A; --hidden-ink:#A8291F;
+    --elite:#476735; --strong:#80672B; --even:#6B665A; --rough:#855238;
+    --fg:#E8E3D6; --muted:#8F8B7F; --line:rgba(232,227,214,.13);
+    --card:8px; --chip:4px;
+    /* Wavelength's dial uses its own literals (WavelengthPalette). */
+    --wl-needle:#24211C; --wl-base:#D7D1C3; --wl-bull:#D94B45; --wl-near:#E49B55; --wl-edge:#E8CF75;
+  }
+  * { box-sizing:border-box; margin:0; }
+  html { scroll-behavior:smooth; scroll-padding-top:72px; }
+  body { background:#0a0b0a; color:var(--fg); font-family:'Barlow',sans-serif; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1480px; margin:0 auto; padding:0 24px 120px; }
+
+  /* ---------- documentation chrome (not part of the app) ---------- */
+  .top { position:sticky; top:0; z-index:50; background:rgba(10,11,10,.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .top .in { max-width:1480px; margin:0 auto; padding:10px 24px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .top a { font:700 11px 'JetBrains Mono'; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); text-decoration:none; padding:7px 10px; border:1px solid var(--line); border-radius:var(--card); }
+  .top a:hover { color:var(--fg); border-color:var(--fg); }
+  .top .brand { font:400 22px 'Bebas Neue'; letter-spacing:.04em; color:var(--fg); margin-right:12px; }
+  .intro { padding:48px 0 8px; }
+  .intro h1 { font:400 64px/1 'Bebas Neue'; letter-spacing:.02em; }
+  .intro p { color:var(--muted); max-width:78ch; line-height:1.55; margin-top:12px; font-size:16px; }
+  .intro p b { color:var(--fg); font-weight:600; }
+  .game { margin-top:72px; }
+  .game > header { border-bottom:1px solid var(--line); padding-bottom:20px; margin-bottom:8px; }
+  .game > header .eyebrow-d { font:700 10px 'JetBrains Mono'; letter-spacing:.16em; text-transform:uppercase; color:var(--hidden-text); }
+  .game > header h2 { font:400 56px/1 'Bebas Neue'; letter-spacing:.02em; margin-top:6px; }
+  .game > header p { color:var(--muted); max-width:90ch; line-height:1.55; margin-top:10px; }
+  .flow { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:14px; font:700 11px 'JetBrains Mono'; letter-spacing:.1em; text-transform:uppercase; }
+  .flow span { padding:5px 9px; border:1px solid var(--line); border-radius:var(--chip); color:var(--fg); }
+  .flow i { color:var(--muted); font-style:normal; }
+  .group { margin-top:40px; }
+  .group > h3 { font:400 30px 'Bebas Neue'; letter-spacing:.03em; }
+  .group > .sub { color:var(--muted); font-size:14px; margin-top:2px; max-width:90ch; line-height:1.5; }
+  .frames { display:grid; grid-template-columns:repeat(auto-fill, 406px); gap:36px 28px; margin-top:20px; align-items:start; }
+  figure.fr { width:406px; }
+  figcaption { margin-top:14px; font-size:13px; line-height:1.5; color:var(--muted); padding:0 4px; }
+  figcaption .fid { display:inline-block; font:700 10px 'JetBrains Mono'; letter-spacing:.1em; color:var(--surface); background:var(--fg); padding:2px 6px; border-radius:var(--chip); margin-right:8px; vertical-align:middle; }
+  figcaption .nm { font:400 22px 'Bebas Neue'; letter-spacing:.04em; color:var(--fg); vertical-align:middle; }
+  figcaption .when { display:block; margin-top:4px; }
+  figcaption .src { display:block; margin-top:4px; font:400 10px 'JetBrains Mono'; letter-spacing:.06em; opacity:.7; }
+  .note { margin-top:20px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--card); background:var(--raised); font-size:14px; line-height:1.55; color:var(--muted); max-width:100ch; }
+  .note b { color:var(--fg); }
+  .note ul { margin:8px 0 0 18px; } .note li { margin-top:4px; }
+  .kit { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:20px; margin-top:20px; }
+  .kit .cell { padding:16px; border:1px solid var(--line); border-radius:var(--card); background:var(--surface); display:flex; flex-direction:column; gap:12px; }
+  .kit .cell > .k { font:700 10px 'JetBrains Mono'; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .sw { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:8px; margin-top:16px; }
+  .sw div { display:flex; gap:10px; align-items:center; font:400 11px 'JetBrains Mono'; color:var(--muted); }
+  .sw i { width:28px; height:28px; border-radius:var(--chip); border:1px solid var(--line); flex:none; }
+  .sw b { color:var(--fg); display:block; font-weight:700; }
+
+  /* ---------- the phone ---------- */
+  .device { width:406px; padding:8px; background:#2a2c29; border-radius:54px; box-shadow:0 20px 40px rgba(0,0,0,.5); }
+  .scr { width:390px; min-height:800px; border-radius:46px; overflow:hidden; background:var(--surface); position:relative; display:flex; flex-direction:column; }
+  .scr.fx .body { overflow:hidden; }
+  .island { position:absolute; top:11px; left:50%; transform:translateX(-50%); width:118px; height:34px; background:#000; border-radius:20px; z-index:9; }
+  .sb { height:54px; flex:none; display:flex; justify-content:space-between; align-items:center; padding:6px 34px 0 38px; font:600 16px 'Barlow'; background:var(--surface); }
+  .sb .r { display:flex; gap:6px; align-items:center; }
+  .sb svg { height:12px; width:auto; fill:var(--fg); }
+  .home { height:34px; flex:none; display:flex; justify-content:center; align-items:flex-end; padding-bottom:8px; background:var(--surface); }
+  .home i { width:134px; height:5px; border-radius:3px; background:var(--fg); opacity:.85; }
+
+  /* UINavigationBar via Theme.applyChrome: opaque surface, hairline, slab title */
+  .nav { height:44px; flex:none; display:flex; align-items:center; justify-content:center; background:var(--surface); border-bottom:1px solid var(--line); position:relative; }
+  .nav .t { font:400 22px 'Bebas Neue'; letter-spacing:.045em; text-transform:uppercase; }
+  .nav .bk { position:absolute; left:8px; display:flex; align-items:center; gap:2px; color:var(--fg); font:400 17px 'Barlow'; }
+  .nav .bk svg { width:20px; height:20px; }
+  .nav .tr { position:absolute; right:12px; font:400 17px 'Barlow'; color:var(--fg); }
+
+  /* screenBackground(): surface with one pool of light from above */
+  .body { flex:1; display:flex; flex-direction:column; min-height:0;
+    background: radial-gradient(ellipse 100% 55% at 50% -10%, rgba(232,227,214,.075), transparent 100%), var(--surface); }
+  .pad { padding:16px; display:flex; flex-direction:column; gap:16px; }
+  .pad.g12 { gap:12px; } .pad.g14 { gap:14px; } .pad.g20 { gap:20px; } .pad.g24 { gap:24px; }
+  .flex1 { flex:1; }
+
+  /* tab bars */
+  .tabs { flex:none; background:var(--surface); border-top:1px solid var(--line); display:flex; padding:7px 0 2px; }
+  .tabs .tb { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--muted); font:700 10px 'JetBrains Mono'; letter-spacing:.08em; position:relative; }
+  .tabs .tb.on { color:var(--fg); }
+  .tabs .tb svg { width:24px; height:24px; }
+  .tabs .tb .bdg { position:absolute; top:-3px; left:calc(50% + 8px); min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:var(--hidden-text); color:var(--panel-fg); font:700 9px/16px 'JetBrains Mono'; letter-spacing:0; text-align:center; }
+
+  /* ScreenHeader + HeaderTabs */
+  .sh { flex:none; background:var(--surface); min-height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 6px; position:relative; }
+  .sh .t { position:absolute; left:56px; right:56px; text-align:center; font:400 24px 'Bebas Neue'; letter-spacing:.04em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sh .ib { width:44px; height:44px; display:flex; align-items:center; justify-content:center; position:relative; color:var(--fg); }
+  .sh .ib svg { width:22px; height:22px; }
+  .sh .ib .bdg { position:absolute; top:6px; right:4px; min-width:16px; height:16px; padding:0 5px; border-radius:8px; background:var(--hidden-text); color:var(--panel-fg); font:700 9px/16px 'JetBrains Mono'; text-align:center; }
+  .sh + .rule, .rule { height:1px; background:var(--line); flex:none; }
+  .ht { flex:none; display:flex; background:var(--surface); border-bottom:1px solid var(--line); }
+  .ht div { flex:1; min-height:44px; display:flex; align-items:center; justify-content:center; gap:6px; font:400 15px 'Bebas Neue'; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); border-bottom:3px solid transparent; }
+  .ht div.on { color:var(--hidden-text); border-bottom-color:var(--hidden-text); }
+  .ht div i { width:7px; height:7px; border-radius:50%; background:var(--hidden-text); }
+
+  /* GameTabShell header slot */
+  .gh { padding:10px 16px 8px; background:var(--surface); flex:none; }
+
+  /* ---------- type (Theme.swift) ---------- */
+  .slab { font-family:'Bebas Neue'; text-transform:uppercase; font-weight:400; line-height:1; }
+  .ml { font-family:'JetBrains Mono'; text-transform:uppercase; color:var(--muted); font-size:11px; letter-spacing:.13em; line-height:1.35; }
+  .mono { font-family:'JetBrains Mono'; }
+  .num { font-variant-numeric:tabular-nums; }
+  .eyebrow { font:700 10px 'JetBrains Mono'; letter-spacing:.16em; text-transform:uppercase; color:var(--hidden-text); }
+  .sans { font-family:'Barlow'; }
+  .c-fg { color:var(--fg); } .c-mu { color:var(--muted); } .c-red { color:var(--hidden-text); } .c-pf { color:var(--panel-fg); } .c-pm { color:var(--panel-muted); } .c-ps { color:var(--panel-soft); } .c-ink { color:var(--hidden-ink); } .c-sf { color:var(--surface); }
+  .tc { text-align:center; } .tr { text-align:right; }
+
+  /* ---------- surfaces (Surfaces.swift) ---------- */
+  .pc { background:var(--panel); border:1px solid var(--line); border-radius:var(--card); box-shadow:0 10px 12px rgba(0,0,0,.4); color:var(--panel-fg); overflow:hidden; }
+  .well { background:var(--raised); border:1px solid var(--line); border-radius:var(--card); box-shadow:inset 0 2px 3px rgba(0,0,0,.4); }
+  .well.nb { border-color:transparent; }
+  .card-r { background:var(--raised); border:1px solid var(--line); border-radius:var(--card); } /* raised card, no inner shadow (game cards) */
+  .conc { position:relative; border-radius:var(--card); background:var(--hidden-ink); box-shadow:0 10px 12px rgba(0,0,0,.5); color:var(--fg); overflow:hidden; }
+  .conc::before { content:''; position:absolute; inset:0; background:repeating-linear-gradient(45deg, rgba(0,0,0,.10) 0 6px, transparent 6px 12px); }
+  .conc::after { content:''; position:absolute; inset:4px; border:1px solid rgba(25,28,24,.35); border-radius:4px; pointer-events:none; }
+  .conc > * { position:relative; z-index:1; }
+  .conc.cp { border-radius:var(--chip); box-shadow:0 1px 2px rgba(0,0,0,.35); }
+  .conc.cp::before { background:repeating-linear-gradient(45deg, rgba(0,0,0,.10) 0 4px, transparent 4px 8px); }
+  .conc.cp::after { inset:2px; border-radius:2px; }
+  .lr { height:1px; background:var(--line); flex:none; }
+  .dr { height:0; border-top:1px dashed var(--panel-line); }
+  .meter { height:6px; border-radius:3px; background:var(--line); overflow:hidden; }
+  .meter i { display:block; height:100%; border-radius:3px; }
+  .eb { font:400 14px 'Barlow'; color:var(--hidden-text); background:rgba(201,56,44,.10); border:1px solid rgba(201,56,44,.4); border-radius:var(--chip); padding:10px 14px; }
+  .rb { display:inline-block; padding:5px 10px; border-radius:var(--chip); font:700 11px 'JetBrains Mono'; letter-spacing:.12em; text-transform:uppercase; color:var(--panel); }
+  .rb.good { background:var(--elite); } .rb.bad { background:var(--rough); } .rb.neutral { background:var(--even); }
+
+  /* spinner */
+  .sp { display:inline-block; border-radius:50%; flex:none; border:2px solid; border-color:color-mix(in srgb, currentColor 18%, transparent); border-top-color:currentColor; transform:rotate(25deg); }
+
+  /* ---------- buttons (BPButtonStyle) ---------- */
+  .btn { display:flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:0 16px; border-radius:var(--card); font:400 18px 'Bebas Neue'; letter-spacing:.04em; text-transform:uppercase; border:1px solid transparent; width:100%; }
+  .btn.inl { width:auto; display:inline-flex; }
+  .btn.solid { background:var(--fg); color:var(--surface); }
+  .btn.ghost { background:transparent; color:var(--fg); border-color:var(--line); }
+  .btn.ink { background:var(--panel-fg); color:var(--panel); }
+  .btn.dark { background:var(--surface); color:var(--fg); }
+  .btn.off { opacity:.6; }
+  .btn svg { width:18px; height:18px; }
+  .quiet { display:inline-flex; align-items:center; min-height:44px; font:700 11px 'JetBrains Mono'; letter-spacing:.12em; text-transform:uppercase; text-decoration:underline; color:var(--fg); }
+  .row { display:flex; gap:12px; } .row8 { display:flex; gap:8px; } .row.c, .row8.c { align-items:center; }
+  .grow { flex:1; min-width:0; } .sb-row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+
+  /* SegmentedChoice */
+  .seg { display:flex; border:1px solid var(--line); border-radius:var(--card); overflow:hidden; }
+  .seg div { flex:1; min-height:44px; display:flex; align-items:center; justify-content:center; text-align:center; font:400 17px 'Bebas Neue'; letter-spacing:.04em; text-transform:uppercase; color:var(--fg); padding:0 6px; }
+  .seg div.on { background:var(--hidden); }
+  /* fieldStyle() */
+  .fld { min-height:48px; padding:0 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--raised); border:1px solid var(--line); border-radius:var(--card); font:400 16px 'Barlow'; color:var(--fg); }
+  .fld.ph { color:var(--muted); }
+  .fld.foc { border-color:var(--fg); }
+  .fld.ta { align-items:flex-start; padding:12px; min-height:84px; }
+  .fl { font:700 10px 'JetBrains Mono'; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  /* HeaderStats */
+  .hs { display:flex; background:var(--raised); border:1px solid var(--line); border-radius:var(--card); overflow:hidden; }
+  .hs > div { flex:1; padding:6px 10px; min-width:0; }
+  .hs > div + div { border-left:1px solid var(--line); }
+  .hs .cap { font:400 9px 'JetBrains Mono'; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hs .val { font:700 20px 'JetBrains Mono'; font-variant-numeric:tabular-nums; color:var(--fg); white-space:nowrap; }
+  .hs .u .cap, .hs .u .val { color:var(--hidden-text); }
+
+  /* avatars / portraits / logos (placeholders) */
+  .av { border-radius:50%; flex:none; position:relative; }
+  .av.me { box-shadow:0 0 0 2px var(--surface), 0 0 0 4px var(--hidden); }
+  .pt { flex:none; border-radius:50%; position:relative; overflow:hidden; background:var(--panel-shade); }
+  .pt svg { position:absolute; inset:0; width:100%; height:100%; }
+  .tl { flex:none; display:flex; align-items:center; justify-content:center; font:700 10px 'JetBrains Mono'; color:var(--muted); text-transform:uppercase; }
+
+  /* icons */
+  svg.i { width:1em; height:1em; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  svg.i.f { fill:currentColor; stroke:none; }
+
+  /* player tabs (per-player detail strip under the pinned header) */
+  .ptabs { display:flex; gap:4px; }
+  .ptabs .pb { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:5px; padding:8px 2px 9px; border-radius:8px; border:1px solid transparent; position:relative; color:var(--muted); }
+  .ptabs .pb.on { background:var(--raised); border-color:var(--line); color:var(--fg); }
+  .ptabs .pb.on::after { content:''; position:absolute; left:22%; right:22%; bottom:3px; height:2px; border-radius:1px; background:var(--fg); }
+  .ptabs .pb .nm { font:400 14px 'Bebas Neue'; letter-spacing:.05em; text-transform:uppercase; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .ptabs .pb .dt { position:absolute; top:6px; right:calc(50% - 24px); width:8px; height:8px; border-radius:50%; background:var(--fg); border:2px solid var(--surface); }
+  /* sheets */
+  .dim { position:absolute; inset:0; background:rgba(0,0,0,.45); z-index:20; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; z-index:21; background:var(--surface); border-radius:22px 22px 0 0; box-shadow:0 -10px 30px rgba(0,0,0,.5); display:flex; flex-direction:column; }
+  .sheet .grab { width:36px; height:5px; border-radius:3px; background:rgba(232,227,214,.3); margin:8px auto 4px; }
+  .dlg { position:absolute; left:8px; right:8px; bottom:42px; z-index:21; display:flex; flex-direction:column; gap:8px; }
+  .dlg > div { background:rgb(46,48,45); border-radius:14px; overflow:hidden; font:400 17px 'Barlow'; text-align:center; }
+  .dlg .m { padding:14px 16px; color:var(--muted); font-size:13px; line-height:1.4; }
+  .dlg .m b { display:block; color:var(--fg); font-weight:600; font-size:13px; margin-bottom:2px; }
+  .dlg .a { padding:16px; color:#4da3ff; border-top:1px solid rgba(255,255,255,.1); }
+  .dlg .a.d { color:#ff6b61; }
+  .dlg .cx { font-weight:600; }
+
+  /* dial (WavelengthDial) */
+  .dial { width:100%; aspect-ratio:1000/530; display:block; }
+
+  /* lot reel (ATB) */
+  .reel { height:64px; overflow:hidden; position:relative; }
+  .reel > div { display:flex; flex-direction:column; transform:translateY(-128px); }
+  .reel .rw { height:64px; display:flex; align-items:center; gap:12px; flex:none; }
+  .reel::after { content:''; position:absolute; inset:0; background:linear-gradient(var(--panel), transparent 25%, transparent 75%, var(--panel)); }
+  @media (max-width:520px){ .frames{grid-template-columns:1fr} figure.fr{width:100%} }
+</style>
+</head>
+<body>
+<!-- SF Symbol stand-ins -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-house" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5M5.5 10v10h5v-6h3v6h5V10"/></symbol>
+  <symbol id="i-game" viewBox="0 0 24 24"><path d="M7 7.5h10a5 5 0 0 1 4.8 6.3l-.7 2.6a2.6 2.6 0 0 1-4.4 1l-1.7-2.1H9l-1.7 2.1a2.6 2.6 0 0 1-4.4-1l-.7-2.6A5 5 0 0 1 7 7.5Z"/><path d="M8 10.5v3M6.5 12h3"/><circle cx="15.5" cy="11.2" r=".6"/><circle cx="17.5" cy="12.8" r=".6"/></symbol>
+  <symbol id="i-p3" viewBox="0 0 24 24"><circle cx="12" cy="8" r="2.6"/><circle cx="5" cy="9.5" r="2"/><circle cx="19" cy="9.5" r="2"/><path d="M7.5 19v-1.5a4.5 4.5 0 0 1 9 0V19M1.8 17.5a3.4 3.4 0 0 1 4-3.2M22.2 17.5a3.4 3.4 0 0 0-4-3.2"/></symbol>
+  <symbol id="i-p2" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M3 19v-1a5 5 0 0 1 10 0v1M15 14.3a4 4 0 0 1 6 3.5V19"/></symbol>
+  <symbol id="i-pc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6 18.5a7 7 0 0 1 12 0"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.6 2H4.4zM10 21a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-hammer" viewBox="0 0 24 24"><path d="m13.5 4.5 6 6-3 3-6-6zM10.5 8 4 14.5l3.5 3.5L14 11.5M3 21h9"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r=".8"/><circle cx="4.5" cy="12" r=".8"/><circle cx="4.5" cy="18" r=".8"/></symbol>
+  <symbol id="i-dial" viewBox="0 0 24 24"><path d="M3 17a9 9 0 0 1 18 0M12 17l4.5-6.5"/><circle cx="12" cy="17" r="1"/></symbol>
+  <symbol id="i-listnum" viewBox="0 0 24 24"><path d="M10 6h11M10 12h11M10 18h11M3.5 5l1.3-.8V8M3.2 14.2c.2-1.2 2.3-1.2 2.3 0 0 .8-2.3 1.600-2.3 2.800h2.400"/></symbol>
+  <symbol id="i-scope" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></symbol>
+  <symbol id="i-logl" viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-dn" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-cd" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-cu" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="i-cr" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-cl" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+  <symbol id="i-srch" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.800-4.800"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.500v.1"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c1 3.500 5 5.500 5 10a5 5 0 0 1-10 0c0-2 1-3.500 2-4.500.500 1.500 1 2 2 2 0-2.500 0-5 1-7.500z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.700 0l3-3a4 4 0 0 0-5.700-5.700l-1 1M14 10a4 4 0 0 0-5.700 0l-3 3a4 4 0 0 0 5.700 5.700l1-1"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3.500M8 7l4-4 4 4M6 10.500H5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8.500a1 1 0 0 0-1-1h-1"/></symbol>
+  <symbol id="i-pplus" viewBox="0 0 24 24"><circle cx="9.500" cy="8" r="3.200"/><path d="M3 19.500v-1a6.500 6.500 0 0 1 11-4.700M18 13v6M15 16h6"/></symbol>
+  <symbol id="i-leave" viewBox="0 0 24 24"><path d="M11 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v6a5 5 0 0 1-10 0zM7 6H4v1.500A3.500 3.500 0 0 0 7.500 11M17 6h3v1.500a3.500 3.500 0 0 1-3.500 3.500M12 15v4M8.500 20h7"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></symbol>
+  <symbol id="i-no" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.500" width="14" height="10" rx="2"/><path d="M8 10.500V8a4 4 0 0 1 8 0v2.500"/></symbol>
+  <symbol id="i-chk" viewBox="0 0 24 24"><path d="m5 12.500 4.500 4.500L19 7.500"/></symbol>
+  <symbol id="i-rsp" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.700-5.600L20 8.500M20 4v4.500h-4.500M20 12a8 8 0 0 1-13.700 5.600L4 15.500M4 20v-4.500h4.500"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.500h6L10 21l8-10.500h-6z"/></symbol>
+  <symbol id="i-run" viewBox="0 0 24 24"><circle cx="14.500" cy="4.500" r="2"/><path d="m7 21 3-6-2.500-2.500 3.500-4 3 2.500 3.500.5M9 9.500 6 12M11 15l3.500 2 1 4"/></symbol>
+  <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9.500 4A3.500 3.500 0 0 0 6 7.500a3.500 3.500 0 0 0-2 6A3.500 3.500 0 0 0 7.500 19 3 3 0 0 0 12 19.500V5.500A2.500 2.500 0 0 0 9.500 4zM14.500 4A3.500 3.500 0 0 1 18 7.500a3.500 3.500 0 0 1 2 6A3.500 3.500 0 0 1 16.500 19 3 3 0 0 1 12 19.500"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5.500c0 4.500 3 8 7 9.500 4-1.500 7-5 7-9.500V6z"/></symbol>
+  <symbol id="i-eq" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 10h8M8 14h8"/></symbol>
+  <symbol id="i-pdot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></symbol>
+</defs></svg>
+<div class="top"><div class="in" id="topnav"></div></div>
+<div class="wrap">
+  <div class="intro">
+    <h1>Ball Party on iOS: every game state</h1>
+    <p>Every screen and state the five games can be in, drawn from the SwiftUI source with the app's own tokens
+    (<b>Theme.swift</b>) and kit (<b>Foundation/UIKit</b>). Each frame has an <b>id</b>: say <b>"change atb-bid-self"</b> and
+    it is unambiguous. The helper functions at the top of the script mirror the kit one-for-one
+    (<b>panel()</b> is <b>PanelCard</b>, <b>concealed()</b> is <b>Concealed</b>, and so on), so a kit-level change is a
+    one-function edit.</p>
+    <p>Drawn from <b>main @ 31aa802</b>. Approximations: SF Symbols are stand-ins, NFL logos show the team-code fallback the app
+    uses while a logo loads, headshots and avatars are placeholders, and the QB spin reel and lot reel are shown as a still mid-spin.
+    This replaces nothing: the older <b>ios-games-preview.html</b> beside it still uses the retired cream panels.</p>
+  </div>
+  <main id="app"></main>
+</div>
+
+<script>
+/* =====================================================================
+   Helpers: text
+   ===================================================================== */
+const j = (...a) => a.flat(Infinity).filter(x => x !== false && x != null).join('');
+const I = (n, sz, x='') => `<svg class="i" style="${sz ? `width:${sz}px;height:${sz}px;` : ''}${x}"><use href="#i-${n}"/></svg>`;
+/* Layout */
+const V = (gap, kids, st='') => `<div style="display:flex;flex-direction:column;gap:${gap}px;${st}">${j(kids)}</div>`;
+const H = (gap, kids, st='') => `<div style="display:flex;gap:${gap}px;${st}">${j(kids)}</div>`;
+const sp = (px=0) => `<div style="flex:1;min-width:${px}px"></div>`;
+/* monoLabel(size, weight, tracking em, color) */
+const ml = (t, o={}) => `<span class="ml" style="font-size:${o.s||11}px;letter-spacing:${o.tr??.13}em;color:${o.c||'var(--muted)'};${o.b?'font-weight:700;':''}${o.x||''}">${t}</span>`;
+const eyebrow = t => `<span class="eyebrow">${t}</span>`;
+const slab = (t, s, c='var(--fg)', x='') => `<span class="slab" style="font-size:${s}px;color:${c};${x}">${t}</span>`;
+const sans = (t, s=16, w=400, c='var(--fg)', x='') => `<span class="sans" style="font-size:${s}px;font-weight:${w};color:${c};${x}">${t}</span>`;
+const mono = (t, s=14, w=700, c='var(--fg)', x='') => `<span class="mono num" style="font-size:${s}px;font-weight:${w};color:${c};${x}">${t}</span>`;
+
+/* =====================================================================
+   Helpers: kit (Foundation/UIKit)
+   ===================================================================== */
+const spinner = (s=16) => `<span class="sp" style="width:${s}px;height:${s}px;border-width:${Math.max(2, s/9)}px"></span>`;
+const waiting = (t, o={}) => H(8, [spinner(o.s||14), `<span>${t}</span>`], 'align-items:center;' + (o.x||''));
+const lr = () => '<div class="lr"></div>';
+const dashed = () => '<div class="dr"></div>';
+/* BPButtonStyle */
+const btn = (label, o={}) => `<div class="btn ${o.v||'solid'}${o.off?' off':''}${o.inl?' inl':''}" style="${o.x||''}">${o.ic?I(o.ic):''}${o.spin?spinner(16):''}${label}</div>`;
+const quiet = t => `<div class="quiet">${t}</div>`;
+/* PanelCard / well / Concealed */
+const panel = (inner, x='') => `<div class="pc" style="${x}">${inner}</div>`;
+const well = (inner, x='', nb=false) => `<div class="well${nb?' nb':''}" style="${x}">${inner}</div>`;
+const cardR = (inner, x='') => `<div class="card-r" style="${x}">${inner}</div>`;
+const concealed = (inner, o={}) => `<div class="conc${o.compact?' cp':''}" style="${o.x||''}">${inner}</div>`;
+const meter = (f, fill='var(--panel)') => `<div class="meter"><i style="width:${Math.round(Math.min(Math.max(f,0),1)*100)}%;background:${fill}"></i></div>`;
+const errorBanner = m => `<div class="eb">${m}</div>`;
+const resultBadge = (t, tone='neutral') => `<span class="rb ${tone}">${t}</span>`;
+const pageHeader = (eb, title, desc) => `<div style="padding-bottom:16px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:4px">${eb?eyebrow(eb):''}${slab(title,38)}${desc?sans(desc,16,400,'var(--muted)'):''}</div>`;
+const sectionTitle = (t, tr) => `<div class="sb-row">${slab(t,24)}${tr?ml(tr,{s:10,tr:.1}):''}</div>`;
+const emptyState = (title, msg, actions='') => well(V(12, [slab(title,28), ml(msg,{tr:.1}), actions]), 'padding:16px');
+/* Timer text: always MM:SS, whole seconds only (fractions round up so it never reads 00:00 early) */
+const mmss = (v) => { v=String(v); let m=v.match(/^(\d+):(\d\d)$/); if(m) return m[1].padStart(2,'0')+':'+m[2]; m=v.match(/^(\d+(?:\.\d)?)$/); if(!m) return v; const n=Math.ceil(+m[1]); return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0'); };
+const TIMER_CAP = /clock|turn$|starts|due|bids|next|sold|guess$/i;
+/* 3-2-1 get-ready screen shown after the board loads, before the first phase opens */
+const getReady = (n, title, hint) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;min-height:560px;padding:0 32px;text-align:center">${ml('Starting in',{b:1,tr:.2})}<div style="width:200px;height:200px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(var(--fg) 0 ${Math.round(n/3*100)}%, var(--line) 0);position:relative"><div style="position:absolute;inset:6px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center">${slab(n,128,'var(--fg)','font-variant-numeric:tabular-nums;line-height:1')}</div></div>${V(6,[slab(title,28),ml(hint,{s:11,tr:.08})])}</div>`;
+const loadingState = (label) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--fg);min-height:420px">${spinner(28)}${label?ml(label,{tr:.15}):''}</div>`;
+const screenHeaderRule = lr;
+/* Header stats (GameTabShell) */
+const headerStats = (stats, frac) => V(8, [
+  `<div class="hs">${stats.map(s => `<div class="${s.u?'u':''}"><div class="cap">${s.cap}</div><div class="val">${TIMER_CAP.test(s.cap)&&/^[\d:.]+$/.test(String(s.val))?mmss(s.val):s.val}</div></div>`).join('')}</div>`,
+  frac != null ? meter(frac) : ''
+]);
+/* SegmentedChoice */
+const seg = (opts, on) => `<div class="seg">${opts.map((o,i)=>`<div class="${i===on?'on':''}">${o}</div>`).join('')}</div>`;
+const fieldLabel = t => `<span class="fl">${t}</span>`;
+const field = (t, o={}) => `<div class="fld ${o.ph?'ph':''} ${o.foc?'foc':''} ${o.ta?'ta':''}" style="${o.x||''}">${t}${o.tr||''}</div>`;
+/* Avatars, portraits, logos (placeholders) */
+const PAL = [[0x92A1C6,0x146A7C,0xF0AB3D,0xC271B4,0xC20D90],[0x264653,0x2A9D8F,0xE9C46A,0xF4A261,0xE76F51],[0x355070,0x6D597A,0xB56576,0xE56B6F,0xEAAC8B],[0x606C38,0x283618,0xFEFAE0,0xDDA15E,0xBC6C25],[0x4A4E69,0x9A8C98,0xC9ADA7,0xF2E9E4,0x22223B]];
+function pal(name){ let h=2166136261; for(const ch of name.trim().toLowerCase()||'player'){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619)>>>0; } const p=PAL[Math.floor(h/5)%5]; return p.map(c=>'#'+c.toString(16).padStart(6,'0')); }
+const avatar = (name, size=32, mine=false) => { const c=pal(name); return `<span class="av${mine?' me':''}" style="width:${size}px;height:${size}px;background:linear-gradient(135deg,${c[0]} 0 45%,${c[2]} 45% 70%,${c[3]} 70%);${mine?'':''}"></span>`; };
+const portrait = (name, size=88) => { const c=pal(name); return `<span class="pt${size<=32?' sm':''}" style="width:${size}px;height:${size}px;background:linear-gradient(160deg,${c[1]},${c[4]})"><svg viewBox="0 0 40 40"><circle cx="20" cy="15" r="7" fill="${c[2]}" opacity=".85"/><path d="M6 40c0-9 6-14 14-14s14 5 14 14z" fill="${c[3]}" opacity=".85"/></svg></span>`; };
+const teamLogo = (code, size=24) => `<span class="tl" style="width:${size}px;height:${size}px;font-size:${Math.max(10,size*.28)}px">${code}</span>`;
+const you = (onPanel=false) => ml('You',{s:9,b:1,tr:.08,c:onPanel?'var(--hidden-ink)':'var(--hidden-text)'});
+
+/* =====================================================================
+   Helpers: device, chrome, frames
+   ===================================================================== */
+const STATUS = `<div class="sb"><span>9:41</span><span class="r"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx=".6"/><rect x="5" y="5.500" width="3" height="6.500" rx=".6"/><rect x="10" y="3" width="3" height="9" rx=".6"/><rect x="15" y="0" width="3" height="12" rx=".6"/></svg><svg viewBox="0 0 17 12"><path d="M8.500 2.200c2.300 0 4.400.9 6 2.400l1-1.100A10.400 10.400 0 0 0 8.500.7 10.400 10.400 0 0 0 1.500 3.500l1 1.100a8.700 8.700 0 0 1 6-2.400zm0 3.300c1.400 0 2.700.5 3.700 1.400l1-1.100a7.200 7.200 0 0 0-9.400 0l1 1.100c1-.9 2.300-1.400 3.700-1.400zm0 3.200c.6 0 1.200.2 1.600.6L8.500 11.200 6.900 9.300c.4-.4 1-.6 1.600-.6z"/></svg><svg viewBox="0 0 27 12"><rect x=".5" y=".5" width="22" height="11" rx="3.200" fill="none" stroke="currentColor" opacity=".5" style="stroke:var(--fg)"/><rect x="2" y="2" width="19" height="8" rx="2"/><rect x="24" y="4" width="2" height="4" rx="1" opacity=".5"/></svg></span></div>`;
+
+const navPush = (title, back, trailing) => `<div class="nav"><span class="bk">${I('cl')}${back?`<span>${back}</span>`:''}</span><span class="t">${title}</span>${trailing?`<span class="tr">${trailing}</span>`:''}</div>`;
+const bellBtn = n => `<span class="ib">${I('bell')}${n?`<span class="bdg">${n>9?'9+':n}</span>`:''}</span>`;
+const iconBtn = n => `<span class="ib">${I(n)}</span>`;
+/* ScreenHeader (a root tab's header), with optional HeaderTabs row */
+const navRoot = (title, o={}) => `<div class="sh">${o.lead||'<span style="width:44px"></span>'}<span class="t">${title}</span>${o.trail===undefined?bellBtn(o.bell||0):o.trail}</div>${o.tabs?`<div class="ht">${o.tabs.map((t,i)=>`<div class="${i===o.on?'on':''}">${t}${o.dot===i&&i!==o.on?'<i></i>':''}</div>`).join('')}</div>`:lr()}`;
+
+const MAIN_TABS = [['Home','house'],['Games','game'],['Party','p3'],['Profile','pc']];
+const tabMain = (on, party=0) => `<div class="tabs">${MAIN_TABS.map(([t,ic],i)=>`<div class="tb ${i===on?'on':''}">${I(ic)}<span>${t}</span>${i===2&&party?`<span class="bdg">${party}</span>`:''}</div>`).join('')}</div>`;
+const tabGame = (tabs, on) => `<div class="tabs">${tabs.map((t,i)=>`<div class="tb ${i===on?'on':''}">${I(t[1])}<span>${t[0]}</span>${t[2]?`<span class="bdg" style="background:var(--hidden-text)">${t[2]}</span>`:''}</div>`).join('')}</div>`;
+
+/* phone({nav, body, bottom, tabs, overlay, pad}) */
+function phone(o){
+  const body = o.pad === false ? o.body : `<div class="pad ${o.gap||''}">${o.body}</div>`;
+  return `<div class="device"><div class="scr${o.fixed?' fx':''}" style="${o.h?`min-height:${o.h}px;`:''}${o.fixed?`height:${o.fixed}px;`:''}"><div class="island"></div>${STATUS}${o.nav||''}<div class="body">${o.shell||''}${body}</div>${o.bottom||''}${o.tabs||''}<div class="home"><i></i></div>${o.overlay||''}</div></div>`;
+}
+/* A live-match screen: native bar, pinned GameTabShell header, content, game tab bar. */
+function gameShell({title, header, tabs, on, body, bottom, overlay, gap, h}){
+  return phone({ nav: navPush(title, 'Party'), shell: `<div class="gh">${header}</div>`, body, bottom, tabs: tabGame(tabs, on), overlay, gap, h });
+}
+/* Player tabs: one tab per seat under the pinned header; the body shows the selected seat. */
+const playerTabs = (list, on) => `<div class="ht" style="margin:-16px -16px 0">${list.map((p,i)=>`<div class="${i===on?'on':''}">${p.me?'You':p.n}${p.dot&&i!==on?'<i></i>':''}</div>`).join('')}</div>`;
+const statTile = (cap, val, o={}) => `<div style="flex:1;min-width:0;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:2px">${ml(cap,{s:9,b:1,tr:.12})}${slab(val,o.s||26,o.c||'var(--fg)','font-variant-numeric:tabular-nums;white-space:nowrap')}</div>`;
+/* Winner moment, hold beat: full screen before the results. names = avatars shown (1 or 2); loss = no rings, muted. */
+function winSplash({names, headline, sub, loss, label}){
+  const size = names.length>1 ? 92 : 124;
+  const av = names.map(n=>`<span style="position:relative;display:flex;margin:0 ${names.length>1?-10:0}px">${avatar(n,size)}</span>`).join('');
+  const ring = loss ? `<div style="display:flex;opacity:.6;margin:6px">${av}</div>`
+    : `<div style="position:relative;display:flex;align-items:center;justify-content:center;margin:30px"><span style="position:absolute;inset:-28px;border-radius:999px;border:1px solid rgba(232,227,214,.18)"></span><span style="position:absolute;inset:-14px;border-radius:999px;border:1px solid rgba(232,227,214,.35)"></span><div style="display:flex;padding:4px;border-radius:999px;border:2px solid var(--fg)">${av}</div></div>`;
+  return phone({ nav:'', tabs:'', pad:false, body:`<div style="height:100%;min-height:640px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:radial-gradient(circle at 50% 42%,rgba(232,227,214,.${loss?'04':'10'}),transparent 62%)">${ring}<div style="display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:0 20px">${eyebrow(label||(loss?'Final':'Winner'))}${slab(headline,60,loss?'var(--muted)':'var(--fg)')}${sub?ml(sub,{s:11,tr:.12}):''}</div><div style="position:absolute;bottom:56px">${ml('Tap to skip',{s:10,tr:.14})}</div></div>` });
+}
+function fr(id, name, when, src, html){
+  return `<figure class="fr" id="${id}">${html}<figcaption><span class="fid">${id}</span><span class="nm">${name}</span><span class="when">${when}</span><span class="src">${src}</span></figcaption></figure>`;
+}
+const group = (title, sub, frames, note='') => `<div class="group"><h3>${title}</h3>${sub?`<div class="sub">${sub}</div>`:''}${note}<div class="frames">${j(frames)}</div></div>`;
+const note = html => `<div class="note">${html}</div>`;
+const SECTIONS = [];
+function game(id, name, blurb, flow, groups){
+  SECTIONS.push({id, name, html: `<section class="game" id="${id}"><header><div class="eyebrow-d">${id==='kit'?'Reference':'Game'}</div><h2>${name}</h2><p>${blurb}</p>${flow.length?`<div class="flow">${flow.map((f,i)=>(i?'<i>→</i>':'')+`<span>${f}</span>`).join('')}</div>`:''}</header>${j(groups)}</section>`});
+}
+</script>
+<script>
+/* =====================================================================
+   Shared cast + helpers for screens
+   ===================================================================== */
+const SAM = 'Sam', MAYA = 'Maya', DEV = 'Devon', KAY = 'Kayla';
+
+/* ---------------------------------------------------------------------
+   KIT REFERENCE
+   --------------------------------------------------------------------- */
+(function(){
+  const sw = (name, v, hex) => `<div><i style="background:${v}"></i><span><b>${name}</b>${hex}</span></div>`;
+  const tokens = `<div class="sw">${[
+    ['surface','var(--surface)','#111311'],['surfaceRaised / panel','var(--raised)','#191C18'],['panelShade','var(--panel-shade)','#111311'],['panelHover','var(--panel-hover)','#20241F'],
+    ['fg / panelFg','var(--fg)','#E8E3D6'],['fgMuted / panelMuted','var(--muted)','#8F8B7F'],['panelSoft','var(--panel-soft)','#BDB8AA'],['line / panelLine','var(--line)','fg @ 13%'],
+    ['hidden','var(--hidden)','#C9382C'],['hiddenText','var(--hidden-text)','#FF5A4A'],['hiddenInk','var(--hidden-ink)','#A8291F'],['gradeElite','var(--elite)','#476735'],
+    ['gradeStrong','var(--strong)','#80672B'],['gradeEven','var(--even)','#6B665A'],['gradeRough','var(--rough)','#855238'],['panelInkHover','var(--panel-ink-hover)','#CFCABC']
+  ].map(t=>sw(...t)).join('')}</div>`;
+  const cell = (k, inner, x='') => `<div class="cell" style="${x}"><span class="k">${k}</span>${inner}</div>`;
+  const cells = [
+    cell('Type: slab / sans / mono', V(6,[slab('Bebas Neue, uppercase',34), sans('Barlow reads. Body copy, names, sentences.',16), mono('JetBrains Mono 20 bold',20), ml('monoLabel 11 · tracking .13'), eyebrow('eyebrow: something unseen')])),
+    cell('BPButtonStyle', V(8,[btn('Solid · the one primary'), btn('Ghost · subordinate',{v:'ghost'}), btn('Ink · on a panel',{v:'ink'}), btn('Dark · on a light card',{v:'dark'}), btn('Disabled',{off:1}), `<div style="text-align:center">${quiet('Quiet · back, leave')}</div>`])),
+    cell('PanelCard', panel(V(6,[ml('Card meta',{c:'var(--panel-muted)',s:11,tr:.11}), slab('Card title',24,'var(--panel-fg)'), sans('Raised dark surface, hairline edge, soft drop shadow.',14,400,'var(--panel-soft)')],'padding:14px')) ),
+    cell('well()', well(V(6,[ml('Passive surface'), sans('Recessed: inner shadow from the top, no drop shadow. Clocks, stat rows, empty states.',14,400,'var(--muted)')],'padding:14px'))),
+    cell('Concealed', V(10,[concealed(V(4,[ml('Fantasy points',{b:1,s:10,tr:.12,c:'var(--fg)'}), slab('? ? ?',32)],'align-items:center;padding:12px 0')), `<div style="display:flex;gap:10px;align-items:center">${concealed(ml('Locked',{s:10,b:1,tr:.06,c:'var(--fg)'},),{compact:1,x:'padding:4px 10px'})}${ml('compact: chip-size',{s:10})}</div>`]) ),
+    cell('HeaderStats + MeterBar', headerStats([{cap:'Lot 3 of 14',val:'$18'},{cap:'Standing bid',val:'$4'},{cap:'Your turn',val:'12',u:1}],.6)),
+    cell('SegmentedChoice · selected = red', seg(['Season total','Weekly'],0)),
+    cell('Fields', V(8,[fieldLabel('Label'), field('Value text'), field('Placeholder',{ph:1}), field('Focused',{foc:1})])),
+    cell('ResultBadge · public results, never red', H(8,[resultBadge('Called higher · correct','good'),resultBadge('Miss','bad'),resultBadge('Start','neutral')],'flex-wrap:wrap')),
+    cell('ErrorBanner · EmptyState', V(10,[errorBanner('Something went wrong.'), emptyState('Nothing yet','Each turn lands here, newest first.')])),
+    cell('Loading', V(12,[waiting('WaitingNote: spinner + sentence',{s:14,x:'font:400 14px Barlow;color:var(--muted)'}), `<div style="display:flex;gap:16px;align-items:center;color:var(--fg)">${spinner(28)}${ml('LoadingState')}</div>`])),
+    cell('Avatar · Portrait · TeamLogo', H(12,[avatar('Maya',44), avatar('Sam',44,true), portrait('Patrick Mahomes',56), portrait('Tiny',26), teamLogo('KC',32)],'align-items:center')),
+    cell('GameTabShell tab bar', `<div style="margin:-16px;margin-top:0">${tabGame([['Auction','hammer'],['Table','p2',2],['Board','list']],0)}</div>`),
+    cell('HeaderTabs', `<div style="margin:0 -16px"><div class="ht">${['Room','Game','Scoreboard'].map((t,i)=>`<div class="${i===1?'on':''}">${t}${i===2?'<i></i>':''}</div>`).join('')}</div></div>`)
+  ];
+  game('kit', 'Design system as used', 'The tokens and kit pieces every frame below is assembled from. Colors are copied from <b>Theme.swift</b>; each box is a function in the script (<b>btn()</b>, <b>panel()</b>, <b>well()</b>, <b>concealed()</b>, <b>headerStats()</b>…). Principle to keep in mind while reviewing: <b>red means concealed</b>, panels are the only raised thing, dark only.',
+    [], [ `<div class="group"><h3>Tokens</h3>${tokens}</div>`, `<div class="group"><h3>Kit</h3><div class="kit">${cells.join('')}</div></div>` ]);
+})();
+
+/* ---------------------------------------------------------------------
+   SOLO: the Games tab
+   --------------------------------------------------------------------- */
+const soloCard = (nameLines, tagline, settings, open) => cardR(V(0,[
+  H(0,[`<span style="width:36px;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px">${I('game')}</span>`, sp(), `<span style="padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)">${ml('1 player',{s:9,tr:.1,b:1})}</span>`],'align-items:flex-start'),
+  `<div style="margin-top:16px;display:flex;flex-direction:column;gap:-4px">${nameLines.map((l,i)=>slab(l,28,'var(--fg)',i?'margin-top:-4px':'')).join('')}</div>`,
+  sans(tagline,15,400,'var(--muted)','margin-top:8px;display:block'),
+  `<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:12px">`+
+    H(0,[ml('Settings',{s:9,b:1,tr:.1}),sp(),I(open?'cu':'cd',12,'color:var(--muted)')],'align-items:center')+
+    (open?settings:'')+ btn('Play solo') + btn('Leaderboard',{v:'ghost'}) + `</div>`
+],'padding:16px'));
+const stackedChoice = (legend, opts, on) => V(6,[ml(legend,{s:9,b:1,tr:.1}), ...opts.map((o,i)=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:8px;border:1px solid ${i===on?'var(--fg)':'var(--line)'};background:${i===on?'var(--surface)':'transparent'}"><span style="font-size:15px;margin-top:1px;color:${i===on?'var(--fg)':'var(--muted)'}">${i===on?'◉':'○'}</span><div style="display:flex;flex-direction:column;gap:2px">${ml(o[0],{s:11,b:1,tr:.1,c:'var(--fg)'})}${sans(o[1],13,400,'var(--muted)')}</div></div>`)]);
+const eraThree = on => V(6,[ml('Era',{s:9,b:1,tr:.1}), H(6,['All Years','Classic','Modern'].map((t,i)=>`<div style="flex:1;text-align:center;padding:8px 0;border-radius:8px;border:1px solid ${i===on?'var(--fg)':'var(--line)'};background:${i===on?'var(--surface)':'transparent'}">${ml(t,{s:10,b:1,tr:.08,c:i===on?'var(--fg)':'var(--muted)'})}</div>`))]);
+const seasonMenu = (title, v) => V(6,[fieldLabel(title), field(v,{tr:I('cd',14,'color:var(--muted)'),x:'font:400 18px Bebas Neue;letter-spacing:.04em;text-transform:uppercase'})],'flex:1');
+const gamesTab = open => phone({
+  nav: navRoot('Games',{bell:2}), tabs: tabMain(1, 2), gap:'g12',
+  body: j(
+    soloCard(['QB season','builder'],'Spin a team-season six times and build one quarterback from the best trait on offer.',
+      V(12,[stackedChoice('Ratings',[['Visible','Letter grades show while you pick.'],['Hidden','No grades until the run is over. Pick on what you know.']],0), eraThree(0)]), open),
+    soloCard(['Higher','or lower'],'Call the next card. Make the streak last.',
+      V(12,[stackedChoice('Scoring',[['Season total','Whole-season PPR points'],['Weekly',"A single game's PPR points"]],0), V(6,[ml('Era',{s:9,b:1,tr:.1}), H(12,[seasonMenu('From','2010'),seasonMenu('To','2025')])])]), open))
+});
+
+game('lobby', 'Games tab', 'Where the solo games (QB Season Builder, Higher or Lower) start: a card on the Games tab, with the settings a run is locked to. The Party room and its Game tab (pick, settings, Start) are built in the app and reviewed, so those states are no longer in this file.',
+  ['Games tab (solo)','Start → run'],
+  [
+  group('Games tab · solo launch cards','Settings are collapsed by default; a run is locked to what is chosen here.', [
+    fr('games-tab','Games tab','Root tab. Each solo game is a raised card; only the buttons are tappable. Settings collapsed.','MainTabView.swift · GamesScreen, SoloGameCard', gamesTab(false)),
+    fr('games-tab-settings','Games tab, settings open','Tapping “Settings” on a card reveals the format choices the run is locked to.','MainTabView.swift · StackedChoice, EraChoice, SeasonRangeChoice', gamesTab(true)),
+  ])
+  ]
+);
+</script>
+<script>
+/* =====================================================================
+   HIGHER OR LOWER
+   ===================================================================== */
+(function(){
+  const A  = {pos:'QB', team:'KC',  name:'Patrick Mahomes',  id:'2022 · KC',  pts:'417.2'};
+  const B  = {pos:'WR', team:'MIN', name:'Justin Jefferson', id:'2022 · MIN', pts:'356.9'};
+  const Aw = {pos:'QB', team:'BUF', name:'Josh Allen',       id:'2021 · Week 7 · BUF vs. MIA', pts:'31.4', small:1};
+  const Bw = {pos:'RB', team:'TEN', name:'Derrick Henry',    id:'2021 · Week 7 · TEN vs. IND', pts:'24.9', small:1};
+
+  const lcard = (label, c, revealed) => V(6,[
+    ml(label,{s:10}),
+    well(V(0,[
+      `<div style="position:relative;padding:10px"><div style="position:absolute;left:10px;right:10px;top:10px;display:flex;justify-content:space-between;align-items:baseline">${slab(c.pos,18)}${teamLogo(c.team,24)}</div><div style="display:flex;flex-direction:column;align-items:center;gap:6px">${portrait(c.name,56)}${slab(c.name,22)}${ml(c.id,{s:c.small?7.5:9,tr:.08,x:'white-space:nowrap'})}</div></div>`,
+      revealed
+        ? `<div style="background:var(--panel);border-radius:8px;padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:4px">${ml('Fantasy points',{s:10,b:1,tr:.12,c:'var(--panel-muted)'})}${slab(c.pts,32,'var(--panel-fg)','font-variant-numeric:tabular-nums')}</div>`
+        : concealed(V(4,[ml('Fantasy points',{s:10,b:1,tr:.12,c:'var(--fg)'}), slab('? ? ?',32)],'align-items:center;padding:12px 0'))
+    ]),'overflow:hidden')
+  ],'flex:1;min-width:0');
+  const cards = (a, b, revealed) => H(12,[lcard('Anchor',a,true), lcard('Challenger',b,revealed)],'align-items:flex-start');
+  const runStat = (label, v) => V(4,[ml(label,{s:10,b:1,tr:.14}), slab(v,32,'var(--fg)','font-variant-numeric:tabular-nums')],'flex:1;align-items:center');
+  const vdiv = '<div style="width:1px;height:36px;background:var(--line);flex:none"></div>';
+  const header = (q, fmt) => H(0,[ml(q,{b:1,tr:.15}), sp(), ml(fmt)],'align-items:baseline');
+  const soloHeader = (q, fmt, c, s, h) => V(12,[header(q,fmt), well(H(0,[runStat('Correct',c),vdiv,runStat('Streak',s),vdiv,runStat('All-time high',h)],'padding:12px 0;align-items:center'))]);
+  const callRow = off => H(12,[btn('Higher',{ic:'up',off}), btn('Lower',{v:'ghost',ic:'dn',off})]);
+  const centerMl = t => `<div class="tc">${ml(t)}</div>`;
+  const countdown = (label, secs, frac) => well(V(8,[ml(label,{tr:.15}), slab(mmss(secs),32,'var(--fg)','font-variant-numeric:tabular-nums'), meter(frac)],'padding:12px'), '', true);
+
+  /* ----- solo ----- */
+  const soloNav = navPush('Higher or Lower','Games');
+  const solo = (inner, tabs) => phone({ nav: soloNav, tabs: tabs?tabMain(1):'', body: inner });
+  const soloPlay = (cardsHtml, area, extra) => solo(V(16,[soloHeader('Question 7','Season total · 2010–2025',6,6,9), cardsHtml, area, extra||'']), false);
+
+  const ladderEntries = [
+    ['Aaron Rodgers','QB · GB','2011','396.0','Start','neutral','1'],
+    ['Derrick Henry','RB · TEN','2020','395.0','Correct','good','2'],
+    ['Davante Adams','WR · LV','2021','262.8','Correct','good','3'],
+    ['Travis Kelce','TE · KC','2022','307.3','Correct','good','4'],
+    ['Jonathan Taylor','RB · IND','2021','373.3','Correct','good','5'],
+    ['Cooper Kupp','WR · LAR','2021','439.5','Correct','good','6'],
+    ['Lamar Jackson','QB · BAL','2019','415.6','Miss','neutral','7'],
+  ];
+  const tile = e => well(V(6,[
+    `<span style="width:22px;height:22px;border-radius:50%;background:var(--fg);color:var(--surface);display:flex;align-items:center;justify-content:center;font:700 10px 'JetBrains Mono'">${e[6]}</span>`,
+    V(2,[slab(e[0],15), ml(e[1],{s:10,tr:.07}), ml(e[2],{s:10,tr:.07})]), sp(),
+    slab(e[3],24,'var(--fg)','font-variant-numeric:tabular-nums'), `<div>${resultBadge(e[4],e[5])}</div>`
+  ],'padding:10px;min-height:150px'));
+  const recapBase = (banner, bestCorrect, pb) => solo(V(24,[
+    V(16,[V(4,[eyebrow('Run complete'), slab(`${bestCorrect} correct`,56)]), banner,
+      well(H(0,[runStat('Questions right',bestCorrect),vdiv,runStat('All-time high',pb)],'padding:12px 0;align-items:center'))]),
+    V(12,[V(4,[eyebrow('The players you saw'), slab('Your ladder',28)]), `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${ladderEntries.map(tile).join('')}</div>`]),
+    V(8,[btn('Play again'), btn('Back to games',{v:'ghost'})])
+  ]), true);
+
+  /* ----- match ----- */
+  const sRow = (r) => `${lr()}<div style="display:flex;gap:10px;align-items:center;padding:10px 12px;${r.rank===1?'background:rgba(232,227,214,.05)':''}"><span class="mono" style="width:34px;font-size:12px;font-weight:700;color:${r.rank===1?'var(--hidden-text)':'var(--muted)'}">${r.tied?'T-':'#'}${r.rank}</span>${avatar(r.name,28,r.me)}<div style="flex:1;display:flex;flex-direction:column;gap:2px">${H(4,[slab(r.name,18),r.me?you():''],'align-items:baseline')}${ml(r.st,{s:10,tr:.07})}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">${ml(`${r.c} correct`,{s:10,b:1,tr:.05,c:'var(--fg)'})}${ml(`${r.b} best`,{s:10,tr:.05})}</div></div>`;
+  const standings = rows => well(V(0,[H(0,[ml('Standings',{s:10,b:1,tr:.15}),sp(),ml('Correct · best',{s:9,tr:.08})],'padding:10px 12px;align-items:baseline'), ...rows.map(sRow)]));
+  const S = (a,b,c,d) => [ {rank:1,name:MAYA,c:4,b:3,st:a}, {rank:2,name:SAM,me:1,c:3,b:2,st:b}, {rank:3,name:DEV,c:2,b:2,st:c}, {rank:4,name:KAY,c:1,b:1,st:d} ];
+  const matchNav = navPush('Higher or Lower','Party');
+  const match = (inner) => phone({ nav: matchNav, tabs:'', body: inner });
+  const mHeader = (q) => header(q,'Weekly · 2019–2025');
+  const pausedBanner = well(H(8,[I('pause',16),`<span>${ml('The host paused the game.',{b:1,tr:.13,c:'var(--fg)'})}</span>`],'padding:12px;align-items:center;color:var(--fg)'));
+  const matchPlay = (o) => match(V(16,[ mHeader(o.q||'Question 4 of 12'), o.paused?pausedBanner:'', o.cd, cards(Aw,Bw,o.revealed), V(12,[callRow(o.off), o.myCall?centerMl(o.myCall):'']), standings(o.rows), o.err?errorBanner(o.err):'' ]));
+
+  const finalRow = (r, onPanel) => H(12,[ mono(`#${r.rank}`,16,700,r.rank===1?(onPanel?'var(--hidden-ink)':'var(--hidden-text)'):'var(--muted)','width:40px'), V(2,[H(6,[slab(r.name,24,onPanel?'var(--panel-fg)':'var(--fg)'), r.me?you(onPanel):''],'align-items:baseline'), ml(r.stat,{tr:.08,c:onPanel?'var(--panel-muted)':'var(--muted)'})],'flex:1')],'align-items:center');
+  const finalList = rows => rows.map(r => r.rank===1 ? panel(`<div style="padding:14px">${finalRow(r,true)}</div>`) : well(`<div style="padding:14px">${finalRow(r,false)}</div>`));
+  const finalScreen = (headline, rows, controls) => match(V(20,[eyebrow('Final'), ...finalList(rows), controls]));
+  const hostControls = V(8,[btn('Play again'), btn('Back to the room',{v:'ghost'})]);
+  const guestControls = V(8,[`<div class="tc">${ml('Waiting for the host to choose what\'s next.')}</div>`, btn('Back to the room',{v:'ghost'})]);
+
+  game('hol', 'Higher or Lower',
+    'A short, simultaneous recall game. One card is face up with its fantasy points; the next card hides its points. Everyone calls <b>higher</b> or <b>lower</b>, then the challenger reveals and becomes the next anchor. Plays <b>solo</b> (endless ladder, ends on the first miss, no clock) or in a <b>room</b> (2–4 players, 12 questions plus sudden death for ties, timed).',
+    ['Dealing','Call','Reveal','… 12 questions','Sudden death (ties)','Final'],
+  [
+    group('Solo · the run','Started from the Games tab with the format chosen on the card. The tab bar is hidden while the ladder is in play and comes back for the deal and the recap.', [
+      fr('hol-solo-dealing','Dealing','While the ladder is being dealt in the chosen format.','SoloRunView.swift · SoloStartingView', solo(loadingState('Dealing your ladder…'), true)),
+      fr('hol-solo-failed','Couldn’t start','The deal failed (offline, server). Nothing on screen to attach an error to, so it is an EmptyState with a retry.','SoloRunView.swift', solo(emptyState("Couldn't start the run",'Something went wrong.',btn('Try again',{v:'ghost',inl:1})), true)),
+      fr('hol-solo-call','Make your call','Anchor face-up, challenger’s points concealed. No countdown in solo. Stats: correct, current streak, all-time high.','SoloPlayView.swift', soloPlay(cards(A,B,false), callRow(false))),
+      fr('hol-solo-correct','Reveal · correct','Both numbers shown; ResultBadge uses the public grade green. Solo waits for the player: no timer pushes them out of a reveal.','SoloPlayView.swift · callArea', soloPlay(cards(A,B,true), V(12,[`<div class="tc">${resultBadge('Called higher · correct','good')}</div>`, btn('Continue')]))),
+      fr('hol-solo-miss','Reveal · miss','A miss ends the run: the button says “See your run”.','SoloPlayView.swift', soloPlay(cards(A,B,true), V(12,[`<div class="tc">${resultBadge('Called lower · miss','bad')}</div>`, btn('See your run')]))),
+      fr('hol-solo-error','Error under the call','A failed call surfaces as an ErrorBanner below the buttons; the call can be retried.','SoloPlayView.swift', soloPlay(cards(A,B,false), callRow(false), errorBanner('Something went wrong. Try again.'))),
+      fr('hol-solo-between','Waiting for the next card','Transitional: after Continue, before the next anchor/challenger arrive.','SoloPlayView.swift', solo(V(16,[soloHeader('Question 8','Season total · 2010–2025',7,7,9), `<div class="tc" style="padding:40px 0">${ml('Waiting for the next card…')}</div>`, callRow(true)]), false)),
+    ]),
+    group('Solo · recap','The only panel on the screen is a new personal best.', [
+      fr('hol-recap-pb','Recap · new personal best','Beat the all-time high the run started with: a PanelCard with a trophy. Below it, the ladder as 3-up tiles. (Tile outcome badges: Start / Correct in green, Miss and Timed out in neutral grey.)','SoloRecapView.swift', recapBase(panel(`<div style="padding:14px;display:flex;gap:8px;align-items:center">${I('trophy',22)}${slab('New personal best!',24,'var(--panel-fg)')}</div>`),6,6)),
+      fr('hol-recap-short','Recap · short of best','Plain muted sentence: “N short of your personal best of M.” A tied run says “You matched your personal best of M.” with an equals icon.','SoloRecapView.swift', recapBase(sans('3 short of your personal best of 9.',15,400,'var(--muted)'),6,9)),
+    ]),
+    group('Live match · in the room','Simultaneous. Room context: native bar with back to the room, no tab bar. Standings sit under the call buttons and show what each seat is doing without revealing which way they went.', [
+      fr('hol-match-dealing','Dealing','Waiting for the first board.','MatchView.swift · MatchScreen', match(loadingState('Dealing…'))),
+      fr('hol-match-countdown','Get ready · 3-2-1','Shown after the board loads and before the first phase opens, so players can settle in. Ticks 3, 2, 1, then the first phase starts. New (design proposal, not yet in the app).','MatchView.swift (proposed)', match(getReady(3,'Higher or Lower','12 calls · call higher or lower'))),
+      fr('hol-match-intro','Board intro','5s phase: the board is “coming into view”. Calls are not open yet, so the buttons are disabled.','MatchView.swift · MatchPlayView', matchPlay({cd:countdown('The board is coming into view',4,.72),off:1,rows:S('THINKING','THINKING','THINKING','THINKING')})),
+      fr('hol-match-call','Make your call','12s phase. Others show LOCKED (called, direction withheld) or THINKING. AWAY marks a disconnected seat.','MatchView.swift', matchPlay({cd:countdown('Make your call',9,.74),rows:S('LOCKED','THINKING','LOCKED','THINKING')})),
+      fr('hol-match-called','You’ve called','Buttons disable; “You called higher.” Once the viewer has called, others’ directions become visible (HIGHER / LOWER).','MatchView.swift', matchPlay({cd:countdown('Make your call',6,.5),off:1,myCall:'You called higher.',rows:S('HIGHER','HIGHER','LOWER','THINKING')})),
+      fr('hol-match-timeout','You ran out of time','A timed-out row scores exactly like a wrong call; this line is the only place the difference shows.','MatchView.swift', matchPlay({cd:countdown('Make your call',0,0),off:1,myCall:'You ran out of time.',rows:S('HIGHER','TIMED OUT','LOWER','LOCKED')})),
+      fr('hol-match-reveal','Reveal','4s phase: the challenger’s points are written, the standings update. There is no result badge in a match (solo has one).','MatchView.swift', matchPlay({q:'Question 4 of 12',cd:countdown('The answer is revealed',3,.75),revealed:1,off:1,myCall:'You called higher.',rows:S('HIGHER','HIGHER','LOWER','LOWER')})),
+      fr('hol-match-sd','Sudden death','After the main ladder, only players still tied on correct and best streak play on. Others are WATCHING, a miss is ELIMINATED; a shorter 8s call clock.','MatchView.swift · suddenDeathRound', matchPlay({q:'Sudden death · Round 1',cd:countdown('Make your call',5,.62),rows:[{rank:1,name:MAYA,tied:1,c:7,b:4,st:'LOCKED'},{rank:1,name:SAM,me:1,tied:1,c:7,b:4,st:'THINKING'},{rank:3,name:DEV,c:6,b:3,st:'WATCHING'},{rank:4,name:KAY,c:4,b:2,st:'ELIMINATED'}]})),
+      fr('hol-match-paused','Paused by host','Banner above the countdown; calls are blocked.','MatchView.swift', matchPlay({paused:1,cd:countdown('Make your call',9,.74),off:1,rows:S('THINKING','THINKING','THINKING','THINKING')})),
+      fr('hol-match-error','Error','A rejected call, shown under the standings.','MatchView.swift', matchPlay({cd:countdown('Make your call',8,.66),rows:S('LOCKED','THINKING','LOCKED','THINKING'),err:'That call was too late.'})),
+    ]),
+    group('Live match · final','The winner is the one panel. Only the host chooses what’s next; everyone else can keep reading the result.', [
+      fr('hol-win-splash','Winner moment','Full screen before the results; auto-advances after ~2.5s, tap skips. Replaces the “Maya wins” headline on the results.','MatchView.swift (proposed)', winSplash({names:[MAYA],headline:'Maya wins',sub:'9 correct · 5 best'})),
+      fr('hol-win-splash-tie','Winner moment · tie','A shared win shows both avatars and reads “A & B tie”.','MatchView.swift (proposed)', winSplash({names:[MAYA,SAM],headline:'Maya & Sam tie',sub:'8 correct each'})),
+      fr('hol-final-host','Final · host','Winner on a panel, others on wells. Play again (replay, new match) or Back to the room.','MatchView.swift · MatchFinalView', finalScreen('Maya wins',[{rank:1,name:MAYA,stat:'9 correct · 5 best'},{rank:2,name:SAM,me:1,stat:'7 correct · 4 best'},{rank:3,name:DEV,stat:'6 correct · 3 best'},{rank:4,name:KAY,stat:'4 correct · 2 best'}],hostControls)),
+      fr('hol-final-guest','Final · tie, non-host','A shared win reads “A & B tie”. Non-hosts wait for the host’s choice; the screen dismisses itself when it arrives.','MatchView.swift', finalScreen('Maya & Sam tie',[{rank:1,name:MAYA,stat:'8 correct · 5 best'},{rank:1,name:SAM,me:1,stat:'8 correct · 5 best'},{rank:3,name:DEV,stat:'6 correct · 3 best'}],guestControls)),
+    ])
+  ]);
+})();
+</script>
+<script>
+/* =====================================================================
+   2v2 WAVELENGTH
+   ===================================================================== */
+(function(){
+  const CARD = ['Boring','Electric'];
+  const CARD2 = ['Worst QB ever','Best QB ever'];
+
+  /* WavelengthDial: positions 0..1000 along a half circle, pivot bottom-centre. */
+  const pt = (p, r) => { const a = Math.PI*(1-p/1000); return [500 + r*Math.cos(a), 530 - r*Math.sin(a)]; };
+  const slice = (f, t, r=470) => { let d='M500 530'; const n=Math.max(2,Math.floor((t-f)/10)); for(let i=0;i<=n;i++){ const [x,y]=pt(f+(t-f)*i/n,r); d+=`L${x.toFixed(1)} ${y.toFixed(1)}`; } return d+'Z'; };
+  const wedges = (c) => [[2,-100,-60],[3,-60,-20],[4,-20,20],[3,20,60],[2,60,100]].map(([p,a,b])=>[p,Math.min(Math.max(c+a,0),1000),Math.min(Math.max(c+b,0),1000)]);
+  const COL = {4:'var(--wl-bull)',3:'var(--wl-near)',2:'var(--wl-edge)'};
+  const dial = (o={}) => { let s=`<path d="${slice(0,1000)}" fill="var(--wl-base)"/>`;
+    if (o.target!=null) wedges(o.target).forEach(([p,f,t])=>{ if(t>f) s+=`<path d="${slice(f,t)}" fill="${COL[p]}"/>`; });
+    if (o.needle!=null) { const [x,y]=pt(o.needle,440); s+=`<line x1="500" y1="530" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--wl-needle)" stroke-width="9" stroke-linecap="round"/>`; }
+    s+=`<circle cx="500" cy="530" r="15" fill="var(--wl-needle)"/>`;
+    return `<svg class="dial" viewBox="0 0 1000 530" style="${o.w?`width:${o.w}px`:''}">${s}</svg>`; };
+
+  const boardPanel = (o) => panel(V(12,[
+    o.clue!==undefined ? V(2,[ml('The clue',{s:10,tr:.13,c:'var(--panel-muted)'}), slab(o.clue===null?'“Waiting for the clue…”':`“${o.clue}”`,30,'var(--panel-fg)','text-align:center')],'align-items:center') : '',
+    o.caption ? `<div class="tc">${ml(o.caption,{s:10,tr:.13,c:'var(--panel-muted)'})}</div>` : '',
+    H(12,[slab(o.card[0],16,'var(--panel-fg)'),sp(12),slab(o.card[1],16,'var(--panel-fg)','text-align:right')],'align-items:baseline'),
+    dial(o),
+    o.result ? `<div class="tc">${slab(o.result,24,'var(--panel-fg)')}</div>` : ''
+  ],'padding:16px'));
+
+  const yourMove = (title, inner) => well(V(10,[ml('Your move',{s:10,tr:.13}), title?slab(title,22):'', inner],'padding:14px'));
+  const copy = t => sans(t,14,400,'var(--muted)');
+  const counter = (w,c,over) => ml(`${w}/8 words · ${c}/100 characters · no digits`,{s:10,tr:.06,c:over?'var(--hidden-text)':'var(--muted)'});
+  const legend = H(14,[['Bullseye · 4','--wl-bull'],['Near · 3','--wl-near'],['Edge · 2','--wl-edge']].map(l=>H(6,[`<span style="width:10px;height:10px;background:var(${l[1]})"></span>`,ml(l[0],{s:10,tr:.06,c:'var(--fg)'})],'align-items:center')));
+  const paused = errorBanner('The host paused the game.');
+
+  const header = (o) => V(8,[
+    H(0,[ml(`${o.mode||'Co-op'} · ${o.phase}`,{b:1,tr:.15,c:'var(--fg)'}),sp(),o.who?ml(o.who,{s:10,tr:.1}):''],'align-items:baseline'),
+    headerStats([{cap:'Round',val:o.round||'3 / 8'},{cap:o.mode==='2v2'?'Team 1 – Team 2':'Team score',val:o.score||'9'},{cap:o.cap,val:o.val,u:o.u}],o.frac)
+  ]);
+  const TABS = [['Dial','dial'],['Rounds','listnum']];
+  const dialTab = (o) => gameShell({title:'Wavelength',header:header(o.h),tabs:TABS,on:0,gap:'g14',body:j(o.paused?paused:'',o.board,o.controls,o.err?errorBanner(o.err):'',o.banner||'')});
+  const REV = {phase:'Revealed',round:'3 / 6',score:'11',cap:'This card',val:'+4'};
+  const revealControls = (pts, host, last) => well(V(10,[ml('Round locked',{s:10,tr:.13}),slab(pts,22),host?btn(last?'See results':'Next card'):copy('Waiting for the host to continue.')],'padding:14px'));
+
+
+  /* ---------- Rounds tab pieces ---------- */
+  const teamCard = (title, score, players) => well(V(8,[H(0,[slab(title,20),sp(),mono(score,22,700)],'align-items:baseline'), ...players.map(p=>H(10,[avatar(p[0],26,p[3]),sans(p[3]?'You':p[0],14,600,'var(--fg)','flex:1'),ml(p[1],{s:10,tr:.06,c:p[2]?'var(--hidden-text)':'var(--muted)'})],'align-items:center'))],'padding:14px'));
+  const rRow = (r) => { const cur=r.state==='now', up=r.state==='up';
+    return well(V(6,[H(0,[ml('R'+r.n,{b:1,tr:.08,c:cur?'var(--fg)':'var(--muted)',x:'width:34px'}),sans(`${r.psy} → ${r.gue}`,14,600,'var(--fg)','flex:1'),
+      r.state==='skipped'?ml('Skipped',{s:10,b:1,tr:.1}): r.state==='done'?mono(r.pts+' pts',15,700):cur?ml('Now',{s:10,b:1,tr:.1,c:'var(--hidden-text)'}):ml('Upcoming',{s:10,tr:.1})],'align-items:baseline'),
+      (r.clue&&(r.state==='done'||cur))?slab(`“${r.clue}”`,18):'', (r.card&&(r.state==='done'||r.state==='skipped'))?ml(`${r.card[0]}  ↔  ${r.card[1]}`,{s:10,tr:.04}):''],'padding:12px'), up?'opacity:.55':(r.state==='skipped'?'':''));
+  };
+  const roundList = (rows, settledCount, total) => V(8,[sectionTitle('Rounds',`${settledCount} of ${total}`),...rows.map(rRow)]);
+  const coopRounds = [
+    {n:1,psy:SAM,gue:MAYA,state:'done',pts:4,clue:'Mahomes on a Tuesday',card:CARD},
+    {n:2,psy:MAYA,gue:SAM,state:'done',pts:3,clue:'A Madden create-a-player',card:CARD2},
+    {n:3,psy:SAM,gue:MAYA,state:'skipped',card:['Overrated','Underrated']},
+    {n:4,psy:MAYA,gue:SAM,state:'now',clue:'Third and long, Lambeau'},
+    {n:5,psy:SAM,gue:MAYA,state:'up'},{n:6,psy:MAYA,gue:SAM,state:'up'}
+  ];
+  const versusRounds = [
+    {n:1,psy:SAM,gue:MAYA,state:'done',pts:4,clue:'Gronk spiking it',card:CARD},
+    {n:2,psy:DEV,gue:KAY,state:'done',pts:2,clue:'Tom Brady’s 40-time',card:CARD2},
+    {n:3,psy:MAYA,gue:SAM,state:'done',pts:3,clue:'A Sunday in Cleveland',card:['Cold','Hot']},
+    {n:4,psy:KAY,gue:DEV,state:'now',clue:'Cowboys fan, week 18'},
+    ...[5,6,7,8].map((n,i)=>({n,psy:[SAM,DEV,MAYA,KAY][i],gue:[MAYA,KAY,SAM,DEV][i],state:'up'}))
+  ];
+  const roundsTab = (teams, list) => gameShell({title:'Wavelength',header:header({phase:'Guessing',cap:'Guess clock',val:'41',frac:.7,round:'4 / 6',score:'7'}),tabs:TABS,on:1,gap:'g14',body:j(teams,list)});
+
+  /* ---------- Final ---------- */
+  const star = n => ('★'.repeat(n)+'☆'.repeat(3-n));
+  const finalFrame = (o) => phone({nav:navPush('Wavelength','Party'),tabs:'',gap:'g20',body:j(
+    eyebrow('Final'),
+    panel(V(8,o.score,'padding:16px')),
+    o.teams, o.rounds, o.host?V(8,[btn('Play again'),btn('Back to the room',{v:'ghost'})]):V(8,[`<div class="tc">${ml('Waiting for the host to choose what\'s next.')}</div>`,btn('Back to the room',{v:'ghost'})])
+  )});
+
+  const coopTeam = teamCard('Your team','11',[[SAM,'Watching',0,1],[MAYA,'Watching']]);
+  const versusTeams = j(teamCard('Team 1','18',[[SAM,'Clue revealed',0,1],[MAYA,'Locked 3']]),teamCard('Team 2','18',[[DEV,'Watching'],[KAY,'Guessing now']]));
+  const fillW = h => ({phase:'Writing clues',cap:'Clues due',val:'1:24',frac:.47,round:'1 / 6',score:'0',...h});
+
+  game('wl', '2v2 Wavelength',
+    'A psychic secretly sees a <b>hidden target</b> on a spectrum between two ends and writes a one-shot clue; their partner places a needle on a half-circle dial. Closeness is scored in bands (<b>4 / 3 / 2</b>). Two modes picked by the host: <b>Co-op</b> (2 players, reach a target score over 4/6/8 rounds) and <b>2v2</b> (4 players, two teams, 8 rounds, ties go to bullseyes then sudden death). All clues are written up front in a shared fill phase; guessing then runs one round at a time. The target only ever reaches its psychic.',
+    ['Dealing','Fill: everyone writes clues (180s)','Guess (60s/round)','Reveal','… rounds','Final'],
+  [
+    group('Loading & pause','', [
+      fr('wl-dealing','Dealing the cards','First load.','WavelengthMatchView.swift', phone({nav:navPush('Wavelength','Party'),tabs:'',body:loadingState('Dealing the cards…'),pad:false})),
+      fr('wl-countdown','Get ready · 3-2-1','Shown after the board loads and before the first phase opens, so players can settle in. Ticks 3, 2, 1, then the first phase starts. New (design proposal, not yet in the app).','WavelengthMatchView.swift (proposed)', phone({nav:navPush('Wavelength','Party'),tabs:'',body:getReady(3,'Wavelength','Write a clue for your hidden target'),pad:false})),
+      fr('wl-paused','Paused by host','Reuses ErrorBanner (red tint) for a non-error notice; the other games use a well with a pause icon. A candidate for consistency.','WavelengthMatchView.swift · WavelengthDialTab', dialTab({paused:1,h:fillW({}),board:boardPanel({card:CARD,target:312,caption:'Only you can see the target'}),controls:yourMove('Write your clue (1 of 3)',V(10,[copy('One shot, aimed at the hidden target only you can see.'),field('Clue',{ph:1,ta:1}),counter(0,0),btn('Lock in clue',{off:1})]))})),
+    ]),
+    group('Dial tab · fill phase','One clock for the whole phase. The psychic sees the card with the hidden target drawn as wedges (red = concealed information, so the caption says it plainly). Nobody else sees a spectrum yet.', [
+      fr('wl-fill-write','Write your clue','Own card with the target wedges visible only to this player. Counter shows words / characters / no digits.','WavelengthMatchView.swift · fillControls', dialTab({h:fillW({}),board:boardPanel({card:CARD,target:312,caption:'Only you can see the target'}),controls:yourMove('Write your clue (1 of 3)',V(10,[copy('One shot, aimed at the hidden target only you can see.'),field('Clue',{ph:1,ta:1}),counter(0,0),btn('Lock in clue',{off:1})]))})),
+      fr('wl-fill-draft','Clue drafted','Valid clue enables “Lock in clue”.','WavelengthMatchView.swift', dialTab({h:fillW({val:'1:02',frac:.34}),board:boardPanel({card:CARD,target:312,caption:'Only you can see the target'}),controls:yourMove('Write your clue (1 of 3)',V(10,[copy('One shot, aimed at the hidden target only you can see.'),field('Mahomes on a Tuesday',{foc:1,ta:1}),counter(4,21),btn('Lock in clue')]))})),
+      fr('wl-fill-over','Clue over the limit','More than 8 words, over 100 chars, or any digit turns the counter red and disables Lock. The server enforces the same limits.','WavelengthModels.swift · validateClue', dialTab({h:fillW({val:'0:48',frac:.27,u:0}),board:boardPanel({card:CARD,target:312,caption:'Only you can see the target'}),controls:yourMove('Write your clue (1 of 3)',V(10,[copy('One shot, aimed at the hidden target only you can see.'),field('The kind of guy who runs a 4.3 forty at the combine every year',{foc:1,ta:1}),counter(13,61,1),btn('Lock in clue',{off:1})]))})),
+      fr('wl-fill-saving','Locking the clue','Button shows a spinner and “Writing clue…”.','WavelengthMatchView.swift', dialTab({h:fillW({val:'1:02',frac:.34}),board:boardPanel({card:CARD,target:312,caption:'Only you can see the target'}),controls:yourMove('Write your clue (1 of 3)',V(10,[copy('One shot, aimed at the hidden target only you can see.'),field('Mahomes on a Tuesday',{ta:1}),counter(4,21),btn('Writing clue…',{spin:1,off:1})]))})),
+      fr('wl-fill-wait','Clues written, waiting','Nothing left to do: “Cards are out” empty state, and a line that names who we are waiting on (“Your teammate is writing the clues.” in co-op, “The others are writing their clues.” in 2v2).','WavelengthMatchView.swift · waitingText', dialTab({h:fillW({val:'0:31',frac:.17,u:0}),board:emptyState('Cards are out','Everyone fills out their own cards in private.'),controls:yourMove(null,copy('Your clues are written. Waiting for the others.'))})),
+    ]),
+    group('Dial tab · guess phase','60s per guess. The guesser drags along the arc; their needle is broadcast live to everyone (throttled), and the target never is.', [
+      fr('wl-guess-guesser','Guessing: you’re the guesser','Drag anywhere on the dial to move the needle, then confirm. The needle starts at the middle every round. The clock caption says “Your guess”.','WavelengthMatchView.swift · guessControls', dialTab({h:{phase:'Guessing',who:'Maya’s clue',round:'3 / 6',score:'7',cap:'Your guess',val:'38',frac:.63},board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',needle:640}),controls:yourMove('Place the needle',V(10,[copy('Drag along the arc to where you think the clue points, then lock it in.'),btn('Confirm guess'),lr(),legend]))})),
+      fr('wl-guess-locking','Locking the guess','','WavelengthMatchView.swift', dialTab({h:{phase:'Guessing',who:'Maya’s clue',round:'3 / 6',score:'7',cap:'Your guess',val:'4.2',u:1,frac:.07},board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',needle:640}),controls:yourMove('Place the needle',V(10,[copy('Drag along the arc to where you think the clue points, then lock it in.'),btn('Locking…',{spin:1,off:1}),lr(),legend]))})),
+      fr('wl-guess-psychic','Guessing: you’re the psychic','Your own clue, and the target wedges stay visible to you while you watch your partner’s needle.','WavelengthMatchView.swift', dialTab({h:{phase:'Guessing',who:'Your clue',round:'3 / 6',score:'7',cap:'Guess clock',val:'38',frac:.63},board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',target:312,needle:560}),controls:yourMove('Watching',V(10,[copy('Your target is hidden from everyone else until the guess locks.'),lr(),legend]))})),
+      fr('wl-guess-spectator','Guessing: spectator','Opponents (2v2) just watch the needle move.','WavelengthMatchView.swift', dialTab({mode:'2v2',h:{mode:'2v2',phase:'Guessing',who:'Kayla’s clue',round:'4 / 8',score:'7 – 5',cap:'Guess clock',val:'38',frac:.63},board:boardPanel({card:CARD2,clue:'Cowboys fan, week 18',needle:215}),controls:yourMove('Watching',V(10,[copy('Watch the guesser set the needle.'),lr(),legend]))})),
+    ]),
+    group('Dial tab · reveal','After a guess locks, the table stays on that card. The target wedges appear under the needle, the points are shown, and nobody moves on until the host taps “Next card”. No countdown. The same reveal applies on the web. (Design proposal: today the server jumps straight to the next card.)', [
+      fr('wl-reveal-bull','Reveal · bullseye, host','Needle and target wedges on the main dial, the reaction (Bullseye! / So close! / In the zone / Off the mark) and the points. Only the host gets the button.','WavelengthMatchView.swift · .reveal (proposed)', dialTab({h:REV,board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',target:620,needle:628,result:'Bullseye!'}),controls:revealControls('+4 points',1)})),
+      fr('wl-reveal-bull-guest','Reveal · bullseye, everyone else','Guesser, psychic and opponents all see the same board. A line says who the table is waiting on.','WavelengthMatchView.swift · .reveal (proposed)', dialTab({h:REV,board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',target:620,needle:628,result:'Bullseye!'}),controls:revealControls('+4 points',0)})),
+      fr('wl-reveal-miss','Reveal · a miss','Needle outside every wedge scores 0.','WavelengthMatchView.swift (proposed)', dialTab({h:REV,board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',target:780,needle:300,result:'Off the mark'}),controls:revealControls('0 points',1)})),
+      fr('wl-reveal-last','Reveal · last card, host','On the final card the button reads “See results” and goes to the Final screen.','WavelengthMatchView.swift (proposed)', dialTab({h:{...REV,round:'6 / 6'},board:boardPanel({card:CARD2,clue:'Third and long, Lambeau',target:420,needle:470,result:'So close!'}),controls:revealControls('+3 points',1,1)})),
+    ]),
+    group('Rounds tab','Reference. A psychic’s clue is public once its round is open; until then it is concealed, and the team card says so in red.', [
+      fr('wl-rounds-coop','Rounds · co-op','One team card with each player’s state; every round the match will play: settled with clue and card ends, the current one, the rest dimmed.','WavelengthMatchView.swift · WavelengthRoundsTab', roundsTab(teamCard('Your team','7',[[SAM,'Guessing now',0,1],[MAYA,'Clue locked',1]]),roundList(coopRounds,3,6))),
+      fr('wl-rounds-versus','Rounds · 2v2','Two team cards; “Clue locked” in red for the psychic whose clue is not public yet.','WavelengthMatchView.swift', roundsTab(j(teamCard('Team 1','7',[[SAM,'Watching',0,1],[MAYA,'Locked 3']]),teamCard('Team 2','5',[[DEV,'Guessing now'],[KAY,'Clue locked',1]])),roundList(versusRounds,3,8))),
+    ]),
+    group('Final','Co-op always plays every round; the result shows score against the max, bullseyes and a star tier (target = ★, then ★★, ★★★).', [
+      fr('wl-win-splash-coop','Winner moment · co-op win','Everyone on the team shows. Same timing as the other games.','WavelengthMatchView.swift (proposed)', winSplash({names:[SAM,MAYA],headline:'You won!',sub:'14 / 16 points · ★★★'})),
+      fr('wl-win-splash-coop-loss','Winner moment · co-op, short of target','No rings and a muted headline: the moment still lands, without celebrating.','WavelengthMatchView.swift (proposed)', winSplash({names:[SAM,MAYA],headline:'Not this time',sub:'6 / 16 points',loss:1})),
+      fr('wl-win-splash-versus','Winner moment · 2v2','The winning team’s two players.','WavelengthMatchView.swift (proposed)', winSplash({names:[SAM,KAY],headline:'Team 1 wins',sub:'18 · 14'})),
+      fr('wl-final-coop-win','Final · co-op win','Score card on a panel: points / max, bullseye count, stars.','WavelengthMatchView.swift · WavelengthFinalView', finalFrame({host:1,headline:'You won!',score:[slab('14 / 16 points',30,'var(--panel-fg)'),ml('3 bullseyes',{tr:.08,c:'var(--panel-muted)'}),`<span style="font:700 26px Barlow;color:var(--panel-fg)">${star(2)}</span>`],teams:coopTeam,rounds:roundList(coopRounds.map(r=>({...r,state:r.state==='now'||r.state==='up'?'done':r.state,pts:r.pts||3,clue:r.clue||'Cheese curds in January',card:r.card||CARD})),6,6)})),
+      fr('wl-final-coop-loss','Final · co-op, short of the target','','WavelengthMatchView.swift', finalFrame({host:0,headline:'Not this time',score:[slab('6 / 16 points',30,'var(--panel-fg)'),ml('0 bullseyes',{tr:.08,c:'var(--panel-muted)'}),`<span style="font:700 26px Barlow;color:var(--panel-fg)">${star(0)}</span>`],teams:coopTeam,rounds:roundList(coopRounds.map(r=>({...r,state:r.state==='now'||r.state==='up'?'done':r.state,pts:r.pts||2,clue:r.clue||'Cheese curds in January',card:r.card||CARD})),6,6)})),
+      fr('wl-final-versus','Final · 2v2','Headline names the team. A caption says how a tie was settled (Bullseye tiebreak / Sudden death).','WavelengthMatchView.swift', finalFrame({host:1,headline:'Team 1 wins',score:[slab('Team 1: 18  ·  Team 2: 18',26,'var(--panel-fg)'),ml('Bullseye tiebreak',{tr:.08,c:'var(--panel-muted)'})],teams:versusTeams,rounds:roundList(versusRounds.map(r=>({...r,state:r.state==='now'||r.state==='up'?'done':r.state,pts:r.pts||3,clue:r.clue||'Cheese curds in January',card:r.card||CARD})),8,8)})),
+    ])
+  ]);
+})();
+</script>
+<script>
+/* =====================================================================
+   SABOTAGE DRAFT
+   ===================================================================== */
+(function(){
+  const TABS = [['Draft','scope'],['Rosters','p3'],['Log','logl']];
+  const header = (o) => V(8,[
+    H(0,[ml(`Round ${o.round||4} of ${o.of||14} · ${o.slot||'WR1'}`,{b:1,tr:.15,c:'var(--fg)',x:'white-space:nowrap'}),sp(),ml(o.mode||'Full',{s:10,tr:.1})],'align-items:baseline'),
+    headerStats([{cap:'Your picks',val:o.picks||'3 / 14'},{cap:'On the clock',val:o.who||'You',u:o.me},{cap:'Turn clock',val:o.val||'24',u:o.me||o.urgent}],o.frac??.8)
+  ]);
+  const shell = (o) => gameShell({title:'Sabotage Draft',header:header(o.h||{}),tabs:TABS,on:o.on||0,gap:'g14',overlay:o.overlay,body:o.body});
+
+  const spinCard = (who, spin, slotCopy) => panel(H(14,[teamLogo(spin?spin[0]:'',56), V(3,[ml(who,{s:10,tr:.13,c:'var(--panel-muted)'}), spin?slab(spin[1],24,'var(--panel-fg)'):waiting('Waiting on the spin…',{s:18,x:'font:400 24px Bebas Neue;text-transform:uppercase;color:var(--panel-fg)'}), ml(`Choosing ${slotCopy||'a WR'}`,{tr:.08,c:'var(--panel-muted)'})],'flex:1;min-width:0')],'padding:14px;align-items:center'));
+  const PIT = ['PIT','Pittsburgh Steelers'], NWE = ['NWE','New England Patriots'];
+
+  const card = (title, msg, wait) => well(V(6,[ml('Your move',{s:10,tr:.13}),slab(title,22), wait?waiting(msg,{x:'font:400 14px Barlow;color:var(--muted)'}):copyL(msg)],'padding:14px'));
+  const copyL = t => sans(t,14,400,'var(--muted)');
+  const poolField = (choice, ph) => `<div style="display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px">${choice?`${portrait(choice[0],30)}${sans(choice[0],15,600,'var(--fg)','white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0')}${mono('· '+choice[1],12,400,'var(--muted)','white-space:nowrap;flex:none')}${sp(8)}${ml('Change',{s:10,b:1,tr:.1})}`:`${I('srch',16,'color:var(--muted)')}${sans(ph,15,400,'var(--muted)')}`}</div>`;
+  const pending = t => waiting(t,{s:12,x:'font:400 10px JetBrains Mono;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)'});
+
+  const pickForm = (choice, saving) => well(V(10,[ml('Your move',{s:10,tr:.13}),slab('Make your hidden pick',22),copyL('Nobody sees who you chose, or which year.'),poolField(choice,'Search a WR…'),btn(saving?'Locking…':'Lock in pick',{off:!choice||saving,spin:saving})],'padding:14px'));
+  const pickLocked = well(V(10,[ml('Your move',{s:10,tr:.13}),slab('Your pick is locked',22),H(10,[portrait('Antonio Brown',36),sans('Antonio Brown · 2017',15,600)],'align-items:center'),waiting('Waiting on the rest of the table.',{x:'font:400 14px Barlow;color:var(--muted)'})],'padding:14px'));
+  const kindBtn = (t,d) => `<div style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;gap:2px">${sans(t,15,600)}${sans(d,12,400,'var(--muted)')}</div>`;
+  const guessChoose = well(V(10,[ml('Your move',{s:10,tr:.13}),slab('Sabotage Maya\u2019s pick',22),kindBtn('Guess the player','Right? Same player, a random different year — you don\u2019t choose it'),kindBtn('Guess the player and year','Right? You choose exactly what replaces it'),btn('Pass',{v:'ghost'})],'padding:14px'));
+  const guessForm = (exact, step, saving) => well(V(10,[ml('Your move',{s:10,tr:.13}),slab('Sabotage Maya\u2019s pick',22),
+    H(0,[sans(exact?'Guessing the player and year':'Guessing the player',14,600),sp(),mono('Change',11,700,'var(--muted)')],'align-items:baseline'),
+    exact?ml(`Step 1 of 2 — guess the player`,{s:10,tr:.1}):'', poolField(step>=1?['Antonio Brown','2017']:null,'Search a name…'),
+    exact&&step>=1?ml('Step 2 of 2 — choose their replacement',{s:10,tr:.1}):'', exact&&step>=1?poolField(step>=2?['JuJu Smith-Schuster','2018']:null,'Search a replacement…'):'',
+    H(10,[btn(saving?'Locking…':'Lock in guess',{x:'flex:1;width:auto',spin:saving,off:saving||(exact?step<2:step<1)}),`<span style="flex:none">${btn('Pass',{v:'ghost',inl:1})}</span>`])],'padding:14px'));
+  const xfDecide = well(V(10,[ml('Your move',{s:10,tr:.13}),slab('Assign or discard your X-Factor',22),H(10,[portrait('Davante Adams',36),sans('Davante Adams · 2019',15,600)],'align-items:center'),copyL('Replace a slot at the same position, or keep your roster as it is.'),
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${['Replace WR 1','Replace WR 2','Replace WR 3'].map(t=>btn(t,{v:'ghost'})).join('')}</div>`, btn('Discard X-Factor')],'padding:14px'));
+
+  const base = (o) => shell({h:o.h,body:j(o.paused?errorBanner('The host paused the game.'):'',o.spin,o.action,o.err?errorBanner(o.err):'',o.wait||'')});
+  const mine = {me:1,who:'You'};
+
+  /* ---------- Rosters ---------- */
+  const badge = (t, fill, ink) => `<span style="font:700 8px 'JetBrains Mono';letter-spacing:.05em;text-transform:uppercase;padding:2px 5px;background:${fill};color:${ink}">${t}</span>`;
+  const SLOTS = ['QB','RB 1','RB 2','WR 1','WR 2','WR 3','TE','OL','DL','LB','CB','S','ST','X FACTOR'];
+  const cellPick = n => `${portrait(n[0],26)}${sans(`${n[0]} · ${n[1]}`,14,600,'var(--panel-fg)','white-space:nowrap;overflow:hidden;text-overflow:ellipsis')}`;
+  const cellConc = (code, name) => concealed(H(6,[teamLogo(code,16),ml(name,{s:10,b:1,tr:.06,c:'var(--fg)',x:'white-space:nowrap'})],'padding:4px 8px;align-items:center'),{compact:1,x:'display:inline-block'});
+  const rrow = (slot, content, o={}) => `<div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:8px;border:1px ${o.dash?'dashed':'solid'} ${o.bd||'rgba(232,227,214,.12)'}">${ml(slot,{s:10,b:1,tr:.1,c:'var(--panel-muted)',x:'width:50px;flex:none'})}${content}<span style="flex:1"></span>${o.respun?badge('Respun','var(--panel-shade)','var(--panel-muted)'):''}${o.sab?badge('Sabotaged','var(--hidden)','var(--fg)'):''}</div>`;
+  const rosterCard = (r) => well(V(0,[
+    H(10,[avatar(r.n,36,r.me), V(3,[H(6,[slab(r.me?'You':r.n,18)],'align-items:baseline'), ml(r.st,{s:9,tr:.07,c:r.active?'var(--hidden-text)':'var(--muted)'})],'flex:1'), ml(r.hits?`${r.hits} hit${r.hits>1?'s':''}`:'No hits',{s:10,b:!!r.hits,tr:.07,c:r.hits?'var(--hidden-text)':'var(--muted)'}), I(r.open?'cu':'cd',12,'color:var(--muted)')],`padding:12px;align-items:center;${r.active?'background:rgba(168,41,31,.14)':''}`),
+    r.open?`<div style="margin:0 10px 10px;padding:8px;background:var(--panel);border-radius:8px;display:flex;flex-direction:column;gap:6px">${r.rows.join('')}</div>`:''
+  ]));
+  const myRows = [
+    rrow(SLOTS[0],cellPick(['Patrick Mahomes','2018']),{bd:'rgba(168,41,31,.4)'}),
+    rrow(SLOTS[1],cellPick(['Christian McCaffrey','2019']),{bd:'rgba(168,41,31,.4)',respun:1}),
+    rrow(SLOTS[2],cellPick(['Saquon Barkley','2022']),{bd:'rgba(168,41,31,.4)',sab:1}),
+    rrow(SLOTS[3],`${ml('Choosing…',{s:10,b:1,tr:.1,c:'var(--hidden-ink)'})}`,{bd:'rgba(168,41,31,.5)'}),
+    ...SLOTS.slice(4,13).map(s=>rrow(s,ml('— up next —',{s:10,tr:.06,c:'var(--panel-muted)'}),{dash:1})),
+    rrow(SLOTS[13],ml('— not reached —',{s:10,tr:.06,c:'var(--panel-muted)'}),{dash:1})
+  ];
+  const theirRows = [
+    rrow(SLOTS[0],cellConc('NWE','New England Patriots')),
+    rrow(SLOTS[1],cellConc('GNB','Green Bay Packers'),{respun:1}),
+    rrow(SLOTS[2],cellConc('DAL','Dallas Cowboys')),
+    rrow(SLOTS[3],`${ml('Choosing…',{s:10,b:1,tr:.1,c:'var(--hidden-ink)'})}`,{bd:'rgba(168,41,31,.5)'}),
+    ...SLOTS.slice(4,13).map(s=>rrow(s,ml('— up next —',{s:10,tr:.06,c:'var(--panel-muted)'}),{dash:1})),
+    rrow(SLOTS[13],ml('— not reached —',{s:10,tr:.06,c:'var(--panel-muted)'}),{dash:1})
+  ];
+  const collapsedRows = [rrow('',''),];
+  const PLAYERS = [{n:SAM,me:1},{n:MAYA,dot:1},{n:DEV},{n:KAY}];
+  const rosterDetail = (r) => V(12,[
+    H(12,[avatar(r.n,44,r.me), V(3,[slab(r.me?'You':r.n,26), ml(r.st,{s:10,tr:.08,c:r.active?'var(--fg)':'var(--muted)'})],'flex:1')],'align-items:center'),
+    H(8,[statTile('Picks',r.picks||'3 / 14'), statTile('Hits taken',String(r.hits||0))]),
+    ml('Roster',{s:10,b:1,tr:.14,x:'margin-top:4px'}),
+    `<div style="padding:8px;background:var(--panel);border-radius:8px;display:flex;flex-direction:column;gap:6px">${r.rows.join('')}</div>`
+  ]);
+  const rosterFrame = (mine) => shell({h:{who:'Maya',val:'24',frac:.8},on:1,body:j(
+    playerTabs(PLAYERS, mine?0:1),
+    mine ? rosterDetail({n:SAM,me:1,st:'Picking later',hits:2,rows:myRows}) : rosterDetail({n:MAYA,st:'On the clock',active:1,hits:0,rows:theirRows})
+  )});
+
+  /* ---------- Log ---------- */
+  const turnWell = (t) => well(V(0,[
+    H(0,[slab(t.title,18),sp(8),ml(t.slot,{s:9,tr:.1})],'padding:10px 12px 0;align-items:baseline'),
+    H(8,[t.pick?`${portrait(t.pick[0],22)}${sans(`${t.pick[0]} · ${t.pick[1]}`,13,600)}`:`${teamLogo(t.fr[0],18)}${ml(t.fr[1],{s:10,tr:.06})}`,sp(8),ml(t.out,{s:9,b:1,tr:.08,c:/Resp|Sab/.test(t.out)?'var(--hidden-text)':'var(--muted)'})],'padding:8px 12px;align-items:center'),
+    lr(),
+    ...(t.acts.length?t.acts.map(a=>H(8,[sans(`${a[0]} · ${a[1]}`,14,600),sp(8),ml(a[2],{s:10,b:/Resp|Exact/.test(a[2]),tr:.06,c:/Resp|Exact/.test(a[2])?'var(--hidden-text)':'var(--muted)'})],'padding:6px 12px;align-items:baseline')):[ml('No guesses',{s:10,tr:.08,x:'padding:12px'})]),
+    '<div style="height:4px"></div>'
+  ]));
+  const live = well(V(4,[ml('On the clock',{s:10,b:1,tr:.13,c:'var(--hidden-text)'}),slab('Maya is drafting',18),ml('Round 4 · WR 1 — waiting on Devon, you',{s:10,tr:.06})],'padding:12px'));
+  const turns3 = [
+    {title:'Kayla drafted',slot:'QB',fr:['KAN','Kansas City Chiefs'],out:'Kept',acts:[[SAM,'player only','Miss'],[DEV,'pass','—'],[MAYA,'player + year','Pending']]},
+    {title:'You drafted',slot:'QB',pick:['Patrick Mahomes','2018'],out:'Kept',acts:[[MAYA,'player only','Miss'],[DEV,'pass','—'],[KAY,'pass','—']]},
+    {title:'Devon drafted',slot:'QB',fr:['GNB','Green Bay Packers'],out:'Respun',acts:[[SAM,'player only','Respun year'],[KAY,'pass','—']]},
+    {title:'Maya drafted',slot:'QB',fr:['NWE','New England Patriots'],out:'Sabotaged',acts:[[DEV,'player + year','Exact hit'],[SAM,'pass','—'],[KAY,'pass','—']]}
+  ];
+  const logFrame = (inner) => shell({h:{who:'Maya',val:'24',frac:.8},on:2,body:inner});
+
+  /* ---------- Picker sheet ---------- */
+  const prow = (n, span, open, season) => V(10,[H(12,[portrait(n,38),V(2,[sans(n,16,600),ml(span,{s:10,tr:.06,c:'var(--hidden-text)'})],'flex:1'),season!==false?I(open?'cu':'cd',12,'color:var(--muted)'):''],'align-items:center'),
+    open?`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${['2017','2016','2015','2014','2013','2012'].map(y=>`<div style="min-height:36px;background:var(--fg);color:var(--surface);border-radius:8px;display:flex;align-items:center;justify-content:center;font:700 13px 'JetBrains Mono'">${y}</div>`).join('')}</div>`:'']);
+  const psec = (t, rows) => j(`<div style="padding:14px 0 6px">${ml(t,{s:10,b:1,tr:.14})}</div>`, rows.map(r=>`<div style="padding:8px 0;border-top:1px solid var(--line)">${r}</div>`));
+  const pickerSheet = (title, o) => `<div class="dim"></div><div class="sheet" style="top:44px;border-radius:22px 22px 0 0"><div class="grab"></div>
+    <div style="display:flex;align-items:center;justify-content:center;position:relative;height:44px"><span style="position:absolute;left:16px;color:var(--fg);font:400 17px Barlow">Cancel</span><span style="font:400 22px 'Bebas Neue';letter-spacing:.045em;text-transform:uppercase">${title}</span></div>
+    <div style="padding:0 16px 8px"><div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(232,227,214,.1);color:var(--muted);font:400 17px Barlow">${I('srch',16)}<span style="color:${o.q?'var(--fg)':'var(--muted)'}">${o.q||'Search a name…'}</span></div></div>
+    <div style="padding:0 16px 24px;flex:1;overflow:hidden">${o.body}</div></div>`;
+
+  /* ---------- Final ---------- */
+  const gradeColor = g => g==='—'?'transparent':({A:'var(--elite)',B:'var(--strong)',C:'var(--even)'}[g[0]]||'var(--rough)');
+  const gb = (g, large) => `<span style="display:inline-block;text-align:center;font:700 ${large?18:12}px 'JetBrains Mono';color:${g==='—'?'var(--panel-muted)':'var(--fg)'};min-width:${large?44:32}px;padding:${large?5:3}px 0;background:${gradeColor(g)};border-radius:4px">${g}</span>`;
+  const fRoster = (rows) => V(8, rows.map(r=>H(10,[ml(r[0],{s:10,b:1,tr:.08,c:'var(--panel-muted)',x:'width:44px'}), portrait(r[1],26), V(1,[sans(`${r[1]} · ${r[2]}`,13,600,'var(--panel-fg)'), r[4]?sans(r[4],11,400,'var(--panel-muted)','text-decoration:line-through'):''],'flex:1;min-width:0'), gb(r[3])],'align-items:center')));
+  const standing = (rank, n, rec, g, open, rows, me) => panel(V(0,[H(12,[`<span style="width:28px;font:400 26px 'Bebas Neue';color:var(--panel-muted);text-align:center">${rank}</span>`,avatar(n,38,me),V(2,[slab(me?'You':n,20,'var(--panel-fg)'),ml(rec,{s:12,b:1,tr:.08,c:'var(--panel-muted)'})],'flex:1'),V(4,[ml('DRAFT GRADE',{s:8,tr:.12,c:'var(--panel-muted)'}),gb(g,1)],'align-items:flex-end'),I(open?'cu':'cd',12,'color:var(--panel-muted)')],'padding:14px;align-items:center'), open?lr():'', open?`<div style="padding:14px">${fRoster(rows)}</div>`:'']));
+  const rosterA = [['QB','Patrick Mahomes','2018','A'],['RB 1','Christian McCaffrey','2019','A-'],['RB 2','Saquon Barkley','2022','B+'],['WR 1','Antonio Brown','2017','A'],['WR 2','Davante Adams','2019','A','DK Metcalf'],['WR 3','Chris Godwin','2019','B+'],['TE','Travis Kelce','2020','A+'],['OL','Trent Williams','2021','B'],['DL','Aaron Donald','2018','A+'],['LB','Fred Warner','2021','A-'],['CB','Jalen Ramsey','2017','B+'],['S','Minkah Fitzpatrick','2019','A'],['ST','Justin Tucker','2016','A-']];
+  const bracketGame = (a, as, b, bs) => b ? `<div style="border:1px solid var(--line);border-radius:8px;overflow:hidden">${[[a,as,as>bs],[b,bs,bs>as]].map(c=>`<div style="display:flex;padding:7px 10px;gap:8px;${c[2]?'background:rgba(232,227,214,.1);border-radius:4px;':''}color:${c[2]?'var(--panel-fg)':'var(--muted)'}">${sans(c[0],14,c[2]?700:400,'inherit','flex:1')}${mono(c[1],14,700,'inherit')}</div>`).join('')}</div>` : `<div style="border:1px solid var(--line);border-radius:8px;padding:10px;display:flex">${sans(a,14,600,'var(--fg)','flex:1')}${ml('Bye · advances',{s:10,tr:.08})}</div>`;
+  const bracket = V(14,[sectionTitle('Tiebreak bracket'), well(V(8,[H(0,[slab('11-6 tiebreak',18),sp(),ml('One-game playoff',{s:9,tr:.1})],'align-items:baseline'),ml('Round 1',{s:9,b:1,tr:.14}),bracketGame(MAYA,14,DEV,9),bracketGame(KAY,0,null,0),ml('Final',{s:9,b:1,tr:.14}),bracketGame(MAYA,12,KAY,15)],'padding:12px'))]);
+  const finalFrame = (host) => phone({nav:navPush('Sabotage Draft','Party'),tabs:'',gap:'g20',body:j(eyebrow('Final'),
+    V(12,[standing(1,SAM,'13-4','A-',1,rosterA,1),standing(2,MAYA,'11-6','B+',0),standing(3,KAY,'11-6','B',0),standing(4,DEV,'8-9','C+',0)]), bracket,
+    host?V(8,[btn('Play again'),btn('Back to the room',{v:'ghost'})]):V(8,[`<div class="tc">${waiting("Waiting for the host to choose what's next.",{x:'font:400 11px JetBrains Mono;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)'})}</div>`,btn('Back to the room',{v:'ghost'})]))});
+
+  game('sab', 'Sabotage Draft',
+    'Fourteen rounds (Full; Standard is 10, Quick is 7). Each round every player <b>spins a random franchise</b> and secretly picks any player from that franchise\'s history at the slot\'s position, any year. Turn by turn, <b>everyone else tries to guess the pick</b> and wreck it: guess the player and the pick is respun to another year; guess the player and exact year and you choose what replaces it. The last round is an X-Factor wildcard. Roster strength then simulates a 17-game season; best record wins. Room only (2–4). Pinned header (round + slot · your picks · who is on the clock) over three tabs: <b>Draft</b>, <b>Rosters</b>, <b>Log</b>.',
+    ['Dealing','Round: each seat’s turn (30s shared clock)','… 13 slots','X-Factor decision','Simulated season','Final'],
+  [
+    group('Loading','', [
+      fr('sab-dealing','Dealing the board','First load.','SabotageMatchView.swift', phone({nav:navPush('Sabotage Draft','Party'),tabs:'',body:loadingState('Dealing the board…'),pad:false})),
+      fr('sab-countdown','Get ready · 3-2-1','Shown after the board loads and before the first phase opens, so players can settle in. Ticks 3, 2, 1, then the first phase starts. New (design proposal, not yet in the app).','SabotageMatchView.swift (proposed)', phone({nav:navPush('Sabotage Draft','Party'),tabs:'',body:getReady(3,'Sabotage Draft','14 rounds · pick, then sabotage'),pad:false})),
+      fr('sab-paused','Paused by host','Also an ErrorBanner, like Wavelength.','SabotageMatchView.swift', base({paused:1,h:{...mine,val:'24'},spin:spinCard('You are picking',PIT),action:pickForm(null)})),
+    ]),
+    group('Draft tab · you are the drafter','The spin card is public the moment your turn arrives. Your pick is hidden to everyone, identity and year both.', [
+      fr('sab-pick','Make your hidden pick','The field is a button that looks like search; it opens the picker sheet. Lock is disabled until a player + season is chosen.','SabotageMatchView.swift · pickForm', base({h:mine,spin:spinCard('You are picking',PIT),action:pickForm(null)})),
+      fr('sab-pick-chosen','Pick chosen','The field shows portrait, name · season and “Change”. Lock in pick is live.','SabotageMatchView.swift', base({h:mine,spin:spinCard('You are picking',PIT),action:pickForm(['Antonio Brown','2017'])})),
+      fr('sab-pick-saving','Locking the pick','Spinner in the button.','SabotageMatchView.swift', base({h:mine,spin:spinCard('You are picking',PIT),action:pickForm(['Antonio Brown','2017'],1)})),
+      fr('sab-pick-locked','Pick locked','Waiting on the rest of the table; the wait line names who is still to act. If the 30s clock runs out first, a random player + year from the pool is picked for you.','SabotageMatchView.swift', base({h:{...mine,val:'11',frac:.37},spin:spinCard('You are picking',PIT),action:pickLocked,wait:pending('Waiting on Devon, Kayla')})),
+    ]),
+    group('Draft tab · you are sabotaging','Everyone not on the clock may lock exactly one guess or one explicit pass at the active seat, even before their pick exists.', [
+      fr('sab-guess-choose','Choose a weapon','Two guess types with their payoffs spelled out, or Pass (always legal).','SabotageMatchView.swift · guessForm', base({h:{who:'Maya',val:'24'},spin:spinCard('Maya is picking',NWE,'a WR'),action:guessChoose,wait:pending('Waiting on Maya, Devon, you')})),
+      fr('sab-guess-player','Guess the player','Name only: the game never checks the year, so the picker skips the season step.','SabotageMatchView.swift', base({h:{who:'Maya',val:'20',frac:.66},spin:spinCard('Maya is picking',NWE,'a WR'),action:guessForm(false,1),wait:pending('Waiting on Maya, Devon, you')})),
+      fr('sab-guess-exact-1','Exact guess · step 1 of 2','Player and year: first choose the player and season you think they picked.','SabotageMatchView.swift', base({h:{who:'Maya',val:'20',frac:.66},spin:spinCard('Maya is picking',NWE,'a WR'),action:guessForm(true,0),wait:pending('Waiting on Maya, Devon, you')})),
+      fr('sab-guess-exact-2','Exact guess · step 2 of 2','Then choose the replacement you will assign if you are right.','SabotageMatchView.swift', base({h:{who:'Maya',val:'17',frac:.57},spin:spinCard('Maya is picking',NWE,'a WR'),action:guessForm(true,2),wait:pending('Waiting on Maya, Devon, you')})),
+      fr('sab-guess-spent','Guess spent / passed','One action per turn; then wait. A passed turn reads “You passed on this turn”.','SabotageMatchView.swift', base({h:{who:'Maya',val:'12',frac:.4},spin:spinCard('Maya is picking',NWE,'a WR'),action:card('Guess spent on this turn','Waiting on the rest of the table.',1),wait:pending('Waiting on Maya')})),
+      fr('sab-between','Between turns','The turn closed (everyone acted or the clock ran out) and the next seat hasn’t opened.','SabotageMatchView.swift', base({h:{who:'Devon',val:'—',frac:0},spin:spinCard('Devon is picking',null,'a WR'),action:card('Between turns','Waiting on the next turn to open.',1)})),
+      fr('sab-error','Rejected action','A refused guess or pick shows an ErrorBanner under the form.','SabotageMatchView.swift', base({h:{who:'Maya',val:'20',frac:.66},spin:spinCard('Maya is picking',NWE,'a WR'),action:guessForm(false,1),err:'That player isn\u2019t in this pool.'})),
+    ]),
+    group('Draft tab · X-Factor','The final round of every mode. When the active seat’s turn completes, they alone decide: replace a slot of the pick’s own position or discard. It cannot be guessed at or blocked.', [
+      fr('sab-xf-decide','X-Factor · your decision','A grid of legal “Replace …” targets plus a prominent Discard. Slots depend on the pick’s position.','SabotageMatchView.swift · xFactor', base({h:{...mine,round:14,slot:'X FACTOR',picks:'13 / 14'},spin:spinCard('You are picking',['DEN','Denver Broncos'],'any offensive skill player'),action:xfDecide})),
+      fr('sab-xf-wait','X-Factor · someone else’s','','SabotageMatchView.swift', base({h:{who:'Maya',val:'20',round:14,slot:'X FACTOR',picks:'13 / 14'},spin:spinCard('Maya is picking',['DEN','Denver Broncos'],'any offensive skill player'),action:card('Maya\u2019s X-Factor','Waiting on their decision.',1)})),
+      fr('sab-xf-locked','X-Factor · locked','','SabotageMatchView.swift', base({h:{who:'Maya',val:'—',round:14,slot:'X FACTOR',picks:'14 / 14'},spin:spinCard('You are picking',['DEN','Denver Broncos'],'any offensive skill player'),action:card('X-Factor decision locked','Replaces WR 2')})),
+    ]),
+    group('Picker sheet','Bottom sheet over the Draft tab. A franchise’s whole history is a wall of names, so the three most tenured sit at the top as a one-tap shortcut; search is the escape hatch.', [
+      fr('sab-picker','Picker · pick or exact guess','Tapping a player opens their seasons in place; picking a season chooses and dismisses. (iOS list + .searchable styling.)','SabotagePickerSheet.swift', shell({h:mine,body:j(spinCard('You are picking',PIT),pickForm(null)),overlay:pickerSheet('Your pick',{body:psec('Most tenured',[prow('Hines Ward','2006–2011',1),prow('Antonio Brown','2010–2018',0),prow('Santonio Holmes','2006–2009',0)])+psec('Everyone else',[prow('Diontae Johnson','2019–2022',0),prow('Emmanuel Sanders','2010–2013',0),prow('JuJu Smith-Schuster','2017–2020',0)])})})),
+      fr('sab-picker-search','Picker · searching','Typing replaces both sections with “Results”, alphabetical.','SabotagePickerSheet.swift', shell({h:mine,body:j(spinCard('You are picking',PIT),pickForm(null)),overlay:pickerSheet('Your pick',{q:'ant',body:psec('Results',[prow('Antonio Brown','2010–2018',0),prow('Antwaan Randle El','2006–2007',0)])})})),
+      fr('sab-picker-name','Picker · name-only guess','A player-only guess skips seasons: tapping the row chooses at once; there is no chevron.','SabotagePickerSheet.swift', shell({h:{who:'Maya',val:'20'},body:j(spinCard('Maya is picking',NWE),guessForm(false,0)),overlay:pickerSheet('Guess Maya\u2019s pick',{body:psec('Most tenured',[prow('Julian Edelman','2009–2020',0,false),prow('Wes Welker','2007–2012',0,false),prow('Rob Gronkowski','2010–2018',0,false)])+psec('Everyone else',[prow('Brandin Cooks','2017',0,false),prow('Chris Hogan','2016–2018',0,false)])})})),
+    ]),
+    group('Rosters tab','A tab per seat under the pinned header (you first); the selected seat’s board below. Others’ picks never reach the app (row-level security), so they are drawn as red concealed chips naming only the franchise spun. Respun and Sabotaged outcomes are public and show as badges.', [
+      fr('sab-rosters-mine','Rosters · you','Your picks in full; red-outlined row = currently choosing. “2 hits” counts times others have wrecked you.','SabotageMatchView.swift · SabotageRostersTab', rosterFrame(true)),
+      fr('sab-rosters-theirs','Rosters · opponent','Maya’s past rounds are concealed (franchise only); the active seat’s header is tinted.','SabotageMatchView.swift · RosterRow', rosterFrame(false)),
+    ]),
+    group('Log tab','Each turn’s guesses and hits, newest first, grouped by round.', [
+      fr('sab-log-empty','Log · nothing yet','','SabotageMatchView.swift · SabotageLogTab', logFrame(V(12,[live, emptyState('Nothing yet','Each turn\u2019s guesses and hits land here, newest first.')]))),
+      fr('sab-log','Log · turns so far','Outcome per turn: Kept / Respun / Sabotaged. A guess row’s result is Miss / Respun year / Exact hit / Pending (not yet resolved against a pick).','SabotageMatchView.swift · TurnWell', logFrame(V(12,[live, ml('Round 3',{b:1,tr:.14,c:'var(--fg)',x:'padding-top:4px'}), ...turns3.map(turnWell)]))),
+    ]),
+    group('Final','After the last round the season is simulated; ties on record go to a single-elimination bracket of one-off games.', [
+      fr('sab-win-splash','Winner moment','Winner by record after the season sim (or the bracket). Replaces the “You win” headline.','SabotageFinalView.swift (proposed)', winSplash({names:[SAM],headline:'You win',sub:'13-4 · A- draft'})),
+      fr('sab-final-host','Final · host','Ranked by record. Each card shows the draft grade (grade colours, never red); expanding it shows every pick’s own grade and an X-Factor swap with the replaced player struck through. Tiebreak bracket below.','SabotageFinalView.swift', finalFrame(true)),
+      fr('sab-final-guest','Final · non-host','','SabotageFinalView.swift', finalFrame(false)),
+    ])
+  ]);
+})();
+</script>
+<script>
+/* =====================================================================
+   QB SEASON BUILDER
+   ===================================================================== */
+(function(){
+  const nav = navPush('QB Season Builder','Games');
+  const screen = (body, o={}) => phone({nav, tabs: tabMain(1), body, bottom:o.bottom, overlay:o.overlay, pad:o.pad, gap:o.gap, h:o.h, fixed:o.fixed});
+
+  const SLOTS = [['ACC','scope'],['ARM','bolt'],['MOB','run'],['IQ','brain'],['BLD','shield'],['TEAM','p3']];
+  const track = (grades) => H(4, SLOTS.map((s,i)=>{ const g=grades[i]; return `<div style="flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);background:${g?'var(--raised)':'transparent'};display:flex;flex-direction:column;align-items:center;gap:3px">${ml(s[0],{s:9,b:1,tr:.05})}${slab(g||'–',16,g?'var(--fg)':'var(--muted)')}</div>`; }));
+  const hdr = (round, mode, respun) => H(0,[V(4,[ml(`Round ${round} of 6`,{b:1,tr:.15}),ml(`Grades ${mode}`,{tr:.13})]),sp(),btn(respun?'Respin used':'Respin team',{v:'ghost',inl:1,ic:'rsp',off:respun})],'align-items:center');
+  const teamRow = (code, name, season) => H(12,[teamLogo(code,48),V(4,[slab(name,27),ml(season,{tr:.15})],'flex:1')],'align-items:center');
+  const spinHeader = (code,name,season) => cardR(`<div style="padding:16px;min-height:72px;display:flex;align-items:center">${teamRow(code,name,season)}</div>`);
+  const reelCard = () => cardR(`<div style="padding:16px"><div style="height:72px;overflow:hidden;position:relative"><div style="display:flex;flex-direction:column;transform:translateY(-100px)">${[['CHI','Chicago Bears','2009'],['SEA','Seattle Seahawks','2014'],['TEN','Tennessee Titans','2008'],['CIN','Cincinnati Bengals','2021']].map(r=>`<div style="height:72px;flex:none;display:flex;align-items:center">${teamRow(...r)}</div>`).join('')}</div></div></div>`);
+  const tile = (slot, icon, o) => { const a=o.active&&!o.taken; return `<div style="flex:1;padding:10px 0;border-radius:8px;border:1px solid ${a?'var(--hidden)':'var(--line)'};background:${a?'var(--hidden)':'transparent'};opacity:${o.taken?.5:1};display:flex;flex-direction:column;align-items:center;gap:6px;color:${a?'var(--panel-fg)':'var(--muted)'}">${I(icon,14)}${ml(slot,{s:9,b:1,tr:.05,c:a?'var(--panel-fg)':'var(--fg)'})}${o.taken?ml('Taken',{s:9,tr:.05,c:a?'var(--panel-fg)':'var(--muted)'}):o.g?slab(o.g,20,a?'var(--panel-fg)':'var(--fg)'):concealed('<div style="width:28px;height:13px"></div>',{compact:1})}</div>`; };
+  const qbCard = (name, gr, taken, active, hidden, cast) => cardR(V(12,[H(10,[portrait(name,40),slab(name,24)],'align-items:center'),
+    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${[['ACC','scope'],['ARM','bolt'],['MOB','run'],['IQ','brain'],['BLD','shield']].map((s,i)=>tile(s[0],s[1],{g:hidden?null:gr[i],taken:taken.includes(i),active:active===i})).join('')}${tile('TEAM','p3',{g:hidden?null:cast,taken:taken.includes(5),active:active===5})}</div>`],'padding:16px'));
+  const lockBar = (summary, o={}) => `<div style="padding:12px 16px;background:var(--surface);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px">${o.err?errorBanner(o.err):''}${sans(summary,14,400,'var(--muted)')}${btn('Lock in pick',{off:o.off,spin:o.spin})}</div>`;
+  const pick = (o) => screen(V(16,[hdr(o.round||3,o.mode||'visible',o.respun), spinHeader('CIN','Cincinnati Bengals','2021'), track(o.track), o.cards]),{bottom:lockBar(o.sum,o)});
+
+  const burrow = ['B+','A-','B','B+','B'], hurts = ['B','B+','A-','B','B'];
+  const cards = (taken, active, hidden) => j(qbCard('Joe Burrow',burrow,taken,active,hidden,'B+'), qbCard('Ryan Finley',['C','C+','C-','C','C+'],taken,active===undefined?undefined:null,hidden,'B+'));
+
+  /* ---- result ---- */
+  const panelR = (label, inner) => cardR(V(12,[`<span class="ml" style="font-size:10px;font-weight:700;letter-spacing:.15em;color:var(--hidden-text)">${label}</span>`,inner]),'padding:16px');
+  const statGrid = () => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${[['Comp / Att','412 / 603'],['Pass yards','5,101'],['Pass TDs','43'],['Interceptions','9'],['Passer rating','112.8'],['Rush yards','612'],['Rush TDs','7']].map(s=>V(2,[ml(s[0],{s:10}),slab(s[1],26,'var(--fg)','font-variant-numeric:tabular-nums')])).join('')}</div>`;
+  const awards = V(8,[ml('Awards',{s:10}),...['MVP','Offensive Player of the Year','First-Team All-Pro'].map(a=>`<div style="align-self:flex-start;padding:4px 10px;border:1px solid var(--line);border-radius:8px">${slab(a,19)}</div>`)]);
+  const faces = H(10,[['Joe Burrow','p'],['Patrick Mahomes','p'],['Lamar Jackson','p'],['Peyton Manning','p'],['Josh Allen','p'],['SEA','t']].map(f=>f[1]==='p'?portrait(f[0],44):`<span style="width:44px;height:44px;border-radius:50%;background:var(--raised);border:1px solid var(--line);display:flex;align-items:center;justify-content:center">${teamLogo(f[0],34)}</span>`),'flex-wrap:wrap');
+  const build = (stage) => panelR('Player build', j(
+    H(8,[slab('92.4',64,'var(--fg)','font-variant-numeric:tabular-nums'),ml('out of 100',{tr:.15})],'align-items:baseline'),
+    stage>=1?j(lr(),statGrid()):'', stage>=2?j(lr(),awards,lr(),V(12,[ml('Players picked',{s:10}),faces])):''));
+  const team = (playoffs) => panelR('Team success', j(V(4,[ml('Record',{s:10}),slab('15–2',40,'var(--fg)','font-variant-numeric:tabular-nums')]), playoffs?j(lr(),V(4,[ml('Playoffs',{s:10}),slab('Won the Super Bowl',27)])):''));
+  const breakdown = panelR('Score breakdown', V(0,[['Stat line','50% of the score · better than 97% of real seasons','46.1'],['Team success','35% of the score · better than 94% of real seasons','33.0'],['Awards','15% of the score · better than 88% of real seasons','13.3']].map((p,i)=>j(i?lr():'',H(12,[V(2,[ml(p[0],{b:1,tr:.1,c:'var(--fg)'}),sans(p[1],13,400,'var(--muted)')],'flex:1'),slab(p[2],22,'var(--fg)','font-variant-numeric:tabular-nums')],'padding:10px 0;align-items:baseline')))));
+  const rhdr = H(0,[eyebrow('Season complete'),sp(),ml('Grades visible',{tr:.13})],'align-items:baseline');
+  const resultFrame = (stage, o={}) => screen(V(16,[rhdr, build(stage>=3?3:stage>=2?2:stage>=1?1:0).replace('', ''), stage>=4?team(stage>=5):'', stage<6?`<div class="tc">${quiet('Skip to result')}</div>`:'', stage>=6?j(breakdown, well(V(4,[ml('Personal best · visible',{s:10,b:1,tr:.13}),slab('92.4',40,'var(--fg)','font-variant-numeric:tabular-nums')],'padding:16px')), V(8,[btn('New season'),`<div class="tc">${quiet('Back to games')}</div>`])):'']),{overlay:o.overlay,fixed:o.fixed});
+
+  const gradeLine = (slot, g, picked) => H(0,[ml(slot,{s:11,tr:.1,c:'var(--fg)'}),sp(8),slab(g,22,'var(--fg)')],`padding:8px 10px;background:${picked?'var(--hidden)':'transparent'}`);
+  const pickedSheet = `<div class="dim"></div><div class="sheet" style="height:560px;background:var(--raised);padding:20px 20px 0"><div class="grab" style="margin:-12px auto 12px"></div>${V(16,[H(12,[portrait('Joe Burrow',56),V(4,[slab('Joe Burrow',24),ml('2021 Cincinnati Bengals',{s:10,b:1,tr:.08})])],'align-items:center'),ml('Picked for Accuracy',{s:10}),`<div style="border:1px solid var(--line);border-radius:8px;overflow:hidden">${[['Accuracy','B+',1],['Arm Talent','A-'],['Mobility','B'],['IQ','B+'],['Build','B'],['Supporting Cast','B+']].map((l,i)=>(i?'<div class="lr"></div>':'')+gradeLine(l[0],l[1],l[2])).join('')}</div>`])}</div>`;
+
+  const buildRow = (slot, p) => j(lr(), H(10,[ml(slot,{s:10,b:1,tr:.13,c:'var(--fg)'}),sp(8),p?j(portrait(p[0],28),V(2,[sans(p[0],13),ml(p[1],{s:10,tr:.05}),slab(p[2],18)],'align-items:flex-end')):ml('Open',{s:10})],'padding:10px 0;align-items:center'));
+  const buildCard = cardR(V(0,[eyebrow('Your quarterback'),slab('Your build',27,'var(--fg)','margin-top:4px'),`<div style="margin-top:12px">${[['Accuracy',['Joe Burrow','2021 Cincinnati Bengals','B+']],['Arm Talent',['Patrick Mahomes','2018 Kansas City Chiefs','A+']],['Mobility',['Lamar Jackson','2019 Baltimore Ravens','A+']],['IQ',['Peyton Manning','2013 Denver Broncos','A']],['Build',['Josh Allen','2020 Buffalo Bills','B+']],['Supporting Cast',['Seattle Seahawks','2013 Seattle Seahawks','A-']]].map(r=>buildRow(r[0],r[1])).join('')}</div>`]),'padding:16px');
+
+  game('qb', 'QB Season Builder',
+    'Solo only. Draft one quarterback\'s season over <b>six rounds</b>, one trait at a time: each round deals a random team-season; you take <b>one thing from it</b> (a quarterback\'s Accuracy, Arm Talent, Mobility, IQ or Build, or the team\'s Supporting Cast), filling each of the six slots exactly once. One <b>respin</b> per run. In a <b>visible</b> run the letter grades show while you pick; in a <b>hidden</b> run they are concealed until the end. Then the season is simulated and revealed in stages: score, stat line, awards, record, playoffs, breakdown. Format (ratings mode, era) is chosen on the Games tab card. The main tab bar stays visible throughout.',
+    ['Dealing','Spin (reel)','Pick one thing','… 6 rounds','Revealing','Result (6 stages)'],
+  [
+    group('Starting','', [
+      fr('qb-dealing','Dealing the first spin','','QbSeasonBuilderView.swift · QbStartingView', phone({nav,tabs:tabMain(1),body:loadingState('Dealing your first spin…'),pad:false})),
+      fr('qb-failed','Couldn’t start','','QbSeasonBuilderView.swift', screen(emptyState("Couldn't start the run",'Something went wrong.',btn('Try again',{v:'ghost',inl:1})))),
+    ]),
+    group('Picking · the spin','Entering a round is the first look at its spin, so every round gets the reel beat (~2s) before the options appear. The lock-in bar is pinned over the bottom edge.', [
+      fr('qb-reel','Spin reel','Decoy franchises scroll and land on the real one; options are held back (“Finding this team’s quarterback options…”). Reduce Motion shows “Spinning…”.','QbSpinReel.swift', screen(V(16,[hdr(3,'visible'), reelCard(), track(['A','A+']), sans("Finding this team's quarterback options…",14,400,'var(--muted)')]))),
+      fr('qb-pick','Pick one thing','Visible mode. The build track at the top shows what is already filled; slots already taken are dimmed “Taken” in the tiles. Nothing chosen: the lock-in button is disabled.','QbSeasonBuilderView.swift · QbPickView, QbQuarterbackCard', pick({track:['A','A+'],cards:cards([0,1]),sum:'Choose one thing from this spin.',off:1})),
+      fr('qb-pick-chosen','Pick chosen','The chosen tile fills red (selected = red), and the bar says exactly what is being taken from whom.','QbSeasonBuilderView.swift · QbStatTile', pick({track:['A','A+'],cards:cards([0,1],2),sum:'Taking Mobility from Joe Burrow'})),
+      fr('qb-pick-cast','Pick the Supporting Cast','The team tile is on every quarterback card but takes the team, not a QB.','QbSeasonBuilderView.swift', pick({track:['A','A+','A+'],round:4,cards:cards([0,1,2],5),sum:'Taking Supporting Cast from Cincinnati Bengals'})),
+      fr('qb-pick-hidden','Pick · hidden grades','Hidden mode: each tile’s grade is a compact red Concealed chip, and even filled slots on the build track show “–” until the end. Pick on what you know.','QbSeasonBuilderView.swift · QbStatTile', pick({mode:'hidden',track:['–','–'],cards:cards([0,1],undefined,true),sum:'Choose one thing from this spin.',off:1})),
+      fr('qb-pick-respun','Respin used','The respin is final: the button reads “Respin used” and is disabled for the rest of the run.','QbSeasonBuilderView.swift · respin', pick({respun:1,round:4,track:['A','A+','A+'],cards:cards([0,1,2]),sum:'Choose one thing from this spin.',off:1})),
+      fr('qb-pick-saving','Locking the pick','','QbSeasonBuilderView.swift', pick({track:['A','A+'],cards:cards([0,1],2),sum:'Taking Mobility from Joe Burrow',spin:1,off:1})),
+      fr('qb-pick-error','Pick rejected','An ErrorBanner sits above the summary in the bar.','QbSeasonBuilderView.swift', pick({track:['A','A+'],cards:cards([0,1],2),sum:'Taking Mobility from Joe Burrow',err:'That slot is already filled.'})),
+    ]),
+    group('Revealing the season','After the sixth pick the run goes straight to the reveal; this only shows if it takes a moment or fails.', [
+      fr('qb-finish','Revealing your season…','A spinner card over the finished build.','QbSeasonBuilderView.swift · QbFinishView', screen(V(16,[cardR(H(12,[spinner(22),slab('Revealing your season…',27)],'padding:16px;align-items:center;color:var(--fg)')), buildCard]))),
+      fr('qb-finish-failed','Couldn’t reveal','Retry runs `finish` again.','QbSeasonBuilderView.swift', screen(V(16,[cardR(V(12,[slab('Couldn’t reveal your season.',27),errorBanner('Something went wrong.'),btn('Try again')]),'padding:16px'), buildCard]))),
+    ]),
+    group('Result · staged reveal','Each stage holds ~1.6s; “Skip to result” jumps to the end. It plays once, since a finished run has no way back in.', [
+      fr('qb-result-1','Stage 1 · score','Just the score out of 100.','QbSeasonBuilderResultView.swift · PlayerBuildPanel', resultFrame(0)),
+      fr('qb-result-2','Stage 2 · stat line & awards','Stat line, then awards and the players picked as faces (the team’s logo for the Supporting Cast; tap one for its card).','QbSeasonBuilderResultView.swift', resultFrame(2)),
+      fr('qb-result-3','Stage 3 · record & playoffs','Team success arrives as its own panel, kept distinct from the player build that produced it.','QbSeasonBuilderResultView.swift · TeamSuccessPanel', resultFrame(5)),
+      fr('qb-result-done','Done','Score breakdown (weights and percentile vs real seasons), personal best for this ratings mode, New season and Back to games.','QbSeasonBuilderResultView.swift · BreakdownPanel', resultFrame(6)),
+      fr('qb-result-card','Picked-player card','Tapping a face opens a medium sheet: who, where from, and every grade the run saw, with the one taken filled red.','QbSeasonBuilderResultView.swift · QbPickedPlayerCard', resultFrame(6,{overlay:pickedSheet,fixed:860})),
+    ])
+  ]);
+})();
+
+/* =====================================================================
+   Observations (read off the code, not off a device)
+   ===================================================================== */
+SECTIONS.push({id:'notes', name:'Notes', html: `<section class="game" id="notes"><header><div class="eyebrow-d">For the review</div><h2>Things noticed while drawing these</h2><p>Read from the SwiftUI source and measured on these renders, not checked on a device. Listed so you can decide which are intentional.</p></header>
+<div class="note"><ul>
+<li><b>Dial needle was nearly invisible on its base (fixed in these mockups).</b> <code>WavelengthDial</code> drew the needle in <code>panelFg</code> (#E8E3D6) over <code>WavelengthPalette.base</code> (#D7D1C3), about 1.2:1. The mockups now use a near-black <code>--wl-needle</code> (#24211C), the web dial&rsquo;s colour; the Swift change is still to make.</li>
+<li><b>Countdown bars fill with the panel colour.</b> <code>MeterBar</code>'s default fill is <code>Theme.panel</code> (#191C18) on a <code>line</code> track, so in every <code>HeaderStats</code> clock the remaining time is the <i>darker</i> part. Worth a look on device.</li>
+<li><b>Grade tints on dark panels are low contrast.</b> <code>gradeElite</code> and <code>gradeRough</code> as text on the panel are about 2.7:1, <code>gradeStrong</code> 3.2:1: the Auction's revealed points and final rosters (<a href="#atb-sold" style="color:var(--fg)">atb-sold</a>, <a href="#atb-final-host" style="color:var(--fg)">atb-final-host</a>). Fine as fills (Sabotage's grade badges), weak as text.</li>
+<li><b>Red now does four jobs:</b> concealed information, the selected option (segmented controls, QB tiles, header tabs), "your turn"/urgent numbers, and errors. The principle in <code>design-system.md</code> reserves it for concealed (plus error text and the documented selected state). The Auction's "Ready" token buttons are red too, which is none of those.</li>
+<li><b>A panel on a well disappears.</b> <code>Theme.panel</code> and <code>Theme.surfaceRaised</code> are the same colour (#191C18), so the filled roster slots in the Auction's Table tab, the Sabotage roster rows and the Higher or Lower revealed-points block (all <code>panel</code> inside a <code>well</code>) have no edge of their own; only the dashed empty slots do (<a href="#atb-table" style="color:var(--fg)">atb-table</a>, <a href="#sab-rosters-mine" style="color:var(--fg)">sab-rosters-mine</a>).</li>
+<li><b>Four ways to say "paused".</b> Higher or Lower and Auction use a well with a pause icon; Wavelength and Sabotage use <code>ErrorBanner</code> (red tint).</li>
+<li><b>One post-game block, copied four times.</b> <code>MatchFinalView</code>, <code>AuctionFinalView</code>, <code>WavelengthFinalView</code> and <code>SabotageFinalView</code> each carry the same "Final" header, winner-panel pattern and host/non-host controls. A kit-level <code>PostGame</code> would make a redesign one change.</li>
+<li><b>Higher or Lower's live match is the odd one out.</b> Auction, Wavelength and Sabotage use the pinned-header + native tab bar shell (<code>GameTabShell</code>); the Higher or Lower match is one scrolling page with no pinned clock, so the countdown scrolls with the content on a small phone.</li>
+<li><b>Not drawn:</b> the Huddle/Profile/Friends surfaces, the solo leaderboards, sign-in, and the system share sheet. Say if you want any of them added.</li>
+</ul></div></section>`});
+
+/* =====================================================================
+   Assemble
+   ===================================================================== */
+document.getElementById('app').innerHTML = SECTIONS.map(s => s.html).join('');
+document.getElementById('topnav').innerHTML = '<span class="brand">Ball Party · iOS</span>' + SECTIONS.map(s => `<a href="#${s.id}">${s.name}</a>`).join('');
+</script>
+</body>
+</html>

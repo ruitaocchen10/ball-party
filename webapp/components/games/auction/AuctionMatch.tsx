@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type
 import Link from "next/link";
 
 import { FinalStandings, type FinalStandingsRow } from "@/components/runtime/game-runtime/FinalStandings";
+import { useWinnerMoment } from "@/components/runtime/game-runtime/WinnerMoment";
 import { PauseBanner } from "@/components/runtime/game-runtime/PauseBanner";
 import { PauseButton } from "@/components/runtime/game-runtime/PauseButton";
 import { PostGameControls } from "@/components/runtime/game-runtime/PostGameControls";
@@ -533,9 +534,23 @@ export function AuctionMatch({
     [act, getClient, matchId],
   );
 
+  const auctionWinners = byPlacement(standings).filter((s) => s.placement === 1);
+  const auctionName = (userId: string) => players.find((p) => p.user_id === userId)?.display_name ?? "Unknown player";
+  const winnerMoment = useWinnerMoment(
+    finished,
+    auctionWinners.length === 0
+      ? null
+      : {
+          faces: auctionWinners.map((w) => ({ name: auctionName(w.user_id), avatarUrl: players.find((p) => p.user_id === w.user_id)?.avatar_url ?? null })),
+          headline: auctionWinners.length === 1 ? `${auctionName(auctionWinners[0].user_id)} wins` : `${auctionWinners.map((w) => auctionName(w.user_id)).join(" & ")} tie`,
+          detail: auctionWinners.length === 1 ? `${fmt(auctionWinners[0].raw_score)} pts` : null,
+        },
+  );
+
   if (finished) {
     return (
       <PageShell variant="narrow">
+        {winnerMoment}
         <FinalScreen
           lots={lots}
           players={players}

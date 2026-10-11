@@ -221,7 +221,7 @@ struct CountdownView: View {
             let fraction = min(1, Double(remainingMs) / Double(max(1, phase.durationMs - MatchClockConstants.visibleSlackMs)))
             VStack(alignment: .leading, spacing: 8) {
                 Text(phase.clockLabel).monoLabel(11, tracking: 0.15)
-                Text("\(seconds)s")
+                Text(ClockText.text(seconds: seconds))
                     .slabTitle(32)
                     .monospacedDigit()
                 MeterBar(fraction: fraction)
