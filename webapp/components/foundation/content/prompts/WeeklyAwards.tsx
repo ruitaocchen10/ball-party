@@ -95,7 +95,7 @@ function AwardTiles({ slot, chosen, onChange }: { slot: Slot; chosen: string | u
   const toggle = (id: string) => onChange(chosen === id ? [] : [id]);
   const matchups = slot.options.some((option) => option.teamCodes);
   return (
-    <div role="group" aria-label={slot.label} className={matchups ? "grid gap-2 md:grid-cols-2" : "grid grid-cols-2 gap-1.5 sm:grid-cols-4"}>
+    <div role="group" aria-label={slot.label} className={matchups ? "grid grid-cols-2 gap-2" : "grid grid-cols-4 gap-1.5"}>
       {slot.options.map((option) => {
         const pressed = chosen === option.id;
         const dimmed = chosen !== undefined && !pressed;

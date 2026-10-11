@@ -104,6 +104,14 @@ protocol HuddleClient: Sendable {
 
     /// `prompts.post_comment` — a reply when `parentCommentId` is given.
     func postComment(postId: UUID, body: String, parentCommentId: UUID?) async throws
+
+    /// `list_friends` — the ids of the viewer's accepted friends, so their
+    /// takes can be read first.
+    func friendIds() async throws -> Set<UUID>
+}
+
+extension HuddleClient {
+    func friendIds() async throws -> Set<UUID> { [] }
 }
 
 struct SupabaseHuddleClient: HuddleClient {
@@ -198,6 +206,17 @@ struct SupabaseHuddleClient: HuddleClient {
                 .in("id", values: authorIds)
                 .execute().value
             return BoldPredictionRows(predictions: predictions, profiles: profiles)
+        }
+    }
+
+    func friendIds() async throws -> Set<UUID> {
+        struct Row: Decodable, Sendable {
+            let profileId: UUID
+            private enum CodingKeys: String, CodingKey { case profileId = "profile_id" }
+        }
+        return try await wrapped {
+            let rows: [Row] = try await client.rpc("list_friends").execute().value
+            return Set(rows.map(\.profileId))
         }
     }
 

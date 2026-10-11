@@ -293,6 +293,7 @@ enum PromptFeed {
         func build(_ row: PromptCommentRow) -> PromptComment {
             PromptComment(
                 id: row.id,
+                authorId: row.authorId,
                 author: names[row.authorId] ?? "Unknown",
                 authorAvatarURL: avatars[row.authorId],
                 authorUsername: usernames[row.authorId],

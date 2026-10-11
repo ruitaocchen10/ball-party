@@ -72,6 +72,9 @@ final class HuddleViewModel: ObservableObject {
     /// `{take → reply}`.
     @Published private(set) var replyDrafts: [UUID: String] = [:]
 
+    /// The viewer's accepted friends, whose takes are read before everyone else's.
+    @Published private(set) var friendIds: Set<UUID> = []
+
     private let client: HuddleClient
     private let viewerId: UUID
     private let now: () -> Date
@@ -106,6 +109,8 @@ final class HuddleViewModel: ObservableObject {
             posts = loaded
             phase = .loaded
             errorMessage = nil
+            // Like the web, a failure here costs the friends section, not the feed.
+            if let friends = try? await client.friendIds() { friendIds = friends }
         } catch {
             // A read abandoned by the screen (leaving it, or letting go of a
             // pull-to-refresh) is not a failure to report.
@@ -137,7 +142,18 @@ final class HuddleViewModel: ObservableObject {
     /// thinks before committing.
     func otherTakes(on postId: UUID) -> [PromptComment] {
         guard let post = post(postId), post.viewerAnswered else { return [] }
-        return post.comments.filter { !$0.isViewer }
+        return post.comments.filter { !$0.isViewer && !isFriend($0.authorId) }
+    }
+
+    /// The viewer's friends' takes, which lead the discussion; gated like
+    /// `otherTakes`.
+    func friendTakes(on postId: UUID) -> [PromptComment] {
+        guard let post = post(postId), post.viewerAnswered else { return [] }
+        return post.comments.filter { !$0.isViewer && isFriend($0.authorId) }
+    }
+
+    func isFriend(_ authorId: UUID?) -> Bool {
+        authorId.map(friendIds.contains) ?? false
     }
 
     // MARK: - Making picks

@@ -46,14 +46,14 @@ export function BoldTagPicker({ value, onChange, weekGames, players, onPlayerFou
 
   return (
     <div className="flex flex-col gap-3">
-      <div role="group" aria-label="Tag type" className="grid grid-cols-3 gap-1.5">
+      <div role="group" aria-label="Tag type" className="flex flex-wrap gap-2">
         {MODES.map(({ type, label }) => (
           <button
             key={type}
             type="button"
             aria-pressed={mode === type}
             onClick={() => switchMode(type)}
-            className={`cursor-pointer px-3 py-3 text-center font-slab text-sm uppercase ${mode === type ? "bg-hidden text-fg" : "bg-surface-raised text-fg-muted ring-1 ring-line ring-inset"}`}
+            className={`cursor-pointer rounded-full px-3.5 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.06em] text-fg ring-1 ring-inset ${mode === type ? "bg-hidden ring-hidden" : "ring-line hover:ring-fg/40"}`}
           >
             {label}
           </button>
@@ -62,7 +62,7 @@ export function BoldTagPicker({ value, onChange, weekGames, players, onPlayerFou
 
       {mode === "matchup" ? (
         weekGames.length ? (
-          <div role="group" aria-label="Matchups this week" className="grid gap-2 md:grid-cols-2">
+          <div role="group" aria-label="Matchups this week" className="grid grid-cols-2 gap-2">
             {weekGames.map((game) => (
               <MatchupTile
                 key={game.id}
@@ -79,7 +79,7 @@ export function BoldTagPicker({ value, onChange, weekGames, players, onPlayerFou
       ) : null}
 
       {mode === "team" ? (
-        <div role="group" aria-label="Teams" className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        <div role="group" aria-label="Teams" className="grid grid-cols-4 gap-1.5">
           {TEAMS.map((team) => (
             <TeamTile
               key={team.code}

@@ -99,12 +99,6 @@ private struct BoldComposer: View {
         let board = viewModel.boldBoard(for: post.id)
         VStack(alignment: .leading, spacing: 16) {
             SectionTitle(text: "Your predictions", trailing: "\(drafts.count) of \(BoldLimits.maxPredictions) used")
-            Label(
-                "Lock them in as one response. You can't change it after, and you'll see everyone else's.",
-                systemImage: "lock.fill"
-            )
-            .font(.sans(14))
-            .foregroundStyle(Theme.fgMuted)
 
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(Array(drafts.enumerated()), id: \.offset) { index, draft in
@@ -233,11 +227,12 @@ private struct BoldTagPicker: View {
     @State private var chosenType: BoldTargetType?
 
     private var type: BoldTargetType { target?.type ?? chosenType ?? .matchup }
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 3)
+    private let teamColumns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+    private let gameColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 2)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SegmentedChoice(
+            PillChoice(
                 selection: Binding(get: { type }, set: switchType),
                 options: BoldTargetType.allCases,
                 title: \.title,
@@ -263,7 +258,7 @@ private struct BoldTagPicker: View {
         } else if viewModel.boldBoard(for: postId).weekGames.isEmpty {
             Text("No games are scheduled for this week.").font(.sans(14)).foregroundStyle(Theme.fgMuted)
         } else {
-            VStack(spacing: 8) {
+            LazyVGrid(columns: gameColumns, spacing: 8) {
                 ForEach(viewModel.boldBoard(for: postId).weekGames) { game in
                     AwardGameTile(away: game.away, home: game.home, label: game.label, state: state(of: .matchup, game.id)) {
                         target = BoldTarget(type: .matchup, id: game.id)
@@ -274,7 +269,7 @@ private struct BoldTagPicker: View {
     }
 
     private var teams: some View {
-        LazyVGrid(columns: columns, spacing: 6) {
+        LazyVGrid(columns: teamColumns, spacing: 6) {
             ForEach(NFLTeams.all, id: \.code) { team in
                 AwardTeamTile(code: team.code, name: team.name, state: state(of: .team, team.code)) {
                     target = BoldTarget(type: .team, id: team.code)
@@ -351,13 +346,18 @@ private struct BoldRevealed: View {
         } else {
             VStack(alignment: .leading, spacing: 20) {
                 ForEach(groups.filter(\.isViewer)) { card($0, board: board) }
-                let others = groups.filter { !$0.isViewer }
-                if !others.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        SectionTitle(text: "Other takes")
-                        ForEach(others) { card($0, board: board) }
-                    }
-                }
+                section("Friend takes", groups.filter { !$0.isViewer && viewModel.isFriend($0.id) }, board: board)
+                section("Other takes", groups.filter { !$0.isViewer && !viewModel.isFriend($0.id) }, board: board)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func section(_ title: String, _ groups: [AuthorGroup], board: BoldBoardData) -> some View {
+        if !groups.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionTitle(text: title)
+                ForEach(groups) { card($0, board: board) }
             }
         }
     }

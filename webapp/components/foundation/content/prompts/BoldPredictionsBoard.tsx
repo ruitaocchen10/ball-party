@@ -1,6 +1,5 @@
 "use client";
 
-import { Lock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -134,7 +133,6 @@ function PredictionComposer({ post, data, displayName, avatarUrl, username, act,
         <h2 className="font-slab text-xl leading-none uppercase">Your predictions</h2>
         <p className="type-label text-fg-muted">{drafts.length} of {MAX_BOLD_PREDICTIONS} used</p>
       </div>
-      <p className="flex items-center gap-2 text-sm text-fg-muted"><Lock aria-hidden className="h-3.5 w-3.5 shrink-0" /> Lock them in as one response. You can&apos;t change it after, and you&apos;ll see everyone else&apos;s.</p>
 
       <div className={`${CARD_SHELL} p-4`}>
         <YouHeader name={displayName} avatarUrl={avatarUrl} username={username} />
@@ -277,7 +275,8 @@ function PredictionForm({ idSuffix, initial, data, onPlayerFound, playerSearch, 
 function RevealedPredictions({ post, predictions, data, open }: { post: Post; predictions: BoldPrediction[]; data: TagData; open: boolean }) {
   const groups = byAuthor(predictions);
   const mine = groups.find((group) => group.isViewer);
-  const others = groups.filter((group) => !group.isViewer);
+  const friends = groups.filter((group) => !group.isViewer && group.isFriend);
+  const others = groups.filter((group) => !group.isViewer && !group.isFriend);
 
   const card = (group: (typeof groups)[number]) => (
     <article key={group.key} aria-label={`${group.author}'s predictions`} className={`${CARD_SHELL} p-4`}>
@@ -306,6 +305,12 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
       ) : (
         <div className="flex flex-col gap-5">
           {mine ? card(mine) : null}
+          {friends.length ? (
+            <div className="flex flex-col gap-3" aria-label="Friend takes">
+              <h2 className="px-1 type-label text-fg-muted">Friend takes</h2>
+              {friends.map(card)}
+            </div>
+          ) : null}
           {others.length ? (
             <div className="flex flex-col gap-3" aria-label="Other takes">
               <h2 className="px-1 type-label text-fg-muted">Other takes</h2>
@@ -320,10 +325,10 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
 
 /** One response per person: a viewer's predictions sit together on a single card, in first-seen order. */
 function byAuthor(predictions: BoldPrediction[]) {
-  const groups = new Map<string, { key: string; author: string; authorUsername: string | null; isViewer: boolean; predictions: BoldPrediction[] }>();
+  const groups = new Map<string, { key: string; author: string; authorUsername: string | null; isViewer: boolean; isFriend: boolean; predictions: BoldPrediction[] }>();
   for (const prediction of predictions) {
     const key = `${prediction.isViewer ? "me" : "other"}:${prediction.author}`;
-    const group = groups.get(key) ?? { key, author: prediction.author, authorUsername: prediction.authorUsername, isViewer: prediction.isViewer, predictions: [] };
+    const group = groups.get(key) ?? { key, author: prediction.author, authorUsername: prediction.authorUsername, isViewer: prediction.isViewer, isFriend: Boolean(prediction.isFriend), predictions: [] };
     group.predictions.push(prediction);
     groups.set(key, group);
   }

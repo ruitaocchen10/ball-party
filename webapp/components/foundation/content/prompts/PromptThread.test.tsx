@@ -45,6 +45,18 @@ describe("PromptThread", () => {
     expect(screen.getByRole("link", { name: "Comment on Tasha's take" })).toHaveAttribute("href", "/prompts/week-2/takes/tasha");
   });
 
+  it("leads with friends' takes, above everyone else's", () => {
+    const base = post(true);
+    const withFriend: Post = { ...base, comments: [...base.comments, { id: "sam", author: "Sam", body: "CMC all day.", createdAt: "2026-09-14T14:00:00.000Z", isViewer: false, isFriend: true, postedWithPick: true, replies: [] }] };
+    render(<PromptThread post={withFriend} displayName="Demo Reader" avatarUrl={null} />);
+
+    const friends = screen.getByLabelText("Friend takes");
+    const others = screen.getByLabelText("Other takes");
+    expect(friends).toHaveTextContent("CMC all day.");
+    expect(others).not.toHaveTextContent("CMC all day.");
+    expect(friends.compareDocumentPosition(others) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("lets a public reader browse takes without exposing an answer form", () => {
     render(<PromptThread post={post(false)} displayName="Player" avatarUrl={null} viewerCanAnswer={false} />);
 
