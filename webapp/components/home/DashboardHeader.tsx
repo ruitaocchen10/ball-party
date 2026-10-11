@@ -1,7 +1,8 @@
-import { Bell, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 
 import { AccountMenu } from "@/components/foundation/ui-kit/AccountMenu";
+import { NotificationBell } from "@/components/foundation/notifications/NotificationBell";
 import { BrandMark } from "@/components/foundation/ui-kit/BrandMark";
 import { HuddleSearchField } from "@/components/home/HuddleSearchField";
 
@@ -35,14 +36,7 @@ export function DashboardHeader({
             <Plus aria-hidden className="h-4 w-4" strokeWidth={2} />
             <span className="hidden lg:inline">Start a party</span>
           </Link>
-          <button
-            type="button"
-            aria-label="Notifications"
-            title="Notifications are coming soon"
-            className="flex h-10 w-10 items-center justify-center text-fg-muted transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
-          >
-            <Bell aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.6} />
-          </button>
+          {displayName ? <NotificationBell /> : null}
           {displayName ? (
             <AccountMenu displayName={displayName} email={email} avatarUrl={avatarUrl} compact />
           ) : (

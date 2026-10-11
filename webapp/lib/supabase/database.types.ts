@@ -3003,6 +3003,7 @@ export type Database = {
         }[]
       }
       heartbeat_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
+      inbox_unread_count: { Args: never; Returns: number }
       invite_friend_to_room: {
         Args: { p_friend_id: string; p_lobby_id: string }
         Returns: string
@@ -3057,6 +3058,26 @@ export type Database = {
           username: string
         }[]
       }
+      list_inbox: {
+        Args: { p_limit?: number }
+        Returns: {
+          actor_avatar_url: string
+          actor_display_name: string
+          actor_id: string
+          actor_username: string
+          is_unread: boolean
+          item_key: string
+          kind: string
+          lobby_id: string
+          member_count: number
+          post_id: string
+          ref_id: string
+          reply_count: number
+          selected_game: string
+          sort_at: string
+          state: string
+        }[]
+      }
       list_room_invites: {
         Args: never
         Returns: {
@@ -3091,6 +3112,8 @@ export type Database = {
           username: string
         }[]
       }
+      mark_all_notifications_read: { Args: never; Returns: number }
+      mark_notification_read: { Args: { p_item_key: string }; Returns: boolean }
       match_play_start: { Args: { p_match_id: string }; Returns: Json }
       my_ball_knower_standing: {
         Args: { p_scope?: string; p_window: string }

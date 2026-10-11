@@ -14,6 +14,8 @@ struct LobbyScreen: View {
     /// A room code from a room link. Joined once this screen is not already in
     /// a room, then cleared.
     @Binding var pendingRoomCode: String?
+    /// A room the player joined from the notification inbox; stepped into once, then cleared.
+    @Binding var joinedLobby: Lobby?
     @Environment(\.scenePhase) private var scenePhase
     /// Which match this screen pushed, so dismissing it can say *which* board
     /// was left rather than whichever one the room happens to show now.
@@ -26,9 +28,13 @@ struct LobbyScreen: View {
     @State private var seenWins: Int?
     @State private var confirmingLeave = false
 
-    init(viewerId: UUID, inbox: RoomInvitesInboxViewModel, pendingRoomCode: Binding<String?> = .constant(nil)) {
+    init(
+        viewerId: UUID, inbox: RoomInvitesInboxViewModel, pendingRoomCode: Binding<String?> = .constant(nil),
+        joinedLobby: Binding<Lobby?> = .constant(nil)
+    ) {
         self.inbox = inbox
         _pendingRoomCode = pendingRoomCode
+        _joinedLobby = joinedLobby
         _viewModel = StateObject(
             wrappedValue: LobbyViewModel(
                 client: SupabaseLobbyClient(client: SupabaseConfig.client),
@@ -100,6 +106,11 @@ struct LobbyScreen: View {
             if tab == .scoreboard { seenWins = viewModel.totalWins }
         }
         .task(id: pendingRoomCode) { await joinPendingRoom() }
+        .task(id: joinedLobby?.id) {
+            guard let lobby = joinedLobby else { return }
+            joinedLobby = nil
+            await viewModel.adopt(lobby)
+        }
         .onDisappear { viewModel.stopObserving() }
     }
 
