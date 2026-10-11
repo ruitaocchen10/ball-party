@@ -37,8 +37,6 @@
     --elite:#476735; --strong:#80672B; --even:#6B665A; --rough:#855238;
     --fg:#E8E3D6; --muted:#8F8B7F; --line:rgba(232,227,214,.13);
     --card:8px; --chip:4px;
-    /* Wavelength's dial uses its own literals (WavelengthPalette). */
-    --wl-needle:#24211C; --wl-base:#D7D1C3; --wl-bull:#D94B45; --wl-near:#E49B55; --wl-edge:#E8CF75;
   }
   * { box-sizing:border-box; margin:0; }
   html { scroll-behavior:smooth; scroll-padding-top:72px; }
@@ -225,9 +223,6 @@
   .dlg .a { padding:16px; color:#4da3ff; border-top:1px solid rgba(255,255,255,.1); }
   .dlg .a.d { color:#ff6b61; }
   .dlg .cx { font-weight:600; }
-
-  /* dial (WavelengthDial) */
-  .dial { width:100%; aspect-ratio:1000/530; display:block; }
 
   /* lot reel (ATB) */
   .reel { height:64px; overflow:hidden; position:relative; }
@@ -584,128 +579,6 @@ game('lobby', 'Games tab', 'Where the solo games (QB Season Builder, Higher or L
 </script>
 <script>
 /* =====================================================================
-   2v2 WAVELENGTH
-   ===================================================================== */
-(function(){
-  const CARD = ['Boring','Electric'];
-  const CARD2 = ['Worst QB ever','Best QB ever'];
-
-  /* WavelengthDial: positions 0..1000 along a half circle, pivot bottom-centre. */
-  const pt = (p, r) => { const a = Math.PI*(1-p/1000); return [500 + r*Math.cos(a), 530 - r*Math.sin(a)]; };
-  const slice = (f, t, r=470) => { let d='M500 530'; const n=Math.max(2,Math.floor((t-f)/10)); for(let i=0;i<=n;i++){ const [x,y]=pt(f+(t-f)*i/n,r); d+=`L${x.toFixed(1)} ${y.toFixed(1)}`; } return d+'Z'; };
-  const wedges = (c) => [[2,-100,-60],[3,-60,-20],[4,-20,20],[3,20,60],[2,60,100]].map(([p,a,b])=>[p,Math.min(Math.max(c+a,0),1000),Math.min(Math.max(c+b,0),1000)]);
-  const COL = {4:'var(--wl-bull)',3:'var(--wl-near)',2:'var(--wl-edge)'};
-  const dial = (o={}) => { let s=`<path d="${slice(0,1000)}" fill="var(--wl-base)"/>`;
-    if (o.target!=null) wedges(o.target).forEach(([p,f,t])=>{ if(t>f) s+=`<path d="${slice(f,t)}" fill="${COL[p]}"/>`; });
-    if (o.needle!=null) { const [x,y]=pt(o.needle,440); s+=`<line x1="500" y1="530" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--wl-needle)" stroke-width="9" stroke-linecap="round"/>`; }
-    s+=`<circle cx="500" cy="530" r="15" fill="var(--wl-needle)"/>`;
-    return `<svg class="dial" viewBox="0 0 1000 530" style="${o.w?`width:${o.w}px`:''}">${s}</svg>`; };
-
-  const boardPanel = (o) => panel(V(12,[
-    o.clue!==undefined ? V(2,[ml('The clue',{s:10,tr:.13,c:'var(--panel-muted)'}), slab(o.clue===null?'“Waiting for the clue…”':`“${o.clue}”`,30,'var(--panel-fg)','text-align:center')],'align-items:center') : '',
-    o.caption ? `<div class="tc">${ml(o.caption,{s:10,tr:.13,c:'var(--panel-muted)'})}</div>` : '',
-    H(12,[slab(o.card[0],16,'var(--panel-fg)'),sp(12),slab(o.card[1],16,'var(--panel-fg)','text-align:right')],'align-items:baseline'),
-    dial(o),
-    o.result ? `<div class="tc">${slab(o.result,24,'var(--panel-fg)')}</div>` : ''
-  ],'padding:16px'));
-
-  const yourMove = (title, inner) => well(V(10,[ml('Your move',{s:10,tr:.13}), title?slab(title,22):'', inner],'padding:14px'));
-  const copy = t => sans(t,14,400,'var(--muted)');
-  const counter = (w,c,over) => ml(`${w}/8 words · ${c}/100 characters · no digits`,{s:10,tr:.06,c:over?'var(--hidden-text)':'var(--muted)'});
-  const legend = H(14,[['Bullseye · 4','--wl-bull'],['Near · 3','--wl-near'],['Edge · 2','--wl-edge']].map(l=>H(6,[`<span style="width:10px;height:10px;background:var(${l[1]})"></span>`,ml(l[0],{s:10,tr:.06,c:'var(--fg)'})],'align-items:center')));
-  const paused = errorBanner('The host paused the game.');
-
-  const header = (o) => V(8,[
-    H(0,[ml(`${o.mode||'Co-op'} · ${o.phase}`,{b:1,tr:.15,c:'var(--fg)'}),sp(),o.who?ml(o.who,{s:10,tr:.1}):''],'align-items:baseline'),
-    headerStats([{cap:'Round',val:o.round||'3 / 8'},{cap:o.mode==='2v2'?'Team 1 – Team 2':'Team score',val:o.score||'9'},{cap:o.cap,val:o.val,u:o.u}],o.frac)
-  ]);
-  const TABS = [['Dial','dial'],['Rounds','listnum']];
-  const dialTab = (o) => gameShell({title:'Wavelength',header:header(o.h),tabs:TABS,on:0,gap:'g14',body:j(o.paused?paused:'',o.board,o.controls,o.err?errorBanner(o.err):'',o.banner||'')});
-  const REV = {phase:'Revealed',round:'3 / 6',score:'11',cap:'This card',val:'+4'};
-  const revealControls = (pts, host, last) => well(V(10,[ml('Round locked',{s:10,tr:.13}),slab(pts,22),host?btn(last?'See results':'Next card'):copy('Waiting for the host to continue.')],'padding:14px'));
-
-
-  /* ---------- Rounds tab pieces ---------- */
-  const teamCard = (title, score, players) => well(V(8,[H(0,[slab(title,20),sp(),mono(score,22,700)],'align-items:baseline'), ...players.map(p=>H(10,[avatar(p[0],26,p[3]),sans(p[3]?'You':p[0],14,600,'var(--fg)','flex:1'),ml(p[1],{s:10,tr:.06,c:p[2]?'var(--hidden-text)':'var(--muted)'})],'align-items:center'))],'padding:14px'));
-  const rRow = (r) => { const cur=r.state==='now', up=r.state==='up';
-    return well(V(6,[H(0,[ml('R'+r.n,{b:1,tr:.08,c:cur?'var(--fg)':'var(--muted)',x:'width:34px'}),sans(`${r.psy} → ${r.gue}`,14,600,'var(--fg)','flex:1'),
-      r.state==='skipped'?ml('Skipped',{s:10,b:1,tr:.1}): r.state==='done'?mono(r.pts+' pts',15,700):cur?ml('Now',{s:10,b:1,tr:.1,c:'var(--hidden-text)'}):ml('Upcoming',{s:10,tr:.1})],'align-items:baseline'),
-      (r.clue&&(r.state==='done'||cur))?slab(`“${r.clue}”`,18):'', (r.card&&(r.state==='done'||r.state==='skipped'))?ml(`${r.card[0]}  ↔  ${r.card[1]}`,{s:10,tr:.04}):''],'padding:12px'), up?'opacity:.55':(r.state==='skipped'?'':''));
-  };
-  const roundList = (rows, settledCount, total) => V(8,[sectionTitle('Rounds',`${settledCount} of ${total}`),...rows.map(rRow)]);
-  const coopRounds = [
-    {n:1,psy:SAM,gue:MAYA,state:'done',pts:4,clue:'Mahomes on a Tuesday',card:CARD},
-    {n:2,psy:MAYA,gue:SAM,state:'done',pts:3,clue:'A Madden create-a-player',card:CARD2},
-    {n:3,psy:SAM,gue:MAYA,state:'skipped',card:['Overrated','Underrated']},
-    {n:4,psy:MAYA,gue:SAM,state:'now',clue:'Third and long, Lambeau'},
-    {n:5,psy:SAM,gue:MAYA,state:'up'},{n:6,psy:MAYA,gue:SAM,state:'up'}
-  ];
-  const versusRounds = [
-    {n:1,psy:SAM,gue:MAYA,state:'done',pts:4,clue:'Gronk spiking it',card:CARD},
-    {n:2,psy:DEV,gue:KAY,state:'done',pts:2,clue:'Tom Brady’s 40-time',card:CARD2},
-    {n:3,psy:MAYA,gue:SAM,state:'done',pts:3,clue:'A Sunday in Cleveland',card:['Cold','Hot']},
-    {n:4,psy:KAY,gue:DEV,state:'now',clue:'Cowboys fan, week 18'},
-    ...[5,6,7,8].map((n,i)=>({n,psy:[SAM,DEV,MAYA,KAY][i],gue:[MAYA,KAY,SAM,DEV][i],state:'up'}))
-  ];
-  const roundsTab = (teams, list) => gameShell({title:'Wavelength',header:header({phase:'Guessing',cap:'Guess clock',val:'41',frac:.7,round:'4 / 6',score:'7'}),tabs:TABS,on:1,gap:'g14',body:j(teams,list)});
-
-  /* ---------- Final ---------- */
-  const star = n => ('★'.repeat(n)+'☆'.repeat(3-n));
-  const finalFrame = (o) => phone({nav:navPush('Wavelength','Party'),tabs:'',gap:'g20',body:j(
-    eyebrow('Final'),
-    panel(V(8,o.score,'padding:16px')),
-    o.teams, o.rounds, o.host?V(8,[btn('Play again'),btn('Back to the room',{v:'ghost'})]):V(8,[`<div class="tc">${ml('Waiting for the host to choose what\'s next.')}</div>`,btn('Back to the room',{v:'ghost'})])
-  )});
-
-  const coopTeam = teamCard('Your team','11',[[SAM,'Watching',0,1],[MAYA,'Watching']]);
-  const versusTeams = j(teamCard('Team 1','18',[[SAM,'Clue revealed',0,1],[MAYA,'Locked 3']]),teamCard('Team 2','18',[[DEV,'Watching'],[KAY,'Guessing now']]));
-  const fillW = h => ({phase:'Writing clues',cap:'Clues due',val:'1:24',frac:.47,round:'1 / 6',score:'0',...h});
-
-  game('wl', '2v2 Wavelength',
-    'A psychic secretly sees a <b>hidden target</b> on a spectrum between two ends and writes a one-shot clue; their partner places a needle on a half-circle dial. Closeness is scored in bands (<b>4 / 3 / 2</b>). Two modes picked by the host: <b>Co-op</b> (2 players, reach a target score over 4/6/8 rounds) and <b>2v2</b> (4 players, two teams, 8 rounds, ties go to bullseyes then sudden death). All clues are written up front in a shared fill phase; guessing then runs one round at a time. The target only ever reaches its psychic.',
-    ['Dealing','Fill: everyone writes clues (180s)','Guess (60s/round)','Reveal','… rounds','Final'],
-  [
-    group('Loading & pause','', [
-      fr('wl-dealing','Dealing the cards','First load.','WavelengthMatchView.swift', phone({nav:navPush('Wavelength','Party'),tabs:'',body:loadingState('Dealing the cards…'),pad:false})),
-      fr('wl-countdown','Get ready · 3-2-1','Shown after the board loads and before the first phase opens, so players can settle in. Ticks 3, 2, 1, then the first phase starts. New (design proposal, not yet in the app).','WavelengthMatchView.swift (proposed)', phone({nav:navPush('Wavelength','Party'),tabs:'',body:getReady(3,'Wavelength','Write a clue for your hidden target'),pad:false})),
-      fr('wl-paused','Paused by host','Reuses ErrorBanner (red tint) for a non-error notice; the other games use a well with a pause icon. A candidate for consistency.','WavelengthMatchView.swift · WavelengthDialTab', dialTab({paused:1,h:fillW({}),board:boardPanel({card:CARD,target:312,caption:'Only you can see the target'}),controls:yourMove('Write your clue (1 of 3)',V(10,[copy('One shot, aimed at the hidden target only you can see.'),field('Clue',{ph:1,ta:1}),counter(0,0),btn('Lock in clue',{off:1})]))})),
-    ]),
-    group('Dial tab · fill phase','One clock for the whole phase. The psychic sees the card with the hidden target drawn as wedges (red = concealed information, so the caption says it plainly). Nobody else sees a spectrum yet.', [
-      fr('wl-fill-write','Write your clue','Own card with the target wedges visible only to this player. Counter shows words / characters / no digits.','WavelengthMatchView.swift · fillControls', dialTab({h:fillW({}),board:boardPanel({card:CARD,target:312,caption:'Only you can see the target'}),controls:yourMove('Write your clue (1 of 3)',V(10,[copy('One shot, aimed at the hidden target only you can see.'),field('Clue',{ph:1,ta:1}),counter(0,0),btn('Lock in clue',{off:1})]))})),
-      fr('wl-fill-draft','Clue drafted','Valid clue enables “Lock in clue”.','WavelengthMatchView.swift', dialTab({h:fillW({val:'1:02',frac:.34}),board:boardPanel({card:CARD,target:312,caption:'Only you can see the target'}),controls:yourMove('Write your clue (1 of 3)',V(10,[copy('One shot, aimed at the hidden target only you can see.'),field('Mahomes on a Tuesday',{foc:1,ta:1}),counter(4,21),btn('Lock in clue')]))})),
-      fr('wl-fill-over','Clue over the limit','More than 8 words, over 100 chars, or any digit turns the counter red and disables Lock. The server enforces the same limits.','WavelengthModels.swift · validateClue', dialTab({h:fillW({val:'0:48',frac:.27,u:0}),board:boardPanel({card:CARD,target:312,caption:'Only you can see the target'}),controls:yourMove('Write your clue (1 of 3)',V(10,[copy('One shot, aimed at the hidden target only you can see.'),field('The kind of guy who runs a 4.3 forty at the combine every year',{foc:1,ta:1}),counter(13,61,1),btn('Lock in clue',{off:1})]))})),
-      fr('wl-fill-saving','Locking the clue','Button shows a spinner and “Writing clue…”.','WavelengthMatchView.swift', dialTab({h:fillW({val:'1:02',frac:.34}),board:boardPanel({card:CARD,target:312,caption:'Only you can see the target'}),controls:yourMove('Write your clue (1 of 3)',V(10,[copy('One shot, aimed at the hidden target only you can see.'),field('Mahomes on a Tuesday',{ta:1}),counter(4,21),btn('Writing clue…',{spin:1,off:1})]))})),
-      fr('wl-fill-wait','Clues written, waiting','Nothing left to do: “Cards are out” empty state, and a line that names who we are waiting on (“Your teammate is writing the clues.” in co-op, “The others are writing their clues.” in 2v2).','WavelengthMatchView.swift · waitingText', dialTab({h:fillW({val:'0:31',frac:.17,u:0}),board:emptyState('Cards are out','Everyone fills out their own cards in private.'),controls:yourMove(null,copy('Your clues are written. Waiting for the others.'))})),
-    ]),
-    group('Dial tab · guess phase','60s per guess. The guesser drags along the arc; their needle is broadcast live to everyone (throttled), and the target never is.', [
-      fr('wl-guess-guesser','Guessing: you’re the guesser','Drag anywhere on the dial to move the needle, then confirm. The needle starts at the middle every round. The clock caption says “Your guess”.','WavelengthMatchView.swift · guessControls', dialTab({h:{phase:'Guessing',who:'Maya’s clue',round:'3 / 6',score:'7',cap:'Your guess',val:'38',frac:.63},board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',needle:640}),controls:yourMove('Place the needle',V(10,[copy('Drag along the arc to where you think the clue points, then lock it in.'),btn('Confirm guess'),lr(),legend]))})),
-      fr('wl-guess-locking','Locking the guess','','WavelengthMatchView.swift', dialTab({h:{phase:'Guessing',who:'Maya’s clue',round:'3 / 6',score:'7',cap:'Your guess',val:'4.2',u:1,frac:.07},board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',needle:640}),controls:yourMove('Place the needle',V(10,[copy('Drag along the arc to where you think the clue points, then lock it in.'),btn('Locking…',{spin:1,off:1}),lr(),legend]))})),
-      fr('wl-guess-psychic','Guessing: you’re the psychic','Your own clue, and the target wedges stay visible to you while you watch your partner’s needle.','WavelengthMatchView.swift', dialTab({h:{phase:'Guessing',who:'Your clue',round:'3 / 6',score:'7',cap:'Guess clock',val:'38',frac:.63},board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',target:312,needle:560}),controls:yourMove('Watching',V(10,[copy('Your target is hidden from everyone else until the guess locks.'),lr(),legend]))})),
-      fr('wl-guess-spectator','Guessing: spectator','Opponents (2v2) just watch the needle move.','WavelengthMatchView.swift', dialTab({mode:'2v2',h:{mode:'2v2',phase:'Guessing',who:'Kayla’s clue',round:'4 / 8',score:'7 – 5',cap:'Guess clock',val:'38',frac:.63},board:boardPanel({card:CARD2,clue:'Cowboys fan, week 18',needle:215}),controls:yourMove('Watching',V(10,[copy('Watch the guesser set the needle.'),lr(),legend]))})),
-    ]),
-    group('Dial tab · reveal','After a guess locks, the table stays on that card. The target wedges appear under the needle, the points are shown, and nobody moves on until the host taps “Next card”. No countdown. The same reveal applies on the web. (Design proposal: today the server jumps straight to the next card.)', [
-      fr('wl-reveal-bull','Reveal · bullseye, host','Needle and target wedges on the main dial, the reaction (Bullseye! / So close! / In the zone / Off the mark) and the points. Only the host gets the button.','WavelengthMatchView.swift · .reveal (proposed)', dialTab({h:REV,board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',target:620,needle:628,result:'Bullseye!'}),controls:revealControls('+4 points',1)})),
-      fr('wl-reveal-bull-guest','Reveal · bullseye, everyone else','Guesser, psychic and opponents all see the same board. A line says who the table is waiting on.','WavelengthMatchView.swift · .reveal (proposed)', dialTab({h:REV,board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',target:620,needle:628,result:'Bullseye!'}),controls:revealControls('+4 points',0)})),
-      fr('wl-reveal-miss','Reveal · a miss','Needle outside every wedge scores 0.','WavelengthMatchView.swift (proposed)', dialTab({h:REV,board:boardPanel({card:CARD,clue:'Mahomes on a Tuesday',target:780,needle:300,result:'Off the mark'}),controls:revealControls('0 points',1)})),
-      fr('wl-reveal-last','Reveal · last card, host','On the final card the button reads “See results” and goes to the Final screen.','WavelengthMatchView.swift (proposed)', dialTab({h:{...REV,round:'6 / 6'},board:boardPanel({card:CARD2,clue:'Third and long, Lambeau',target:420,needle:470,result:'So close!'}),controls:revealControls('+3 points',1,1)})),
-    ]),
-    group('Rounds tab','Reference. A psychic’s clue is public once its round is open; until then it is concealed, and the team card says so in red.', [
-      fr('wl-rounds-coop','Rounds · co-op','One team card with each player’s state; every round the match will play: settled with clue and card ends, the current one, the rest dimmed.','WavelengthMatchView.swift · WavelengthRoundsTab', roundsTab(teamCard('Your team','7',[[SAM,'Guessing now',0,1],[MAYA,'Clue locked',1]]),roundList(coopRounds,3,6))),
-      fr('wl-rounds-versus','Rounds · 2v2','Two team cards; “Clue locked” in red for the psychic whose clue is not public yet.','WavelengthMatchView.swift', roundsTab(j(teamCard('Team 1','7',[[SAM,'Watching',0,1],[MAYA,'Locked 3']]),teamCard('Team 2','5',[[DEV,'Guessing now'],[KAY,'Clue locked',1]])),roundList(versusRounds,3,8))),
-    ]),
-    group('Final','Co-op always plays every round; the result shows score against the max, bullseyes and a star tier (target = ★, then ★★, ★★★).', [
-      fr('wl-win-splash-coop','Winner moment · co-op win','Everyone on the team shows. Same timing as the other games.','WavelengthMatchView.swift (proposed)', winSplash({names:[SAM,MAYA],headline:'You won!',sub:'14 / 16 points · ★★★'})),
-      fr('wl-win-splash-coop-loss','Winner moment · co-op, short of target','No rings and a muted headline: the moment still lands, without celebrating.','WavelengthMatchView.swift (proposed)', winSplash({names:[SAM,MAYA],headline:'Not this time',sub:'6 / 16 points',loss:1})),
-      fr('wl-win-splash-versus','Winner moment · 2v2','The winning team’s two players.','WavelengthMatchView.swift (proposed)', winSplash({names:[SAM,KAY],headline:'Team 1 wins',sub:'18 · 14'})),
-      fr('wl-final-coop-win','Final · co-op win','Score card on a panel: points / max, bullseye count, stars.','WavelengthMatchView.swift · WavelengthFinalView', finalFrame({host:1,headline:'You won!',score:[slab('14 / 16 points',30,'var(--panel-fg)'),ml('3 bullseyes',{tr:.08,c:'var(--panel-muted)'}),`<span style="font:700 26px Barlow;color:var(--panel-fg)">${star(2)}</span>`],teams:coopTeam,rounds:roundList(coopRounds.map(r=>({...r,state:r.state==='now'||r.state==='up'?'done':r.state,pts:r.pts||3,clue:r.clue||'Cheese curds in January',card:r.card||CARD})),6,6)})),
-      fr('wl-final-coop-loss','Final · co-op, short of the target','','WavelengthMatchView.swift', finalFrame({host:0,headline:'Not this time',score:[slab('6 / 16 points',30,'var(--panel-fg)'),ml('0 bullseyes',{tr:.08,c:'var(--panel-muted)'}),`<span style="font:700 26px Barlow;color:var(--panel-fg)">${star(0)}</span>`],teams:coopTeam,rounds:roundList(coopRounds.map(r=>({...r,state:r.state==='now'||r.state==='up'?'done':r.state,pts:r.pts||2,clue:r.clue||'Cheese curds in January',card:r.card||CARD})),6,6)})),
-      fr('wl-final-versus','Final · 2v2','Headline names the team. A caption says how a tie was settled (Bullseye tiebreak / Sudden death).','WavelengthMatchView.swift', finalFrame({host:1,headline:'Team 1 wins',score:[slab('Team 1: 18  ·  Team 2: 18',26,'var(--panel-fg)'),ml('Bullseye tiebreak',{tr:.08,c:'var(--panel-muted)'})],teams:versusTeams,rounds:roundList(versusRounds.map(r=>({...r,state:r.state==='now'||r.state==='up'?'done':r.state,pts:r.pts||3,clue:r.clue||'Cheese curds in January',card:r.card||CARD})),8,8)})),
-    ])
-  ]);
-})();
-</script>
-<script>
-/* =====================================================================
    SABOTAGE DRAFT
    ===================================================================== */
 (function(){
@@ -945,7 +818,6 @@ game('lobby', 'Games tab', 'Where the solo games (QB Season Builder, Higher or L
    ===================================================================== */
 SECTIONS.push({id:'notes', name:'Notes', html: `<section class="game" id="notes"><header><div class="eyebrow-d">For the review</div><h2>Things noticed while drawing these</h2><p>Read from the SwiftUI source and measured on these renders, not checked on a device. Listed so you can decide which are intentional.</p></header>
 <div class="note"><ul>
-<li><b>Dial needle was nearly invisible on its base (fixed in these mockups).</b> <code>WavelengthDial</code> drew the needle in <code>panelFg</code> (#E8E3D6) over <code>WavelengthPalette.base</code> (#D7D1C3), about 1.2:1. The mockups now use a near-black <code>--wl-needle</code> (#24211C), the web dial&rsquo;s colour; the Swift change is still to make.</li>
 <li><b>Countdown bars fill with the panel colour.</b> <code>MeterBar</code>'s default fill is <code>Theme.panel</code> (#191C18) on a <code>line</code> track, so in every <code>HeaderStats</code> clock the remaining time is the <i>darker</i> part. Worth a look on device.</li>
 <li><b>Grade tints on dark panels are low contrast.</b> <code>gradeElite</code> and <code>gradeRough</code> as text on the panel are about 2.7:1, <code>gradeStrong</code> 3.2:1: the Auction's revealed points and final rosters (<a href="#atb-sold" style="color:var(--fg)">atb-sold</a>, <a href="#atb-final-host" style="color:var(--fg)">atb-final-host</a>). Fine as fills (Sabotage's grade badges), weak as text.</li>
 <li><b>Red now does four jobs:</b> concealed information, the selected option (segmented controls, QB tiles, header tabs), "your turn"/urgent numbers, and errors. The principle in <code>design-system.md</code> reserves it for concealed (plus error text and the documented selected state). The Auction's "Ready" token buttons are red too, which is none of those.</li>
