@@ -173,6 +173,12 @@
 		5E74A68E1677F667972F38D2 /* FakeSabotageClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F7D9BE54555854AD2793FF /* FakeSabotageClient.swift */; };
 		60586049E2853AB1C2DCDF14 /* SabotageModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F61E2427B21184DF7B1A2E /* SabotageModelsTests.swift */; };
 		13D55024BF19E1012C72B12D /* SabotageViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E8A6FBF7D604224A7B2EA5 /* SabotageViewModelTests.swift */; };
+		F41E000000000000000B0045 /* InboxModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0045 /* InboxModels.swift */; };
+		F41E000000000000000B0046 /* InboxClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0046 /* InboxClient.swift */; };
+		F41E000000000000000B0047 /* InboxViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0047 /* InboxViewModel.swift */; };
+		F41E000000000000000B0048 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0048 /* InboxView.swift */; };
+		F41E000000000000000B0049 /* FakeInboxClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0049 /* FakeInboxClient.swift */; };
+		F41E000000000000000B004A /* InboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A004A /* InboxTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -357,6 +363,12 @@
 		20F7D9BE54555854AD2793FF /* FakeSabotageClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeSabotageClient.swift; sourceTree = "<group>"; };
 		14F61E2427B21184DF7B1A2E /* SabotageModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SabotageModelsTests.swift; sourceTree = "<group>"; };
 		D8E8A6FBF7D604224A7B2EA5 /* SabotageViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SabotageViewModelTests.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0045 /* InboxModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxModels.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0046 /* InboxClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxClient.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0047 /* InboxViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxViewModel.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0048 /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0049 /* FakeInboxClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeInboxClient.swift; sourceTree = "<group>"; };
+		F41E000000000000000A004A /* InboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -434,6 +446,8 @@
 				94F6295A7914445E51DB1E6D /* LobbyViewModelTests.swift */,
 				D9A1732B29058D68EB0FDE32 /* FakeLobbyClient.swift */,
 				F41E000000000000000A0040 /* FakeRoomInvitesClient.swift */,
+				F41E000000000000000A0049 /* FakeInboxClient.swift */,
+				F41E000000000000000A004A /* InboxTests.swift */,
 				F41E000000000000000A0041 /* RoomInvitesTests.swift */,
 				9BB3B711B5508796FC1E770E /* AppleSignInNonceTests.swift */,
 				F06ED444F3FC870054ED36B7 /* AuthViewModelTests.swift */,
@@ -486,6 +500,7 @@
 			children = (
 				49B09AADCEC3F81C695016EB /* UIKit */,
 				517F03783EC8EC94BBCB8D31 /* Identity */,
+				F41E000000000000000C0001 /* Notifications */,
 				D3253EB249D6D3F78E52DD2F /* Content */,
 			);
 			path = Foundation;
@@ -732,6 +747,17 @@
 			path = Wavelength;
 			sourceTree = "<group>";
 		};
+		F41E000000000000000C0001 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				F41E000000000000000A0045 /* InboxModels.swift */,
+				F41E000000000000000A0046 /* InboxClient.swift */,
+				F41E000000000000000A0047 /* InboxViewModel.swift */,
+				F41E000000000000000A0048 /* InboxView.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -865,6 +891,8 @@
 				0EC30C786785186D83970CA6 /* LobbyViewModelTests.swift in Sources */,
 				72EFAA44994616FFFE3437CE /* FakeLobbyClient.swift in Sources */,
 				F41E000000000000000B0040 /* FakeRoomInvitesClient.swift in Sources */,
+				F41E000000000000000B0049 /* FakeInboxClient.swift in Sources */,
+				F41E000000000000000B004A /* InboxTests.swift in Sources */,
 				F41E000000000000000B0041 /* RoomInvitesTests.swift in Sources */,
 				C0228715574E2C17617AE87E /* FakeAuthBackend.swift in Sources */,
 				32F54770BF21BE083734336D /* IdentityConstantsTests.swift in Sources */,
@@ -941,6 +969,10 @@
 				39F844201CA6B307D2E938DC /* LobbyViewModel.swift in Sources */,
 				DE9734EC8DC2E2B1DC813F1F /* LobbyClient.swift in Sources */,
 				F41E000000000000000B0042 /* RoomInvitesClient.swift in Sources */,
+				F41E000000000000000B0045 /* InboxModels.swift in Sources */,
+				F41E000000000000000B0046 /* InboxClient.swift in Sources */,
+				F41E000000000000000B0047 /* InboxViewModel.swift in Sources */,
+				F41E000000000000000B0048 /* InboxView.swift in Sources */,
 				F41E000000000000000B0043 /* RoomInvitesViewModels.swift in Sources */,
 				F41E000000000000000B0044 /* RoomInvitesViews.swift in Sources */,
 				31EED3E7CE74DE674478E1FC /* LobbyModels.swift in Sources */,

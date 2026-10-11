@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 vi.mock("@/lib/platform/lobbies/actions", () => ({ playSolo: vi.fn() }));
+vi.mock("@/components/foundation/notifications/NotificationBell", () => ({ NotificationBell: () => null }));
 
 import { Sidebar } from "./Sidebar";
 

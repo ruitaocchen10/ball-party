@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 
 import { AccountMenu } from "@/components/foundation/ui-kit/AccountMenu";
 import { FeedbackModal } from "@/components/feedback/FeedbackModal";
+import { NotificationBell } from "@/components/foundation/notifications/NotificationBell";
 import { BrandMark } from "@/components/foundation/ui-kit/BrandMark";
 import { GAMES, matchGameName, type Game } from "@/lib/platform/orchestration/catalog";
 import { playSolo } from "@/lib/platform/lobbies/actions";
@@ -363,7 +364,10 @@ function MobileTopStrip({
       </Link>
 
       {displayName ? (
-        <AccountMenu displayName={displayName} email={email} avatarUrl={avatarUrl} compact />
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <AccountMenu displayName={displayName} email={email} avatarUrl={avatarUrl} compact />
+        </div>
       ) : (
         <Link
           href="/login"

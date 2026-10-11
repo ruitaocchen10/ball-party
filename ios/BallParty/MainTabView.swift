@@ -20,6 +20,16 @@ struct MainTabView: View {
     @StateObject private var inbox = RoomInvitesInboxViewModel(
         client: SupabaseRoomInvitesClient(client: SupabaseConfig.client)
     )
+    /// The bell's inbox: friend requests, take replies and room invites. Held
+    /// here so the bell on every tab shows the same count.
+    @StateObject private var notifications = InboxViewModel(
+        client: SupabaseInboxClient(client: SupabaseConfig.client),
+        friends: SupabaseFriendsClient(client: SupabaseConfig.client),
+        invites: SupabaseRoomInvitesClient(client: SupabaseConfig.client)
+    )
+    @State private var showingInbox = false
+    /// A room joined from the inbox, handed to the Party tab to step inside.
+    @State private var joinedFromInbox: Lobby?
     /// The viewer's picture for the Profile tab's icon.
     @StateObject private var avatar = TabAvatarModel()
 
@@ -36,7 +46,7 @@ struct MainTabView: View {
                     .tabItem { Label("Games", systemImage: "gamecontroller") }
                     .tag(Tab.games)
 
-                NavigationStack { LobbyScreen(viewerId: user.id, inbox: inbox, pendingRoomCode: $pendingRoomCode) }
+                NavigationStack { LobbyScreen(viewerId: user.id, inbox: inbox, pendingRoomCode: $pendingRoomCode, joinedLobby: $joinedFromInbox) }
                     .tabItem { Label("Party", systemImage: "person.3") }
                     .tag(Tab.party)
 
@@ -44,16 +54,23 @@ struct MainTabView: View {
                     .tabItem { profileTabLabel }
                     .tag(Tab.profile)
             }
-            // For now the bell is the room invites, and they are listed at the
-            // top of the Party tab, so that is where it goes.
-            .environment(\.notificationCount, inbox.invites.count)
-            .environment(\.openNotifications, { selection = .party })
+            .environment(\.notificationCount, notifications.unreadCount)
+            .environment(\.openNotifications, { showingInbox = true })
             .environment(\.openParty, { selection = .party })
             .onChange(of: pendingRoomCode, initial: true) { _, code in
                 if code != nil { selection = .party }
             }
             .task(id: user.id) { await inbox.load() }
             .task(id: user.id) { await inbox.observe(recipientId: user.id) }
+            .task(id: user.id) { await notifications.load() }
+            .task(id: user.id) { await notifications.observe(recipientId: user.id) }
+            .sheet(isPresented: $showingInbox) {
+                InboxView(viewModel: notifications, viewerId: user.id) { lobby in
+                    joinedFromInbox = lobby
+                    selection = .party
+                }
+                .presentationBackground(Theme.surface)
+            }
             .task(id: user.id) { await loadAvatar(userId: user.id, email: user.email) }
             // A photo changed on the Profile tab shows once you leave it.
             .onChange(of: selection) { old, _ in
