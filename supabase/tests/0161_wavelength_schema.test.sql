@@ -67,7 +67,7 @@ select ok(
 select is(
   wavelength_private.config() - 'presets',
   '{"scale_max":1000,"wedge_width":40,"clue_max_words":8,"clue_max_chars":100,
-    "fill_seconds_per_clue":40,"guess_seconds":30,"versus_rounds":8}'::jsonb,
+    "fill_seconds_per_clue":90,"guess_seconds":60,"versus_rounds":8}'::jsonb,
   'config holds every scalar tunable the design doc names'
 );
 select is(
@@ -86,8 +86,8 @@ select ok(
 
 select is(
   (select count(*)::int from wavelength_private.deck),
-  104,
-  'the deck holds the 104 approved cards'
+  68,
+  'the deck holds the 68 approved cards'
 );
 select is(
   (select row(left_label, right_label)::text from wavelength_private.deck where card_id = 1),
@@ -184,9 +184,9 @@ select is(
   'fill', 'in the fill phase'
 );
 select ok(
-  (select phase_deadline = now() + interval '80 seconds'
+  (select phase_deadline = now() + interval '180 seconds'
      from public.wavelength_matches where match_id = (select v from tests.fx where k = 'v')),
-  'the fill clock is 40 seconds for each of the two clues a player writes'
+  'the fill clock is 90 seconds for each of the two clues a player writes'
 );
 select ok(
   not exists (
@@ -270,7 +270,7 @@ select ok(
 select is(
   (select array_agg(extract(epoch from phase_deadline - now())::int order by round_count)
      from public.wavelength_matches where match_id in (select v from tests.fx where k in ('cs', 'cm', 'cl'))),
-  array[80, 120, 160],
+  array[180, 270, 360],
   'the fill clock scales with how many clues each player writes (2, 3 and 4)'
 );
 select is(
