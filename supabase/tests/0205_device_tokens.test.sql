@@ -56,7 +56,8 @@ select throws_ok($$ select public.register_device_token('short', 'sandbox') $$, 
 select tests.act_as_guest(tests.who('guest'));
 select throws_ok($$ select public.register_device_token(repeat('c', 64), 'sandbox') $$, '28000', null, 'a guest cannot register a device');
 select tests.act_as(tests.who('alice'));
-select throws_ok($$ select * from public.device_tokens $$, '42501', null, 'clients cannot read the table');
+-- The seed grants SELECT on every public table, so RLS (no policy) is what hides the rows.
+select is((select count(*)::integer from public.device_tokens), 0, 'clients cannot read the table');
 select throws_ok($$ select public.delete_device_tokens(array[repeat('b', 64)]) $$, '42501', null, 'clients cannot call the sender''s cleanup');
 
 select * from finish();
