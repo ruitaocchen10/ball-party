@@ -24,6 +24,13 @@ protocol LobbyClient: Sendable {
     /// retry after a flaky connection is safe.
     func joinLobby(code: String) async throws -> Lobby
 
+    /// The open room the caller is still seated in, if any: what a relaunch
+    /// needs to step back in. Row-level security only lets a player read rooms
+    /// they are an active member of, so no membership filter is needed (the
+    /// web's Party page reads it the same way); a closed room keeps its members
+    /// attached, which is why `closed_at` is the filter that matters.
+    func currentLobby() async throws -> Lobby?
+
     /// A full re-read of the room: the lobby row, its active members, and its
     /// active run if a game is under way.
     func snapshot(lobbyId: UUID) async throws -> LobbySnapshot
@@ -88,6 +95,17 @@ struct SupabaseLobbyClient: LobbyClient {
         } catch let error as PostgrestError {
             throw LobbyServerError(message: error.message)
         }
+    }
+
+    func currentLobby() async throws -> Lobby? {
+        let open: [Lobby] = try await wrapped {
+            try await client.from("lobbies")
+                .select("id, code, host_id, closed_at, selected_game, game_format")
+                .is("closed_at", value: nil)
+                .limit(1)
+                .execute().value
+        }
+        return open.first
     }
 
     func snapshot(lobbyId: UUID) async throws -> LobbySnapshot {
