@@ -129,6 +129,46 @@ final class PushCoordinatorTests: XCTestCase {
         XCTAssertFalse(push.showingPrePrompt)
     }
 
+    func testTurningOnFromProfileAsksIOSDirectlyAndRegisters() async {
+        let push = makeCoordinator()
+        await push.sessionStarted()
+        let status = await push.enableFromSettings()
+        XCTAssertEqual(status, .authorized)
+        XCTAssertEqual(system.prompts, 1)
+        XCTAssertEqual(system.registrations, 1)
+        XCTAssertFalse(push.showingPrePrompt)
+    }
+
+    func testTurningOnFromProfileClearsAnEarlierNotNow() async {
+        let push = makeCoordinator()
+        await push.sessionStarted()
+        await push.meaningfulActionCompleted()
+        push.deferPrePrompt()
+        await push.enableFromSettings()
+        system.status = .notDetermined
+        await push.meaningfulActionCompleted()
+        XCTAssertTrue(push.showingPrePrompt, "Not now no longer applies once the player turned it on here")
+    }
+
+    func testTurningOnFromProfileAfterARefusalReportsDeniedWithoutRegistering() async {
+        system.status = .denied
+        let push = makeCoordinator()
+        await push.sessionStarted()
+        let status = await push.enableFromSettings()
+        XCTAssertEqual(status, .denied)
+        XCTAssertEqual(system.prompts, 0, "iOS only prompts once")
+        XCTAssertEqual(system.registrations, 0)
+    }
+
+    func testTurningOnFromProfileWhenAlreadyAllowedRegistersAgain() async {
+        system.status = .authorized
+        let push = makeCoordinator()
+        await push.sessionStarted()
+        await push.enableFromSettings()
+        XCTAssertEqual(system.prompts, 0)
+        XCTAssertEqual(system.registrations, 2, "launch and the button")
+    }
+
     // MARK: Registration
 
     func testAuthorizedLaunchRegistersWithAPNs() async {

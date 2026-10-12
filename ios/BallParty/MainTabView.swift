@@ -74,7 +74,13 @@ struct MainTabView: View {
                 }, landing: inboxLanding)
                 .presentationBackground(Theme.surface)
             }
-            .sheet(isPresented: $push.showingPrePrompt) {
+            // One sheet at a time: a request made while the inbox or the username
+            // sheet is up would be dropped, so the pre-prompt waits (its flag stays
+            // set) and appears once they are gone.
+            .sheet(isPresented: Binding(
+                get: { push.showingPrePrompt && !showingInbox && usernamePrompt == nil },
+                set: { if !$0 { push.showingPrePrompt = false } }
+            )) {
                 PushPrePromptView(coordinator: push)
                     .presentationBackground(Theme.surface)
             }

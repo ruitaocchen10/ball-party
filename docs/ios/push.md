@@ -33,6 +33,11 @@ works against the matching APNs host, so the sender picks the host from the row.
   pick, making or joining a room, adding a friend) a short pre-prompt explains why;
   only "Turn on notifications" spends iOS's one system prompt. "Not now" asks again
   after 14 days.
+- **Profile → Notifications:** turns push on without waiting for the pre-prompt (it
+  clears an earlier "Not now" and shows iOS's prompt), or opens iOS Settings once iOS
+  has been told no. It re-registers an allowed device, so it also re-uploads the token.
+- **One sheet at a time:** the pre-prompt is held back while the inbox or the
+  username-confirm sheet is up and shows once they are dismissed.
 - **Sign-out and account deletion:** the token is removed while the session still
   exists, the app badge is cleared, and APNs registration is dropped. If that call
   fails (offline) the token stays until another account registers this device.
