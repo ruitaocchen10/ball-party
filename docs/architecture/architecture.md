@@ -67,7 +67,7 @@ falls out of that.
 foundation    identity · content · ui-kit
 platform      lobbies → orchestration
 runtime       realtime · game-runtime  (the contract)
-games         auction · wavelength · higher-or-lower · sabotage-draft · qb-season-builder
+games         auction · wavelength · higher-or-lower · qb-season-builder
 ```
 
 **The rule that keeps this from turning to mush:** a game may depend on the
@@ -82,7 +82,7 @@ the contract is wrong.
 | Orchestration | `webapp/lib/platform/orchestration/` | The game catalog today. The party loop (pick next game, award points, decide the win) is not built; arcade is the one-match case |
 | Game runtime | [`game-runtime.md`](./game-runtime.md) | **The contract.** Match state, action validation, per-action deadlines, hidden-state projection |
 | Realtime | [`realtime.md`](./realtime.md) | Subscription lifecycle, presence, reconnect and mid-match rejoin, connection state in the UI |
-| Content | [`../../scripts/player_pool/`](../../scripts/player_pool/README.md) | Sports data: players, stats, decks, prompts. Ingestion, caching, freshness, licensing. Pools for the auction, Higher or Lower, Sabotage Draft and QB Season Builder are built and loaded as migrations; the Huddle's prompts are authored in-app |
+| Content | [`../../scripts/player_pool/`](../../scripts/player_pool/README.md) | Sports data: players, stats, decks, prompts. Ingestion, caching, freshness, licensing. Pools for the auction, Higher or Lower and QB Season Builder are built and loaded as migrations; the Huddle's prompts are authored in-app |
 | UI kit | `webapp/components/foundation/ui-kit/` | Primitives (`Card`, `Button`) plus the shared **game shell**: timer bar, player rail, reveal |
 | Games | [`../games/`](../games/) | Rules for one game, and nothing else. One doc each |
 

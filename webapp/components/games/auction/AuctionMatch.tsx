@@ -99,7 +99,7 @@ const DURATION_MS: Record<Turn["phase"], number> = {
   sealed: 20_000,
 };
 
-/** Match Sabotage Draft's shot-clock convention once a bid window is tight. */
+/** Show tenths of a second once a bid window is tight. */
 const TENTHS_THRESHOLD_MS = 5_000;
 
 /**
@@ -274,8 +274,7 @@ export function AuctionMatch({
   // turn.currentLot, matches for isComplete) rather than one atomic update.
   const finished = turn.currentLot > turn.lotCount || isComplete;
   const lot = lotAt(lots, turn.currentLot);
-  // A brief suspense beat before each lot's player appears, mirroring
-  // sabotage draft's turn reveal -- the identity is already in `lots`, this
+  // A brief suspense beat before each lot's player appears -- the identity is already in `lots`, this
   // just paces when it's shown. Called unconditionally, above the early
   // returns below, per the Rules of Hooks.
   const { revealed: lotRevealed } = useLotReveal(String(turn.currentLot));
@@ -627,14 +626,12 @@ export function AuctionMatch({
           controls their own column without changing that reading order. */}
       <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(6rem,1fr)] gap-3 lg:grid-cols-[minmax(15rem,.62fr)_minmax(0,1fr)_minmax(21rem,.95fr)] lg:grid-rows-1">
       <section className="flex min-h-0 flex-col gap-2 lg:col-start-2 lg:row-start-1" aria-label="The lot">
-      {/* A portrait-forward featured card, borrowing Sabotage Draft's
-          tenured-player treatment without confusing the lot's slot with a
+      {/* A portrait-forward featured card, without confusing the lot's slot with a
           player rank. The concealed score remains its own auction-only beat. */}
       <div className="relative flex flex-none flex-col items-center rounded-card border border-line bg-surface-raised px-4 py-5 text-center shadow-well">
         <span className="absolute top-3 left-3 font-slab text-xl leading-none text-fg uppercase">{lot.position}</span>
         {lotTeamLogo ? <TeamLogo code={lotTeamLogo} className="absolute top-3 right-3 h-8 w-8" /> : null}
-        {/* A brief suspense beat before the lot's player appears, mirroring
-            sabotage draft's turn reveal -- the name/portrait/matchup hold
+        {/* A brief suspense beat before the lot's player appears -- the name/portrait/matchup hold
             behind a "Revealing…" placeholder for useLotReveal's delay, then
             crossfade in. The slot badge and team logo above stay put; only
             the player's own identity is gated. */}
@@ -946,8 +943,7 @@ function shuffle<T>(items: T[]): T[] {
 /**
  * The concealed side of the lot reveal: a slot-machine reel cycling through
  * decoy names and landing on the real player as <Reveal> swaps to the final
- * card. This deliberately follows Sabotage Draft's TurnSpinner: the answer
- * is the last physical reel row, not a separate card that appears after the
+ * card. The answer is the last physical reel row, not a separate card that appears after the
  * reel has stopped.
  *
  * Decoys come only from lots that were already put up (`seq < currentLot`
@@ -1696,8 +1692,7 @@ function FinalScreen({
   );
 }
 
-/** The auction's post-game roster, using the same portrait-forward rhythm as
- * Sabotage Draft's final roster while retaining price and fantasy points. */
+/** The auction's post-game roster, portrait-forward, retaining price and fantasy points. */
 function RosterFinal({ lots, userId, format }: { lots: Lot[]; userId: string; format: AuctionFormat | null }) {
   const won = lots.filter((l) => l.winner_id === userId);
 

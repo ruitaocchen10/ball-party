@@ -17,8 +17,7 @@ import SwiftUI
 /// each leg.
 struct QbSpinReel: View {
     let franchiseCode: String
-    /// Nil for a spin with no season attached (a Sabotage Draft turn spins a
-    /// franchise only); the rows then drop the year line.
+    /// Nil for a spin with no season attached; the rows then drop the year line.
     let season: Int?
     /// Change this to remount and replay the animation — the SwiftUI
     /// equivalent of the web's `reelKey`.

@@ -18,8 +18,8 @@ build them.
 - **The schema pair pattern.** A game owns `<game>` (the write API, exposed
   through PostgREST) and `<game>_private` (the rules engine, unreachable). So:
   `wavelength` and `wavelength_private`.
-- **Hidden-to-everyone-but-one-player state is a solved shape.** Sabotage Draft's
-  pick (0052) and Higher or Lower's calls (0034) put the secret on a
+- **Hidden-to-everyone-but-one-player state is a solved shape.** Higher or Lower's
+  calls (0034) put the secret on a
   client-readable, Realtime-published table and restrict it with an RLS policy,
   alongside a bare "status" row everyone may see. Wavelength's target is this
   shape.
@@ -146,7 +146,7 @@ matching how the other games were built (a numbered migration per slice).
 8. **Webapp UI** (`webapp/components/games/wavelength/`): the dial and needle,
    the fill screen, the guess and reveal screens, the result screen with stars.
    Wire `WavelengthMatch` into `app/match/[id]/page.tsx`.
-9. **Lobby start** (`StartWavelength`, modelled on `StartSabotageDraft`): a mode
+9. **Lobby start** (`StartWavelength`, modelled on `StartHigherOrLower`): a mode
    picker (Co-op or 2v2), the preset picker for co-op, and Start enabled only
    when the player count matches.
 10. **Catalog.** Set `status: "live"` and `match` once it plays end to end.

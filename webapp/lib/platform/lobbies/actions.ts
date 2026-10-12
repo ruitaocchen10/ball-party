@@ -9,7 +9,6 @@ import { guestSessionFinishedHref } from "@/lib/foundation/identity/guest-lifecy
 import { lobbyErrorMessage } from "@/lib/platform/lobbies/messages";
 import { HOST_SIGN_UP_HREF } from "@/lib/platform/lobbies/hosting";
 import { soloGames, startableGames, type MatchGame } from "@/lib/platform/orchestration/catalog";
-import { isGameMode } from "@/lib/games/sabotage-draft/rounds";
 
 /**
  * The lobby RPCs raise short machine-readable strings — see
@@ -153,10 +152,6 @@ export async function startRun(formData: FormData) {
   if (game === "auction_team_builder" && !validAuctionFormat(scoringMode, rosterPreset)) {
     redirect(`/lobby/${code}?error=${encodeURIComponent("Choose a valid auction format.")}`);
   }
-  const draftMode = String(formData.get("draft_mode") ?? "full");
-  if (game === "sabotage_draft" && !isGameMode(draftMode)) {
-    redirect(`/lobby/${code}?error=${encodeURIComponent("Choose a valid draft mode.")}`);
-  }
   const wavelengthMode = String(formData.get("wavelength_mode") ?? "");
   const wavelengthPreset = String(formData.get("wavelength_preset") ?? "");
   if (game === "wavelength_2v2" && !validWavelengthFormat(wavelengthMode, wavelengthPreset)) {
@@ -188,11 +183,11 @@ export async function startRun(formData: FormData) {
       p_match_id: match.id,
       p_scoring_mode: scoringMode,
       ...(seasons ? { p_season_from: seasons.from, p_season_to: seasons.to } : {}),
-    }) : game === "wavelength_2v2" ? await supabase.schema("wavelength").rpc("start", {
+    }) : await supabase.schema("wavelength").rpc("start", {
       p_match_id: match.id,
       p_mode: wavelengthMode,
       ...(wavelengthPreset ? { p_preset: wavelengthPreset } : {}),
-    }) : await supabase.schema("sabotage_draft" as never).rpc("start" as never, { p_match_id: match.id, p_mode: draftMode } as never);
+    });
   if (dealError) redirect(withError(`/lobby/${code}`, dealError));
 
   revalidatePath("/", "layout");

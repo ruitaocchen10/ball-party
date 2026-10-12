@@ -5,7 +5,7 @@ import { REVEAL_STEP_MS, useSeasonReveal } from "./useSeasonReveal";
 
 /**
  * The reveal's order and its one-time-ness, away from the screen that draws it.
- * Same seam as sabotage draft's useTurnReveal and the auction's useLotReveal.
+ * Same seam as the auction's useLotReveal.
  */
 
 const MATCH = "22222222-2222-2222-2222-222222222222";

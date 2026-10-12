@@ -2,8 +2,8 @@
 // Fetch each NFL franchise's logo once and upload it to the `team-logos`
 // Supabase Storage bucket (see
 // supabase/migrations/*_sabotage_draft_team_logos_bucket.sql), under
-// `{franchise_code}.png` -- the PFR franchise code every other sabotage
-// draft surface already keys on (webapp/lib/sabotage-draft/franchises.ts).
+// `{franchise_code}.png` -- the PFR franchise code every other franchise
+// surface already keys on (webapp/lib/foundation/content/nfl/franchises.ts).
 //
 //   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/team_logos/build_logos.mjs
 //
@@ -34,7 +34,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 }
 
 // PFR's own stable franchise code (see franchises.ts's own header on why
-// that's the identity every sabotage draft surface keys on) -> ESPN's team
+// that's the identity every franchise surface keys on) -> ESPN's team
 // abbreviation, needed only because ESPN's CDN path uses ESPN's own
 // abbreviations, which disagree with PFR's for every franchise relocation
 // PFR's code deliberately stayed stable across (clt/crd/htx/oti/rav/sdg/

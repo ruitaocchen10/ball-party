@@ -8,7 +8,7 @@ import { message } from "@/lib/foundation/ui-kit/motion";
 /**
  * The one-line status/error paragraph that shows up under nearly every form
  * in the app (ProfileEditor, GuestUpgrade, GuestJoin, AuthForm, the higher-or-
- * lower call window, the sabotage draft board) — always the same shape: a
+ * lower call window) — always the same shape: a
  * `role="alert"`/`role="status"` `<p>` that's there conditionally, appearing
  * the instant something goes wrong or succeeds. Wraps that one pattern once
  * instead of every call site inventing its own `AnimatePresence` + variant.

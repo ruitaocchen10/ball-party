@@ -6,8 +6,8 @@
  * changes. It moves to the database when games gain state the platform has to
  * read — availability by region, say, or per-player unlocks.
  *
- * `status` means playable, not planned. The auction, Higher or Lower, and
- * Sabotage Draft and Wavelength are built end to end. A game is only live
+ * `status` means playable, not planned. The auction, Higher or Lower and
+ * Wavelength are built end to end. A game is only live
  * once its lobby path can deal it and participants can play it through.
  */
 export type GameStatus = "live" | "development";
@@ -82,7 +82,6 @@ export const MATCH_GAME_NAMES = {
   cards_against_humanity: "Cards Against Humanity",
   higher_or_lower: "Higher or Lower",
   wavelength_2v2: "2v2 Wavelength",
-  sabotage_draft: "Sabotage Draft",
   qb_season_builder: "QB Season Builder",
 } as const;
 
@@ -108,19 +107,6 @@ export function soloGames(): MatchGame[] {
 }
 
 export const GAMES: readonly Game[] = [
-  {
-    slug: "sabotage-draft",
-    match: "sabotage_draft",
-    name: ["Sabotage", "draft"],
-    shortName: ["Sabotage", "draft"],
-    kind: "Group · hidden picks",
-    tagline: "Spin your own team history, then try to wreck everyone else’s pick.",
-    players: "2–4 players",
-    status: "live",
-    solo: false,
-    group: true,
-    featured: false,
-  },
   {
     slug: "qb-season-builder",
     match: "qb_season_builder",

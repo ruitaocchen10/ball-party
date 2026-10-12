@@ -23,7 +23,6 @@ enum MatchGame: String, Sendable, Equatable, CaseIterable, Identifiable {
     case higherOrLower = "higher_or_lower"
     case auctionTeamBuilder = "auction_team_builder"
     case wavelength = "wavelength_2v2"
-    case sabotageDraft = "sabotage_draft"
 
     var id: String { rawValue }
 
@@ -32,7 +31,6 @@ enum MatchGame: String, Sendable, Equatable, CaseIterable, Identifiable {
         case .higherOrLower: "Higher or Lower"
         case .auctionTeamBuilder: "Auction Team Builder"
         case .wavelength: "2v2 Wavelength"
-        case .sabotageDraft: "Sabotage Draft"
         }
     }
 
@@ -42,7 +40,6 @@ enum MatchGame: String, Sendable, Equatable, CaseIterable, Identifiable {
         case .higherOrLower: "Call the next card. Make the streak last."
         case .auctionTeamBuilder: "Bid on mystery fantasy lots to fill a roster."
         case .wavelength: "Give a one-shot clue and find the hidden target."
-        case .sabotageDraft: "Draft hidden picks, then wreck everyone else's."
         }
     }
 
@@ -50,7 +47,7 @@ enum MatchGame: String, Sendable, Equatable, CaseIterable, Identifiable {
     var playersLabel: String {
         switch self {
         case .wavelength: "2 or 4 players"
-        case .higherOrLower, .auctionTeamBuilder, .sabotageDraft: "2–4 players"
+        case .higherOrLower, .auctionTeamBuilder: "2–4 players"
         }
     }
 }
@@ -119,23 +116,20 @@ struct LobbyGameFormat: Equatable, Sendable, Codable {
     var higherOrLower: HigherOrLower?
     var auction: Auction?
     var wavelength: Wavelength?
-    var sabotage: Sabotage?
 
     init(
         higherOrLower: HigherOrLower? = nil, auction: Auction? = nil,
-        wavelength: Wavelength? = nil, sabotage: Sabotage? = nil
+        wavelength: Wavelength? = nil
     ) {
         self.higherOrLower = higherOrLower
         self.auction = auction
         self.wavelength = wavelength
-        self.sabotage = sabotage
     }
 
     private enum CodingKeys: String, CodingKey {
         case higherOrLower = "higher_or_lower"
         case auction = "auction_team_builder"
         case wavelength = "wavelength_2v2"
-        case sabotage = "sabotage_draft"
     }
 
     struct HigherOrLower: Equatable, Sendable, Codable {
@@ -170,10 +164,6 @@ struct LobbyGameFormat: Equatable, Sendable, Codable {
     struct Wavelength: Equatable, Sendable, Codable {
         var mode: String
         var preset: String
-    }
-
-    struct Sabotage: Equatable, Sendable, Codable {
-        var mode: String
     }
 
     /// One row of the settings a card shows: "Scoring", "Season total".
@@ -219,9 +209,6 @@ struct LobbyGameFormat: Equatable, Sendable, Codable {
                 rows.append(Line(label: "Length", value: WavelengthPreset(rawValue: preset)?.label ?? preset))
             }
             return rows
-        case .sabotageDraft:
-            let mode = sabotage?.mode ?? SabotageMode.full.rawValue
-            return [Line(label: "Mode", value: SabotageMode(rawValue: mode)?.label ?? mode)]
         }
     }
 }

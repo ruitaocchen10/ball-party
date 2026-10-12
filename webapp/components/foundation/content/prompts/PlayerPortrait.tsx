@@ -5,9 +5,8 @@ import { useState } from "react";
 /**
  * Real NFL.com headshot URLs pulled from this project's own auction lots —
  * see staticOptionPools.ts. Same onError-falls-back-to-initials posture as
- * the real app's PlayerPortrait/LotPortrait (SabotageDraftMatch.tsx,
- * AuctionMatch.tsx) — duplicated here rather than imported since those are
- * private to their own match components.
+ * the real app's LotPortrait (AuctionMatch.tsx) — duplicated here rather than
+ * imported since it is private to its own match component.
  */
 export function PlayerPortrait({
   name,

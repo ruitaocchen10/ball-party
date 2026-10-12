@@ -41,7 +41,6 @@ struct LobbyScreen: View {
                 game: SupabaseHigherOrLowerClient(client: SupabaseConfig.client),
                 auction: SupabaseAuctionClient(client: SupabaseConfig.client),
                 wavelength: SupabaseWavelengthClient(client: SupabaseConfig.client),
-                sabotage: SupabaseSabotageClient(client: SupabaseConfig.client),
                 viewerId: viewerId
             )
         )
@@ -68,13 +67,6 @@ struct LobbyScreen: View {
                     )
                 case .wavelength:
                     WavelengthMatchScreen(
-                        matchId: route.id,
-                        viewerId: viewModel.viewerId,
-                        roomCode: viewModel.roomCode,
-                        isHost: viewModel.isHost
-                    )
-                case .sabotageDraft:
-                    SabotageMatchScreen(
                         matchId: route.id,
                         viewerId: viewModel.viewerId,
                         roomCode: viewModel.roomCode,

@@ -6,7 +6,6 @@ import { AuctionMatch } from "@/components/games/auction/AuctionMatch";
 import { MatchSetup } from "@/components/games/auction/MatchSetup";
 import { HigherOrLowerMatch } from "@/components/games/higher-or-lower/HigherOrLowerMatch";
 import { QbSeasonBuilderMatch } from "@/components/games/qb-season-builder/QbSeasonBuilderMatch";
-import { SabotageDraftMatch } from "@/components/games/sabotage-draft/SabotageDraftMatch";
 import { WavelengthMatch } from "@/components/games/wavelength/WavelengthMatch";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
@@ -128,35 +127,6 @@ export default async function MatchPage(props: PageProps<"/match/[id]">) {
   // match screen becomes two. The shell above — who you are, whether the match
   // is yours, whether it has been dealt or abandoned — is the platform's and is
   // the same for every game.
-  if (match.game === "sabotage_draft") {
-    const sabotage = supabase as any;
-    const [stateResult, playersResult, spinsResult, picksResult, statusesResult, hitsResult, guessesResult, passesResult, decisionsResult, standingsResult, tiebreaksResult, avResult] = await Promise.all([
-      sabotage.schema("sabotage_draft").rpc("state", { p_match_id: id }),
-      sabotage.from("sabotage_draft_players").select("*, profiles(display_name, avatar_url)").eq("match_id", id).order("seat"),
-      sabotage.from("sabotage_draft_round_spins").select("*").eq("match_id", id),
-      sabotage.from("sabotage_draft_picks").select("*").eq("match_id", id),
-      sabotage.from("sabotage_draft_pick_statuses").select("*").eq("match_id", id),
-      sabotage.from("sabotage_draft_pick_hits").select("*").eq("match_id", id),
-      sabotage.from("sabotage_draft_guesses").select("*").eq("match_id", id),
-      sabotage.from("sabotage_draft_passes").select("*").eq("match_id", id),
-      sabotage.from("sabotage_draft_x_factor_decisions").select("*").eq("match_id", id),
-      sabotage.from("sabotage_draft_standings").select("*").eq("match_id", id),
-      sabotage.from("sabotage_draft_tiebreak_games").select("*").eq("match_id", id),
-      sabotage.schema("sabotage_draft").rpc("pick_avs", { p_match_id: id }),
-    ]);
-    const row = stateResult.data;
-    if (!row || row.round_count == null || row.current_round == null || !row.slot || !row.server_now) {
-      return <Shell displayName={displayName} email={email} avatarUrl={avatarUrl}><p className="text-sm leading-6 text-fg-muted">This game is no longer available.</p><HomeLink /></Shell>;
-    }
-    return <><SabotageDraftMatch matchId={id} viewerId={claims.sub} roomCode={code} isHost={isHost} paused={match.status === "paused"} initial={{
-      board: row,
-      players: (playersResult.data ?? []).map(({ profiles, ...player }: any) => ({ ...player, display_name: profiles?.display_name ?? "Unknown player", avatar_url: profiles?.avatar_url ?? null })),
-      spins: spinsResult.data ?? [],
-      picks: picksResult.data ?? [], statuses: statusesResult.data ?? [], hits: hitsResult.data ?? [], guesses: guessesResult.data ?? [], passes: passesResult.data ?? [],
-      decisions: decisionsResult.data ?? [], standings: standingsResult.data ?? [], tiebreaks: tiebreaksResult.data ?? [], pickAvs: avResult.data ?? [],
-    }} /><MatchStartCountdown matchId={id} game="sabotage_draft" /></>;
-  }
-
   if (match.game === "wavelength_2v2") {
     // Do not fetch wavelength_targets: that table is psychic-only, and a
     // match screen must never receive hidden state merely to conceal it later.

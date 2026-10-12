@@ -90,7 +90,7 @@ descriptions of the position.
 - A guess that isn't confirmed in time auto-locks the needle where it currently
   sits.
 
-**Disconnects** — same model as Sabotage Draft. A disconnected seat stays in the
+**Disconnects** — a disconnected seat stays in the
 match, flagged absent, and can rejoin (its next ping clears the flag). Missed
 actions resolve through the timeout rules above rather than a separate
 absent-player path. There is no cap on absence in co-op: an absent partner just

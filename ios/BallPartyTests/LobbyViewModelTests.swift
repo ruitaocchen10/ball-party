@@ -12,7 +12,6 @@ final class LobbyViewModelTests: XCTestCase {
     private var game: FakeHigherOrLowerClient!
     private var auction: FakeAuctionClient!
     private var wavelength: FakeWavelengthClient!
-    private var sabotage: FakeSabotageClient!
     private var viewModel: LobbyViewModel!
 
     override func setUp() async throws {
@@ -21,8 +20,7 @@ final class LobbyViewModelTests: XCTestCase {
         game = FakeHigherOrLowerClient(viewerId: viewerId)
         auction = FakeAuctionClient(viewerId: viewerId)
         wavelength = FakeWavelengthClient(viewerId: viewerId)
-        sabotage = FakeSabotageClient(viewerId: viewerId)
-        viewModel = LobbyViewModel(client: client, game: game, auction: auction, wavelength: wavelength, sabotage: sabotage, viewerId: viewerId, formatSaveDelay: .zero)
+        viewModel = LobbyViewModel(client: client, game: game, auction: auction, wavelength: wavelength, viewerId: viewerId, formatSaveDelay: .zero)
     }
 
     override func tearDown() async throws {
@@ -181,8 +179,7 @@ final class LobbyViewModelTests: XCTestCase {
     func test_format_aReturningHostFindsTheirSettingsAsTheyLeftThem() async {
         client.hostHadSavedFormat(LobbyGameFormat(
             auction: .init(scoringMode: "season_total", rosterPreset: "deep", tokenCount: 3),
-            wavelength: .init(mode: "versus", preset: "long"),
-            sabotage: .init(mode: "quick")
+            wavelength: .init(mode: "versus", preset: "long")
         ))
 
         await viewModel.createRoom()
@@ -192,7 +189,6 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.tokenCount, 3)
         XCTAssertEqual(viewModel.wavelengthMode, .versus)
         XCTAssertEqual(viewModel.wavelengthPreset, .long)
-        XCTAssertEqual(viewModel.sabotageMode, .quick)
         XCTAssertTrue(client.formatSaves.isEmpty, "restoring settings is not a change to save")
     }
 
@@ -247,22 +243,20 @@ final class LobbyViewModelTests: XCTestCase {
     func test_format_linesNameEachGamesSettings() {
         let format = LobbyGameFormat(
             auction: .init(scoringMode: "season_total", rosterPreset: "full", tokenCount: 0, seasonFrom: 2005, seasonTo: 2005),
-            wavelength: .init(mode: "coop", preset: "medium"),
-            sabotage: .init(mode: "quick")
+            wavelength: .init(mode: "coop", preset: "medium")
         )
 
         XCTAssertEqual(format.lines(for: .auctionTeamBuilder).map(\.value), ["Season total", "Full · 28 lots", "Off", "2005"])
         XCTAssertEqual(format.lines(for: .wavelength).map(\.value), ["Co-op", "Medium · 6 rounds · target 12"])
-        XCTAssertEqual(format.lines(for: .sabotageDraft).map(\.value), ["Quick"])
         // 2v2 has no length to show.
         XCTAssertEqual(LobbyGameFormat(wavelength: .init(mode: "versus", preset: "short")).lines(for: .wavelength).map(\.label), ["Mode"])
     }
 
     func test_format_aNewerSettingStillDecodesAndIsShownAsWritten() throws {
-        let json = #"{"id":"00000000-0000-0000-0000-000000000001","code":"ABCDE","host_id":"00000000-0000-0000-0000-000000000002","game_format":{"sabotage_draft":{"mode":"mythic"},"cards":{"x":1}}}"#
+        let json = #"{"id":"00000000-0000-0000-0000-000000000001","code":"ABCDE","host_id":"00000000-0000-0000-0000-000000000002","game_format":{"wavelength_2v2":{"mode":"mythic","preset":"short"},"cards":{"x":1}}}"#
         let lobby = try JSONDecoder().decode(Lobby.self, from: Data(json.utf8))
 
-        XCTAssertEqual(lobby.gameFormat.lines(for: .sabotageDraft).map(\.value), ["mythic"])
+        XCTAssertEqual(lobby.gameFormat.lines(for: .wavelength).map(\.value), ["mythic"])
     }
 
     func test_room_reconnectingReReadsTheWholeRoom() async {
@@ -289,7 +283,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_room_renewsItsPresenceLeaseWhileTheScreenIsOpen() async {
         viewModel = LobbyViewModel(
-            client: client, game: game, auction: auction, wavelength: wavelength, sabotage: sabotage, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
+            client: client, game: game, auction: auction, wavelength: wavelength, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
         )
         await viewModel.createRoom()
 
@@ -300,7 +294,7 @@ final class LobbyViewModelTests: XCTestCase {
 
     func test_room_aBackgroundedScreenLetsItsLeaseLapseAndRenewsOnReturn() async {
         viewModel = LobbyViewModel(
-            client: client, game: game, auction: auction, wavelength: wavelength, sabotage: sabotage, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
+            client: client, game: game, auction: auction, wavelength: wavelength, viewerId: viewerId, heartbeatInterval: .milliseconds(1)
         )
         await viewModel.createRoom()
         await eventually { self.client.heartbeatCount >= 1 }

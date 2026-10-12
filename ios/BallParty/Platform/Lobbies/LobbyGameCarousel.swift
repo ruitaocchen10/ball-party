@@ -214,7 +214,6 @@ private struct GameSettingsEditor: View {
         case .higherOrLower: higherOrLower
         case .auctionTeamBuilder: auction
         case .wavelength: wavelength
-        case .sabotageDraft: sabotage
         }
     }
 
@@ -312,18 +311,6 @@ private struct GameSettingsEditor: View {
         }
     }
 
-    private var sabotage: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Mode").fieldLabel()
-            PillChoice(
-                selection: $viewModel.sabotageMode,
-                options: SabotageMode.allCases,
-                title: { $0.label },
-                accessibilityName: "Mode"
-            )
-            Text(viewModel.sabotageMode.blurb).monoLabel(10, tracking: 0.08)
-        }
-    }
 }
 
 // MARK: - Start

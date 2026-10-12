@@ -579,168 +579,6 @@ game('lobby', 'Games tab', 'Where the solo games (QB Season Builder, Higher or L
 </script>
 <script>
 /* =====================================================================
-   SABOTAGE DRAFT
-   ===================================================================== */
-(function(){
-  const TABS = [['Draft','scope'],['Rosters','p3'],['Log','logl']];
-  const header = (o) => V(8,[
-    H(0,[ml(`Round ${o.round||4} of ${o.of||14} · ${o.slot||'WR1'}`,{b:1,tr:.15,c:'var(--fg)',x:'white-space:nowrap'}),sp(),ml(o.mode||'Full',{s:10,tr:.1})],'align-items:baseline'),
-    headerStats([{cap:'Your picks',val:o.picks||'3 / 14'},{cap:'On the clock',val:o.who||'You',u:o.me},{cap:'Turn clock',val:o.val||'24',u:o.me||o.urgent}],o.frac??.8)
-  ]);
-  const shell = (o) => gameShell({title:'Sabotage Draft',header:header(o.h||{}),tabs:TABS,on:o.on||0,gap:'g14',overlay:o.overlay,body:o.body});
-
-  const spinCard = (who, spin, slotCopy) => panel(H(14,[teamLogo(spin?spin[0]:'',56), V(3,[ml(who,{s:10,tr:.13,c:'var(--panel-muted)'}), spin?slab(spin[1],24,'var(--panel-fg)'):waiting('Waiting on the spin…',{s:18,x:'font:400 24px Bebas Neue;text-transform:uppercase;color:var(--panel-fg)'}), ml(`Choosing ${slotCopy||'a WR'}`,{tr:.08,c:'var(--panel-muted)'})],'flex:1;min-width:0')],'padding:14px;align-items:center'));
-  const PIT = ['PIT','Pittsburgh Steelers'], NWE = ['NWE','New England Patriots'];
-
-  const card = (title, msg, wait) => well(V(6,[ml('Your move',{s:10,tr:.13}),slab(title,22), wait?waiting(msg,{x:'font:400 14px Barlow;color:var(--muted)'}):copyL(msg)],'padding:14px'));
-  const copyL = t => sans(t,14,400,'var(--muted)');
-  const poolField = (choice, ph) => `<div style="display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px">${choice?`${portrait(choice[0],30)}${sans(choice[0],15,600,'var(--fg)','white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0')}${mono('· '+choice[1],12,400,'var(--muted)','white-space:nowrap;flex:none')}${sp(8)}${ml('Change',{s:10,b:1,tr:.1})}`:`${I('srch',16,'color:var(--muted)')}${sans(ph,15,400,'var(--muted)')}`}</div>`;
-  const pending = t => waiting(t,{s:12,x:'font:400 10px JetBrains Mono;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)'});
-
-  const pickForm = (choice, saving) => well(V(10,[ml('Your move',{s:10,tr:.13}),slab('Make your hidden pick',22),copyL('Nobody sees who you chose, or which year.'),poolField(choice,'Search a WR…'),btn(saving?'Locking…':'Lock in pick',{off:!choice||saving,spin:saving})],'padding:14px'));
-  const pickLocked = well(V(10,[ml('Your move',{s:10,tr:.13}),slab('Your pick is locked',22),H(10,[portrait('Antonio Brown',36),sans('Antonio Brown · 2017',15,600)],'align-items:center'),waiting('Waiting on the rest of the table.',{x:'font:400 14px Barlow;color:var(--muted)'})],'padding:14px'));
-  const kindBtn = (t,d) => `<div style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;gap:2px">${sans(t,15,600)}${sans(d,12,400,'var(--muted)')}</div>`;
-  const guessChoose = well(V(10,[ml('Your move',{s:10,tr:.13}),slab('Sabotage Maya\u2019s pick',22),kindBtn('Guess the player','Right? Same player, a random different year — you don\u2019t choose it'),kindBtn('Guess the player and year','Right? You choose exactly what replaces it'),btn('Pass',{v:'ghost'})],'padding:14px'));
-  const guessForm = (exact, step, saving) => well(V(10,[ml('Your move',{s:10,tr:.13}),slab('Sabotage Maya\u2019s pick',22),
-    H(0,[sans(exact?'Guessing the player and year':'Guessing the player',14,600),sp(),mono('Change',11,700,'var(--muted)')],'align-items:baseline'),
-    exact?ml(`Step 1 of 2 — guess the player`,{s:10,tr:.1}):'', poolField(step>=1?['Antonio Brown','2017']:null,'Search a name…'),
-    exact&&step>=1?ml('Step 2 of 2 — choose their replacement',{s:10,tr:.1}):'', exact&&step>=1?poolField(step>=2?['JuJu Smith-Schuster','2018']:null,'Search a replacement…'):'',
-    H(10,[btn(saving?'Locking…':'Lock in guess',{x:'flex:1;width:auto',spin:saving,off:saving||(exact?step<2:step<1)}),`<span style="flex:none">${btn('Pass',{v:'ghost',inl:1})}</span>`])],'padding:14px'));
-  const xfDecide = well(V(10,[ml('Your move',{s:10,tr:.13}),slab('Assign or discard your X-Factor',22),H(10,[portrait('Davante Adams',36),sans('Davante Adams · 2019',15,600)],'align-items:center'),copyL('Replace a slot at the same position, or keep your roster as it is.'),
-    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${['Replace WR 1','Replace WR 2','Replace WR 3'].map(t=>btn(t,{v:'ghost'})).join('')}</div>`, btn('Discard X-Factor')],'padding:14px'));
-
-  const base = (o) => shell({h:o.h,body:j(o.paused?errorBanner('The host paused the game.'):'',o.spin,o.action,o.err?errorBanner(o.err):'',o.wait||'')});
-  const mine = {me:1,who:'You'};
-
-  /* ---------- Rosters ---------- */
-  const badge = (t, fill, ink) => `<span style="font:700 8px 'JetBrains Mono';letter-spacing:.05em;text-transform:uppercase;padding:2px 5px;background:${fill};color:${ink}">${t}</span>`;
-  const SLOTS = ['QB','RB 1','RB 2','WR 1','WR 2','WR 3','TE','OL','DL','LB','CB','S','ST','X FACTOR'];
-  const cellPick = n => `${portrait(n[0],26)}${sans(`${n[0]} · ${n[1]}`,14,600,'var(--panel-fg)','white-space:nowrap;overflow:hidden;text-overflow:ellipsis')}`;
-  const cellConc = (code, name) => concealed(H(6,[teamLogo(code,16),ml(name,{s:10,b:1,tr:.06,c:'var(--fg)',x:'white-space:nowrap'})],'padding:4px 8px;align-items:center'),{compact:1,x:'display:inline-block'});
-  const rrow = (slot, content, o={}) => `<div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:8px;border:1px ${o.dash?'dashed':'solid'} ${o.bd||'rgba(232,227,214,.12)'}">${ml(slot,{s:10,b:1,tr:.1,c:'var(--panel-muted)',x:'width:50px;flex:none'})}${content}<span style="flex:1"></span>${o.respun?badge('Respun','var(--panel-shade)','var(--panel-muted)'):''}${o.sab?badge('Sabotaged','var(--hidden)','var(--fg)'):''}</div>`;
-  const rosterCard = (r) => well(V(0,[
-    H(10,[avatar(r.n,36,r.me), V(3,[H(6,[slab(r.me?'You':r.n,18)],'align-items:baseline'), ml(r.st,{s:9,tr:.07,c:r.active?'var(--hidden-text)':'var(--muted)'})],'flex:1'), ml(r.hits?`${r.hits} hit${r.hits>1?'s':''}`:'No hits',{s:10,b:!!r.hits,tr:.07,c:r.hits?'var(--hidden-text)':'var(--muted)'}), I(r.open?'cu':'cd',12,'color:var(--muted)')],`padding:12px;align-items:center;${r.active?'background:rgba(168,41,31,.14)':''}`),
-    r.open?`<div style="margin:0 10px 10px;padding:8px;background:var(--panel);border-radius:8px;display:flex;flex-direction:column;gap:6px">${r.rows.join('')}</div>`:''
-  ]));
-  const myRows = [
-    rrow(SLOTS[0],cellPick(['Patrick Mahomes','2018']),{bd:'rgba(168,41,31,.4)'}),
-    rrow(SLOTS[1],cellPick(['Christian McCaffrey','2019']),{bd:'rgba(168,41,31,.4)',respun:1}),
-    rrow(SLOTS[2],cellPick(['Saquon Barkley','2022']),{bd:'rgba(168,41,31,.4)',sab:1}),
-    rrow(SLOTS[3],`${ml('Choosing…',{s:10,b:1,tr:.1,c:'var(--hidden-ink)'})}`,{bd:'rgba(168,41,31,.5)'}),
-    ...SLOTS.slice(4,13).map(s=>rrow(s,ml('— up next —',{s:10,tr:.06,c:'var(--panel-muted)'}),{dash:1})),
-    rrow(SLOTS[13],ml('— not reached —',{s:10,tr:.06,c:'var(--panel-muted)'}),{dash:1})
-  ];
-  const theirRows = [
-    rrow(SLOTS[0],cellConc('NWE','New England Patriots')),
-    rrow(SLOTS[1],cellConc('GNB','Green Bay Packers'),{respun:1}),
-    rrow(SLOTS[2],cellConc('DAL','Dallas Cowboys')),
-    rrow(SLOTS[3],`${ml('Choosing…',{s:10,b:1,tr:.1,c:'var(--hidden-ink)'})}`,{bd:'rgba(168,41,31,.5)'}),
-    ...SLOTS.slice(4,13).map(s=>rrow(s,ml('— up next —',{s:10,tr:.06,c:'var(--panel-muted)'}),{dash:1})),
-    rrow(SLOTS[13],ml('— not reached —',{s:10,tr:.06,c:'var(--panel-muted)'}),{dash:1})
-  ];
-  const collapsedRows = [rrow('',''),];
-  const PLAYERS = [{n:SAM,me:1},{n:MAYA,dot:1},{n:DEV},{n:KAY}];
-  const rosterDetail = (r) => V(12,[
-    H(12,[avatar(r.n,44,r.me), V(3,[slab(r.me?'You':r.n,26), ml(r.st,{s:10,tr:.08,c:r.active?'var(--fg)':'var(--muted)'})],'flex:1')],'align-items:center'),
-    H(8,[statTile('Picks',r.picks||'3 / 14'), statTile('Hits taken',String(r.hits||0))]),
-    ml('Roster',{s:10,b:1,tr:.14,x:'margin-top:4px'}),
-    `<div style="padding:8px;background:var(--panel);border-radius:8px;display:flex;flex-direction:column;gap:6px">${r.rows.join('')}</div>`
-  ]);
-  const rosterFrame = (mine) => shell({h:{who:'Maya',val:'24',frac:.8},on:1,body:j(
-    playerTabs(PLAYERS, mine?0:1),
-    mine ? rosterDetail({n:SAM,me:1,st:'Picking later',hits:2,rows:myRows}) : rosterDetail({n:MAYA,st:'On the clock',active:1,hits:0,rows:theirRows})
-  )});
-
-  /* ---------- Log ---------- */
-  const turnWell = (t) => well(V(0,[
-    H(0,[slab(t.title,18),sp(8),ml(t.slot,{s:9,tr:.1})],'padding:10px 12px 0;align-items:baseline'),
-    H(8,[t.pick?`${portrait(t.pick[0],22)}${sans(`${t.pick[0]} · ${t.pick[1]}`,13,600)}`:`${teamLogo(t.fr[0],18)}${ml(t.fr[1],{s:10,tr:.06})}`,sp(8),ml(t.out,{s:9,b:1,tr:.08,c:/Resp|Sab/.test(t.out)?'var(--hidden-text)':'var(--muted)'})],'padding:8px 12px;align-items:center'),
-    lr(),
-    ...(t.acts.length?t.acts.map(a=>H(8,[sans(`${a[0]} · ${a[1]}`,14,600),sp(8),ml(a[2],{s:10,b:/Resp|Exact/.test(a[2]),tr:.06,c:/Resp|Exact/.test(a[2])?'var(--hidden-text)':'var(--muted)'})],'padding:6px 12px;align-items:baseline')):[ml('No guesses',{s:10,tr:.08,x:'padding:12px'})]),
-    '<div style="height:4px"></div>'
-  ]));
-  const live = well(V(4,[ml('On the clock',{s:10,b:1,tr:.13,c:'var(--hidden-text)'}),slab('Maya is drafting',18),ml('Round 4 · WR 1 — waiting on Devon, you',{s:10,tr:.06})],'padding:12px'));
-  const turns3 = [
-    {title:'Kayla drafted',slot:'QB',fr:['KAN','Kansas City Chiefs'],out:'Kept',acts:[[SAM,'player only','Miss'],[DEV,'pass','—'],[MAYA,'player + year','Pending']]},
-    {title:'You drafted',slot:'QB',pick:['Patrick Mahomes','2018'],out:'Kept',acts:[[MAYA,'player only','Miss'],[DEV,'pass','—'],[KAY,'pass','—']]},
-    {title:'Devon drafted',slot:'QB',fr:['GNB','Green Bay Packers'],out:'Respun',acts:[[SAM,'player only','Respun year'],[KAY,'pass','—']]},
-    {title:'Maya drafted',slot:'QB',fr:['NWE','New England Patriots'],out:'Sabotaged',acts:[[DEV,'player + year','Exact hit'],[SAM,'pass','—'],[KAY,'pass','—']]}
-  ];
-  const logFrame = (inner) => shell({h:{who:'Maya',val:'24',frac:.8},on:2,body:inner});
-
-  /* ---------- Picker sheet ---------- */
-  const prow = (n, span, open, season) => V(10,[H(12,[portrait(n,38),V(2,[sans(n,16,600),ml(span,{s:10,tr:.06,c:'var(--hidden-text)'})],'flex:1'),season!==false?I(open?'cu':'cd',12,'color:var(--muted)'):''],'align-items:center'),
-    open?`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${['2017','2016','2015','2014','2013','2012'].map(y=>`<div style="min-height:36px;background:var(--fg);color:var(--surface);border-radius:8px;display:flex;align-items:center;justify-content:center;font:700 13px 'JetBrains Mono'">${y}</div>`).join('')}</div>`:'']);
-  const psec = (t, rows) => j(`<div style="padding:14px 0 6px">${ml(t,{s:10,b:1,tr:.14})}</div>`, rows.map(r=>`<div style="padding:8px 0;border-top:1px solid var(--line)">${r}</div>`));
-  const pickerSheet = (title, o) => `<div class="dim"></div><div class="sheet" style="top:44px;border-radius:22px 22px 0 0"><div class="grab"></div>
-    <div style="display:flex;align-items:center;justify-content:center;position:relative;height:44px"><span style="position:absolute;left:16px;color:var(--fg);font:400 17px Barlow">Cancel</span><span style="font:400 22px 'Bebas Neue';letter-spacing:.045em;text-transform:uppercase">${title}</span></div>
-    <div style="padding:0 16px 8px"><div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(232,227,214,.1);color:var(--muted);font:400 17px Barlow">${I('srch',16)}<span style="color:${o.q?'var(--fg)':'var(--muted)'}">${o.q||'Search a name…'}</span></div></div>
-    <div style="padding:0 16px 24px;flex:1;overflow:hidden">${o.body}</div></div>`;
-
-  /* ---------- Final ---------- */
-  const gradeColor = g => g==='—'?'transparent':({A:'var(--elite)',B:'var(--strong)',C:'var(--even)'}[g[0]]||'var(--rough)');
-  const gb = (g, large) => `<span style="display:inline-block;text-align:center;font:700 ${large?18:12}px 'JetBrains Mono';color:${g==='—'?'var(--panel-muted)':'var(--fg)'};min-width:${large?44:32}px;padding:${large?5:3}px 0;background:${gradeColor(g)};border-radius:4px">${g}</span>`;
-  const fRoster = (rows) => V(8, rows.map(r=>H(10,[ml(r[0],{s:10,b:1,tr:.08,c:'var(--panel-muted)',x:'width:44px'}), portrait(r[1],26), V(1,[sans(`${r[1]} · ${r[2]}`,13,600,'var(--panel-fg)'), r[4]?sans(r[4],11,400,'var(--panel-muted)','text-decoration:line-through'):''],'flex:1;min-width:0'), gb(r[3])],'align-items:center')));
-  const standing = (rank, n, rec, g, open, rows, me) => panel(V(0,[H(12,[`<span style="width:28px;font:400 26px 'Bebas Neue';color:var(--panel-muted);text-align:center">${rank}</span>`,avatar(n,38,me),V(2,[slab(me?'You':n,20,'var(--panel-fg)'),ml(rec,{s:12,b:1,tr:.08,c:'var(--panel-muted)'})],'flex:1'),V(4,[ml('DRAFT GRADE',{s:8,tr:.12,c:'var(--panel-muted)'}),gb(g,1)],'align-items:flex-end'),I(open?'cu':'cd',12,'color:var(--panel-muted)')],'padding:14px;align-items:center'), open?lr():'', open?`<div style="padding:14px">${fRoster(rows)}</div>`:'']));
-  const rosterA = [['QB','Patrick Mahomes','2018','A'],['RB 1','Christian McCaffrey','2019','A-'],['RB 2','Saquon Barkley','2022','B+'],['WR 1','Antonio Brown','2017','A'],['WR 2','Davante Adams','2019','A','DK Metcalf'],['WR 3','Chris Godwin','2019','B+'],['TE','Travis Kelce','2020','A+'],['OL','Trent Williams','2021','B'],['DL','Aaron Donald','2018','A+'],['LB','Fred Warner','2021','A-'],['CB','Jalen Ramsey','2017','B+'],['S','Minkah Fitzpatrick','2019','A'],['ST','Justin Tucker','2016','A-']];
-  const bracketGame = (a, as, b, bs) => b ? `<div style="border:1px solid var(--line);border-radius:8px;overflow:hidden">${[[a,as,as>bs],[b,bs,bs>as]].map(c=>`<div style="display:flex;padding:7px 10px;gap:8px;${c[2]?'background:rgba(232,227,214,.1);border-radius:4px;':''}color:${c[2]?'var(--panel-fg)':'var(--muted)'}">${sans(c[0],14,c[2]?700:400,'inherit','flex:1')}${mono(c[1],14,700,'inherit')}</div>`).join('')}</div>` : `<div style="border:1px solid var(--line);border-radius:8px;padding:10px;display:flex">${sans(a,14,600,'var(--fg)','flex:1')}${ml('Bye · advances',{s:10,tr:.08})}</div>`;
-  const bracket = V(14,[sectionTitle('Tiebreak bracket'), well(V(8,[H(0,[slab('11-6 tiebreak',18),sp(),ml('One-game playoff',{s:9,tr:.1})],'align-items:baseline'),ml('Round 1',{s:9,b:1,tr:.14}),bracketGame(MAYA,14,DEV,9),bracketGame(KAY,0,null,0),ml('Final',{s:9,b:1,tr:.14}),bracketGame(MAYA,12,KAY,15)],'padding:12px'))]);
-  const finalFrame = (host) => phone({nav:navPush('Sabotage Draft','Party'),tabs:'',gap:'g20',body:j(eyebrow('Final'),
-    V(12,[standing(1,SAM,'13-4','A-',1,rosterA,1),standing(2,MAYA,'11-6','B+',0),standing(3,KAY,'11-6','B',0),standing(4,DEV,'8-9','C+',0)]), bracket,
-    host?V(8,[btn('Play again'),btn('Back to the room',{v:'ghost'})]):V(8,[`<div class="tc">${waiting("Waiting for the host to choose what's next.",{x:'font:400 11px JetBrains Mono;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)'})}</div>`,btn('Back to the room',{v:'ghost'})]))});
-
-  game('sab', 'Sabotage Draft',
-    'Fourteen rounds (Full; Standard is 10, Quick is 7). Each round every player <b>spins a random franchise</b> and secretly picks any player from that franchise\'s history at the slot\'s position, any year. Turn by turn, <b>everyone else tries to guess the pick</b> and wreck it: guess the player and the pick is respun to another year; guess the player and exact year and you choose what replaces it. The last round is an X-Factor wildcard. Roster strength then simulates a 17-game season; best record wins. Room only (2–4). Pinned header (round + slot · your picks · who is on the clock) over three tabs: <b>Draft</b>, <b>Rosters</b>, <b>Log</b>.',
-    ['Dealing','Round: each seat’s turn (30s shared clock)','… 13 slots','X-Factor decision','Simulated season','Final'],
-  [
-    group('Loading','', [
-      fr('sab-dealing','Dealing the board','First load.','SabotageMatchView.swift', phone({nav:navPush('Sabotage Draft','Party'),tabs:'',body:loadingState('Dealing the board…'),pad:false})),
-      fr('sab-countdown','Get ready · 3-2-1','Shown after the board loads and before the first phase opens, so players can settle in. Ticks 3, 2, 1, then the first phase starts. New (design proposal, not yet in the app).','SabotageMatchView.swift (proposed)', phone({nav:navPush('Sabotage Draft','Party'),tabs:'',body:getReady(3,'Sabotage Draft','14 rounds · pick, then sabotage'),pad:false})),
-      fr('sab-paused','Paused by host','Also an ErrorBanner, like Wavelength.','SabotageMatchView.swift', base({paused:1,h:{...mine,val:'24'},spin:spinCard('You are picking',PIT),action:pickForm(null)})),
-    ]),
-    group('Draft tab · you are the drafter','The spin card is public the moment your turn arrives. Your pick is hidden to everyone, identity and year both.', [
-      fr('sab-pick','Make your hidden pick','The field is a button that looks like search; it opens the picker sheet. Lock is disabled until a player + season is chosen.','SabotageMatchView.swift · pickForm', base({h:mine,spin:spinCard('You are picking',PIT),action:pickForm(null)})),
-      fr('sab-pick-chosen','Pick chosen','The field shows portrait, name · season and “Change”. Lock in pick is live.','SabotageMatchView.swift', base({h:mine,spin:spinCard('You are picking',PIT),action:pickForm(['Antonio Brown','2017'])})),
-      fr('sab-pick-saving','Locking the pick','Spinner in the button.','SabotageMatchView.swift', base({h:mine,spin:spinCard('You are picking',PIT),action:pickForm(['Antonio Brown','2017'],1)})),
-      fr('sab-pick-locked','Pick locked','Waiting on the rest of the table; the wait line names who is still to act. If the 30s clock runs out first, a random player + year from the pool is picked for you.','SabotageMatchView.swift', base({h:{...mine,val:'11',frac:.37},spin:spinCard('You are picking',PIT),action:pickLocked,wait:pending('Waiting on Devon, Kayla')})),
-    ]),
-    group('Draft tab · you are sabotaging','Everyone not on the clock may lock exactly one guess or one explicit pass at the active seat, even before their pick exists.', [
-      fr('sab-guess-choose','Choose a weapon','Two guess types with their payoffs spelled out, or Pass (always legal).','SabotageMatchView.swift · guessForm', base({h:{who:'Maya',val:'24'},spin:spinCard('Maya is picking',NWE,'a WR'),action:guessChoose,wait:pending('Waiting on Maya, Devon, you')})),
-      fr('sab-guess-player','Guess the player','Name only: the game never checks the year, so the picker skips the season step.','SabotageMatchView.swift', base({h:{who:'Maya',val:'20',frac:.66},spin:spinCard('Maya is picking',NWE,'a WR'),action:guessForm(false,1),wait:pending('Waiting on Maya, Devon, you')})),
-      fr('sab-guess-exact-1','Exact guess · step 1 of 2','Player and year: first choose the player and season you think they picked.','SabotageMatchView.swift', base({h:{who:'Maya',val:'20',frac:.66},spin:spinCard('Maya is picking',NWE,'a WR'),action:guessForm(true,0),wait:pending('Waiting on Maya, Devon, you')})),
-      fr('sab-guess-exact-2','Exact guess · step 2 of 2','Then choose the replacement you will assign if you are right.','SabotageMatchView.swift', base({h:{who:'Maya',val:'17',frac:.57},spin:spinCard('Maya is picking',NWE,'a WR'),action:guessForm(true,2),wait:pending('Waiting on Maya, Devon, you')})),
-      fr('sab-guess-spent','Guess spent / passed','One action per turn; then wait. A passed turn reads “You passed on this turn”.','SabotageMatchView.swift', base({h:{who:'Maya',val:'12',frac:.4},spin:spinCard('Maya is picking',NWE,'a WR'),action:card('Guess spent on this turn','Waiting on the rest of the table.',1),wait:pending('Waiting on Maya')})),
-      fr('sab-between','Between turns','The turn closed (everyone acted or the clock ran out) and the next seat hasn’t opened.','SabotageMatchView.swift', base({h:{who:'Devon',val:'—',frac:0},spin:spinCard('Devon is picking',null,'a WR'),action:card('Between turns','Waiting on the next turn to open.',1)})),
-      fr('sab-error','Rejected action','A refused guess or pick shows an ErrorBanner under the form.','SabotageMatchView.swift', base({h:{who:'Maya',val:'20',frac:.66},spin:spinCard('Maya is picking',NWE,'a WR'),action:guessForm(false,1),err:'That player isn\u2019t in this pool.'})),
-    ]),
-    group('Draft tab · X-Factor','The final round of every mode. When the active seat’s turn completes, they alone decide: replace a slot of the pick’s own position or discard. It cannot be guessed at or blocked.', [
-      fr('sab-xf-decide','X-Factor · your decision','A grid of legal “Replace …” targets plus a prominent Discard. Slots depend on the pick’s position.','SabotageMatchView.swift · xFactor', base({h:{...mine,round:14,slot:'X FACTOR',picks:'13 / 14'},spin:spinCard('You are picking',['DEN','Denver Broncos'],'any offensive skill player'),action:xfDecide})),
-      fr('sab-xf-wait','X-Factor · someone else’s','','SabotageMatchView.swift', base({h:{who:'Maya',val:'20',round:14,slot:'X FACTOR',picks:'13 / 14'},spin:spinCard('Maya is picking',['DEN','Denver Broncos'],'any offensive skill player'),action:card('Maya\u2019s X-Factor','Waiting on their decision.',1)})),
-      fr('sab-xf-locked','X-Factor · locked','','SabotageMatchView.swift', base({h:{who:'Maya',val:'—',round:14,slot:'X FACTOR',picks:'14 / 14'},spin:spinCard('You are picking',['DEN','Denver Broncos'],'any offensive skill player'),action:card('X-Factor decision locked','Replaces WR 2')})),
-    ]),
-    group('Picker sheet','Bottom sheet over the Draft tab. A franchise’s whole history is a wall of names, so the three most tenured sit at the top as a one-tap shortcut; search is the escape hatch.', [
-      fr('sab-picker','Picker · pick or exact guess','Tapping a player opens their seasons in place; picking a season chooses and dismisses. (iOS list + .searchable styling.)','SabotagePickerSheet.swift', shell({h:mine,body:j(spinCard('You are picking',PIT),pickForm(null)),overlay:pickerSheet('Your pick',{body:psec('Most tenured',[prow('Hines Ward','2006–2011',1),prow('Antonio Brown','2010–2018',0),prow('Santonio Holmes','2006–2009',0)])+psec('Everyone else',[prow('Diontae Johnson','2019–2022',0),prow('Emmanuel Sanders','2010–2013',0),prow('JuJu Smith-Schuster','2017–2020',0)])})})),
-      fr('sab-picker-search','Picker · searching','Typing replaces both sections with “Results”, alphabetical.','SabotagePickerSheet.swift', shell({h:mine,body:j(spinCard('You are picking',PIT),pickForm(null)),overlay:pickerSheet('Your pick',{q:'ant',body:psec('Results',[prow('Antonio Brown','2010–2018',0),prow('Antwaan Randle El','2006–2007',0)])})})),
-      fr('sab-picker-name','Picker · name-only guess','A player-only guess skips seasons: tapping the row chooses at once; there is no chevron.','SabotagePickerSheet.swift', shell({h:{who:'Maya',val:'20'},body:j(spinCard('Maya is picking',NWE),guessForm(false,0)),overlay:pickerSheet('Guess Maya\u2019s pick',{body:psec('Most tenured',[prow('Julian Edelman','2009–2020',0,false),prow('Wes Welker','2007–2012',0,false),prow('Rob Gronkowski','2010–2018',0,false)])+psec('Everyone else',[prow('Brandin Cooks','2017',0,false),prow('Chris Hogan','2016–2018',0,false)])})})),
-    ]),
-    group('Rosters tab','A tab per seat under the pinned header (you first); the selected seat’s board below. Others’ picks never reach the app (row-level security), so they are drawn as red concealed chips naming only the franchise spun. Respun and Sabotaged outcomes are public and show as badges.', [
-      fr('sab-rosters-mine','Rosters · you','Your picks in full; red-outlined row = currently choosing. “2 hits” counts times others have wrecked you.','SabotageMatchView.swift · SabotageRostersTab', rosterFrame(true)),
-      fr('sab-rosters-theirs','Rosters · opponent','Maya’s past rounds are concealed (franchise only); the active seat’s header is tinted.','SabotageMatchView.swift · RosterRow', rosterFrame(false)),
-    ]),
-    group('Log tab','Each turn’s guesses and hits, newest first, grouped by round.', [
-      fr('sab-log-empty','Log · nothing yet','','SabotageMatchView.swift · SabotageLogTab', logFrame(V(12,[live, emptyState('Nothing yet','Each turn\u2019s guesses and hits land here, newest first.')]))),
-      fr('sab-log','Log · turns so far','Outcome per turn: Kept / Respun / Sabotaged. A guess row’s result is Miss / Respun year / Exact hit / Pending (not yet resolved against a pick).','SabotageMatchView.swift · TurnWell', logFrame(V(12,[live, ml('Round 3',{b:1,tr:.14,c:'var(--fg)',x:'padding-top:4px'}), ...turns3.map(turnWell)]))),
-    ]),
-    group('Final','After the last round the season is simulated; ties on record go to a single-elimination bracket of one-off games.', [
-      fr('sab-win-splash','Winner moment','Winner by record after the season sim (or the bracket). Replaces the “You win” headline.','SabotageFinalView.swift (proposed)', winSplash({names:[SAM],headline:'You win',sub:'13-4 · A- draft'})),
-      fr('sab-final-host','Final · host','Ranked by record. Each card shows the draft grade (grade colours, never red); expanding it shows every pick’s own grade and an X-Factor swap with the replaced player struck through. Tiebreak bracket below.','SabotageFinalView.swift', finalFrame(true)),
-      fr('sab-final-guest','Final · non-host','','SabotageFinalView.swift', finalFrame(false)),
-    ])
-  ]);
-})();
-</script>
-<script>
-/* =====================================================================
    QB SEASON BUILDER
    ===================================================================== */
 (function(){
@@ -819,12 +657,12 @@ game('lobby', 'Games tab', 'Where the solo games (QB Season Builder, Higher or L
 SECTIONS.push({id:'notes', name:'Notes', html: `<section class="game" id="notes"><header><div class="eyebrow-d">For the review</div><h2>Things noticed while drawing these</h2><p>Read from the SwiftUI source and measured on these renders, not checked on a device. Listed so you can decide which are intentional.</p></header>
 <div class="note"><ul>
 <li><b>Countdown bars fill with the panel colour.</b> <code>MeterBar</code>'s default fill is <code>Theme.panel</code> (#191C18) on a <code>line</code> track, so in every <code>HeaderStats</code> clock the remaining time is the <i>darker</i> part. Worth a look on device.</li>
-<li><b>Grade tints on dark panels are low contrast.</b> <code>gradeElite</code> and <code>gradeRough</code> as text on the panel are about 2.7:1, <code>gradeStrong</code> 3.2:1: the Auction's revealed points and final rosters (<a href="#atb-sold" style="color:var(--fg)">atb-sold</a>, <a href="#atb-final-host" style="color:var(--fg)">atb-final-host</a>). Fine as fills (Sabotage's grade badges), weak as text.</li>
+<li><b>Grade tints on dark panels are low contrast.</b> <code>gradeElite</code> and <code>gradeRough</code> as text on the panel are about 2.7:1, <code>gradeStrong</code> 3.2:1: the Auction's revealed points and final rosters (<a href="#atb-sold" style="color:var(--fg)">atb-sold</a>, <a href="#atb-final-host" style="color:var(--fg)">atb-final-host</a>). Fine as fills, weak as text.</li>
 <li><b>Red now does four jobs:</b> concealed information, the selected option (segmented controls, QB tiles, header tabs), "your turn"/urgent numbers, and errors. The principle in <code>design-system.md</code> reserves it for concealed (plus error text and the documented selected state). The Auction's "Ready" token buttons are red too, which is none of those.</li>
-<li><b>A panel on a well disappears.</b> <code>Theme.panel</code> and <code>Theme.surfaceRaised</code> are the same colour (#191C18), so the filled roster slots in the Auction's Table tab, the Sabotage roster rows and the Higher or Lower revealed-points block (all <code>panel</code> inside a <code>well</code>) have no edge of their own; only the dashed empty slots do (<a href="#atb-table" style="color:var(--fg)">atb-table</a>, <a href="#sab-rosters-mine" style="color:var(--fg)">sab-rosters-mine</a>).</li>
-<li><b>Four ways to say "paused".</b> Higher or Lower and Auction use a well with a pause icon; Wavelength and Sabotage use <code>ErrorBanner</code> (red tint).</li>
-<li><b>One post-game block, copied four times.</b> <code>MatchFinalView</code>, <code>AuctionFinalView</code>, <code>WavelengthFinalView</code> and <code>SabotageFinalView</code> each carry the same "Final" header, winner-panel pattern and host/non-host controls. A kit-level <code>PostGame</code> would make a redesign one change.</li>
-<li><b>Higher or Lower's live match is the odd one out.</b> Auction, Wavelength and Sabotage use the pinned-header + native tab bar shell (<code>GameTabShell</code>); the Higher or Lower match is one scrolling page with no pinned clock, so the countdown scrolls with the content on a small phone.</li>
+<li><b>A panel on a well disappears.</b> <code>Theme.panel</code> and <code>Theme.surfaceRaised</code> are the same colour (#191C18), so the filled roster slots in the Auction's Table tab and the Higher or Lower revealed-points block (all <code>panel</code> inside a <code>well</code>) have no edge of their own; only the dashed empty slots do (<a href="#atb-table" style="color:var(--fg)">atb-table</a>).</li>
+<li><b>Two ways to say "paused".</b> Higher or Lower and Auction use a well with a pause icon; Wavelength uses <code>ErrorBanner</code> (red tint).</li>
+<li><b>One post-game block, copied three times.</b> <code>MatchFinalView</code>, <code>AuctionFinalView</code> and <code>WavelengthFinalView</code> each carry the same "Final" header, winner-panel pattern and host/non-host controls. A kit-level <code>PostGame</code> would make a redesign one change.</li>
+<li><b>Higher or Lower's live match is the odd one out.</b> Auction and Wavelength use the pinned-header + native tab bar shell (<code>GameTabShell</code>); the Higher or Lower match is one scrolling page with no pinned clock, so the countdown scrolls with the content on a small phone.</li>
 <li><b>Not drawn:</b> the Huddle/Profile/Friends surfaces, the solo leaderboards, sign-in, and the system share sheet. Say if you want any of them added.</li>
 </ul></div></section>`});
 
