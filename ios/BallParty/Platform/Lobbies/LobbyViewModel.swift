@@ -11,6 +11,7 @@ import OSLog
 @MainActor
 final class LobbyViewModel: ObservableObject {
     private let log = Logger(subsystem: "com.ballparty.app", category: "lobby")
+    private var triedToRestore = false
 
     enum Stage: Equatable {
         /// No room yet: host one, or take an invite.
@@ -540,6 +541,25 @@ final class LobbyViewModel: ObservableObject {
             stage = .entry
             errorMessage = Self.describe(error)
         }
+    }
+
+    /// Steps back into the room the server still has this player in, after the
+    /// app was closed or killed (the room itself is only in memory here). Tried
+    /// once per screen: tab switches don't re-ask. It never moves someone who has
+    /// already hosted or joined something in the meantime, and a failed look-up
+    /// just leaves the entry screen up.
+    func restoreCurrentRoom() async {
+        guard !triedToRestore, stage == .entry, !isBusy else { return }
+        triedToRestore = true
+        let current: Lobby?
+        do {
+            current = try await client.currentLobby()
+        } catch {
+            log.error("could not look up the current room: \(String(describing: error))")
+            return
+        }
+        guard let current, stage == .entry, !isBusy else { return }
+        await adopt(current)
     }
 
     /// Acknowledge a room that closed under us, from the closed screen.

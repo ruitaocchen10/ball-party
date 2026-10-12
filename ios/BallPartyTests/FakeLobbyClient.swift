@@ -24,6 +24,7 @@ final class FakeLobbyClient: LobbyClient, @unchecked Sendable {
 
     // What the app asked for.
     private(set) var snapshotCount = 0
+    private(set) var currentLobbyLookups = 0
     private(set) var heartbeatCount = 0
     private(set) var joinedCodes: [String] = []
     private(set) var selectedGames: [MatchGame] = []
@@ -140,6 +141,13 @@ final class FakeLobbyClient: LobbyClient, @unchecked Sendable {
             members.append(member(viewerId, "You"))
         }
         return existing
+    }
+
+    func currentLobby() async throws -> Lobby? {
+        try fail("current_lobby")
+        currentLobbyLookups += 1
+        guard let lobby, lobby.closedAt == nil, members.contains(where: { $0.userId == viewerId }) else { return nil }
+        return lobby
     }
 
     func snapshot(lobbyId: UUID) async throws -> LobbySnapshot {

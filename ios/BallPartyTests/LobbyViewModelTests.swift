@@ -47,6 +47,77 @@ final class LobbyViewModelTests: XCTestCase {
         XCTAssertEqual(member.avatarURL, URL(string: "https://example.com/avery.png"))
     }
 
+    // MARK: - Coming back to a room
+
+    /// The same player on a fresh screen: the app was closed or killed, so nothing
+    /// is held in memory, while the server still has them in the room.
+    private func relaunchedScreen() -> LobbyViewModel {
+        LobbyViewModel(client: client, game: game, auction: auction, wavelength: wavelength, viewerId: viewerId, formatSaveDelay: .zero)
+    }
+
+    func test_relaunch_stepsBackIntoTheRoomTheServerStillHasYouIn() async {
+        await viewModel.createRoom()
+        viewModel.stopObserving()
+
+        let relaunched = relaunchedScreen()
+        XCTAssertEqual(relaunched.stage, .entry)
+        await relaunched.restoreCurrentRoom()
+
+        XCTAssertEqual(relaunched.stage, .room)
+        XCTAssertEqual(relaunched.roomCode, "BRZWK")
+        XCTAssertEqual(relaunched.members.map(\.displayName), ["You"])
+        relaunched.stopObserving()
+    }
+
+    func test_relaunch_withNoRoomStaysOnTheEntryScreen() async {
+        let relaunched = relaunchedScreen()
+        await relaunched.restoreCurrentRoom()
+
+        XCTAssertEqual(relaunched.stage, .entry)
+        XCTAssertNil(relaunched.errorMessage)
+    }
+
+    func test_relaunch_aRoomThatClosedIsNotRestored() async {
+        await viewModel.createRoom()
+        viewModel.stopObserving()
+        client.roomCloses()
+
+        let relaunched = relaunchedScreen()
+        await relaunched.restoreCurrentRoom()
+
+        XCTAssertEqual(relaunched.stage, .entry)
+    }
+
+    func test_relaunch_aFailedLookUpJustLeavesTheEntryScreen() async {
+        await viewModel.createRoom()
+        viewModel.stopObserving()
+        client.failures["current_lobby"] = LobbyServerError(message: "boom")
+
+        let relaunched = relaunchedScreen()
+        await relaunched.restoreCurrentRoom()
+
+        XCTAssertEqual(relaunched.stage, .entry)
+        XCTAssertNil(relaunched.errorMessage, "a best-effort look-up does not nag")
+    }
+
+    func test_relaunch_isOnlyTriedOncePerScreen() async {
+        let relaunched = relaunchedScreen()
+        await relaunched.restoreCurrentRoom()
+        await relaunched.restoreCurrentRoom()
+
+        XCTAssertEqual(client.currentLobbyLookups, 1)
+    }
+
+    func test_relaunch_neverMovesSomeoneWhoIsAlreadyInARoom() async {
+        await viewModel.createRoom()
+        let lookupsBefore = client.currentLobbyLookups
+
+        await viewModel.restoreCurrentRoom()
+
+        XCTAssertEqual(client.currentLobbyLookups, lookupsBefore, "a screen already in a room does not ask")
+        XCTAssertEqual(viewModel.stage, .room)
+    }
+
     // MARK: - Getting into a room
 
     func test_hosting_seatsTheHostInTheNewRoom() async {

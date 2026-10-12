@@ -97,6 +97,12 @@ struct LobbyScreen: View {
         .onChange(of: roomTab) { _, tab in
             if tab == .scoreboard { seenWins = viewModel.totalWins }
         }
+        // A link or an inbox join arriving with the screen decides the room; with
+        // neither, a player the server still has in a room goes back into it.
+        .task {
+            guard pendingRoomCode == nil, joinedLobby == nil else { return }
+            await viewModel.restoreCurrentRoom()
+        }
         .task(id: pendingRoomCode) { await joinPendingRoom() }
         .task(id: joinedLobby?.id) {
             guard let lobby = joinedLobby else { return }
