@@ -6,3 +6,6 @@ scripts/qb_season_model/.cache/
 __pycache__/
 .vercel
 .env*
+
+# APNs auth keys (scripts/apns/setup.sh): credentials, never commit
+*.p8
