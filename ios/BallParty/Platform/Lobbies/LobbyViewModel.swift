@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// One room, from "host or join" to a dealt match.
 ///
@@ -9,6 +10,8 @@ import Foundation
 /// per lobby event is cheap, and lobby membership changes rarely.
 @MainActor
 final class LobbyViewModel: ObservableObject {
+    private let log = Logger(subsystem: "com.ballparty.app", category: "lobby")
+
     enum Stage: Equatable {
         /// No room yet: host one, or take an invite.
         case entry
@@ -533,6 +536,7 @@ final class LobbyViewModel: ObservableObject {
         do {
             try await enter(lobby)
         } catch {
+            log.error("could not step into the joined room: \(String(describing: error))")
             stage = .entry
             errorMessage = Self.describe(error)
         }
