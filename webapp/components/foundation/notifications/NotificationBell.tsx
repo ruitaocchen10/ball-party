@@ -3,7 +3,7 @@
 import { Bell } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { AuthorAvatar } from "@/components/foundation/content/prompts/AuthorIdentity";
 import { Button } from "@/components/foundation/ui-kit/Button";
@@ -68,6 +68,12 @@ export function NotificationBell() {
     };
   }, []);
 
+  // The bell is mounted twice on a page (the desktop header and the mobile top bar), on one
+  // shared Realtime client. A channel name is a key there: a second `.channel()` with the same
+  // name hands back the first, already-subscribed channel and `.on()` on it throws. So each
+  // instance gets its own name (and its own cleanup, rather than closing the other's).
+  const instanceId = useId().replace(/\W/g, "");
+
   useEffect(() => {
     if (!viewerId) return;
     let cancelled = false;
@@ -79,7 +85,7 @@ export function NotificationBell() {
       // Read now rather than waiting for the socket to join: the badge shouldn't depend on it.
       void refetch();
       const channel = supabase
-        .channel(`inbox:${viewerId}`)
+        .channel(`inbox:${viewerId}:${instanceId}`)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "notifications", filter: `recipient_id=eq.${viewerId}` },
@@ -101,7 +107,7 @@ export function NotificationBell() {
       cancelled = true;
       cleanup?.();
     };
-  }, [viewerId, refetch]);
+  }, [viewerId, refetch, instanceId]);
 
   useEffect(() => {
     if (!open) return;

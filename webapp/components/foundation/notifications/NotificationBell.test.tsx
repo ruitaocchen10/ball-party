@@ -7,11 +7,32 @@ const push = vi.fn();
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({ rpc, auth: { getUser: async () => ({ data: { user: { id: "me" } } }) } }),
 }));
+// Behaves like supabase-js where it matters here: a channel is keyed by its name, asking for a
+// name that is already open returns that channel, and `.on()` after `.subscribe()` throws.
+const openChannels = new Map<string, { subscribed: boolean }>();
 vi.mock("@/lib/runtime/realtime/client", () => ({
-  createRealtimeClient: async () => {
-    const channel = { on: () => channel, subscribe: () => channel };
-    return { channel: () => channel, removeChannel: () => {} };
-  },
+  createRealtimeClient: async () => ({
+    channel: (name: string) => {
+      const existing = openChannels.get(name);
+      const state = existing ?? { subscribed: false };
+      openChannels.set(name, state);
+      const channel = {
+        on: () => {
+          if (state.subscribed) throw new Error(`cannot add \`postgres_changes\` callbacks for realtime:${name} after \`subscribe()\`.`);
+          return channel;
+        },
+        subscribe: () => {
+          state.subscribed = true;
+          return channel;
+        },
+        name,
+      };
+      return channel;
+    },
+    removeChannel: (channel: { name: string }) => {
+      openChannels.delete(channel.name);
+    },
+  }),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
@@ -27,6 +48,7 @@ let inbox: ReturnType<typeof row>[] = [];
 let unread = 0;
 
 beforeEach(() => {
+  openChannels.clear();
   rpc.mockReset();
   push.mockReset();
   inbox = [];
@@ -117,6 +139,24 @@ describe("NotificationBell", () => {
     await user.click(screen.getByRole("button", { name: "Join" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("That invite is no longer available.");
+  });
+
+  it("can be mounted twice on one page (desktop header and mobile top bar) without a channel clash", async () => {
+    const failures: unknown[] = [];
+    const onRejection = (event: PromiseRejectionEvent) => failures.push(event.reason);
+    window.addEventListener("unhandledrejection", onRejection);
+    inbox = [row({})];
+    unread = 1;
+    render(
+      <>
+        <NotificationBell />
+        <NotificationBell />
+      </>,
+    );
+    expect(await screen.findAllByRole("button", { name: "Notifications, 1 new" })).toHaveLength(2);
+    await waitFor(() => expect(openChannels.size).toBe(2));
+    window.removeEventListener("unhandledrejection", onRejection);
+    expect(failures).toEqual([]);
   });
 
   it("says so when there is nothing to show", async () => {
