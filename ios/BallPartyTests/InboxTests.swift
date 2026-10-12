@@ -98,6 +98,30 @@ final class InboxViewModelTests: XCTestCase {
         XCTAssertEqual(inbox.calls.filter { $0 == "items" }.count, 3)
     }
 
+    func testOpeningAPushedItemMarksItReadAndReturnsItsPage() async {
+        let inbox = FakeInboxClient()
+        let request = InboxItem(key: "n:abc", kind: .friendRequest)
+        inbox.rows = [request]
+        let viewModel = make(inbox)
+
+        let destination = await viewModel.openItem(key: "n:abc")
+
+        XCTAssertEqual(destination, .profile(username: "ava"))
+        XCTAssertTrue(inbox.calls.contains("markRead:n:abc"))
+    }
+
+    func testAPushedItemThatIsGoneOrHasNoPageJustOpensTheInbox() async {
+        let inbox = FakeInboxClient()
+        inbox.rows = [InboxItem(key: "i:abc", kind: .roomInvite)]
+        let viewModel = make(inbox)
+
+        let invite = await viewModel.openItem(key: "i:abc")
+        let missing = await viewModel.openItem(key: "n:gone")
+
+        XCTAssertNil(invite)
+        XCTAssertNil(missing)
+    }
+
     func testJoiningAnInviteReturnsTheRoom() async {
         let invites = FakeRoomInvitesClient()
         let invite = InboxItem(key: "i:abc", kind: .roomInvite)

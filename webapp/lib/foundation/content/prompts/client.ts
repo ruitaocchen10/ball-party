@@ -95,6 +95,8 @@ export async function createPromptPost(
     resolutionSource?: PromptResolutionSource;
     isOpinion?: boolean;
     coverTeamCodes?: string[];
+    /** Defaults to true; false skips the iOS push for this post (0206). */
+    sendPush?: boolean;
   },
 ): Promise<{ id: string } | { error: string }> {
   const { data, error } = await supabase.schema("prompts").rpc("create_post", {
@@ -106,6 +108,7 @@ export async function createPromptPost(
     p_lock_at: params.lockAt,
     p_slots: toCreatePostSlots(params.slots),
     p_is_opinion: params.isOpinion ?? false,
+    p_send_push: params.sendPush ?? true,
     ...(params.coverTeamCodes ? { p_cover_team_codes: params.coverTeamCodes } : {}),
     ...(params.resolutionSource
       ? {

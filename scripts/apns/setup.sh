@@ -181,13 +181,15 @@ finish() {
 
 # ──────────────────────────────────────────────────────────────────────────
 # STAGES — Apple Push Notifications setup for iOS push (GitHub #171).
-# Produces the Supabase secrets the sender (#172) reads:
-#   APNS_KEY_P8  APNS_KEY_ID  APNS_TEAM_ID  APNS_BUNDLE_ID
+# Produces the Supabase secrets the send-push Edge Function reads:
+#   APNS_KEY_P8  APNS_KEY_ID  APNS_TEAM_ID  APNS_BUNDLE_ID  PUSH_FUNCTION_SECRET
+# then deploys the function and hands the database its URL and secret (Vault),
+# which is what switches the 15-second drain on.
 # Nothing is written to .env: the key is a credential and only the hosted
 # project needs it. Re-runnable; Apple lets you download a .p8 only once.
 # ──────────────────────────────────────────────────────────────────────────
 
-TOTAL_STAGES=4
+TOTAL_STAGES=5
 
 BUNDLE_ID="com.ballparty.app"
 DEFAULT_TEAM_ID="NS8CC9Z25V"
@@ -240,6 +242,37 @@ if confirm "Set the four secrets on the linked project now?"; then
   say "Done. Keep the .p8 in your password manager, not in the repo."
 else
   SKIPPED+=("supabase secrets set APNS_KEY_P8=... APNS_KEY_ID=$APNS_KEY_ID APNS_TEAM_ID=$APNS_TEAM_ID APNS_BUNDLE_ID=$BUNDLE_ID")
+fi
+stage "Deploy the sender and wake it from the database"
+say "Deploys send-push, then lets the database call it (docs/ios/push.md)."
+command -v openssl >/dev/null 2>&1 || { warn "openssl is needed to make the shared secret"; exit 1; }
+step "Your Supabase project ref is in the dashboard URL: supabase.com/dashboard/project/<ref>."
+ask SUPABASE_PROJECT_REF "Project ref:"
+[[ -n "$SUPABASE_PROJECT_REF" ]] || { warn "a project ref is required"; exit 1; }
+if confirm "Deploy send-push to $SUPABASE_PROJECT_REF and set PUSH_FUNCTION_SECRET?"; then
+  PUSH_FUNCTION_SECRET=$(openssl rand -hex 32)
+  supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" "PUSH_FUNCTION_SECRET=$PUSH_FUNCTION_SECRET"
+  supabase functions deploy send-push --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+  SQL_FILE=$(mktemp)
+  chmod 600 "$SQL_FILE"
+  cat > "$SQL_FILE" <<SQL
+delete from vault.secrets where name in ('push_function_url', 'push_function_secret');
+select vault.create_secret('https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/send-push', 'push_function_url');
+select vault.create_secret('${PUSH_FUNCTION_SECRET}', 'push_function_secret');
+SQL
+  say "Run this SQL once in the dashboard SQL editor so the database can call the function."
+  say "It contains the shared secret, so it is not echoed here."
+  if command -v pbcopy >/dev/null 2>&1; then
+    pbcopy < "$SQL_FILE"
+    say "It is on your clipboard now."
+  else
+    say "It is in $SQL_FILE (delete it afterwards)."
+  fi
+  open_url "https://supabase.com/dashboard/project/${SUPABASE_PROJECT_REF}/sql/new"
+  pause "Pasted and ran it? Press Enter."
+  [[ -t 0 ]] && command -v pbcopy >/dev/null 2>&1 && { rm -f "$SQL_FILE"; printf '' | pbcopy; }
+else
+  SKIPPED+=("supabase functions deploy send-push --no-verify-jwt, set PUSH_FUNCTION_SECRET, and add the push_function_url and push_function_secret Vault secrets")
 fi
 # ──────────────────────────────────────────────────────────────────────────
 

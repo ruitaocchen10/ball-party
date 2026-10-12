@@ -92,10 +92,14 @@ final class InboxViewModel: ObservableObject {
         await load()
     }
 
-    /// A tapped push counts as the row being tapped: the item it was for is read.
-    func markRead(key: String) async {
+    /// A tapped push counts as the row being tapped: the item it was for is read,
+    /// and where the row would go is returned. Nil when the item is gone or has no
+    /// page of its own (a room invite), and the inbox simply opens.
+    func openItem(key: String) async -> InboxDestination? {
         await load()
-        if let item = items.first(where: { $0.key == key }) { await markRead(item) }
+        guard let item = items.first(where: { $0.key == key }) else { return nil }
+        await markRead(item)
+        return item.destination
     }
 
     func markAllRead() async {

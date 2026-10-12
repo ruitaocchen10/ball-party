@@ -169,7 +169,7 @@ final class PushCoordinator: ObservableObject {
     // MARK: Taps and the badge
 
     func didTap(_ payload: PushPayload) {
-        pendingRoute = PushRoute(destination: payload.destination, itemKey: payload.itemKey)
+        pendingRoute = PushRoute(kind: payload.kind, itemKey: payload.itemKey)
     }
 
     func consumeRoute() -> PushRoute? {

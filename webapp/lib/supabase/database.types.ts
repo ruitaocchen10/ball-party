@@ -284,6 +284,7 @@ export type Database = {
           p_prompt_text: string
           p_resolution_criteria: string
           p_resolution_source?: Json
+          p_send_push?: boolean
           p_slots: Json
           p_template_kind: string
           p_template_name: string
@@ -2923,10 +2924,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claim_push_batch: { Args: { p_limit?: number }; Returns: Json }
       decline_friend_request: { Args: { p_user_id: string }; Returns: boolean }
       decline_room_invite: { Args: { p_invite_id: string }; Returns: boolean }
       delete_device_tokens: { Args: { p_tokens: string[] }; Returns: number }
       delete_own_account: { Args: never; Returns: undefined }
+      finish_push: {
+        Args: { p_error?: string; p_id: number; p_result: string }
+        Returns: undefined
+      }
       friend_activity: {
         Args: { p_before?: string; p_limit?: number }
         Returns: {
