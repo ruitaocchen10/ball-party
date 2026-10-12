@@ -1,6 +1,6 @@
 # Team logos
 
-NFL franchise logos (used by Sabotage Draft, QB Season Builder and the Huddle): one PNG per franchise code, uploaded once
+NFL franchise logos (used by QB Season Builder and the Huddle): one PNG per franchise code, uploaded once
 into the `team-logos` Supabase Storage bucket (see
 [`supabase/migrations/*_sabotage_draft_team_logos_bucket.sql`](../../supabase/migrations)),
 under `{franchise_code}.png` — the same PFR code

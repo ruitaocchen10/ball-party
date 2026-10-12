@@ -1136,7 +1136,7 @@ describe("keeping the screen honest", () => {
 
 /**
  * The ~2s "revealing" buffer between one lot's player and the next
- * (useLotReveal), mirroring sabotage draft's own turn-spin reveal. `lots` is
+ * (useLotReveal). `lots` is
  * internal state seeded once from `initial` and already holds every lot's
  * real identity (see board()); the turn only ever moves via a real RPC round
  * trip, so a lot change here comes from re-mocking `rpc` and driving it

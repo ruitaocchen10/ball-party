@@ -5,7 +5,7 @@
  * bumping the text size around them barely moved the needle; an actual
  * sized SVG scales the way a reader expects an icon to.
  *
- * Shared by every disclosure in the app (sabotage draft's roster board, the
+ * Shared by every disclosure in the app (the auction's roster board, the
  * final standings screen's per-user roster) rather than redefined per
  * caller — one icon, one rotation contract (see the comment on its `path`
  * below), used everywhere something expands.

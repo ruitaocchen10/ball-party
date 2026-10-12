@@ -26,7 +26,7 @@ private          cross-cutting internals and the content pools
                  rather than merely unrouted.
 ```
 
-Games with a pair: `auction`, `higher_or_lower`, `sabotage_draft`,
+Games with a pair: `auction`, `higher_or_lower`,
 `qb_season_builder`, `wavelength`, and `prompts` (the Huddle). A client reaches
 one with `supabase.schema("auction").rpc(...)`.
 
@@ -40,9 +40,6 @@ header explains why:
 - **higher_or_lower, qb_season_builder, wavelength:** hidden state lives only in
   the `_private` schema. For QB Season Builder, hidden mode is enforced by what
   the API returns, so no client-selectable table holds a number.
-- **sabotage_draft:** a pick's identity and season are columns on a
-  client-readable, Realtime-published table, restricted by RLS to the pick's
-  owner (see `0052` and its test for why that is leak-safe).
 
 ### Adding a game
 

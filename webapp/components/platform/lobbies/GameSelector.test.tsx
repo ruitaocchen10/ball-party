@@ -11,11 +11,6 @@ vi.mock("@/components/platform/lobbies/StartHigherOrLower", () => ({
     <button>Start higher or lower with {players} players</button>
   ),
 }));
-vi.mock("@/components/platform/lobbies/StartSabotageDraft", () => ({
-  StartSabotageDraft: ({ players }: { players: number }) => (
-    <button>Start sabotage draft with {players} players</button>
-  ),
-}));
 vi.mock("@/components/platform/lobbies/StartWavelength", () => ({
   StartWavelength: ({ players }: { players: number }) => (
     <button>Start Wavelength with {players} players</button>
@@ -39,7 +34,6 @@ describe("GameSelector", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Choose a game" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /sabotage/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /higher or lower/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /auction/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /wavelength/i })).toBeInTheDocument();
@@ -73,13 +67,13 @@ describe("GameSelector", () => {
         code="BLTZ"
         isHost
         inFlight={false}
-        selectedGame="sabotage_draft"
+        selectedGame="higher_or_lower"
         players={2}
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Sabotage draft" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /start sabotage draft with 2 players/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Higher or lower" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start higher or lower with 2 players/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Change game" })).toBeInTheDocument();
   });
 
@@ -105,12 +99,12 @@ describe("GameSelector", () => {
         code="BLTZ"
         isHost
         inFlight
-        selectedGame="sabotage_draft"
+        selectedGame="higher_or_lower"
         players={2}
       />,
     );
 
-    expect(screen.queryByRole("button", { name: /start sabotage draft/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /start higher or lower/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Change game" })).not.toBeInTheDocument();
   });
 
@@ -155,7 +149,7 @@ describe("GameSelector", () => {
         code="BLTZ"
         isHost
         inFlight={false}
-        selectedGame="sabotage_draft"
+        selectedGame="higher_or_lower"
         players={2}
       />,
     );

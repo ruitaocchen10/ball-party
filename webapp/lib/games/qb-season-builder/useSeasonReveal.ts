@@ -7,7 +7,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
  * stat line, awards, record, playoffs, then the supporting details. This
  * prevents a later reveal from inserting above content already on screen.
  *
- * Like sabotage draft's `useTurnReveal` and the auction's `useLotReveal`, this
+ * Like the auction's `useLotReveal`, this
  * hook decides nothing about the season and hides no data the caller doesn't
  * already hold: the whole result is in hand from the first render, and all this
  * does is say how much of it to draw yet. That is what keeps it correct for a

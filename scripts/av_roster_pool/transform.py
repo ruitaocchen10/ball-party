@@ -1,5 +1,5 @@
-"""nflverse rosters.csv + Pro Football Reference roster pages -> sabotage
-draft's roster pool.
+"""nflverse rosters.csv + Pro Football Reference roster pages -> the AV
+roster pool.
 
 This module is the one seam in the pool build: parsed source rows in, finished
 `private.av_roster_players` records out. Everything that can be quietly wrong
@@ -29,7 +29,7 @@ the same `player_id` in both.
 from collections import Counter
 from typing import NamedTuple
 
-# The ten roster-slot categories sabotage draft deals against. Four are
+# The ten roster-slot categories the pool is cut into. Four are
 # skill positions with real fantasy stats elsewhere in this app; the other
 # six exist only because AV is the one scale that prices them too.
 SLOT_CATEGORIES = ("QB", "RB", "WR", "TE", "OL", "DL", "LB", "CB", "S", "ST")

@@ -100,7 +100,7 @@ export function Sidebar({
       <aside
         // Targeted by the body:has() rule in globals.css, which reserves
         // --sidebar-w of body padding only on pages that actually mount a
-        // rail — a live match screen (AuctionMatch, SabotageDraftMatch,
+        // rail — a live match screen (AuctionMatch, WavelengthMatch,
         // HigherOrLowerMatch) renders no Sidebar at all, live or final, and
         // must not get a dead gutter carved out of it.
         data-sidebar-rail

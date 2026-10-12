@@ -1,11 +1,10 @@
 /**
  * Pro Football Reference's own 3-letter franchise codes, mapped to each
- * franchise's current name. The sabotage draft
- * (`sabotage_draft_round_spins.franchise_code`) and QB Season Builder
- * (`qb_season_builder_spins.franchise_code`) store this code because it stays
+ * franchise's current name. QB Season Builder
+ * (`qb_season_builder_spins.franchise_code`) stores this code because it stays
  * stable across a franchise's entire history — PFR
  * unifies every relocation and rename under one code (see
- * docs/games/sabotage_draft/data_scoping.md §2: `oti` spans the Houston
+ * the roster pool's source data: `oti` spans the Houston
  * Oilers through the Tennessee Titans, `crd` spans the Chicago through
  * Arizona Cardinals, and so on). That stability is exactly why several of
  * these codes don't read as the modern team name on sight — `clt` (Colts),

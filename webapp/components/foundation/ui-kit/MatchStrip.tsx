@@ -5,10 +5,10 @@ import { GeneratedAvatar } from "@/components/foundation/identity/GeneratedAvata
 
 /**
  * The shared shell behind every "what's happened, what's now, what's next"
- * horizontal strip in a live match — sabotage draft's TurnStrip and auction's
- * LotStrip both render one of these per round/lot. The two grew up as
- * separate, hand-rolled `<ol>`s of fixed-size cells with no vertical overflow
- * guard; sabotage's cell could stack a full-length name, an outcome line, and
+ * horizontal strip in a live match — auction's LotStrip and Wavelength's round
+ * strip both render one of these per lot/round. They began as separate,
+ * hand-rolled `<ol>`s of fixed-size cells with no vertical overflow
+ * guard; a cell could stack a full-length name, an outcome line, and
  * a hit badge past its own fixed height and spill into whatever sat below it.
  * This shell makes that impossible by construction — every cell gets
  * `overflow-hidden`, every text line truncates, and a hit reads as a pill
@@ -139,8 +139,8 @@ export function StripCellMedia({
 /**
  * The identity a cell leads with when there's no drafted player to show a
  * headshot of yet — whose turn a round is, which is public the moment it
- * opens, even on games (sabotage draft) where what that seat picks stays
- * concealed until it's theirs to reveal. Same "mine is red, everyone else is
+ * opens, even on games where what that seat picks stays concealed until it's
+ * theirs to reveal. Same "mine is red, everyone else is
  * neutral" convention RosterBoard's own seat avatar already carries, just
  * enlarged here to actually lead the cell the way ESPN's own team icon does.
  */
@@ -278,7 +278,7 @@ export function StripCellTitle({
   );
 }
 
-/** Shortens a full name to "F. Last" once it has more than one part — the trick that keeps auction's settled cells from ever reaching their own fixed height, now shared so sabotage's cells get the same headroom. */
+/** Shortens a full name to "F. Last" once it has more than one part — the trick that keeps auction's settled cells from ever reaching their own fixed height, now shared so every strip's cells get the same headroom. */
 export function abbreviate(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length < 2) return name;

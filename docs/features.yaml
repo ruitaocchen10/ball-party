@@ -200,17 +200,17 @@ features:
     summary: A 3-2-1 screen before the first phase of a room game, counted down to a start time the server sets
     web: done
     ios: done
-    note: Higher or Lower, Auction Team Builder, Wavelength and Sabotage Draft, including a replay. The server owns it (migration 0200). A room match carries `matches.play_starts_at`, three seconds after the host starts it, and every deadline the game set on the way in is pushed back by the same three seconds, so the first phase is full-length once the countdown ends. Each client reads the time with `match_play_start` (which also returns the server's clock) and counts down to it, so every player sees the same numbers and someone who opens the match late sees what is left. Solo runs have none. On iOS the auction's first lot reel plays after the countdown; the web auction still shows the first lot's player at once, as it always has (it only spins later lots).
+    note: Higher or Lower, Auction Team Builder and Wavelength, including a replay. The server owns it (migration 0200). A room match carries `matches.play_starts_at`, three seconds after the host starts it, and every deadline the game set on the way in is pushed back by the same three seconds, so the first phase is full-length once the countdown ends. Each client reads the time with `match_play_start` (which also returns the server's clock) and counts down to it, so every player sees the same numbers and someone who opens the match late sees what is left. Solo runs have none. On iOS the auction's first lot reel plays after the countdown; the web auction still shows the first lot's player at once, as it always has (it only spins later lots).
   - id: games.winner-moment
     summary: A full-screen "Maya wins" beat when a room game ends, before the results
     web: done
     ios: done
-    note: Higher or Lower, Auction Team Builder, Wavelength and Sabotage Draft. Shows the winner's avatar (both on a tie, the winning team in Wavelength) and a line of why, auto-advances after about three seconds, and a click or key press skips it. A co-op loss shows it muted. Only for a player who watched the match end; rejoining a finished match goes straight to the results, which no longer carry a winner headline.
+    note: Higher or Lower, Auction Team Builder and Wavelength. Shows the winner's avatar (both on a tie, the winning team in Wavelength) and a line of why, auto-advances after about three seconds, and a click or key press skips it. A co-op loss shows it muted. Only for a player who watched the match end; rejoining a finished match goes straight to the results, which no longer carry a winner headline.
   - id: games.timer-format
     summary: Every visible game clock reads MM:SS in whole seconds (00:03), with no tenths
     web: missing
     ios: done
-    note: Header clocks in Auction, Wavelength and Sabotage, and the Higher or Lower countdown. Web ticket still to be filed in BPW.
+    note: Header clocks in Auction and Wavelength, and the Higher or Lower countdown. Web ticket still to be filed in BPW.
   - id: rooms.scoreboard
     summary: Wins each player has taken in the room since it opened
     web: done
@@ -240,11 +240,6 @@ features:
     web: done
     ios: done
     note: 'The whole game plays on iOS: the host picks scoring, roster, tokens and era in the room, then bidding, custom bids, free lots, the Pass, Scout and Seal tokens, sealed rounds and the final table all match the web. Gaps: team logos (iOS shows team codes; the logo PNGs are not bundled), the host Pause button (web only), and the replay format picker (web lets the host change scoring, roster and era on Play again; iOS replays the same format). The lot reveal is the same slot reel as the web. iOS layout: custom and sealed bids are entered in a sheet, and the Table tab has one tab per player (budget, current bid, tokens, points, team) instead of every roster stacked.'
-  - id: game.sabotage-draft
-    summary: Sabotage Draft (room, 2-4)
-    web: done
-    ios: done
-    note: 'The whole game plays on iOS: the host picks Full, Standard or Quick in the room, then the hidden pick, both guess types (player only, player and exact year), pass, the X-Factor decision, the season result with letter grades and the tiebreak bracket all match the web. Laid out as a pinned header (round and slot, your picks, on the clock, the turn clock) over three native tabs, Draft, Rosters and Log, with the guess search as a bottom sheet. Rosters has one tab per player rather than every roster stacked. Each new turn opens with the franchise reel (the same one QB Season Builder uses) and the pick and guess forms wait for it to land. Gaps: the host Pause button (web only), the replay format picker (iOS replays the same format), and the web "your pick was sabotaged" swap card (iOS shows hits as badges on Rosters and in the Log).'
   - id: game.wavelength
     summary: 2v2 Wavelength (room, 2 or 4)
     web: done

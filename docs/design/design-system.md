@@ -34,7 +34,7 @@ Each is a Tailwind color (`bg-panel`, `text-fg-muted`, `border-line`, …) backe
 | `hidden` | Concealed values and unfilled spots, as a surface. |
 | `hidden-text` | The same red, lifted to stay legible on the background. Also error text. |
 | `hidden-ink` | The same red, darkened: a hovered or pressed red surface. |
-| `grade-elite/strong/even/rough` | Sabotage Draft's revealed grades. Deliberately not red. |
+| `grade-elite/strong/even/rough` | Revealed grades and verdicts (QB Season Builder, the Huddle). Deliberately not red. |
 
 A selected pill, tab or option is filled `hidden` red with `fg` text; a primary button is a `fg` fill with `surface` text.
 

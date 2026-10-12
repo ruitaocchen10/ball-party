@@ -2,7 +2,7 @@
 -- match carries `play_starts_at`, and the first deadline the game set is
 -- pushed back by the same three seconds.
 begin;
-select plan(18);
+select plan(16);
 \ir support/harness.psql
 
 -- ------------------------------------------------------------------ auction --
@@ -31,18 +31,6 @@ select ok((select play_starts_at from public.matches where id = (select v from t
 select ok((select phase_deadline from public.higher_or_lower_matches where match_id = (select v from tests.fx where k = 'hol'))
   between now() + interval '7 seconds' and now() + interval '9 seconds',
   'and its board intro starts after the countdown');
-
--- ----------------------------------------------------------------- sabotage --
-
-insert into tests.fx (k, v) values ('sab', tests.mkmatch(4, 'sabotage_draft'));
-select sabotage_draft.start((select v from tests.fx where k = 'sab'));
-select tests.act_as_admin();
-select ok((select play_starts_at from public.matches where id = (select v from tests.fx where k = 'sab'))
-  between now() + interval '2 seconds' and now() + interval '4 seconds',
-  'a Sabotage Draft gets the same start time');
-select ok((select turn_deadline from public.sabotage_draft_matches where match_id = (select v from tests.fx where k = 'sab'))
-  > (select play_starts_at from public.matches where id = (select v from tests.fx where k = 'sab')),
-  'and its first turn clock starts after the countdown');
 
 -- --------------------------------------------------------------- wavelength --
 

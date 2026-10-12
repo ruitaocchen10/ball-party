@@ -13,7 +13,6 @@ Ball Party is a sports (NFL) knowledge party game and community. People test the
 | Higher or Lower | solo or room, 2–4 | [higher_or_lower](./games/higher_or_lower/rules.md) |
 | QB Season Builder | solo only | [qb_season_builder](./games/qb_season_builder/rules.md) |
 | Auction Team Builder | room, 2–4 | [auction_team_builder](./games/auction_team_builder/rules.md) |
-| Sabotage Draft | room, 2–4 | [sabotage_draft](./games/sabotage_draft/rules.md) |
 | 2v2 Wavelength | room, 2 (co-op) or 4 (versus) | [wavelength](./games/wavelength/rules.md) |
 
 Cards Against Humanity is not built: it has no catalog entry and no doc.
@@ -45,7 +44,7 @@ Every non-guest account has a unique username (3-20 letters, digits or underscor
 
 ## iOS
 
-Four tabs: Home (Huddle | Friends), Games, Party (rooms), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard, and a picker at the top switches between Ball Knower and Gamer. Friends and other players' profiles are in the Profile menu. In a room, header tabs switch between Room (the invite and share-link buttons and the four seats), Game (a row of game cards: the host swipes to pick, edits the game's settings in its card and starts it; everyone else can browse the cards and read the host's saved settings, and the Room tab shows the game being played) and Scoreboard (wins since the room opened); the leave icon on the left of the header leaves the room, or closes it for the host. Room invites work on iOS too: invite friends from the lobby, and the Party tab lists pending invites. iOS also opens friend invite links and room links as Universal Links. Games on iOS are Higher or Lower (solo and live match), Auction Team Builder (live match), 2v2 Wavelength (live match), Sabotage Draft (live match) and QB Season Builder. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
+Four tabs: Home (Huddle | Friends), Games, Party (rooms), Profile. The leaderboard is reached from Profile → Your stats → Ball knower → View leaderboard, and a picker at the top switches between Ball Knower and Gamer. Friends and other players' profiles are in the Profile menu. In a room, header tabs switch between Room (the invite and share-link buttons and the four seats), Game (a row of game cards: the host swipes to pick, edits the game's settings in its card and starts it; everyone else can browse the cards and read the host's saved settings, and the Room tab shows the game being played) and Scoreboard (wins since the room opened); the leave icon on the left of the header leaves the room, or closes it for the host. Room invites work on iOS too: invite friends from the lobby, and the Party tab lists pending invites. iOS also opens friend invite links and room links as Universal Links. Games on iOS are Higher or Lower (solo and live match), Auction Team Builder (live match), 2v2 Wavelength (live match) and QB Season Builder. Layout in [`ios/BallParty/Games/README.md`](../ios/BallParty/Games/README.md).
 
 ## Keeping this file true
 

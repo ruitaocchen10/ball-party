@@ -66,7 +66,7 @@ side for that trait. Imputed ratings in the source dataset are never used.
   to `value_floor` (25) so a qualifying starter never reads as a zero; the
   schema still allows 0-99, and overrides use the full range.
 - **2019 has no AV.** nflverse's roster file stops in September 2019 and the AV
-  pool (sabotage draft's too) has no 2019 rows. For that season only, the
+  pool has no 2019 rows. For that season only, the
   rosters are read off the pre-season Madden edition's team field and the
   Supporting Cast is the Madden side alone. Modern editions fold cornerbacks
   and safeties into one `DB` label, so that season counts them all at CB and has

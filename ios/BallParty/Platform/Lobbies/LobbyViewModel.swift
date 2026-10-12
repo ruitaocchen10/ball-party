@@ -102,12 +102,6 @@ final class LobbyViewModel: ObservableObject {
         didSet { formatChanged() }
     }
 
-    // MARK: The host's Sabotage Draft format
-
-    @Published var sabotageMode: SabotageMode = .full {
-        didSet { formatChanged() }
-    }
-
     /// A match already entered from this room, so returning to the room
     /// doesn't immediately push the same board back at the player.
     private var dismissedMatchId: UUID?
@@ -117,7 +111,6 @@ final class LobbyViewModel: ObservableObject {
     private let game: HigherOrLowerClient
     private let auction: AuctionClient
     private let wavelength: WavelengthClient
-    private let sabotage: SabotageClient
     private let heartbeatInterval: Duration
     private let formatSaveDelay: Duration
 
@@ -129,7 +122,6 @@ final class LobbyViewModel: ObservableObject {
         game: HigherOrLowerClient,
         auction: AuctionClient,
         wavelength: WavelengthClient,
-        sabotage: SabotageClient,
         viewerId: UUID,
         heartbeatInterval: Duration = .seconds(10),
         formatSaveDelay: Duration = .milliseconds(600)
@@ -138,7 +130,6 @@ final class LobbyViewModel: ObservableObject {
         self.game = game
         self.auction = auction
         self.wavelength = wavelength
-        self.sabotage = sabotage
         self.viewerId = viewerId
         self.heartbeatInterval = heartbeatInterval
         self.formatSaveDelay = formatSaveDelay
@@ -176,8 +167,7 @@ final class LobbyViewModel: ObservableObject {
                 seasonFrom: auctionEra == nil ? nil : auctionFrom,
                 seasonTo: auctionEra == nil ? nil : auctionTo
             ),
-            wavelength: .init(mode: wavelengthMode.rawValue, preset: wavelengthPreset.rawValue),
-            sabotage: .init(mode: sabotageMode.rawValue)
+            wavelength: .init(mode: wavelengthMode.rawValue, preset: wavelengthPreset.rawValue)
         )
     }
 
@@ -215,7 +205,6 @@ final class LobbyViewModel: ObservableObject {
             if let mode = WavelengthMode(rawValue: f.mode) { wavelengthMode = mode }
             if let preset = WavelengthPreset(rawValue: f.preset) { wavelengthPreset = preset }
         }
-        if let f = saved.sabotage, let mode = SabotageMode(rawValue: f.mode) { sabotageMode = mode }
         applySavedEras()
     }
 
@@ -480,8 +469,6 @@ final class LobbyViewModel: ObservableObject {
                     mode: wavelengthMode,
                     preset: wavelengthMode == .coop ? wavelengthPreset : nil
                 )
-            case .sabotageDraft:
-                _ = try await sabotage.start(matchId: matchId, mode: sabotageMode)
             }
             // Everybody else is carried in by the run appearing in the room;
             // the host doesn't wait for their own event to come back around.

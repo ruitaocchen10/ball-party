@@ -1,13 +1,10 @@
 # AV roster pool
 
-Sabotage draft's pool: every rostered player, every franchise, 2006 through
+The AV roster pool (built for the since-removed Sabotage Draft; QB Season
+Builder still reads it): every rostered player, every franchise, 2006 through
 2025, across all fourteen roster slots via ten slot categories (QB/RB/WR/TE
 plus OL/DL/LB/CB/S/ST), priced on one scale — Approximate Value (AV) — so a
 Hall of Fame guard and a Hall of Fame receiver compare on the same number.
-Game rules in
-[`docs/games/sabotage_draft/rules.md`](../../docs/games/sabotage_draft/rules.md); the
-data decisions behind this pool's shape and era floor are in
-[`docs/games/sabotage_draft/data_scoping.md`](../../docs/games/sabotage_draft/data_scoping.md).
 
 A sibling to [`scripts/player_pool/`](../player_pool/), and meaningfully
 heavier: two sources instead of one, a franchise-identity translation step
@@ -26,8 +23,7 @@ clone reaches a loaded database in one command.
 ## Era floor: 2006
 
 Everything 2006-2019 is free, no-scraping data, so the only live scrape is
-2020-2025 (about 192 team-season pages). The reasoning is in
-[`data_scoping.md`](../../docs/games/sabotage_draft/data_scoping.md).
+2020-2025 (about 192 team-season pages).
 
 ## Two sources, one pipeline
 
@@ -123,10 +119,10 @@ shuffled runs.
 
 ## Notes
 
-**Why `private`, and why not a `sabotage_draft`-specific schema.** This is a
+**Why `private`, and why not a game-specific schema.** This is a
 content pool, the same kind of thing `player_weeks` already is — not one
 game's own state — so it lives in the same shared `private` schema rather
-than a new `sabotage_draft_private`. AV must stay unreadable by the client
+than a per-game one. AV must stay unreadable by the client
 until a round resolves the same way fantasy points do; a table with no
 REST-exposed schema at all is what makes that true unconditionally, not a
 policy that could later be loosened by accident.
