@@ -82,6 +82,7 @@ final class FriendInviteViewModel: ObservableObject {
         defer { isSending = false }
         do {
             result = try await client.redeemInviteCode(code)
+            await PushCoordinator.shared.meaningfulActionCompleted()
         } catch {
             self.error = Self.errorMessage(for: error)
         }

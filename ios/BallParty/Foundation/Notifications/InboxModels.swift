@@ -19,6 +19,17 @@ enum InboxState: String, Sendable {
 enum InboxDestination: Hashable, Sendable {
     case profile(username: String)
     case take(postId: UUID, takeId: UUID)
+
+    /// The one place that decides where an item goes, shared by an inbox row
+    /// and a tapped push so the two can never disagree.
+    static func resolve(kind: InboxKind, username: String?, postId: UUID?, refId: UUID?) -> InboxDestination? {
+        switch kind {
+        case .friendRequest: username.map { .profile(username: $0) }
+        case .takeReply:
+            if let postId, let refId { .take(postId: postId, takeId: refId) } else { nil }
+        case .roomInvite: nil
+        }
+    }
 }
 
 struct InboxItem: Decodable, Equatable, Sendable, Identifiable {
@@ -130,11 +141,7 @@ struct InboxItem: Decodable, Equatable, Sendable, Identifiable {
     }
 
     var destination: InboxDestination? {
-        switch kind {
-        case .friendRequest: actorUsername.map { .profile(username: $0) }
-        case .takeReply: postId.map { .take(postId: $0, takeId: refId) }
-        case .roomInvite: nil
-        }
+        InboxDestination.resolve(kind: kind, username: actorUsername, postId: postId, refId: refId)
     }
 
     /// Whether the item offers Accept / Decline (Join / Decline for a room).

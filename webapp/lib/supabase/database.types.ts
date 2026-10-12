@@ -2925,6 +2925,7 @@ export type Database = {
       }
       decline_friend_request: { Args: { p_user_id: string }; Returns: boolean }
       decline_room_invite: { Args: { p_invite_id: string }; Returns: boolean }
+      delete_device_tokens: { Args: { p_tokens: string[] }; Returns: number }
       delete_own_account: { Args: never; Returns: undefined }
       friend_activity: {
         Args: { p_before?: string; p_limit?: number }
@@ -3190,6 +3191,10 @@ export type Database = {
         Returns: undefined
       }
       redeem_friend_code: { Args: { p_code: string }; Returns: string }
+      register_device_token: {
+        Args: { p_environment: string; p_platform?: string; p_token: string }
+        Returns: undefined
+      }
       remove_friend: { Args: { p_user_id: string }; Returns: boolean }
       reset_friend_code: { Args: never; Returns: string }
       resume_match: {
@@ -3295,6 +3300,10 @@ export type Database = {
         }
       }
       unblock_user: { Args: { p_user_id: string }; Returns: boolean }
+      unregister_device_token: {
+        Args: { p_platform?: string; p_token: string }
+        Returns: boolean
+      }
       username_available: { Args: { p_username: string }; Returns: boolean }
     }
     Enums: {

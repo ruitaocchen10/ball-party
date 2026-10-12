@@ -295,6 +295,7 @@ final class HuddleViewModel: ObservableObject {
         rankDepths[postId] = nil
         takeDrafts[postId] = nil
         await load()
+        await PushCoordinator.shared.meaningfulActionCompleted()
     }
 
     // MARK: - Bold Predictions

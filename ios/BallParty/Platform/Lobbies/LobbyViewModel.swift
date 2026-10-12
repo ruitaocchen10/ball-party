@@ -371,6 +371,7 @@ final class LobbyViewModel: ObservableObject {
         do {
             let lobby = try await client.createLobby()
             try await enter(lobby)
+            await PushCoordinator.shared.meaningfulActionCompleted()
         } catch {
             errorMessage = Self.describe(error)
         }
@@ -391,6 +392,7 @@ final class LobbyViewModel: ObservableObject {
         do {
             let lobby = try await client.joinLobby(code: typed)
             try await enter(lobby)
+            await PushCoordinator.shared.meaningfulActionCompleted()
         } catch {
             errorMessage = Self.describe(error)
         }

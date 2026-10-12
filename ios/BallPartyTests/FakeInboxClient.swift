@@ -7,22 +7,26 @@ final class FakeInboxClient: InboxClient, @unchecked Sendable {
     var unread = 0
     var offline = false
 
-    private(set) var calls: [String] = []
+    private let lock = NSLock()
+    private var recorded: [String] = []
+    /// `load()` reads the list and the count concurrently, so recording is locked.
+    var calls: [String] { lock.withLock { recorded } }
+    private func record(_ call: String) { lock.withLock { recorded.append(call) } }
 
     func items() async throws -> [InboxItem] {
-        calls.append("items")
+        record("items")
         if offline { throw FakeFriendsClient.Offline() }
         return rows
     }
 
     func unreadCount() async throws -> Int {
-        calls.append("unreadCount")
+        record("unreadCount")
         if offline { throw FakeFriendsClient.Offline() }
         return unread
     }
 
-    func markRead(key: String) async throws { calls.append("markRead:\(key)") }
-    func markAllRead() async throws { calls.append("markAllRead") }
+    func markRead(key: String) async throws { record("markRead:\(key)") }
+    func markAllRead() async throws { record("markAllRead") }
 
     private var eventContinuation: AsyncStream<InboxEvent>.Continuation?
 
