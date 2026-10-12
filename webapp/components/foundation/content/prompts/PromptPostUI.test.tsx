@@ -129,6 +129,26 @@ it("marking a picks post as opinion publishes it without an auto-resolve source"
   expect(published.resolutionSource).toBeUndefined();
 });
 
+it("publishes with a push notification unless the admin unticks it", async () => {
+  const user = userEvent.setup();
+  const onPublish = vi.fn().mockResolvedValue({ id: "new-post" });
+  const games = [{
+    id: "2026_01_KC_BUF", season: 2026, week: 1, kickoff: "2099-09-11T00:20:00.000Z",
+    away: "KC", home: "BUF", label: "Chiefs @ Bills", stadium: "Highmark Stadium", primetime: true,
+  }];
+
+  const { unmount } = render(<PromptPostComposer displayName="Admin" games={games} players={[]} onPublish={onPublish} />);
+  expect(screen.getAllByRole("checkbox", { name: /Send a push notification/ })[0]).toHaveAttribute("aria-checked", "true");
+  await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
+  expect(onPublish.mock.calls[0][0].sendPush).toBe(true);
+  unmount();
+
+  render(<PromptPostComposer displayName="Admin" games={games} players={[]} onPublish={onPublish} />);
+  await user.click(screen.getAllByRole("checkbox", { name: /Send a push notification/ })[0]);
+  await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
+  expect(onPublish.mock.calls[1][0].sendPush).toBe(false);
+});
+
 const composerGames = [
   { id: "2026_01_KC_BUF", season: 2026, week: 1, kickoff: "2099-09-11T00:20:00.000Z", away: "KC", home: "BUF", label: "Chiefs @ Bills", stadium: "Highmark Stadium", primetime: true },
   { id: "2026_01_PHI_DAL", season: 2026, week: 1, kickoff: "2099-09-11T17:00:00.000Z", away: "PHI", home: "DAL", label: "Eagles @ Cowboys", stadium: "AT&T Stadium", primetime: false },

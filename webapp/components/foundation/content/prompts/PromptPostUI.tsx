@@ -328,6 +328,8 @@ export type CreatePromptPostParams = {
   slots: Slot[];
   resolutionSource?: { provider: "nflverse"; rule: "winner" };
   isOpinion?: boolean;
+  /** Send the iOS push for this post (on by default; untick for a correction or backfill). */
+  sendPush?: boolean;
 };
 
 /** What "the setup is ready" means for each template, in the publish checklist. */
@@ -374,6 +376,7 @@ export function PromptPostComposer({
   const [error, setError] = useState<string | null>(null);
   const [kind, setKind] = useState<ComposerKind>("game_pick");
   const [isOpinion, setIsOpinion] = useState(false);
+  const [sendPush, setSendPush] = useState(true);
   const [gameId, setGameId] = useState(initialGame?.id ?? "");
   const [season, setSeason] = useState(String(initialGame?.season ?? ""));
   const [week, setWeek] = useState(String(initialGame?.week ?? ""));
@@ -551,6 +554,21 @@ export function PromptPostComposer({
             </li>
           ))}
         </ul>
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={sendPush}
+          onClick={() => setSendPush((current) => !current)}
+          className={`mb-3 flex w-full items-start gap-3 rounded-card border px-3.5 py-3 text-left ${sendPush ? "border-fg" : "border-line"}`}
+        >
+          <span aria-hidden className={`mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-chip border ${sendPush ? "border-fg bg-fg text-surface" : "border-fg-muted"}`}>
+            {sendPush ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+          </span>
+          <span>
+            <span className="block font-semibold">Send a push notification</span>
+            <span className="text-sm text-fg-muted">Alerts everyone with the iOS app. Untick for a correction or backfill.</span>
+          </span>
+        </button>
         <Button
           fullWidth
           disabled={!canPublish}
@@ -566,6 +584,7 @@ export function PromptPostComposer({
               lockAt: lockAtDate.toISOString(),
               slots,
               isOpinion,
+              sendPush,
               ...(kind === "power_rankings" ? { coverTeamCodes } : {}),
               ...((kind === "game_pick" || kind === "weekly_picks") && !isOpinion ? { resolutionSource: { provider: "nflverse", rule: "winner" } } : {}),
             });
@@ -610,6 +629,7 @@ export function PromptPostComposer({
               setPromptText(defaultPromptText("game_pick", initialGame));
               setCriteria(defaultCriteria("game_pick"));
               setIsOpinion(false);
+              setSendPush(true);
               setLockAt(defaultLockAt());
               setError(null);
               setDockOpen(true);

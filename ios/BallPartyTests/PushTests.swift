@@ -222,9 +222,9 @@ final class PushCoordinatorTests: XCTestCase {
 
     func testATapWaitsForTheShellAndIsConsumedOnce() throws {
         let push = makeCoordinator()
-        let payload = try XCTUnwrap(PushPayload(userInfo: ["kind": "friend_request", "username": "bob", "item_key": "n:1"]))
+        let payload = try XCTUnwrap(PushPayload(userInfo: ["kind": "friend_request", "item_key": "n:1"]))
         push.didTap(payload)
-        XCTAssertEqual(push.consumeRoute(), PushRoute(destination: .profile(username: "bob"), itemKey: "n:1"))
+        XCTAssertEqual(push.consumeRoute(), PushRoute(kind: .item(.friendRequest), itemKey: "n:1"))
         XCTAssertNil(push.consumeRoute())
     }
 
@@ -239,26 +239,22 @@ final class PushCoordinatorTests: XCTestCase {
 
 final class PushPayloadTests: XCTestCase {
     private let post = UUID()
-    private let take = UUID()
 
-    func testFriendRequestOpensTheRequestersProfile() {
-        let payload = PushPayload(userInfo: ["kind": "friend_request", "username": "bob"])
-        XCTAssertEqual(payload?.destination, .profile(username: "bob"))
+    func testEveryInboxKindIsRecognised() {
+        XCTAssertEqual(PushPayload(userInfo: ["kind": "friend_request", "item_key": "n:1"])?.kind, .item(.friendRequest))
+        XCTAssertEqual(PushPayload(userInfo: ["kind": "take_reply", "item_key": "n:2"])?.kind, .item(.takeReply))
+        XCTAssertEqual(PushPayload(userInfo: ["kind": "room_invite", "item_key": "i:3"])?.kind, .item(.roomInvite))
     }
 
-    func testTakeReplyOpensTheTake() {
-        let payload = PushPayload(userInfo: ["kind": "take_reply", "post_id": post.uuidString, "ref_id": take.uuidString])
-        XCTAssertEqual(payload?.destination, .take(postId: post, takeId: take))
+    func testTheItemKeyIsKept() {
+        XCTAssertEqual(PushPayload(userInfo: ["kind": "take_reply", "item_key": "n:2"])?.itemKey, "n:2")
     }
 
-    func testRoomInviteHasNoPageSoItOpensTheInbox() {
-        XCTAssertNotNil(PushPayload(userInfo: ["kind": "room_invite"]))
-        XCTAssertNil(PushPayload(userInfo: ["kind": "room_invite"])?.destination)
-    }
-
-    func testIncompletePayloadsFallBackToTheInbox() {
-        XCTAssertNil(PushPayload(userInfo: ["kind": "take_reply", "post_id": post.uuidString])?.destination)
-        XCTAssertNil(PushPayload(userInfo: ["kind": "friend_request"])?.destination)
+    func testANewPromptCarriesThePost() {
+        let payload = PushPayload(userInfo: ["kind": "new_prompt", "post_id": post.uuidString])
+        XCTAssertEqual(payload?.kind, .newPrompt)
+        XCTAssertEqual(payload?.postId, post)
+        XCTAssertNil(payload?.itemKey)
     }
 
     func testUnknownOrMissingKindIsIgnored() {
@@ -266,8 +262,8 @@ final class PushPayloadTests: XCTestCase {
         XCTAssertNil(PushPayload(userInfo: [:]))
     }
 
-    func testARowAndAPushForTheSameItemGoToTheSamePlace() {
-        let viaPush = InboxDestination.resolve(kind: .takeReply, username: nil, postId: post, refId: take)
-        XCTAssertEqual(viaPush, PushPayload(userInfo: ["kind": "take_reply", "post_id": post.uuidString, "ref_id": take.uuidString])?.destination)
+    func testAnItemPushWithoutAKeyStillParses() {
+        XCTAssertNotNil(PushPayload(userInfo: ["kind": "room_invite"]))
+        XCTAssertNil(PushPayload(userInfo: ["kind": "room_invite"])?.itemKey)
     }
 }

@@ -82,9 +82,7 @@ struct MainTabView: View {
             // A tapped push opens the same place the inbox row would.
             .onChange(of: push.pendingRoute, initial: true) { _, route in
                 guard route != nil, let route = push.consumeRoute() else { return }
-                inboxLanding = route.destination
-                showingInbox = true
-                if let key = route.itemKey { Task { await notifications.markRead(key: key) } }
+                Task { await open(route) }
             }
             .onChange(of: notifications.unreadCount, initial: true) { _, count in
                 Task { await push.setBadge(count) }
@@ -123,6 +121,21 @@ extension MainTabView {
     }
 
     /// Same name and picture the Profile screen itself shows.
+    /// Where a tapped push goes: the Home feed for a new prompt, otherwise the
+    /// inbox, landing on the item's page when it has one.
+    private func open(_ route: PushRoute) async {
+        switch route.kind {
+        case .newPrompt:
+            showingInbox = false
+            selection = .home
+        case .item:
+            var landing: InboxDestination?
+            if let key = route.itemKey { landing = await notifications.openItem(key: key) }
+            inboxLanding = landing
+            showingInbox = true
+        }
+    }
+
     fileprivate func loadAvatar(userId: UUID, email: String?) async {
         let summary = try? await SupabaseProfileClient(client: SupabaseConfig.client).profile(userId: userId)
         await avatar.load(

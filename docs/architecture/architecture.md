@@ -25,8 +25,13 @@ game rule is ever enforced client-side.
 
 Concretely: `security definer` RPCs, the pattern the lobby write API already
 uses (`0005`). Edge Functions were the original plan and remain the right home
-for logic that has to leave the database — an external API, long-running work —
-but nothing here needs that yet, and the auction argues against them. Resolving
+for logic that has to leave the database — an external API, long-running work.
+The first one is `send-push` (`supabase/functions/send-push`), which signs and
+sends APNs pushes: it talks to Apple, so it cannot live in a transaction.
+Everything it decides about *what* to send (who, whether it is still wanted,
+coalescing) stays in Postgres (`0206`); the function only claims queued rows,
+delivers them and reports back. No game rule uses one, and the auction argues
+against them. Resolving
 a bid is a read-modify-write across five tables that has to be atomic, and a
 plpgsql function body is already a transaction. `supabase-js` has no
 transaction API, so an Edge Function would either hand-roll BEGIN/COMMIT over a
