@@ -166,6 +166,27 @@ final class PushCoordinator: ObservableObject {
         defaults.set(now().addingTimeInterval(Self.deferral), forKey: Self.deferredUntilKey)
     }
 
+    /// What iOS currently says about notifications, for the Profile screen.
+    func authorizationStatus() async -> PushAuthorization {
+        await system.authorization()
+    }
+
+    /// "Turn on notifications" on the Profile screen. The player chose it, so no
+    /// pre-prompt goes in front, and an earlier "Not now" no longer applies. iOS
+    /// still shows its prompt only once; if it already has an answer we just
+    /// report it. An allowed device registers (again), which also uploads its token.
+    @discardableResult
+    func enableFromSettings() async -> PushAuthorization {
+        defaults.removeObject(forKey: Self.deferredUntilKey)
+        showingPrePrompt = false
+        if await system.authorization() == .notDetermined {
+            _ = await system.requestAuthorization()
+        }
+        let status = await system.authorization()
+        if status == .authorized { system.registerForRemoteNotifications() }
+        return status
+    }
+
     // MARK: Taps and the badge
 
     func didTap(_ payload: PushPayload) {

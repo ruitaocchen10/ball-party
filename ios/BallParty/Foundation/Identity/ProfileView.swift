@@ -16,6 +16,7 @@ struct ProfileView: View {
     @State private var editor: ProfileEditorViewModel?
     @State private var privacy: PrivacySettingsViewModel?
     @State private var showFriends = false
+    @State private var showNotifications = false
     @State private var confirmingDelete = false
     @State private var deleteFailed = false
 
@@ -60,6 +61,11 @@ struct ProfileView: View {
                 )
             } label: {
                 Label("Privacy", systemImage: "lock")
+            }
+            Button {
+                showNotifications = true
+            } label: {
+                Label("Notifications", systemImage: "bell")
             }
             Divider()
             Link(destination: SiteLinks.privacyPolicy) {
@@ -124,6 +130,11 @@ struct ProfileView: View {
             ProfileEditorView(viewModel: editorViewModel) {
                 Task { await viewModel.load() }
             }
+        }
+        .sheet(isPresented: $showNotifications) {
+            PushSettingsView(coordinator: .shared)
+                .presentationDetents([.medium])
+                .presentationBackground(Theme.surface)
         }
         .sheet(item: $privacy, onDismiss: { Task { await viewModel.load() } }) { privacyViewModel in
             PrivacySettingsView(viewModel: privacyViewModel)
