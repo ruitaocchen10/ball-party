@@ -2,6 +2,8 @@ import SwiftUI
 
 @main
 struct BallPartyApp: App {
+    @UIApplicationDelegateAdaptor(PushAppDelegate.self) private var appDelegate
+
     init() {
         Theme.applyChrome()
     }

@@ -10,6 +10,8 @@ struct InboxView: View {
     let viewerId: UUID
     /// Called with the room an accepted invite put the player in.
     var onJoined: (Lobby) -> Void
+    /// Where a tapped push opens, if the inbox was opened by one.
+    var landing: InboxDestination?
 
     @Environment(\.dismiss) private var dismiss
     @State private var destination: InboxDestination?
@@ -53,6 +55,9 @@ struct InboxView: View {
                 }
             }
             .task { await viewModel.load() }
+            .onChange(of: landing, initial: true) { _, target in
+                if let target { destination = target }
+            }
         }
     }
 

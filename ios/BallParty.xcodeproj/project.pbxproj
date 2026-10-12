@@ -179,6 +179,12 @@
 		F41E000000000000000B0048 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0048 /* InboxView.swift */; };
 		F41E000000000000000B0049 /* FakeInboxClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0049 /* FakeInboxClient.swift */; };
 		F41E000000000000000B004A /* InboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A004A /* InboxTests.swift */; };
+		F41E000000000000000B004B /* DeviceTokenClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A004B /* DeviceTokenClient.swift */; };
+		F41E000000000000000B004C /* PushPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A004C /* PushPayload.swift */; };
+		F41E000000000000000B004D /* PushCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A004D /* PushCoordinator.swift */; };
+		F41E000000000000000B004E /* PushAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A004E /* PushAppDelegate.swift */; };
+		F41E000000000000000B004F /* PushPrePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A004F /* PushPrePromptView.swift */; };
+		F41E000000000000000B0050 /* PushTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0050 /* PushTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -369,6 +375,12 @@
 		F41E000000000000000A0048 /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0049 /* FakeInboxClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeInboxClient.swift; sourceTree = "<group>"; };
 		F41E000000000000000A004A /* InboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxTests.swift; sourceTree = "<group>"; };
+		F41E000000000000000A004B /* DeviceTokenClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTokenClient.swift; sourceTree = "<group>"; };
+		F41E000000000000000A004C /* PushPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushPayload.swift; sourceTree = "<group>"; };
+		F41E000000000000000A004D /* PushCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushCoordinator.swift; sourceTree = "<group>"; };
+		F41E000000000000000A004E /* PushAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushAppDelegate.swift; sourceTree = "<group>"; };
+		F41E000000000000000A004F /* PushPrePromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushPrePromptView.swift; sourceTree = "<group>"; };
+		F41E000000000000000A0050 /* PushTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -448,6 +460,7 @@
 				F41E000000000000000A0040 /* FakeRoomInvitesClient.swift */,
 				F41E000000000000000A0049 /* FakeInboxClient.swift */,
 				F41E000000000000000A004A /* InboxTests.swift */,
+				F41E000000000000000A0050 /* PushTests.swift */,
 				F41E000000000000000A0041 /* RoomInvitesTests.swift */,
 				9BB3B711B5508796FC1E770E /* AppleSignInNonceTests.swift */,
 				F06ED444F3FC870054ED36B7 /* AuthViewModelTests.swift */,
@@ -754,6 +767,11 @@
 				F41E000000000000000A0046 /* InboxClient.swift */,
 				F41E000000000000000A0047 /* InboxViewModel.swift */,
 				F41E000000000000000A0048 /* InboxView.swift */,
+				F41E000000000000000A004B /* DeviceTokenClient.swift */,
+				F41E000000000000000A004C /* PushPayload.swift */,
+				F41E000000000000000A004D /* PushCoordinator.swift */,
+				F41E000000000000000A004E /* PushAppDelegate.swift */,
+				F41E000000000000000A004F /* PushPrePromptView.swift */,
 			);
 			path = Notifications;
 			sourceTree = "<group>";
@@ -893,6 +911,7 @@
 				F41E000000000000000B0040 /* FakeRoomInvitesClient.swift in Sources */,
 				F41E000000000000000B0049 /* FakeInboxClient.swift in Sources */,
 				F41E000000000000000B004A /* InboxTests.swift in Sources */,
+				F41E000000000000000B0050 /* PushTests.swift in Sources */,
 				F41E000000000000000B0041 /* RoomInvitesTests.swift in Sources */,
 				C0228715574E2C17617AE87E /* FakeAuthBackend.swift in Sources */,
 				32F54770BF21BE083734336D /* IdentityConstantsTests.swift in Sources */,
@@ -973,6 +992,11 @@
 				F41E000000000000000B0046 /* InboxClient.swift in Sources */,
 				F41E000000000000000B0047 /* InboxViewModel.swift in Sources */,
 				F41E000000000000000B0048 /* InboxView.swift in Sources */,
+				F41E000000000000000B004B /* DeviceTokenClient.swift in Sources */,
+				F41E000000000000000B004C /* PushPayload.swift in Sources */,
+				F41E000000000000000B004D /* PushCoordinator.swift in Sources */,
+				F41E000000000000000B004E /* PushAppDelegate.swift in Sources */,
+				F41E000000000000000B004F /* PushPrePromptView.swift in Sources */,
 				F41E000000000000000B0043 /* RoomInvitesViewModels.swift in Sources */,
 				F41E000000000000000B0044 /* RoomInvitesViews.swift in Sources */,
 				31EED3E7CE74DE674478E1FC /* LobbyModels.swift in Sources */,

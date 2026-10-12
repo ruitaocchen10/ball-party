@@ -174,12 +174,13 @@ features:
     summary: A bell in the header with an unread badge, opening the notification inbox
     web: done
     ios: done
-    note: The inbox lists friend requests (accept or decline in place, tap for the profile), replies to your takes (tap for the take; several replies to one take collapse into one item) and room invites (join or decline in place; one that is no longer live shows as expired for three days). The server decides what is listed and what state it is in (list_inbox, migration 0204); read state is per item and an item is read when tapped or acted on, or all at once with Mark all read. Room invites count as unread while pending. The Party page and tab still list invites too. No push notifications yet (iOS push is GitHub #171 and #172; web push is not planned, see notifications.push). The iOS header layout, Home header tabs and avatar tab icon are platform layout and are not tracked here.
+    note: The inbox lists friend requests (accept or decline in place, tap for the profile), replies to your takes (tap for the take; several replies to one take collapse into one item) and room invites (join or decline in place; one that is no longer live shows as expired for three days). The server decides what is listed and what state it is in (list_inbox, migration 0204); read state is per item and an item is read when tapped or acted on, or all at once with Mark all read. Room invites count as unread while pending. The Party page and tab still list invites too. Push is tracked separately in notifications.push. The iOS header layout, Home header tabs and avatar tab icon are platform layout and are not tracked here.
   - id: notifications.push
     summary: Push notifications for a new prompt, a friend request, a room invite and a reply to your take
     web: missing
-    ios: missing
-    note: iOS push (APNs) is planned as GitHub #171 (device tokens, permission) and #172 (sending). Web push is deferred for now and still needs a BPW ticket; the inbox (notifications.bell) is the web's only notification surface until then.
+    ios: partial
+    ticket: BPW-6
+    note: iOS has the plumbing (GitHub #171) but sends nothing yet; sending is #172, so it stays partial until then. The app registers with APNs, uploads its token (register_device_token, migration 0205) and removes it on sign-out; it asks for permission after a first meaningful action (locking in a pick, making or joining a room, adding a friend) behind a short pre-prompt, and again no sooner than 14 days after Not now; a tapped push opens the same place as the inbox row; the app badge is the unread count. Web push is deferred (BPW-6) because it needs its own service worker, keys and subscription storage; the bell and inbox (notifications.bell) are the web's only notification surface until then.
   - id: rooms.pick-game
     summary: Host picks the game and starts a run
     web: done

@@ -28,6 +28,9 @@ struct MainTabView: View {
         invites: SupabaseRoomInvitesClient(client: SupabaseConfig.client)
     )
     @State private var showingInbox = false
+    /// Where a tapped push opens inside the inbox.
+    @State private var inboxLanding: InboxDestination?
+    @ObservedObject private var push = PushCoordinator.shared
     /// A room joined from the inbox, handed to the Party tab to step inside.
     @State private var joinedFromInbox: Lobby?
     /// The viewer's picture for the Profile tab's icon.
@@ -64,12 +67,27 @@ struct MainTabView: View {
             .task(id: user.id) { await inbox.observe(recipientId: user.id) }
             .task(id: user.id) { await notifications.load() }
             .task(id: user.id) { await notifications.observe(recipientId: user.id) }
-            .sheet(isPresented: $showingInbox) {
-                InboxView(viewModel: notifications, viewerId: user.id) { lobby in
+            .sheet(isPresented: $showingInbox, onDismiss: { inboxLanding = nil }) {
+                InboxView(viewModel: notifications, viewerId: user.id, onJoined: { lobby in
                     joinedFromInbox = lobby
                     selection = .party
-                }
+                }, landing: inboxLanding)
                 .presentationBackground(Theme.surface)
+            }
+            .sheet(isPresented: $push.showingPrePrompt) {
+                PushPrePromptView(coordinator: push)
+                    .presentationBackground(Theme.surface)
+            }
+            .task(id: user.id) { await push.sessionStarted() }
+            // A tapped push opens the same place the inbox row would.
+            .onChange(of: push.pendingRoute, initial: true) { _, route in
+                guard route != nil, let route = push.consumeRoute() else { return }
+                inboxLanding = route.destination
+                showingInbox = true
+                if let key = route.itemKey { Task { await notifications.markRead(key: key) } }
+            }
+            .onChange(of: notifications.unreadCount, initial: true) { _, count in
+                Task { await push.setBadge(count) }
             }
             .task(id: user.id) { await loadAvatar(userId: user.id, email: user.email) }
             // A photo changed on the Profile tab shows once you leave it.

@@ -92,6 +92,12 @@ final class InboxViewModel: ObservableObject {
         await load()
     }
 
+    /// A tapped push counts as the row being tapped: the item it was for is read.
+    func markRead(key: String) async {
+        await load()
+        if let item = items.first(where: { $0.key == key }) { await markRead(item) }
+    }
+
     func markAllRead() async {
         try? await client.markAllRead()
         await load()

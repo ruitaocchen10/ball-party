@@ -24,6 +24,9 @@ final class AuthViewModel: ObservableObject {
 
     private let backend: AuthBackend
     private let confirmations: UsernameConfirmationStore
+    /// Runs while the session still exists, so the server can drop this device
+    /// from the signed-out account's pushes.
+    private let beforeSignOut: @MainActor () async -> Void
     private var authStateTask: Task<Void, Never>?
 
     /// Set right before presenting the Apple sheet, consumed when it
@@ -32,9 +35,14 @@ final class AuthViewModel: ObservableObject {
     /// `nonce` claim against it.
     private var pendingAppleNonce: String?
 
-    init(backend: AuthBackend, confirmations: UsernameConfirmationStore = .standard) {
+    init(
+        backend: AuthBackend,
+        confirmations: UsernameConfirmationStore = .standard,
+        beforeSignOut: @escaping @MainActor () async -> Void = { await PushCoordinator.shared.willSignOut() }
+    ) {
         self.backend = backend
         self.confirmations = confirmations
+        self.beforeSignOut = beforeSignOut
         session = backend.currentSession
         authStateTask = Task { [backend] in
             for await (_, session) in backend.authStateChanges {
@@ -200,6 +208,7 @@ final class AuthViewModel: ObservableObject {
     }
 
     func signOut() async {
+        await beforeSignOut()
         try? await backend.signOut()
         session = nil
     }
@@ -212,6 +221,8 @@ final class AuthViewModel: ObservableObject {
         isBusy = true
         defer { isBusy = false }
 
+        // The account's pushes stop with it; a failed delete re-registers on the next launch.
+        await beforeSignOut()
         do {
             try await backend.deleteAccount()
             session = nil
