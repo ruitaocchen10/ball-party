@@ -100,8 +100,11 @@ struct LobbyScreen: View {
         .task(id: pendingRoomCode) { await joinPendingRoom() }
         .task(id: joinedLobby?.id) {
             guard let lobby = joinedLobby else { return }
-            joinedLobby = nil
+            // Cleared once the room is open, not before: it is what this task is
+            // keyed on, so changing it cancels the task, which cut the room's load
+            // short and put the player back on the entry screen with an error.
             await viewModel.adopt(lobby)
+            joinedLobby = nil
         }
         .onDisappear { viewModel.stopObserving() }
     }
