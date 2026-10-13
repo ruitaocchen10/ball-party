@@ -86,10 +86,20 @@ struct TakeCardView: View {
     /// the board), not a ticket. They sit behind View take like any other.
     var boldPredictions: [BoldPrediction]?
     var boldBoard: BoldBoardData?
+    /// Replaces the default ticket behind View take: the viewer's own card draws
+    /// their picks graded, and a ballot with how each team moved.
+    var picksContent: (() -> AnyView)?
+    /// Sits between the reply row and View take (the viewer's points).
+    var footer: (() -> AnyView)?
 
-    @State private var picksShown = false
+    /// Foldable like any other, but starts open: the viewer's own take on the prompt screen.
+    var startsOpen = false
 
-    private var hasPicks: Bool { comment.response != nil || boldPredictions != nil }
+    @State private var toggled = false
+
+    private var picksShown: Bool { startsOpen != toggled }
+
+    private var hasPicks: Bool { comment.response != nil || boldPredictions != nil || picksContent != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -116,7 +126,9 @@ struct TakeCardView: View {
                     .foregroundStyle(Theme.fg)
             }
             if !collapsesPicks || picksShown {
-                if let boldPredictions, let boldBoard {
+                if let picksContent {
+                    picksContent()
+                } else if let boldPredictions, let boldBoard {
                     ForEach(boldPredictions) { prediction in
                         BoldQuote(text: prediction.body, target: prediction.target, board: boldBoard)
                     }
@@ -127,12 +139,13 @@ struct TakeCardView: View {
                     TicketView(post: post, response: response)
                 }
             }
-            if showsReplyCount || (collapsesPicks && hasPicks) {
+            if showsReplyCount || footer != nil || (collapsesPicks && hasPicks) {
                 HStack(spacing: 12) {
                     if showsReplyCount { replyRow }
+                    if let footer { footer() }
                     Spacer(minLength: 0)
                     if collapsesPicks, hasPicks {
-                        Button { picksShown.toggle() } label: {
+                        Button { toggled.toggle() } label: {
                             Text(picksShown ? "Hide take" : "View take")
                                 .monoLabel(10, weight: .semibold, tracking: 0.08)
                                 .frame(minHeight: 32)

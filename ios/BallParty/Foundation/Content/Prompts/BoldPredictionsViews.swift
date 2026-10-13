@@ -2,29 +2,12 @@ import SwiftUI
 
 // Bold Predictions on iOS: the post whose answer is up to five written calls,
 // each tagged with a game, a team or a player, locked in together — the web's
-// `BoldPredictionsBoard.tsx`. Its board is the whole detail screen: there are
-// no picks to make and no takes to unlock.
+// `BoldPredictionsBoard.tsx`. Writing them is its own form; once they are in,
+// the screen is the same as any prompt's: your take card, then everyone else's
+// (`PromptDetailView`), with the predictions where other prompts show picks.
 //
 // Presentation only. The limits, what a draft may be and what locking in does
 // are `HuddleViewModel`'s; who may read whose predictions is the server's.
-
-// MARK: - The screen
-
-struct BoldPredictionsView: View {
-    @ObservedObject var viewModel: HuddleViewModel
-    let post: PromptPost
-
-    var body: some View {
-        Group {
-            if viewModel.canAnswer(post.id) {
-                BoldComposer(viewModel: viewModel, post: post)
-            } else {
-                BoldRevealed(viewModel: viewModel, post: post)
-            }
-        }
-        .task { await viewModel.loadBoldBoard(post.id) }
-    }
-}
 
 // MARK: - A prediction
 
@@ -88,7 +71,7 @@ extension BoldQuote where Actions == EmptyView {
 // MARK: - Writing
 
 /// Drafts live on the phone until Lock in; only then does anything reach the server.
-private struct BoldComposer: View {
+struct BoldComposer: View {
     @ObservedObject var viewModel: HuddleViewModel
     let post: PromptPost
 
@@ -295,122 +278,5 @@ private struct BoldTagPicker: View {
     private func state(of type: BoldTargetType, _ id: String) -> ChoiceTileState {
         guard let target, target.type == type else { return .idle }
         return target.id == id ? .selected : .dimmed
-    }
-}
-
-// MARK: - Reading
-
-/// Everyone's predictions once they can be read: your own response first, then
-/// the other takes, each person's together on one card.
-private struct BoldRevealed: View {
-    @ObservedObject var viewModel: HuddleViewModel
-    let post: PromptPost
-
-    private struct AuthorGroup: Identifiable {
-        let id: UUID
-        let author: String
-        let username: String?
-        let avatarURL: URL?
-        let isViewer: Bool
-        var predictions: [BoldPrediction]
-    }
-
-    /// One response per person, in the order the first of their predictions was
-    /// written; the viewer's own leads, like their take does on a pick prompt.
-    private var groups: [AuthorGroup] {
-        var order: [UUID] = []
-        var byAuthor: [UUID: AuthorGroup] = [:]
-        for prediction in post.boldPredictions {
-            if byAuthor[prediction.authorId] == nil {
-                order.append(prediction.authorId)
-                byAuthor[prediction.authorId] = AuthorGroup(
-                    id: prediction.authorId, author: prediction.author, username: prediction.authorUsername,
-                    avatarURL: prediction.authorAvatarURL, isViewer: prediction.isViewer, predictions: []
-                )
-            }
-            byAuthor[prediction.authorId]?.predictions.append(prediction)
-        }
-        let all = order.compactMap { byAuthor[$0] }
-        return all.filter(\.isViewer) + all.filter { !$0.isViewer }
-    }
-
-    var body: some View {
-        let groups = groups
-        let board = viewModel.boldBoard(for: post.id)
-        if groups.isEmpty {
-            Text(post.status == .void ? "This post was voided." : "Nobody made a prediction before this locked.")
-                .font(.sans(14))
-                .foregroundStyle(Theme.fgMuted)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
-                .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
-        } else {
-            VStack(alignment: .leading, spacing: 20) {
-                ForEach(groups.filter(\.isViewer)) { card($0, board: board) }
-                section("Friend takes", groups.filter { !$0.isViewer && viewModel.isFriend($0.id) }, board: board)
-                section("Other takes", groups.filter { !$0.isViewer && !viewModel.isFriend($0.id) }, board: board)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func section(_ title: String, _ groups: [AuthorGroup], board: BoldBoardData) -> some View {
-        if !groups.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                SectionTitle(text: title)
-                ForEach(groups) { card($0, board: board) }
-            }
-        }
-    }
-
-    /// Every answer is a take (migration 0208), so each person's predictions hang
-    /// on theirs: a reply row into its thread and the predictions behind View take.
-    @ViewBuilder
-    private func card(_ group: AuthorGroup, board: BoldBoardData) -> some View {
-        if let take = post.comments.first(where: { $0.authorId == group.id && $0.postedWithPick }) {
-            VStack(alignment: .leading, spacing: 8) {
-                TakeCardView(
-                    post: post, comment: take, showsReplyCount: true, collapsesPicks: true,
-                    threadDestination: { AnyView(TakeThreadView(viewModel: viewModel, postId: post.id, takeId: take.id)) },
-                    boldPredictions: group.predictions, boldBoard: board
-                )
-                if group.isViewer, post.isTakingPicks(at: Date()) {
-                    Label("Predictions locked in", systemImage: "lock.fill").monoLabel(10, tracking: 0.08)
-                }
-            }
-        } else {
-            legacyCard(group, board: board)
-        }
-    }
-
-    /// A person whose predictions predate their take (a read racing the answer landing).
-    private func legacyCard(_ group: AuthorGroup, board: BoldBoardData) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 8) {
-                Avatar(name: group.author, url: group.avatarURL, size: 28)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(group.author).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
-                    if let username = group.username {
-                        Text("@\(username)").font(.sans(12)).foregroundStyle(Theme.fgMuted)
-                    }
-                }
-                if group.isViewer {
-                    Text("You").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
-                }
-                Spacer()
-            }
-            ForEach(group.predictions) { prediction in
-                BoldQuote(text: prediction.body, target: prediction.target, board: board)
-            }
-            if group.isViewer, post.isTakingPicks(at: Date()) {
-                Label("Predictions locked in", systemImage: "lock.fill").monoLabel(10, tracking: 0.08)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .well()
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(group.author)'s predictions")
     }
 }

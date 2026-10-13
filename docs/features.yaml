@@ -29,6 +29,10 @@ features:
     summary: Crowd data inside the take card (award leader under each pick, Power Rankings "matched N of 5" line)
     web: done
     ios: done
+  - id: huddle.take-card-layout
+    summary: One take card layout on every prompt, Bold Predictions included (reply left, View take right; your own take starts open)
+    web: done
+    ios: done
   - id: huddle.bold-predictions
     summary: Bold Predictions prompts
     web: done

@@ -17,10 +17,12 @@ struct PromptDetailView: View {
                         }
                         if post.isUnsupported {
                             UpdateAppNotice(compact: false)
-                        } else if post.isBoldPredictions {
-                            BoldPredictionsView(viewModel: viewModel, post: post)
                         } else if viewModel.canAnswer(postId) {
-                            AnswerForm(viewModel: viewModel, post: post)
+                            if post.isBoldPredictions {
+                                BoldComposer(viewModel: viewModel, post: post)
+                            } else {
+                                AnswerForm(viewModel: viewModel, post: post)
+                            }
                         } else {
                             results(post)
                             takes(post)
@@ -37,6 +39,7 @@ struct PromptDetailView: View {
                 }
             }
         }
+        .task { await viewModel.loadBoldBoard(postId) }
         .screenBackground()
         .navigationTitle("Prompt")
         .navigationBarTitleDisplayMode(.inline)
@@ -73,7 +76,7 @@ struct PromptDetailView: View {
         if post.viewerAnswered {
             YourCard(viewModel: viewModel, post: post, take: viewModel.yourTake(on: post.id))
         } else {
-            Text("You did not make picks for this prompt.")
+            Text(post.isBoldPredictions ? "You did not make predictions for this prompt." : "You did not make picks for this prompt.")
                 .monoLabel(11, tracking: 0.1)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
@@ -118,7 +121,9 @@ struct PromptDetailView: View {
                     TakeCardView(
                         post: post, comment: take, showsReplyCount: true,
                         collapsesPicks: true,
-                        threadDestination: { AnyView(TakeThreadView(viewModel: viewModel, postId: post.id, takeId: take.id)) }
+                        threadDestination: { AnyView(TakeThreadView(viewModel: viewModel, postId: post.id, takeId: take.id)) },
+                        boldPredictions: post.isBoldPredictions ? post.boldPredictions.filter { $0.authorId == take.authorId } : nil,
+                        boldBoard: post.isBoldPredictions ? viewModel.boldBoard(for: post.id) : nil
                     )
                 }
             }
@@ -134,61 +139,41 @@ struct PromptDetailView: View {
 private struct YourCard: View {
     @ObservedObject var viewModel: HuddleViewModel
     let post: PromptPost
-    /// Their take, when they left one with their picks.
+    /// Their take. Answering always leaves one (0208), so the placeholder only
+    /// covers a read that races the answer landing, as the web's does.
     let take: PromptComment?
 
-    /// Your own ticket folds away too, same as everyone else's, so a long
-    /// slate doesn't force a scroll past it to reach the other takes.
-    @State private var picksShown = false
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                if let take {
-                    Avatar(name: take.author, url: take.authorAvatarURL, size: 28)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(take.author).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
-                        if let username = take.authorUsername {
-                            Text("@\(username)").font(.sans(12)).foregroundStyle(Theme.fgMuted)
-                        }
-                    }
-                }
-                Text("You").monoLabel(9, weight: .bold, tracking: 0.08, color: Theme.hiddenText)
-                Spacer()
-                if let take {
-                    Text(take.createdAt, style: .relative).font(.mono(10)).foregroundStyle(Theme.fgMuted)
-                }
-            }
-            if let take, !take.body.isEmpty {
-                Text(take.body).font(.sans(16)).foregroundStyle(Theme.fg)
-            }
-            if picksShown { picks }
-            HStack(spacing: 12) {
-                Label("Picks locked in", systemImage: "lock.fill").monoLabel(10, tracking: 0.08)
-                if let points = post.viewerPointsAwarded {
-                    ResultBadge(text: "+\(points)", tone: points > 0 ? .good : .bad)
-                }
-                Spacer(minLength: 0)
-                Button { picksShown.toggle() } label: {
-                    Text(picksShown ? "Hide take" : "View take")
-                        .monoLabel(10, weight: .semibold, tracking: 0.08)
-                        .frame(minHeight: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(.isButton)
-                if let take { replyLink(take) }
-            }
+        let comment = take ?? PromptComment(
+            id: post.id, author: "You", body: "", createdAt: post.createdAt, isViewer: true,
+            postedWithPick: true, response: nil, replies: []
+        )
+        TakeCardView(
+            post: post, comment: comment, showsReplyCount: true, collapsesPicks: true,
+            threadDestination: take.map { take in
+                { AnyView(TakeThreadView(viewModel: viewModel, postId: post.id, takeId: take.id)) }
+            },
+            picksContent: { AnyView(picks) },
+            footer: post.viewerPointsAwarded == nil ? nil : { AnyView(points) },
+            startsOpen: true
+        )
+    }
+
+    @ViewBuilder
+    private var points: some View {
+        if let points = post.viewerPointsAwarded {
+            ResultBadge(text: "+\(points)", tone: points > 0 ? .good : .bad)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .well()
-        .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder
     private var picks: some View {
-        if post.isPowerRankings {
+        if post.isBoldPredictions {
+            let board = viewModel.boldBoard(for: post.id)
+            ForEach(post.boldPredictions.filter(\.isViewer)) { prediction in
+                BoldQuote(text: prediction.body, target: prediction.target, board: board)
+            }
+        } else if post.isPowerRankings {
             PowerRankingsBoard(post: post)
         } else if post.isWeeklyAwards {
             WeeklyAwardsBallot(post: post, response: post.viewerResponse ?? [:])
@@ -199,21 +184,6 @@ private struct YourCard: View {
                 SlotResultsView(post: post, slot: slot)
             }
         }
-    }
-
-    private func replyLink(_ take: PromptComment) -> some View {
-        NavigationLink {
-            TakeThreadView(viewModel: viewModel, postId: post.id, takeId: take.id)
-        } label: {
-            Label(
-                take.replies.isEmpty ? "Reply" : "\(take.replies.count) \(take.replies.count == 1 ? "reply" : "replies")",
-                systemImage: "bubble.left"
-            )
-            .monoLabel(10, weight: .semibold, tracking: 0.1)
-            .frame(minHeight: 32)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 }
 
