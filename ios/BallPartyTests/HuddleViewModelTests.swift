@@ -305,6 +305,19 @@ final class HuddleViewModelTests: XCTestCase {
         ])
     }
 
+    func test_answers_withoutWords_listAfterTakesWithWords_friendsFirst() async throws {
+        let sam = client.addProfile(named: "Sam")
+        let quiet = client.addProfile(named: "Quiet")
+        let post = client.addPost("Locked", status: "locked", locksIn: -60)
+        client.anotherPlayerPosts("Loud take", on: post, by: sam)
+        client.anotherPlayerPosts("", on: post, by: quiet)
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.otherTakes(on: post.id).map(\.author), ["Sam"])
+        XCTAssertEqual(viewModel.otherAnswers(on: post.id).map(\.author), ["Quiet"])
+        XCTAssertTrue(viewModel.friendAnswers(on: post.id).isEmpty)
+    }
+
     func test_tickets_stayHiddenWhileAPostIsStillOpen() async throws {
         let sam = client.addProfile(named: "Sam")
         let post = client.addPost("Still open")
@@ -658,7 +671,7 @@ final class HuddleViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
     }
 
-    func test_lockIn_withoutATakeSendsNoComment() async throws {
+    func test_lockIn_withoutWordsSendsNoCommentAndLeavesAnEmptyTake() async throws {
         let post = client.addPost("One game")
         await viewModel.load()
         viewModel.toggle(post.options[0], in: post.slotId, of: post.id)
@@ -667,7 +680,9 @@ final class HuddleViewModelTests: XCTestCase {
         await viewModel.submitAnswer(post.id)
 
         XCTAssertEqual(client.submissions.map(\.comment), [nil])
-        XCTAssertTrue(try onlyPost().comments.isEmpty)
+        // The server still leaves a take for the answer (0208), with nothing written.
+        XCTAssertEqual(try onlyPost().comments.map(\.body), [""])
+        XCTAssertEqual(viewModel.yourTake(on: post.id)?.hasWords, false)
     }
 
     func test_lockIn_clearsTheDraftOnceItLands() async throws {
@@ -730,6 +745,16 @@ final class HuddleViewModelTests: XCTestCase {
         viewModel.toggle(post.options[0], in: post.slotId, of: post.id)
         await viewModel.submitAnswer(post.id)
 
+        XCTAssertEqual(viewModel.otherTakes(on: post.id).map(\.body), ["Hot take"])
+    }
+
+    func test_takesOnScreen_aLockedPromptShowsOtherPlayersTakesToSomeoneWhoSkippedIt() async throws {
+        let sam = client.addProfile(named: "Sam")
+        let post = client.addPost("Locked chat", status: "locked", locksIn: -60)
+        client.anotherPlayerPosts("Hot take", on: post, by: sam)
+        await viewModel.load()
+
+        XCTAssertFalse(viewModel.posts.first?.viewerAnswered ?? true)
         XCTAssertEqual(viewModel.otherTakes(on: post.id).map(\.body), ["Hot take"])
     }
 

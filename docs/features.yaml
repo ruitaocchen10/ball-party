@@ -41,6 +41,11 @@ features:
     summary: Friends' takes lead a prompt's discussion, above Other takes
     web: done
     ios: done
+  - id: huddle.every-answer-is-a-take
+    summary: Every answer is a take, so every card on a prompt has a comment link and picks behind View take
+    web: done
+    ios: done
+    note: Answering a prompt, or locking in Bold Predictions, always leaves a take (migration 0208), empty when the player wrote nothing, so a card with only picks still has a thread, a reply count and reply notifications; Bold Predictions cards show the person's predictions behind View take. Order on a prompt's page, for a reader who has answered or once the prompt has locked or resolved (before that, other players' takes stay hidden): Friend takes, Friend answers (no text), Other takes, Other answers. The Profile Takes tab still lists only takes with words.
   - id: huddle.search
     summary: Search the feed
     web: done

@@ -102,7 +102,9 @@ struct PromptDetailView: View {
     @ViewBuilder
     private func takes(_ post: PromptPost) -> some View {
         takeSection("Friend takes", post: post, takes: viewModel.friendTakes(on: post.id))
+        takeSection("Friend answers", post: post, takes: viewModel.friendAnswers(on: post.id))
         takeSection("Other takes", post: post, takes: viewModel.otherTakes(on: post.id))
+        takeSection("Other answers", post: post, takes: viewModel.otherAnswers(on: post.id))
     }
 
     @ViewBuilder

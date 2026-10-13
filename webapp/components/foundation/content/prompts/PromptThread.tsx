@@ -28,17 +28,18 @@ function PickThread({ post, displayName, avatarUrl, username, viewerCanAnswer }:
   const now = usePromptDeadlineNow(post);
   const canSubmit = viewerCanAnswer && isPromptOpenForAnswers(post, now) && !post.viewerAnswered;
   const viewerTake = post.comments.find((item) => item.isViewer && item.postedWithPick);
-  // A response remains the social contract for account readers. Public
-  // visitors have no way to make a response, so the discussion is readable
-  // rather than presenting an inaccessible gated feed.
-  const otherTakes = post.comments.filter((item) => !item.isViewer && !item.isFriend);
-  // A friend's take is read before anyone else's.
-  const friendTakes = post.comments.filter((item) => !item.isViewer && item.isFriend);
+  // Every answer is a take, empty when the player wrote nothing. Friends lead,
+  // then takes with words, then bare answers — friends' bare answers first.
+  const others = post.comments.filter((item) => !item.isViewer);
+  const withWords = (item: Comment) => item.body.trim() !== "";
+  const friendTakes = others.filter((item) => item.isFriend && withWords(item));
+  const friendAnswers = others.filter((item) => item.isFriend && !withWords(item));
+  const otherTakes = others.filter((item) => !item.isFriend && withWords(item));
+  const otherAnswers = others.filter((item) => !item.isFriend && !withWords(item));
   const points = totalPoints(post);
 
-  // A viewer who answered without leaving a take still gets a card up top —
-  // just one with no reply thread, since there's no real comment row to
-  // attach a reply to.
+  // Answering always leaves a take (0208), so the viewer's card normally has a
+  // thread; the placeholder only covers a read that races the answer landing.
   const youComment: Comment | null = post.viewerAnswered
     ? (viewerTake ?? { id: `you-${post.id}`, author: displayName, body: "", createdAt: post.createdAt, isViewer: true, postedWithPick: true, replies: [] })
     : null;
@@ -75,10 +76,13 @@ function PickThread({ post, displayName, avatarUrl, username, viewerCanAnswer }:
           <ShareTakeButton post={post} responses={post.viewerResponse ?? {}} />
         ) : null}
 
-        {(post.viewerAnswered || !viewerCanAnswer) ? (
+        {/* Account readers unlock the discussion by answering, or when the prompt closes (nothing left to copy). Public visitors can never answer, so it is simply readable. */}
+        {(post.viewerAnswered || !viewerCanAnswer || !isPromptOpenForAnswers(post, now)) ? (
           <>
             <TakeList label="Friend takes" post={post} takes={friendTakes} />
+            <TakeList label="Friend answers" post={post} takes={friendAnswers} />
             <TakeList label="Other takes" post={post} takes={otherTakes} />
+            <TakeList label="Other answers" post={post} takes={otherAnswers} />
           </>
         ) : null}
       </div>

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
@@ -46,7 +46,8 @@ function boldPost(overrides: Partial<Post> = {}): Post {
 const lockedPost = () => boldPost({ status: "locked", lockAt: "2026-10-07T12:00:00.000Z" });
 
 function prediction(id: string, body: string, target: BoldPrediction["target"], overrides: Partial<BoldPrediction> = {}): BoldPrediction {
-  return { id, author: "Ruitao", authorUsername: "ruitao", isViewer: true, body, target, createdAt: "2099-10-02T12:00:00.000Z", ...overrides };
+  const merged = { id, author: "Ruitao", authorUsername: "ruitao", isViewer: true, body, target, createdAt: "2099-10-02T12:00:00.000Z", ...overrides };
+  return { authorId: `profile-${merged.author}`, ...merged };
 }
 
 function data(predictions: BoldPrediction[], players: Record<string, PlayerResult> = {}): BoldPredictionBoardData {
@@ -55,6 +56,11 @@ function data(predictions: BoldPrediction[], players: Record<string, PlayerResul
 
 function actionsMock(error: string | null = null) {
   return { submit: vi.fn().mockResolvedValue({ error }) } satisfies BoldPredictionActions;
+}
+
+/** Every take card keeps its picks behind View take; open them all. */
+function openAllTakes() {
+  for (const button of screen.getAllByRole("button", { name: "View take" })) fireEvent.click(button);
 }
 
 const found = (...players: PlayerResult[]): PlayerSearch => vi.fn(async () => ({ players, error: null }));
@@ -230,6 +236,7 @@ it("shows a locked-in response read-only with everyone else's predictions, befor
   render(<BoldPredictionsBoard post={boldPost()} data={data([theirs, ...mine])} viewerCanAnswer actions={actionsMock()} />);
 
   expect(screen.getByText("Predictions locked in")).toBeInTheDocument();
+  openAllTakes();
   expect(screen.getByText("“Theirs”")).toBeInTheDocument();
   // One card each, with the viewer's first.
   const cards = screen.getAllByRole("article");
@@ -257,6 +264,9 @@ it("reveals everyone's predictions with their tags once the post has locked", ()
 
   expect(screen.getByRole("heading", { name: "Other takes" })).toBeInTheDocument();
   expect(screen.queryByText("4 predictions")).not.toBeInTheDocument();
+  // Hidden until asked for, like every other take's picks.
+  expect(screen.queryByText("“Packers are frauds”")).not.toBeInTheDocument();
+  openAllTakes();
   for (const body of ["Bills beat the Chiefs", "Packers are frauds", "Mahomes is MVP", "Packers lose again"]) {
     expect(screen.getByText(`“${body}”`)).toBeInTheDocument();
   }
@@ -266,6 +276,16 @@ it("reveals everyone's predictions with their tags once the post has locked", ()
   expect(within(list[0]).getByText(/Matchup: Bills @ Chiefs/)).toBeInTheDocument();
   expect(within(list[2]).getByText(/Player: Patrick Mahomes/)).toBeInTheDocument();
   expect(within(list[1]).getByText(/Team: Packers/)).toBeInTheDocument();
+});
+
+it("gives each predictions card a comment link into its take and a View take control", () => {
+  const post = { ...lockedPost(), comments: [
+    { id: "take-sam", authorId: "profile-Sam", author: "Sam", body: "", createdAt: "2026-10-02T12:00:00.000Z", isViewer: false, postedWithPick: true, replies: [] },
+  ] };
+  render(<BoldPredictionsBoard post={post} data={data(revealed)} viewerCanAnswer actions={actionsMock()} />);
+
+  expect(screen.getByRole("link", { name: "Comment on Sam's take" })).toHaveAttribute("href", "/prompts/post-1/takes/take-sam");
+  expect(screen.getAllByRole("button", { name: "View take" })).toHaveLength(3);
 });
 
 it("says so when a locked post has no predictions", () => {

@@ -65,7 +65,8 @@ export default async function ProfilePage(props: PageProps<"/profile">) {
   const takeHistory = (takeRows?.data ?? []).flatMap((take) => {
     const post = promptFeed?.find((candidate) => candidate.id === take.post_id);
     const comment = post?.comments.find((candidate) => candidate.id === take.id);
-    return post && comment ? [{ post, comment }] : [];
+    // Answering leaves an empty take (0208); the history is the ones with words.
+    return post && comment && comment.body.trim() ? [{ post, comment }] : [];
   });
   const pendingRequests = (requests.data ?? []).filter((row) => row.direction === "incoming").length;
   const friendsFailed = friends?.error || blocked?.error || requests.error;

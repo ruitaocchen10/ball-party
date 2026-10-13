@@ -82,8 +82,14 @@ struct TakeCardView: View {
     /// take (the friends feed). `contextDestination` opens that prompt.
     var contextTitle: String?
     var contextDestination: (() -> AnyView)?
+    /// A Bold Predictions take's picks are its author's predictions (read from
+    /// the board), not a ticket. They sit behind View take like any other.
+    var boldPredictions: [BoldPrediction]?
+    var boldBoard: BoldBoardData?
 
     @State private var picksShown = false
+
+    private var hasPicks: Bool { comment.response != nil || boldPredictions != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -109,17 +115,23 @@ struct TakeCardView: View {
                     .font(.sans(16))
                     .foregroundStyle(Theme.fg)
             }
-            if let response = comment.response, !collapsesPicks || picksShown {
-                // `collapsesPicks` already gates this whole ticket behind "View
-                // take" above; a second, inner fold would make the reader tap
-                // twice to see a matchup slate in full.
-                TicketView(post: post, response: response)
+            if !collapsesPicks || picksShown {
+                if let boldPredictions, let boldBoard {
+                    ForEach(boldPredictions) { prediction in
+                        BoldQuote(text: prediction.body, target: prediction.target, board: boldBoard)
+                    }
+                } else if let response = comment.response {
+                    // `collapsesPicks` already gates this whole ticket behind "View
+                    // take" above; a second, inner fold would make the reader tap
+                    // twice to see a matchup slate in full.
+                    TicketView(post: post, response: response)
+                }
             }
-            if showsReplyCount || (collapsesPicks && comment.response != nil) {
+            if showsReplyCount || (collapsesPicks && hasPicks) {
                 HStack(spacing: 12) {
                     if showsReplyCount { replyRow }
                     Spacer(minLength: 0)
-                    if collapsesPicks, comment.response != nil {
+                    if collapsesPicks, hasPicks {
                         Button { picksShown.toggle() } label: {
                             Text(picksShown ? "Hide take" : "View take")
                                 .monoLabel(10, weight: .semibold, tracking: 0.08)
