@@ -45,6 +45,12 @@ it("shows the viewer's own ballot with each choice's share", () => {
   expect(screen.getByText("30%")).toBeInTheDocument();
 });
 
+it("names the crowd's leader under a pick that is not winning, and marks one that is", () => {
+  render(<WeeklyAwardsBallot post={post} response={{ "s-winner": ["opt-BUF"], "s-off": ["opt-mahomes"] }} />);
+  expect(screen.getByText("Leader: KC 70%")).toBeInTheDocument();
+  expect(screen.getByText("Crowd's pick")).toBeInTheDocument();
+});
+
 it("answers a player slot with the searched player's directory id, not an option id", async () => {
   vi.resetModules();
   vi.doMock("@/lib/foundation/content/prompts/players", async (importOriginal) => ({

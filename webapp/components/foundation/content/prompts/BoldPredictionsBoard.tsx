@@ -8,7 +8,7 @@ import { Button } from "@/components/foundation/ui-kit/Button";
 import { AuthorIdentity } from "./AuthorIdentity";
 import { BoldQuote } from "./BoldQuote";
 import { BoldTagPicker } from "./BoldTagPicker";
-import { TakeCard } from "./TakeCard";
+import { PromptTakeThread } from "./PromptTakeThread";
 import { usePromptDeadlineNow } from "./usePromptDeadline";
 import {
   BOLD_BODY_MAX,
@@ -20,7 +20,7 @@ import {
 } from "@/lib/foundation/content/prompts/boldPredictions";
 import { isPromptOpenForAnswers } from "@/lib/foundation/content/prompts/logic";
 import type { PlayerResult, PlayerSearch } from "@/lib/foundation/content/prompts/players";
-import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
+import type { Post } from "@/lib/foundation/content/prompts/types";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/foundation/ui-kit/Badge";
 
@@ -74,31 +74,45 @@ export function BoldPredictionsBoard({ post, data, viewerCanAnswer, displayName 
     wasOpen.current = open;
   }, [open, router]);
 
-  if (open && !answered) {
-    return (
-      <section aria-label="Your bold predictions" className="mt-5 w-full pb-16">
-        {viewerCanAnswer ? (
-          <PredictionComposer
-            post={post}
-            data={tagData}
-            displayName={displayName}
-            avatarUrl={avatarUrl}
-            username={username}
-            act={act}
-            onPlayerFound={(player) => setFound((current) => ({ ...current, [player.id]: player }))}
-            playerSearch={playerSearch}
-            onSubmitted={() => router.refresh()}
-          />
-        ) : (
-          <p className="rounded-card border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">
-            <Link href={`/login?next=/prompts/${post.id}`} className="font-semibold text-fg underline">Sign up</Link> to make your bold predictions. Lock yours in to see everyone else&apos;s.
-          </p>
-        )}
-      </section>
-    );
-  }
+  const predictionsOf = (authorId: string | undefined) => data.predictions.filter((prediction) => prediction.authorId === authorId);
+  const viewerId = data.predictions.find((prediction) => prediction.isViewer)?.authorId;
 
-  return <RevealedPredictions post={post} predictions={data.predictions} data={tagData} open={open} avatarUrl={avatarUrl} />;
+  const composer = viewerCanAnswer ? (
+    <PredictionComposer
+      post={post}
+      data={tagData}
+      displayName={displayName}
+      avatarUrl={avatarUrl}
+      username={username}
+      act={act}
+      onPlayerFound={(player) => setFound((current) => ({ ...current, [player.id]: player }))}
+      playerSearch={playerSearch}
+      onSubmitted={() => router.refresh()}
+    />
+  ) : (
+    <p className="rounded-card border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">
+      <Link href={`/login?next=/prompts/${post.id}`} className="font-semibold text-fg underline">Sign up</Link> to make your bold predictions. Lock yours in to see everyone else&apos;s.
+    </p>
+  );
+
+  return (
+    <PromptTakeThread
+      post={post}
+      displayName={displayName}
+      avatarUrl={avatarUrl}
+      username={username}
+      viewerCanAnswer={viewerCanAnswer}
+      bold={{
+        composer,
+        answered,
+        mine: <BoldTakePredictions predictions={predictionsOf(viewerId)} data={tagData} />,
+        predictionsBy: (authorId) => {
+          const predictions = predictionsOf(authorId);
+          return predictions.length ? <BoldTakePredictions predictions={predictions} data={tagData} /> : null;
+        },
+      }}
+    />
+  );
 }
 
 /** Drafts live in the browser until Lock in; only then does anything reach the server. */
@@ -282,69 +296,4 @@ export function BoldTakePredictions({ predictions, data }: { predictions: BoldPr
       ))}
     </ul>
   );
-}
-
-function RevealedPredictions({ post, predictions, data, open, avatarUrl }: { post: Post; predictions: BoldPrediction[]; data: TagData; open: boolean; avatarUrl: string | null }) {
-  const groups = byAuthor(predictions);
-  const mine = groups.find((group) => group.isViewer);
-  const friends = groups.filter((group) => !group.isViewer && group.isFriend);
-  const others = groups.filter((group) => !group.isViewer && !group.isFriend);
-
-  // Every answer is a take (0208), so each person's predictions hang on theirs: a comment icon into its thread, and the predictions behind View take.
-  const card = (group: (typeof groups)[number]) => {
-    const take = post.comments.find((comment) => comment.authorId === group.authorId && comment.postedWithPick);
-    const comment: Comment = take ?? { id: `bold-${group.authorId}`, authorId: group.authorId, author: group.author, authorUsername: group.authorUsername, body: "", createdAt: group.predictions[0].createdAt, isViewer: group.isViewer, postedWithPick: true, replies: [] };
-    return (
-      <TakeCard
-        key={group.authorId}
-        comment={comment}
-        isYou={group.isViewer}
-        avatarUrl={group.isViewer ? avatarUrl : null}
-        commentHref={take ? `/prompts/${post.id}/takes/${take.id}` : undefined}
-        collapsedByDefault
-        footer={open && group.isViewer ? <span className="type-label text-fg-muted">Predictions locked in</span> : undefined}
-      >
-        <BoldTakePredictions predictions={group.predictions} data={data} />
-      </TakeCard>
-    );
-  };
-
-  // The same shape as a pick prompt's thread: your own card first, then the other takes under a small label.
-  return (
-    <section aria-label="Revealed predictions" className="mt-5 w-full pb-16">
-      {predictions.length === 0 ? (
-        <p className="rounded-card border border-dashed border-line bg-surface-raised px-4 py-4 text-sm text-fg-muted">
-          {post.status === "void" ? "This post was voided." : "Nobody made a prediction before this locked."}
-        </p>
-      ) : (
-        <div className="flex flex-col gap-5">
-          {mine ? card(mine) : null}
-          {friends.length ? (
-            <div className="flex flex-col gap-3" aria-label="Friend takes">
-              <h2 className="px-1 type-label text-fg-muted">Friend takes</h2>
-              {friends.map(card)}
-            </div>
-          ) : null}
-          {others.length ? (
-            <div className="flex flex-col gap-3" aria-label="Other takes">
-              <h2 className="px-1 type-label text-fg-muted">Other takes</h2>
-              {others.map(card)}
-            </div>
-          ) : null}
-        </div>
-      )}
-    </section>
-  );
-}
-
-/** One response per person: a viewer's predictions sit together on a single card, in first-seen order. */
-function byAuthor(predictions: BoldPrediction[]) {
-  const groups = new Map<string, { authorId: string; author: string; authorUsername: string | null; isViewer: boolean; isFriend: boolean; predictions: BoldPrediction[] }>();
-  for (const prediction of predictions) {
-    const group = groups.get(prediction.authorId) ?? { authorId: prediction.authorId, author: prediction.author, authorUsername: prediction.authorUsername, isViewer: prediction.isViewer, isFriend: Boolean(prediction.isFriend), predictions: [] };
-    group.predictions.push(prediction);
-    groups.set(prediction.authorId, group);
-  }
-  // Your own response leads, like your take does on a pick prompt.
-  return [...groups.values()].sort((left, right) => Number(right.isViewer) - Number(left.isViewer));
 }

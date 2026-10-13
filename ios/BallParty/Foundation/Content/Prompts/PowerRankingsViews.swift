@@ -472,27 +472,68 @@ struct PowerRankingsBoard: View {
             if !ranked.isEmpty {
                 let columns = ranked.count > 5 ? 2 : 1
                 let perColumn = (ranked.count + columns - 1) / columns
-                HStack(alignment: .top, spacing: 6) {
-                    ForEach(0..<columns, id: \.self) { column in
-                        VStack(spacing: 6) {
-                            ForEach(column * perColumn ..< min(ranked.count, (column + 1) * perColumn), id: \.self) { index in
-                                PowerRankRow(
-                                    rank: index + 1,
-                                    option: ranked[index],
-                                    movement: showsMovement
-                                        ? PowerRankingMovement(
-                                            previous: ranked[index].teamCode.flatMap { post.previousRankByTeam[$0] },
-                                            current: index + 1
-                                        )
-                                        : nil,
-                                    compact: columns == 2
-                                )
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 6) {
+                        ForEach(0..<columns, id: \.self) { column in
+                            VStack(spacing: 6) {
+                                ForEach(column * perColumn ..< min(ranked.count, (column + 1) * perColumn), id: \.self) { index in
+                                    PowerRankRow(
+                                        rank: index + 1,
+                                        option: ranked[index],
+                                        movement: showsMovement
+                                            ? PowerRankingMovement(
+                                                previous: ranked[index].teamCode.flatMap { post.previousRankByTeam[$0] },
+                                                current: index + 1
+                                            )
+                                            : nil,
+                                        compact: columns == 2
+                                    )
+                                }
                             }
+                            .frame(maxWidth: .infinity, alignment: .top)
                         }
-                        .frame(maxWidth: .infinity, alignment: .top)
                     }
+                    PowerRankingCrowdLine(post: post, slot: slot, ranked: ranked)
                 }
             }
+        }
+    }
+}
+
+/// Under a ballot: the crowd's top five as small logos, dimmed where the ballot
+/// left that team out of its own top five, and how many it matched. It stands
+/// in for the crowd panel that used to sit between the cards.
+struct PowerRankingCrowdLine: View {
+    let post: PromptPost
+    let slot: PromptSlot
+    let ranked: [PromptOption]
+
+    /// How many of the crowd's top-five teams this ballot also has in its top five.
+    static func matched(crowd: [UUID], ranked: [UUID]) -> Int {
+        let mine = Set(ranked.prefix(5))
+        return crowd.filter(mine.contains).count
+    }
+
+    var body: some View {
+        let optionById = Dictionary(slot.options.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let crowd = post.powerRankingTopFive.compactMap { optionById[$0.optionId] }
+        if !crowd.isEmpty {
+            let mine = Set(ranked.prefix(5).map(\.id))
+            let matched = Self.matched(crowd: crowd.map(\.id), ranked: ranked.map(\.id))
+            VStack(alignment: .leading, spacing: 8) {
+                LineRule()
+                HStack(spacing: 6) {
+                    Text("Crowd's top 5").monoLabel(10, tracking: 0.1)
+                    Spacer(minLength: 8)
+                    ForEach(crowd) { option in
+                        PowerTeamMark(option: option, size: 26)
+                            .opacity(mine.contains(option.id) ? 1 : 0.35)
+                    }
+                    Text("matched \(matched) of \(crowd.count)").monoLabel(10, tracking: 0.06)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("The crowd's top five: \(crowd.map(\.label).joined(separator: ", ")). This ballot matched \(matched) of \(crowd.count).")
         }
     }
 }

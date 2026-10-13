@@ -117,6 +117,8 @@ export function WeeklyAwardsBallot({ post, response }: { post: Post; response: R
         const option = slot.options.find((candidate) => candidate.id === response[slot.id]?.[0]);
         const percent = option ? post.aggregate?.[slot.id]?.[option.id] : undefined;
         const code = option?.teamCode ?? option?.teamCodes?.[0];
+        // Where the crowd landed, so the share beside the pick has something to compare with.
+        const crowd = option ? topAwardPicks(slot, post.aggregate?.[slot.id])[0] : undefined;
         return (
           <div
             key={slot.id}
@@ -135,6 +137,15 @@ export function WeeklyAwardsBallot({ post, response }: { post: Post; response: R
               <span className="min-w-0 flex-1 truncate font-slab text-2xl uppercase">{option?.label ?? "—"}</span>
             </dd>
             {percent !== undefined ? <p className={`self-end font-mono text-xs tabular-nums ${code ? "text-white/80" : "text-fg-muted"}`}><span>{percent}%</span></p> : null}
+            {option && crowd ? (
+              (percent ?? 0) >= crowd.percent ? (
+                <p className="type-label font-semibold">Crowd&apos;s pick</p>
+              ) : (
+                <p className={`truncate text-sm ${code ? "text-white/75" : "text-fg-muted"}`}>
+                  Leader: {crowd.option.label} {crowd.percent}%
+                </p>
+              )
+            ) : null}
           </div>
         );
       })}

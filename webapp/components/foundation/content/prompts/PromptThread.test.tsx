@@ -87,7 +87,7 @@ describe("PromptThread", () => {
     expect(screen.queryByLabelText("Make your picks")).not.toBeInTheDocument();
   });
 
-  it("collapses power rankings ballots — the viewer's own included — until opened", () => {
+  it("opens the viewer's own power rankings ballot and folds the others until opened", () => {
     const teams = ["Bills", "Chiefs", "Eagles", "Lions", "Ravens"].map((label) => ({ id: label.toLowerCase(), label, teamCode: label.slice(0, 3).toUpperCase() }));
     const ballot: Post = {
       ...post(true),
@@ -102,13 +102,14 @@ describe("PromptThread", () => {
     };
     render(<PromptThread post={ballot} displayName="Demo Reader" avatarUrl={null} />);
 
-    // Both the viewer's own board and Tasha's start folded away.
-    expect(screen.getAllByRole("button", { name: "View take" })).toHaveLength(2);
-    expect(screen.queryAllByLabelText("Your power rankings")).toHaveLength(0);
+    // The viewer's own board starts open; Tasha's starts folded away.
+    expect(screen.getAllByRole("button", { name: "View take" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Hide take" })).toHaveLength(1);
+    expect(screen.getAllByLabelText("Your power rankings")).toHaveLength(1);
 
     // Movement is measured against the viewer's own last ballot, which says
     // nothing about Tasha's, so only the viewer's board carries it.
-    for (const button of screen.getAllByRole("button", { name: "View take" })) fireEvent.click(button);
+    fireEvent.click(screen.getByRole("button", { name: "View take" }));
     const [yours, tashas] = screen.getAllByLabelText("Your power rankings");
     expect(yours.querySelectorAll("li > span:last-child.bg-\\[\\#f7f5ee\\]").length).toBeGreaterThan(0);
     expect(tashas.querySelectorAll("li > span.bg-\\[\\#f7f5ee\\]")).toHaveLength(0);
@@ -132,7 +133,9 @@ describe("PromptThread", () => {
     };
     render(<PromptThread post={custom} displayName="Demo Reader" avatarUrl={null} />);
 
-    expect(screen.getAllByRole("button", { name: "View take" })).toHaveLength(2);
+    // Yours is open; the other reader's waits to be opened.
+    expect(screen.getAllByRole("button", { name: "Hide take" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "View take" })).toHaveLength(1);
   });
 
   it("shows each author's profile picture on their take", () => {

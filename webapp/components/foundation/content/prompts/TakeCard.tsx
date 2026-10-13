@@ -23,6 +23,7 @@ export function TakeCard({
   composer,
   thread,
   collapsedByDefault = false,
+  expandedByDefault = false,
   replyCount,
   context,
 }: {
@@ -40,13 +41,15 @@ export function TakeCard({
   thread?: ReactNode;
   /** Other people's pick tickets stay skim-friendly until the reader asks to open one. */
   collapsedByDefault?: boolean;
+  /** Foldable like the others, but starts open: the viewer's own take on the prompt page. */
+  expandedByDefault?: boolean;
   /** For a take whose replies aren't loaded: the count to show instead of `comment.replies.length`. */
   replyCount?: number;
   /** Sits between the author line and the take: what the take is answering (the friends feed's prompt strip). */
   context?: ReactNode;
 }) {
-  const [takeExpanded, setTakeExpanded] = useState(!collapsedByDefault);
-  const canCollapseTake = collapsedByDefault && Boolean(children);
+  const [takeExpanded, setTakeExpanded] = useState(!collapsedByDefault || expandedByDefault);
+  const canCollapseTake = (collapsedByDefault || expandedByDefault) && Boolean(children);
   const hasBottomRow = Boolean(commentHref || canCollapseTake || footer);
 
   return (

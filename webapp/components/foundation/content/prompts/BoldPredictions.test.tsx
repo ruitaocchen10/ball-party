@@ -50,6 +50,16 @@ function prediction(id: string, body: string, target: BoldPrediction["target"], 
   return { authorId: `profile-${merged.author}`, ...merged };
 }
 
+/** Every answer leaves a take (0208), and the thread is built from those takes. */
+function withTakes(post: Post, predictions: BoldPrediction[]): Post {
+  const authors = [...new Map(predictions.map((item) => [item.authorId, item])).values()];
+  const comments = authors.map((item) => ({
+    id: `take-${item.author}`, authorId: item.authorId, author: item.author, authorUsername: item.authorUsername, body: "",
+    createdAt: item.createdAt, isViewer: item.isViewer, isFriend: item.isFriend, postedWithPick: true, replies: [],
+  }));
+  return { ...post, comments, viewerAnswered: authors.some((item) => item.isViewer) };
+}
+
 function data(predictions: BoldPrediction[], players: Record<string, PlayerResult> = {}): BoldPredictionBoardData {
   return { predictions, weekGames, players };
 }
@@ -233,9 +243,8 @@ it("shows a locked-in response read-only with everyone else's predictions, befor
     prediction("b", "Mine two", { type: "team", id: "KC" }),
   ];
   const theirs = prediction("c", "Theirs", { type: "team", id: "GB" }, { author: "Sam", isViewer: false });
-  render(<BoldPredictionsBoard post={boldPost()} data={data([theirs, ...mine])} viewerCanAnswer actions={actionsMock()} />);
+  render(<BoldPredictionsBoard post={withTakes(boldPost(), [theirs, ...mine])} data={data([theirs, ...mine])} viewerCanAnswer actions={actionsMock()} />);
 
-  expect(screen.getByText("Predictions locked in")).toBeInTheDocument();
   openAllTakes();
   expect(screen.getByText("“Theirs”")).toBeInTheDocument();
   // One card each, with the viewer's first.
@@ -260,9 +269,9 @@ const revealed = [
 ];
 
 it("reveals everyone's predictions with their tags once the post has locked", () => {
-  render(<BoldPredictionsBoard post={lockedPost()} data={data(revealed, { [mahomes.id]: mahomes })} viewerCanAnswer actions={actionsMock()} />);
+  render(<BoldPredictionsBoard post={withTakes(lockedPost(), revealed)} data={data(revealed, { [mahomes.id]: mahomes })} viewerCanAnswer actions={actionsMock()} />);
 
-  expect(screen.getByRole("heading", { name: "Other takes" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Other answers" })).toBeInTheDocument();
   expect(screen.queryByText("4 predictions")).not.toBeInTheDocument();
   // Hidden until asked for, like every other take's picks.
   expect(screen.queryByText("“Packers are frauds”")).not.toBeInTheDocument();
@@ -279,19 +288,19 @@ it("reveals everyone's predictions with their tags once the post has locked", ()
 });
 
 it("gives each predictions card a comment link into its take and a View take control", () => {
-  const post = { ...lockedPost(), comments: [
-    { id: "take-sam", authorId: "profile-Sam", author: "Sam", body: "", createdAt: "2026-10-02T12:00:00.000Z", isViewer: false, postedWithPick: true, replies: [] },
-  ] };
+  const post = withTakes(lockedPost(), revealed);
   render(<BoldPredictionsBoard post={post} data={data(revealed)} viewerCanAnswer actions={actionsMock()} />);
 
-  expect(screen.getByRole("link", { name: "Comment on Sam's take" })).toHaveAttribute("href", "/prompts/post-1/takes/take-sam");
-  expect(screen.getAllByRole("button", { name: "View take" })).toHaveLength(3);
+  expect(screen.getByRole("link", { name: "Comment on Sam's take" })).toHaveAttribute("href", "/prompts/post-1/takes/take-Sam");
+  // The viewer's own card starts open; the other two wait to be opened.
+  expect(screen.getAllByRole("button", { name: "View take" })).toHaveLength(2);
+  expect(screen.getAllByRole("button", { name: "Hide take" })).toHaveLength(1);
 });
 
-it("says so when a locked post has no predictions", () => {
+it("says so when a locked post has no predictions of yours", () => {
   render(<BoldPredictionsBoard post={lockedPost()} data={data([])} viewerCanAnswer actions={actionsMock()} />);
 
-  expect(screen.getByText("Nobody made a prediction before this locked.")).toBeInTheDocument();
+  expect(screen.getByText("You did not make predictions for this prompt.")).toBeInTheDocument();
 });
 
 // ----------------------------------------------------------- card --
