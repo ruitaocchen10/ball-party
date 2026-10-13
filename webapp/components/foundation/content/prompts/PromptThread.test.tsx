@@ -45,6 +45,12 @@ describe("PromptThread", () => {
     expect(screen.getByRole("link", { name: "Comment on Tasha's take" })).toHaveAttribute("href", "/prompts/week-2/takes/tasha");
   });
 
+  it("shows other takes to a viewer who skipped the prompt once it has closed", () => {
+    render(<PromptThread post={{ ...post(false), status: "locked", lockAt: "2020-09-20T12:00:00.000Z" }} displayName="Demo Reader" avatarUrl={null} />);
+
+    expect(screen.getByText("Bijan has the volume.")).toBeInTheDocument();
+  });
+
   it("leads with friends' takes, above everyone else's", () => {
     const base = post(true);
     const withFriend: Post = { ...base, comments: [...base.comments, { id: "sam", author: "Sam", body: "CMC all day.", createdAt: "2026-09-14T14:00:00.000Z", isViewer: false, isFriend: true, postedWithPick: true, replies: [] }] };
@@ -55,6 +61,22 @@ describe("PromptThread", () => {
     expect(friends).toHaveTextContent("CMC all day.");
     expect(others).not.toHaveTextContent("CMC all day.");
     expect(friends.compareDocumentPosition(others) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("lists bare answers after the takes with words, friends' first, each with a thread link", () => {
+    const base = post(true);
+    const answer = (id: string, author: string, isFriend: boolean): Post["comments"][number] => ({ id, author, body: "", createdAt: "2026-09-14T15:00:00.000Z", isViewer: false, isFriend, postedWithPick: true, response: {}, replies: [] });
+    const withAnswers: Post = { ...base, comments: [...base.comments, answer("quiet-pal", "Quiet Pal", false), answer("quiet-friend", "Quiet Friend", true)] };
+    render(<PromptThread post={withAnswers} displayName="Demo Reader" avatarUrl={null} />);
+
+    const friendAnswers = screen.getByLabelText("Friend answers");
+    const otherTakes = screen.getByLabelText("Other takes");
+    const otherAnswers = screen.getByLabelText("Other answers");
+    expect(friendAnswers).toHaveTextContent("Quiet Friend");
+    expect(otherAnswers).toHaveTextContent("Quiet Pal");
+    expect(friendAnswers.compareDocumentPosition(otherTakes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(otherTakes.compareDocumentPosition(otherAnswers) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Comment on Quiet Pal's take" })).toHaveAttribute("href", "/prompts/week-2/takes/quiet-pal");
   });
 
   it("lets a public reader browse takes without exposing an answer form", () => {

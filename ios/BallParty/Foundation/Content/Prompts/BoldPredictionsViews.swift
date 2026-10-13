@@ -364,7 +364,28 @@ private struct BoldRevealed: View {
         }
     }
 
+    /// Every answer is a take (migration 0208), so each person's predictions hang
+    /// on theirs: a reply row into its thread and the predictions behind View take.
+    @ViewBuilder
     private func card(_ group: AuthorGroup, board: BoldBoardData) -> some View {
+        if let take = post.comments.first(where: { $0.authorId == group.id && $0.postedWithPick }) {
+            VStack(alignment: .leading, spacing: 8) {
+                TakeCardView(
+                    post: post, comment: take, showsReplyCount: true, collapsesPicks: true,
+                    threadDestination: { AnyView(TakeThreadView(viewModel: viewModel, postId: post.id, takeId: take.id)) },
+                    boldPredictions: group.predictions, boldBoard: board
+                )
+                if group.isViewer, post.isTakingPicks(at: Date()) {
+                    Label("Predictions locked in", systemImage: "lock.fill").monoLabel(10, tracking: 0.08)
+                }
+            }
+        } else {
+            legacyCard(group, board: board)
+        }
+    }
+
+    /// A person whose predictions predate their take (a read racing the answer landing).
+    private func legacyCard(_ group: AuthorGroup, board: BoldBoardData) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Avatar(name: group.author, url: group.avatarURL, size: 28)

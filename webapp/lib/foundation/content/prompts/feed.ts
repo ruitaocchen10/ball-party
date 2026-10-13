@@ -146,6 +146,7 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
   );
   const revealedByPost = new Map(revealedResults.map(({ postId, rows }) => [postId, rows]));
 
+
   return postRows.map((row) => mapPost(row, {
     slotsByPost,
     optionsBySlot,
@@ -302,6 +303,7 @@ function buildCommentTree(
 ): Comment[] {
   const toComment = (row: CommentRow): Comment => ({
     id: row.id,
+    authorId: row.author_id,
     author: nameById.get(row.author_id) ?? "Unknown",
     authorAvatarUrl: avatarById.get(row.author_id) ?? null,
     authorUsername: usernameById.get(row.author_id) ?? null,

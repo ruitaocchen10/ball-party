@@ -12,6 +12,10 @@ Before any web UI work, read `docs/design/design-system.md`: the tokens, the `Pa
 
 The web and iOS apps must offer the same features and behavior; only layout may differ. `docs/features.yaml` lists every feature with a status per platform, and `docs/parity.md` has the rules. Any change to player-facing behavior updates `features.yaml` in the same change, and either touches both clients or records the gap there with a reason and a Jira ticket. Don't reimplement server rules in a client.
 
+# Production data
+
+The `supabase` MCP server (`.mcp.json`) is connected to the production project, `ball-party` (ref `xjsbmxgnmrvqfsqcohjv`). When you need to check something in production, such as what rows exist, whether a migration is applied, or why a player sees something unexpected, query it with `mcp__supabase__execute_sql` and `list_migrations` instead of guessing from the code or the local database. Keep it to reads: use migrations in `supabase/migrations/` for any schema change, and ask before writing data.
+
 # Local development
 
 ## Database reset

@@ -136,20 +136,39 @@ final class HuddleViewModel: ObservableObject {
         post(postId)?.comments.first { $0.isViewer && $0.postedWithPick }
     }
 
-    /// Everybody else's takes — visible only to a player who has answered.
-    /// Making a pick is what unlocks the discussion, on the web too
+    /// Whether the viewer may read other players' takes and answers: once they
+    /// have answered, or once the prompt has stopped taking picks. Before that,
+    /// making a pick is what unlocks the discussion, on the web too
     /// (`PromptThread`), so a take is never a way to learn what a crowd
-    /// thinks before committing.
+    /// thinks before committing; after it, there is nothing left to copy.
+    private func canReadOthers(_ post: PromptPost) -> Bool {
+        post.viewerAnswered || !post.isTakingPicks(at: now())
+    }
+
+    /// Everybody else's takes, gated by `canReadOthers`.
+    private func comments(on postId: UUID, friends: Bool) -> [PromptComment] {
+        guard let post = post(postId), canReadOthers(post) else { return [] }
+        return post.comments.filter { !$0.isViewer && isFriend($0.authorId) == friends }
+    }
+
     func otherTakes(on postId: UUID) -> [PromptComment] {
-        guard let post = post(postId), post.viewerAnswered else { return [] }
-        return post.comments.filter { !$0.isViewer && !isFriend($0.authorId) }
+        comments(on: postId, friends: false).filter(\.hasWords)
     }
 
     /// The viewer's friends' takes, which lead the discussion; gated like
     /// `otherTakes`.
     func friendTakes(on postId: UUID) -> [PromptComment] {
-        guard let post = post(postId), post.viewerAnswered else { return [] }
-        return post.comments.filter { !$0.isViewer && isFriend($0.authorId) }
+        comments(on: postId, friends: true).filter(\.hasWords)
+    }
+
+    /// Every answer is a take, empty when the player wrote nothing. The lists
+    /// run friends first, then takes with words, then bare answers.
+    func friendAnswers(on postId: UUID) -> [PromptComment] {
+        comments(on: postId, friends: true).filter { !$0.hasWords }
+    }
+
+    func otherAnswers(on postId: UUID) -> [PromptComment] {
+        comments(on: postId, friends: false).filter { !$0.hasWords }
     }
 
     func isFriend(_ authorId: UUID?) -> Bool {

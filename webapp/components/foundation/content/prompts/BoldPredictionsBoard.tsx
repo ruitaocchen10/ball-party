@@ -8,6 +8,7 @@ import { Button } from "@/components/foundation/ui-kit/Button";
 import { AuthorIdentity } from "./AuthorIdentity";
 import { BoldQuote } from "./BoldQuote";
 import { BoldTagPicker } from "./BoldTagPicker";
+import { TakeCard } from "./TakeCard";
 import { usePromptDeadlineNow } from "./usePromptDeadline";
 import {
   BOLD_BODY_MAX,
@@ -19,7 +20,7 @@ import {
 } from "@/lib/foundation/content/prompts/boldPredictions";
 import { isPromptOpenForAnswers } from "@/lib/foundation/content/prompts/logic";
 import type { PlayerResult, PlayerSearch } from "@/lib/foundation/content/prompts/players";
-import type { Post } from "@/lib/foundation/content/prompts/types";
+import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/foundation/ui-kit/Badge";
 
@@ -97,7 +98,7 @@ export function BoldPredictionsBoard({ post, data, viewerCanAnswer, displayName 
     );
   }
 
-  return <RevealedPredictions post={post} predictions={data.predictions} data={tagData} open={open} />;
+  return <RevealedPredictions post={post} predictions={data.predictions} data={tagData} open={open} avatarUrl={avatarUrl} />;
 }
 
 /** Drafts live in the browser until Lock in; only then does anything reach the server. */
@@ -272,28 +273,41 @@ function PredictionForm({ idSuffix, initial, data, onPlayerFound, playerSearch, 
   );
 }
 
-function RevealedPredictions({ post, predictions, data, open }: { post: Post; predictions: BoldPrediction[]; data: TagData; open: boolean }) {
+/** One person's predictions, drawn inside their take card (and again on the take's own page). */
+export function BoldTakePredictions({ predictions, data }: { predictions: BoldPrediction[]; data: TagData }) {
+  return (
+    <ul className="flex flex-col gap-3 px-4 pt-4">
+      {predictions.map((prediction) => (
+        <li key={prediction.id}><BoldQuote body={prediction.body} target={prediction.target} data={data} /></li>
+      ))}
+    </ul>
+  );
+}
+
+function RevealedPredictions({ post, predictions, data, open, avatarUrl }: { post: Post; predictions: BoldPrediction[]; data: TagData; open: boolean; avatarUrl: string | null }) {
   const groups = byAuthor(predictions);
   const mine = groups.find((group) => group.isViewer);
   const friends = groups.filter((group) => !group.isViewer && group.isFriend);
   const others = groups.filter((group) => !group.isViewer && !group.isFriend);
 
-  const card = (group: (typeof groups)[number]) => (
-    <article key={group.key} aria-label={`${group.author}'s predictions`} className={`${CARD_SHELL} p-4`}>
-      <div className="flex items-center gap-2.5">
-        <AuthorIdentity name={group.author} username={group.authorUsername} />
-        {group.isViewer ? <Badge>You</Badge> : null}
-      </div>
-      <ul className="mt-4 flex flex-col gap-3">
-        {group.predictions.map((prediction) => (
-          <li key={prediction.id}><BoldQuote body={prediction.body} target={prediction.target} data={data} /></li>
-        ))}
-      </ul>
-      {open && group.isViewer ? (
-        <p className="mt-3 type-label text-fg-muted">Predictions locked in</p>
-      ) : null}
-    </article>
-  );
+  // Every answer is a take (0208), so each person's predictions hang on theirs: a comment icon into its thread, and the predictions behind View take.
+  const card = (group: (typeof groups)[number]) => {
+    const take = post.comments.find((comment) => comment.authorId === group.authorId && comment.postedWithPick);
+    const comment: Comment = take ?? { id: `bold-${group.authorId}`, authorId: group.authorId, author: group.author, authorUsername: group.authorUsername, body: "", createdAt: group.predictions[0].createdAt, isViewer: group.isViewer, postedWithPick: true, replies: [] };
+    return (
+      <TakeCard
+        key={group.authorId}
+        comment={comment}
+        isYou={group.isViewer}
+        avatarUrl={group.isViewer ? avatarUrl : null}
+        commentHref={take ? `/prompts/${post.id}/takes/${take.id}` : undefined}
+        collapsedByDefault
+        footer={open && group.isViewer ? <span className="type-label text-fg-muted">Predictions locked in</span> : undefined}
+      >
+        <BoldTakePredictions predictions={group.predictions} data={data} />
+      </TakeCard>
+    );
+  };
 
   // The same shape as a pick prompt's thread: your own card first, then the other takes under a small label.
   return (
@@ -325,12 +339,11 @@ function RevealedPredictions({ post, predictions, data, open }: { post: Post; pr
 
 /** One response per person: a viewer's predictions sit together on a single card, in first-seen order. */
 function byAuthor(predictions: BoldPrediction[]) {
-  const groups = new Map<string, { key: string; author: string; authorUsername: string | null; isViewer: boolean; isFriend: boolean; predictions: BoldPrediction[] }>();
+  const groups = new Map<string, { authorId: string; author: string; authorUsername: string | null; isViewer: boolean; isFriend: boolean; predictions: BoldPrediction[] }>();
   for (const prediction of predictions) {
-    const key = `${prediction.isViewer ? "me" : "other"}:${prediction.author}`;
-    const group = groups.get(key) ?? { key, author: prediction.author, authorUsername: prediction.authorUsername, isViewer: prediction.isViewer, isFriend: Boolean(prediction.isFriend), predictions: [] };
+    const group = groups.get(prediction.authorId) ?? { authorId: prediction.authorId, author: prediction.author, authorUsername: prediction.authorUsername, isViewer: prediction.isViewer, isFriend: Boolean(prediction.isFriend), predictions: [] };
     group.predictions.push(prediction);
-    groups.set(key, group);
+    groups.set(prediction.authorId, group);
   }
   // Your own response leads, like your take does on a pick prompt.
   return [...groups.values()].sort((left, right) => Number(right.isViewer) - Number(left.isViewer));

@@ -69,11 +69,14 @@ export type MatchupGameContext = {
 
 export type Comment = {
   id: string;
+  /** Who wrote it; lets a card that shows something other than this comment's own picks (Bold Predictions) find its take. */
+  authorId?: string;
   author: string;
   /** The author's profile picture, or null when they have none — the card then draws a generated one. */
   authorAvatarUrl?: string | null;
   /** The author's @username, or null when they have none (a guest). */
   authorUsername?: string | null;
+  /** Empty for a take whose author only answered: every answer is a take, with nothing written. */
   body: string;
   createdAt: string;
   /** True only for the signed-in reader's comment. */

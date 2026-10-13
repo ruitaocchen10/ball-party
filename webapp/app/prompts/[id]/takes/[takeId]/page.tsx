@@ -8,6 +8,7 @@ import { PromptContext } from "@/components/foundation/content/prompts/PromptCon
 import { TakeThread } from "@/components/foundation/content/prompts/TakeThread";
 import { canAnswerPrompt, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPromptById } from "@/lib/foundation/content/prompts/feed";
+import { fetchBoldPredictionBoard } from "@/lib/foundation/content/prompts/boldFeed";
 import { fetchPromptMeta } from "@/lib/foundation/content/prompts/meta";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
@@ -53,6 +54,7 @@ export default async function TakeDetailPage(props: PageProps<"/prompts/[id]/tak
   const displayName = profileResult.data?.display_name ?? (viewer ? (claims.email as string) : "Player") ?? "Player";
   const avatarUrl = profileResult.data?.avatar_url ?? null;
   const chrome = chromeIdentity(claims, profileResult.data);
+  const boldPredictions = post.templateKind === "bold_predictions" ? await fetchBoldPredictionBoard(supabase, post, viewer ? claims.sub : null) : undefined;
 
   return (
     <>
@@ -60,7 +62,7 @@ export default async function TakeDetailPage(props: PageProps<"/prompts/[id]/tak
       <DashboardHeader displayName={chrome.displayName} email={chrome.email} avatarUrl={chrome.avatarUrl} />
       <PageShell variant="dashboard" rail={<PromptContext post={post} />}>
         <PostHeroHeader post={post} backHref={`/prompts/${id}`} backLabel="All takes" />
-        <TakeThread post={post} take={take} displayName={displayName} avatarUrl={avatarUrl} viewerCanAnswer={canAnswerPrompt(claims)} />
+        <TakeThread post={post} take={take} displayName={displayName} avatarUrl={avatarUrl} viewerCanAnswer={canAnswerPrompt(claims)} boldPredictions={boldPredictions} />
       </PageShell>
     </>
   );

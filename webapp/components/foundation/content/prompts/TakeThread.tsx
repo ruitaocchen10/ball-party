@@ -7,7 +7,9 @@ import { postComment } from "@/lib/foundation/content/prompts/client";
 import { createClient } from "@/lib/supabase/client";
 import { TakeReplyComposer } from "./TakeReplyComposer";
 import { TakeCard } from "./TakeCard";
+import { BoldTakePredictions } from "./BoldPredictionsBoard";
 import { TakeResponse } from "./TakeResponse";
+import type { BoldPredictionBoardData } from "@/lib/foundation/content/prompts/boldPredictions";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
 
 /** The focused discussion screen for one take and its one-level reply thread. */
@@ -17,12 +19,15 @@ export function TakeThread({
   displayName,
   avatarUrl,
   viewerCanAnswer = true,
+  boldPredictions,
 }: {
   post: Post;
   take: Comment;
   displayName: string;
   avatarUrl: string | null;
   viewerCanAnswer?: boolean;
+  /** A Bold Predictions post's board data: the take's picks are its author's predictions. */
+  boldPredictions?: BoldPredictionBoardData;
 }) {
   const router = useRouter();
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
@@ -58,7 +63,7 @@ export function TakeThread({
         isYou={take.isViewer}
         avatarUrl={take.isViewer ? avatarUrl : null}
         commentHref={`#take-comment-${take.id}`}
-        collapsedByDefault={Boolean(takeResponse)}
+        collapsedByDefault={Boolean(takeResponse || boldPredictions)}
         composer={viewerCanAnswer ? (
           <TakeReplyComposer
             takeId={take.id}
@@ -85,7 +90,12 @@ export function TakeThread({
           </div>
         }
       >
-        {takeResponse ? <TakeResponse post={post} response={takeResponse} isViewer={take.isViewer} /> : null}
+        {boldPredictions ? (
+          <BoldTakePredictions
+            predictions={boldPredictions.predictions.filter((prediction) => prediction.authorId === take.authorId)}
+            data={boldPredictions}
+          />
+        ) : takeResponse ? <TakeResponse post={post} response={takeResponse} isViewer={take.isViewer} /> : null}
       </TakeCard>
 
 

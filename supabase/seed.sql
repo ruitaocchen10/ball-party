@@ -459,6 +459,48 @@ values
   ('00000000-0000-0000-0000-00000000e306', '00000000-0000-0000-0000-00000000a011', '00000000-0000-0000-0000-00000000d002', 'One week of tape is not a trend, but the Eagles looked like the best team on the field and my list says so.', true, null, now() - interval '6 days 2 hours'),
   ('00000000-0000-0000-0000-00000000e307', '00000000-0000-0000-0000-00000000a011', '00000000-0000-0000-0000-00000000d003', 'Kept the top three from last week and shuffled the bottom ten by point differential. Boring, but it is hard to argue with.', true, null, now() - interval '5 days 22 hours');
 
+-- Locked prompts with answers and no takes at all, for the "answers without a
+-- take" lists on a prompt's page. Demo Reader (d001) answered a008, so signing
+-- in as demo shows Friend answers (Tasha, Marcus, Priya) above Other answers
+-- (Alex, Mo). Nobody answered a009 as d001 or the curator (d002), so those
+-- accounts see the page as a player who skipped it: no one else's answers.
+insert into public.prompt_posts (
+  id, template_kind, template_name, author_id, caption, prompt_text,
+  resolution_criteria, lock_at, status, created_at, is_opinion
+)
+values
+  ('00000000-0000-0000-0000-00000000a008', 'game_pick', 'Game Picks', '00000000-0000-0000-0000-00000000d002', 'Quiet room. Everyone just picked.', 'Patriots vs. Seahawks: Who wins?', 'The winner is the team with more points at final whistle.', now() - interval '2 hours', 'locked', now() - interval '2 days', false),
+  ('00000000-0000-0000-0000-00000000a009', 'game_pick', 'Game Picks', '00000000-0000-0000-0000-00000000d002', 'Picks only, no talking.', '49ers vs. Rams: Who wins?', 'The winner is the team with more points at final whistle.', now() - interval '1 hour', 'locked', now() - interval '2 days', false);
+
+insert into public.prompt_slots (id, post_id, label, shape, pick_count, points, sort_order, correct_option_ids, source_game_id)
+values
+  ('00000000-0000-0000-0000-00000000b602', '00000000-0000-0000-0000-00000000a008', 'Patriots @ Seahawks', 'pick', null, 20, 0, null, 'seed_2026_01_NE_SEA'),
+  ('00000000-0000-0000-0000-00000000b603', '00000000-0000-0000-0000-00000000a009', '49ers @ Rams', 'pick', null, 20, 0, null, 'seed_2026_01_SF_LA');
+
+insert into public.prompt_slot_options (id, slot_id, label, sublabel, team_code, sort_order, margin)
+values
+  ('00000000-0000-0000-0000-00000000c605', '00000000-0000-0000-0000-00000000b602', 'Patriots by <7',  'Wins by 1–6',       'NE',  0, 'under_7'),
+  ('00000000-0000-0000-0000-00000000c606', '00000000-0000-0000-0000-00000000b602', 'Patriots by 7+',  'Wins by 7 or more', 'NE',  1, '7_plus'),
+  ('00000000-0000-0000-0000-00000000c607', '00000000-0000-0000-0000-00000000b602', 'Seahawks by <7',  'Wins by 1–6',       'SEA', 2, 'under_7'),
+  ('00000000-0000-0000-0000-00000000c608', '00000000-0000-0000-0000-00000000b602', 'Seahawks by 7+',  'Wins by 7 or more', 'SEA', 3, '7_plus'),
+  ('00000000-0000-0000-0000-00000000c609', '00000000-0000-0000-0000-00000000b603', '49ers by <7',     'Wins by 1–6',       'SF',  0, 'under_7'),
+  ('00000000-0000-0000-0000-00000000c610', '00000000-0000-0000-0000-00000000b603', '49ers by 7+',     'Wins by 7 or more', 'SF',  1, '7_plus'),
+  ('00000000-0000-0000-0000-00000000c611', '00000000-0000-0000-0000-00000000b603', 'Rams by <7',      'Wins by 1–6',       'LA',  2, 'under_7'),
+  ('00000000-0000-0000-0000-00000000c612', '00000000-0000-0000-0000-00000000b603', 'Rams by 7+',      'Wins by 7 or more', 'LA',  3, '7_plus');
+
+insert into public.prompt_responses (post_id, slot_id, profile_id, chosen_option_ids, points_earned)
+values
+  ('00000000-0000-0000-0000-00000000a008', '00000000-0000-0000-0000-00000000b602', '00000000-0000-0000-0000-00000000d001', array['00000000-0000-0000-0000-00000000c606'::uuid], null),
+  ('00000000-0000-0000-0000-00000000a008', '00000000-0000-0000-0000-00000000b602', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c607'::uuid], null),
+  ('00000000-0000-0000-0000-00000000a008', '00000000-0000-0000-0000-00000000b602', '00000000-0000-0000-0000-00000000d004', array['00000000-0000-0000-0000-00000000c608'::uuid], null),
+  ('00000000-0000-0000-0000-00000000a008', '00000000-0000-0000-0000-00000000b602', '00000000-0000-0000-0000-00000000d005', array['00000000-0000-0000-0000-00000000c605'::uuid], null),
+  ('00000000-0000-0000-0000-00000000a008', '00000000-0000-0000-0000-00000000b602', '00000000-0000-0000-0000-00000000d008', array['00000000-0000-0000-0000-00000000c606'::uuid], null),
+  ('00000000-0000-0000-0000-00000000a008', '00000000-0000-0000-0000-00000000b602', '00000000-0000-0000-0000-00000000d010', array['00000000-0000-0000-0000-00000000c608'::uuid], null),
+  ('00000000-0000-0000-0000-00000000a009', '00000000-0000-0000-0000-00000000b603', '00000000-0000-0000-0000-00000000d003', array['00000000-0000-0000-0000-00000000c610'::uuid], null),
+  ('00000000-0000-0000-0000-00000000a009', '00000000-0000-0000-0000-00000000b603', '00000000-0000-0000-0000-00000000d004', array['00000000-0000-0000-0000-00000000c611'::uuid], null),
+  ('00000000-0000-0000-0000-00000000a009', '00000000-0000-0000-0000-00000000b603', '00000000-0000-0000-0000-00000000d008', array['00000000-0000-0000-0000-00000000c612'::uuid], null),
+  ('00000000-0000-0000-0000-00000000a009', '00000000-0000-0000-0000-00000000b603', '00000000-0000-0000-0000-00000000d009', array['00000000-0000-0000-0000-00000000c609'::uuid], null);
+
 -- Game results for the Friends tab: multiplayer wins (Priya wins two in a row, which fold
 -- into one card; Marcus beats Demo Reader) and new solo bests among Demo Reader's friends.
 insert into public.lobbies (id, code, host_id)
@@ -514,5 +556,20 @@ insert into public.qb_season_builder_player_stats (user_id, mode, best_score, up
   ('00000000-0000-0000-0000-00000000d001', 'visible', 76.0, now() - interval '1 day'),
   ('00000000-0000-0000-0000-00000000d004', 'hidden',  71.5, now() - interval '5 hours')
 on conflict (user_id, mode) do update set best_score = excluded.best_score, updated_at = excluded.updated_at;
+
+-- Every answer and every set of predictions is a take (0208), empty when the
+-- player wrote nothing. The rows above were inserted directly, so give the ones
+-- that have no take theirs, exactly as the migration's backfill does.
+insert into public.prompt_comments (post_id, author_id, body, posted_with_pick, created_at)
+select a.post_id, a.profile_id, '', true, a.at
+  from (
+    select post_id, profile_id, min(created_at) as at from public.prompt_responses group by 1, 2
+    union
+    select post_id, author_id, min(created_at) from public.bold_predictions group by 1, 2
+  ) a
+ where not exists (
+   select 1 from public.prompt_comments c
+    where c.post_id = a.post_id and c.author_id = a.profile_id
+      and c.posted_with_pick and c.parent_comment_id is null);
 
 commit;

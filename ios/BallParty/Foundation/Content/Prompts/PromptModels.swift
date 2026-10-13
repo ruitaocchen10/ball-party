@@ -192,6 +192,10 @@ struct PromptComment: Identifiable, Equatable, Sendable {
     let response: [UUID: [UUID]]?
     /// One level deep: `post_comment` refuses a reply to a reply.
     let replies: [PromptComment]
+
+    /// False for a take whose author only answered: every answer is a take
+    /// (migration 0208), with nothing written when they said nothing.
+    var hasWords: Bool { !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 }
 
 /// One of the viewer's own takes, paired with the post it was left on — what

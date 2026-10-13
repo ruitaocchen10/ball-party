@@ -449,11 +449,10 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
                     postId: postId, slotId: slotId, chosenOptionIds: [optionId], pointsEarned: nil
                 ))
             }
-            if let comment, !comment.isEmpty {
-                rows.comments.append(nextComment(
-                    postId: postId, author: viewerId, body: comment, withPick: true, parent: nil
-                ))
-            }
+            // Answering always leaves a take (migration 0208), empty when nothing was written.
+            rows.comments.append(nextComment(
+                postId: postId, author: viewerId, body: comment ?? "", withPick: true, parent: nil
+            ))
         }
     }
 
@@ -490,6 +489,7 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
                     targetId: prediction.target.id, createdAt: epoch.addingTimeInterval(Double(index))
                 ))
             }
+            rows.comments.append(nextComment(postId: postId, author: viewerId, body: "", withPick: true, parent: nil))
         }
     }
 
