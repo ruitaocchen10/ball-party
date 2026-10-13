@@ -314,6 +314,8 @@ struct WeeklyAwardsBallot: View {
         let color = code.flatMap(NFLTeams.primaryColor(for:))
         let percent = option.flatMap { post.aggregate?[slot.id]?[$0.id] }
         let onTeamColor = color != nil
+        let crowd = option == nil ? nil : WeeklyAwardsResults.topPicks(in: slot, shares: post.aggregate?[slot.id]).first
+        let softColor = onTeamColor ? Color.white.opacity(0.75) : Theme.fgMuted
         return HStack(spacing: 12) {
             if let option { AwardOptionIcon(option: option, slot: slot, size: 52) }
             VStack(alignment: .leading, spacing: 4) {
@@ -322,6 +324,17 @@ struct WeeklyAwardsBallot: View {
                     .slabTitle(24, color: onTeamColor ? .white : Theme.fg)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                if let crowd {
+                    // Where the crowd landed, so the share beside the pick has something to compare with.
+                    if (percent ?? 0) >= crowd.percent {
+                        Text("Crowd's pick").monoLabel(9, weight: .bold, tracking: 0.08, color: onTeamColor ? .white : Theme.fg)
+                    } else {
+                        Text("Leader: \(crowd.option.label) \(Int(crowd.percent.rounded()))%")
+                            .font(.sans(13))
+                            .foregroundStyle(softColor)
+                            .lineLimit(1)
+                    }
+                }
             }
             Spacer(minLength: 8)
             if let percent {

@@ -362,6 +362,15 @@ final class PromptModelsTests: XCTestCase {
         XCTAssertTrue(WeeklyAwardsResults.topPicks(in: slot, shares: nil).isEmpty)
     }
 
+    func test_powerRankingCrowdLine_countsTheCrowdsTopFiveThatABallotAlsoRanksInItsOwnTopFive() {
+        let ids = (0..<7).map { _ in UUID() }
+        let crowd = Array(ids.prefix(5))
+        let ballot = [ids[0], ids[5], ids[2], ids[6], ids[4], ids[1]]
+
+        XCTAssertEqual(PowerRankingCrowdLine.matched(crowd: crowd, ranked: ballot), 3, "ids[1] is sixth on the ballot, so it does not count")
+        XCTAssertEqual(PowerRankingCrowdLine.matched(crowd: [], ranked: ballot), 0)
+    }
+
     func test_optionRow_readsAGamePicksMarginAndTreatsAnOlderRowAsHavingNone() throws {
         let withMargin = try decode(PromptOptionRow.self, """
         {"id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "slot_id": "1A2B3C4D-0000-4000-8000-000000000001",

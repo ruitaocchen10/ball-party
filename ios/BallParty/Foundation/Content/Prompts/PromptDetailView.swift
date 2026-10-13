@@ -87,12 +87,14 @@ struct PromptDetailView: View {
                     SlotResultsView(post: post, slot: slot)
                 }
             }
-        }
-        if post.isPowerRankings {
-            PowerRankingsResults(post: post)
-        }
-        if post.isWeeklyAwards {
-            WeeklyAwardsResults(post: post)
+            // Someone who answered sees the crowd inside their card; with no card
+            // to carry it, a skipper gets the panels.
+            if post.isPowerRankings {
+                PowerRankingsResults(post: post)
+            }
+            if post.isWeeklyAwards {
+                WeeklyAwardsResults(post: post)
+            }
         }
     }
 

@@ -25,6 +25,10 @@ features:
     summary: Weekly Awards prompts
     web: done
     ios: done
+  - id: huddle.crowd-in-card
+    summary: Crowd data inside the take card (award leader under each pick, Power Rankings "matched N of 5" line)
+    web: done
+    ios: done
   - id: huddle.bold-predictions
     summary: Bold Predictions prompts
     web: done
