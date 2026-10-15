@@ -1,6 +1,6 @@
 # Ranking lists
 
-Status: **backend built (migrations 0210 to 0213) and the web client built (Lists tab, editor, history, profile tab, home Lists pill and update card). iOS and the prompt prefill are not built.** Each player keeps a living, versioned ranking per list kind (team power rankings, top QBs, and so on). Prompts nudge people to update their lists. Every saved version stays in the player's visible history, so a list's evolution is an honest record.
+Status: **backend built (migrations 0210 to 0213) and the web client built (Lists tab, editor, history, profile tab, home Lists pill and update card). iOS has the same screens (Lists tab, editor, history, profile tabs, Lists pill and update card). The prompt prefill is not built on either client.** Each player keeps a living, versioned ranking per list kind (team power rankings, top QBs, and so on). Prompts nudge people to update their lists. Every saved version stays in the player's visible history, so a list's evolution is an honest record.
 
 Jira: BPP-23 (story), BPP-24 (position-list prompts, follow-up).
 
@@ -16,11 +16,11 @@ Jira: BPP-23 (story), BPP-24 (position-list prompts, follow-up).
 
 ## Item identity
 
-`prompt_slot_options` rows belong to one post's slot, so their ids differ every week. `feed.ts` already works around this by comparing power rankings through `team_code`. A list outlives any prompt, so its items are keyed by `team_code` (teams) or `player_id` (players, from `prompts_private.nfl_players`). Valid team codes are `private.nfl_team_codes()`, the 32 nflverse codes the Power Rankings options use.
+`prompt_slot_options` rows belong to one post's slot, so their ids differ every week. `feed.ts` already works around this by comparing power rankings through `team_code`. A list outlives any prompt, so its items are keyed by `team_code` (teams) or `player_id` (players, from `prompts_private.nfl_players`). Valid team codes are `private.nfl_team_codes()`: nflverse's, except that the Rams are **LAR** (not `LA`) everywhere in the app, so a team code is never mistaken for the Chargers' LAC (migration 0214 rewrote the data, and the nflverse importers convert on the way in).
 
 ## Tables (all `public`; writes only through the RPCs)
 
-- `ranking_list_kinds`: seeded config. `id` (`power_rankings`, `qb`, `rb`, `wr`, `te`), `label`, `item_kind` (`team` or `player`), `player_position`, and `sizes`, the allowed lengths (`{5,10,32}` for power rankings, `{10}` for positions, top 10 only for now). Adding a kind is an insert. Readable by everyone.
+- `ranking_list_kinds`: seeded config. `id` (`power_rankings`, `qb`, `rb`, `wr`), `label`, `item_kind` (`team` or `player`), `player_position`, and `sizes`, the allowed lengths (`{5,10,32}` for power rankings, `{10}` for positions, top 10 only for now). Adding a kind is an insert. Readable by everyone.
 - `ranking_lists`: one per player per kind (`unique (profile_id, kind)`), with `current_version_id`.
 - `ranking_list_versions`: append-only, numbered per list. `source` (`edit` or `prompt`), `post_id` (the prompt, unique per list), `update_post_id` (the update card, once published), `note` (at most 280 characters), `created_at`, and `updated_at`, which moves only when a version is replaced (grace window or open prompt).
 - `ranking_list_items`: `(version_id, place)` with `team_code` or `player_id`, exactly one of the two.
@@ -34,7 +34,7 @@ The list tables are RLS-enabled with owner-only `select` and no write grants. Ev
 | --- | --- |
 | `save_ranking_list(p_kind, p_items text[], p_note, p_publish)` | The editor's write. `p_items` is the ordered team codes or player ids. Validates the length, repeats and that every item is real and of the right position. Raises `prompt_open`, `no_change`, `edit_limit` (with when the next save opens in `detail`) or `note_too_long`. Replaces inside the grace window, otherwise adds a version. With `p_publish`, creates the update card. Returns the version id. |
 | `prompts.submit_response` (extended) | For a post with `ranking_kind`, also writes or overwrites the player's `source = 'prompt'` version in the same transaction. `prompt_responses` is untouched, so consensus, "matched N of 5" and points keep working. No edit cap. |
-| `get_ranking_lists(p_username)` | The player's lists: the current version of each kind, with its version count. |
+| `get_ranking_lists(p_username)` | The player's lists: the current version of each kind, with its version count and note (the note only for the owner and their friends). |
 | `get_ranking_list(p_username, p_kind)` | One list's whole history, newest first. The note and update card are shown only to the owner and their friends. |
 | `ranking_players(p_ids)` | Names, positions, teams and headshots for the player ids in lists (identity fields only, signed-in callers). Teams need no lookup. |
 | `friend_list_updates(p_limit, p_before, p_post_id)` | The viewer's and their friends' published edits, newest first, each with the list it replaced so a card can show what moved. With `p_post_id`, one card if the viewer may see it. |
@@ -48,7 +48,7 @@ Publishing an edit creates a `prompt_posts` row (`template_kind = 'ranking_updat
 
 - The `prompt_posts` read policy shows a `ranking_update` row only to its author and their friends (`public.can_see_ranking_update`, a public function because signed-out reads cannot call into the `private` schema). The `prompt_comments` read policy now shows a comment only when its post is visible.
 - `prompts.post_comment` treats a card the caller cannot see as not found.
-- Web: `fetchPromptFeed` leaves `ranking_update` posts out, so they never reach the prompt feed or the Takes history, and the sitemap only lists the allow-listed kinds. The home feed reads them through `friend_list_updates` (0213), which returns each card with the list it replaced, and renders a diff, not the full list. The iOS feed asks only for the prompt kinds it renders (`PromptPost.feedKinds`), so update cards never reach it until it is built.
+- Web: `fetchPromptFeed` leaves `ranking_update` posts out, so they never reach the prompt feed or the Takes history, and the sitemap only lists the allow-listed kinds. The home feed reads them through `friend_list_updates` (0213), which returns each card with the list it replaced, and renders the whole list with each item's movement against it. The iOS feed asks only for the prompt kinds it renders (`PromptPost.feedKinds`), so update cards never reach it until it is built.
 
 ## Migration and backfill
 
@@ -65,4 +65,4 @@ Publishing an edit creates a `prompt_posts` row (`template_kind = 'ranking_updat
 1. **Position-list prompts** need a player pool per position. The existing `playerSearch` slot shape picks one player; a ranked player slot does not exist yet (BPP-24). `ranking_list_prefill` can only map players the prompt already has an option for.
 2. **Timezone.** The cap is a rolling 24 hours to avoid timezone logic. If "once per calendar day" is wanted, it needs the player's timezone.
 3. **Several open prompts of one kind.** Nothing prevents it. `prompt_open` blocks standalone edits while any is open, and each prompt keeps its own version.
-4. **Parity.** Both clients need the Rankings profile section, the editor and the new card. Add `features.yaml` entries (and tickets for any gap) in the first change that ships.
+4. **Parity.** Both clients have the Lists tab, editor, history, profile tab and update card (iOS: `ios/BallParty/Foundation/Content/Lists/`). Only the prompt prefill is missing on both. Known iOS gaps: the update card shows "Reply" without a count.

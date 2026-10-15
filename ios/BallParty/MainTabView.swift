@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The app behind the auth gate: four tabs, each with its own navigation
+/// The app behind the auth gate: five tabs, each with its own navigation
 /// stack, so going into a prompt or a lobby keeps you inside the tab you were
 /// on. See `docs/architecture/architecture.md` for what lands next.
 struct MainTabView: View {
@@ -9,7 +9,7 @@ struct MainTabView: View {
     @Binding var pendingRoomCode: String?
 
     private enum Tab: Hashable {
-        case home, games, party, profile
+        case home, lists, games, party, profile
     }
 
     @State private var selection: Tab = .home
@@ -44,6 +44,10 @@ struct MainTabView: View {
                 NavigationStack { HuddleScreen(viewerId: user.id) }
                     .tabItem { Label("Home", systemImage: "house") }
                     .tag(Tab.home)
+
+                NavigationStack { ListsScreen(viewerId: user.id) }
+                    .tabItem { Label("Lists", systemImage: "list.number") }
+                    .tag(Tab.lists)
 
                 NavigationStack { GamesScreen(viewerId: user.id) }
                     .tabItem { Label("Games", systemImage: "gamecontroller") }

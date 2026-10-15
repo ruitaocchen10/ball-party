@@ -2,7 +2,7 @@
 -- friends-only update card, prompt answers feeding lists, and the backfill.
 
 begin;
-select plan(46);
+select plan(50);
 \ir support/harness.psql
 
 select tests.act_as_admin();
@@ -286,7 +286,18 @@ select is(
   (select note from public.get_ranking_list(tests.uname('alice'), 'power_rankings') where version_no = 4),
   'Chiefs are back', 'a friend sees the note in the history');
 
+select is(
+  (select note from public.get_ranking_lists(tests.uname('alice')) where kind = 'power_rankings'),
+  'Chiefs are back', 'a friend sees the latest note on the list summary');
+
+select ok(
+  (select prev_items is not null and prev_items <> items from public.get_ranking_lists(tests.uname('alice')) where kind = 'power_rankings'),
+  'the summary carries the version it replaced, so the card can show movement');
+
 select tests.act_as(tests.id('carol'));
+select is(
+  (select note from public.get_ranking_lists(tests.uname('alice')) where kind = 'power_rankings'),
+  null, 'a stranger sees no note on the list summary');
 select is(
   (select count(*)::int from public.get_ranking_list(tests.uname('alice'), 'power_rankings')
     where note is not null or update_post_id is not null),
@@ -366,6 +377,10 @@ select is(tests.cur_items('power_rankings'), tests.teams_rev(5), 'it holds the r
 
 select tests.act_as_admin();
 select is(private.ranking_backfill_power_rankings(), 0, 'a second run adds nothing');
+
+-- The Rams are LAR, so they cannot be confused with the Chargers (LAC).
+select ok('LAR' = any (private.nfl_team_codes()) and not ('LA' = any (private.nfl_team_codes())),
+  'lists accept LAR, not LA');
 
 -- ------------------------------------------------------------ player names --
 

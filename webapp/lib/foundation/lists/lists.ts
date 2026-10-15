@@ -65,7 +65,7 @@ export function listPath(kind: string, username?: string | null): string {
  */
 export const NFL_TEAM_CODES = [
   "ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC",
-  "LA", "LAC", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS",
+  "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS",
 ] as const;
 
 /** The teams not in a list, in alphabetical order, for the editor's bench. */
@@ -94,3 +94,21 @@ export function mergeByTime<A extends { at: string }, B extends { at: string }>(
   );
   return [...items, ...inWindow].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 }
+
+/** A list's heading on a card: "My power rankings - V3", "My top 10 QBs - V3". Without a version (a list not started yet) it is just the name. */
+export function listTitle(kind: { id: string; itemKind: "team" | "player" }, size: number, versionNo?: number): string {
+  const name = kind.itemKind === "team" ? "My power rankings" : `My top ${size} ${kind.id.toUpperCase()}s`;
+  return versionNo === undefined ? name : `${name} - V${versionNo}`;
+}
+
+/**
+ * Whose faces stand on a position list's cover before the player has started
+ * it: five of the best at the position, left to right, by nflverse player id.
+ * Picked by hand. Changing the lineup is an edit here, and an id the player
+ * directory doesn't know is skipped.
+ */
+export const COVER_PLAYER_IDS: Record<string, string[]> = {
+  qb: ["00-0036389", "00-0034796", "00-0033873", "00-0034857", "00-0036442"], // Hurts, Jackson, Mahomes, Allen, Burrow
+  rb: ["00-0038542", "00-0032764", "00-0034844", "00-0033280", "00-0039139"], // Robinson, Henry, Barkley, McCaffrey, Gibbs
+  wr: ["00-0036963", "00-0036358", "00-0036322", "00-0036900", "00-0039075"], // St. Brown, Lamb, Jefferson, Chase, Nacua
+};

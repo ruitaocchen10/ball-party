@@ -6,6 +6,7 @@ import { ButtonLink } from "@/components/foundation/ui-kit/Button";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { canViewProfile, chromeIdentity } from "@/lib/foundation/identity/viewer";
+import { COVER_PLAYER_IDS } from "@/lib/foundation/lists/lists";
 import { fetchListKinds, fetchListPlayers, fetchLists } from "@/lib/foundation/lists/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -37,7 +38,10 @@ export default async function ListsPage() {
     fetchListKinds(supabase),
     profile?.username ? fetchLists(supabase, profile.username) : Promise.resolve({ lists: [], failed: false }),
   ]);
-  const players = await fetchListPlayers(supabase, owned.lists.filter((list) => list.itemKind === "player").flatMap((list) => list.items.slice(0, 3)));
+  // Names and faces for the lists, plus the lineup on the cover of each position list not started yet.
+  const started = new Set(owned.lists.map((list) => list.kind));
+  const coverIds = Object.entries(COVER_PLAYER_IDS).filter(([kind]) => !started.has(kind)).flatMap(([, ids]) => ids);
+  const players = await fetchListPlayers(supabase, [...owned.lists.filter((list) => list.itemKind === "player").flatMap((list) => list.items), ...coverIds]);
 
   return (
     <ListsChrome chrome={chrome}>

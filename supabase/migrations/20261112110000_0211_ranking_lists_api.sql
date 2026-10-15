@@ -262,7 +262,9 @@ returns table (
   version_no    integer,
   created_at    timestamptz,
   version_count integer,
-  items         text[]
+  items         text[],
+  note          text,
+  prev_items    text[]
 )
 language plpgsql
 volatile
@@ -272,16 +274,23 @@ as $$
 declare
   v_me      uuid := private.ranking_viewer();
   v_profile uuid;
+  v_close   boolean;
 begin
   perform private.rate_limit_hit('get_ranking_lists', 120, interval '1 minute');
   v_profile := private.ranking_resolve_profile(v_me, p_username);
   if v_profile is null then
     return;
   end if;
+  -- The note, like the update card, is for the owner and their friends.
+  v_close := v_profile = v_me or private.are_friends(v_me, v_profile);
   return query
     select l.kind, k.label, k.item_kind, v.id, v.version_no, v.created_at,
            (select count(*)::integer from public.ranking_list_versions x where x.list_id = l.id),
-           private.ranking_items(v.id)
+           private.ranking_items(v.id),
+           case when v_close then v.note end,
+           (select private.ranking_items(x.id) from public.ranking_list_versions x
+             where x.list_id = l.id and x.version_no < v.version_no
+             order by x.version_no desc limit 1)
       from public.ranking_lists l
       join public.ranking_list_kinds k on k.id = l.kind
       join public.ranking_list_versions v on v.id = l.current_version_id

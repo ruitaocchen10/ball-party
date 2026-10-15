@@ -8,7 +8,7 @@ const itemKind = (value: string): "team" | "player" => (value === "player" ? "pl
 /** The kinds of list a player can keep, in the order the tab shows them. */
 export async function fetchListKinds(supabase: Client): Promise<ListKind[]> {
   const { data } = await supabase.from("ranking_list_kinds").select("id, label, item_kind, sizes");
-  const order = ["power_rankings", "qb", "rb", "wr", "te"];
+  const order = ["power_rankings", "qb", "rb", "wr"];
   return (data ?? [])
     .map((row) => ({ id: row.id, label: row.label, itemKind: itemKind(row.item_kind), sizes: [...row.sizes].sort((a, b) => a - b) }))
     .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
@@ -33,6 +33,8 @@ export async function fetchLists(supabase: Client, username: string): Promise<{ 
       savedAt: row.created_at,
       versionCount: row.version_count,
       items: row.items ?? [],
+      note: row.note ?? null,
+      previousItems: row.prev_items ?? null,
     })),
   };
 }

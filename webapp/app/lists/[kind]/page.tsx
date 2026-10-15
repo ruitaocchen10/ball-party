@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { ListContext } from "@/components/foundation/content/lists/ListContext";
 import { ListEditor } from "@/components/foundation/content/lists/ListEditor";
 import { ListHistory } from "@/components/foundation/content/lists/ListHistory";
 import { ListsChrome } from "@/components/foundation/content/lists/ListsChrome";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { canViewProfile, chromeIdentity } from "@/lib/foundation/identity/viewer";
+import { listTitle } from "@/lib/foundation/lists/lists";
 import { fetchListHistory, fetchListKinds, fetchListPlayers, fetchOpenListPrompt } from "@/lib/foundation/lists/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -35,9 +37,27 @@ export default async function EditListPage(props: PageProps<"/lists/[kind]">) {
   const current = history.versions.find((version) => version.isCurrent) ?? history.versions[0];
 
   return (
-    <ListsChrome chrome={chromeIdentity(claims, profile)}>
-      <PageHeader eyebrow="Lists" title={kind.label} backHref="/lists" backLabel="Your lists" />
-      <ListEditor key={current?.id ?? "new"} kind={kind} saved={current?.items ?? []} players={players} openPromptId={openPromptId} />
+    <ListsChrome
+      chrome={chromeIdentity(claims, profile)}
+      rail={<ListContext versionNo={current?.versionNo ?? null} savedAt={current?.savedAt ?? null} versionCount={history.versions.length} />}
+    >
+      <PageHeader
+        eyebrow="Lists"
+        title={`Update ${listTitle(kind, current?.items.length ?? kind.sizes[0]).replace(/^My /, "your ")}`}
+        description="Your list is a living record. Change it any time, and every version stays in your history."
+        backHref="/lists"
+        backLabel="Your lists"
+      />
+      <ListEditor
+        key={current?.id ?? "new"}
+        kind={kind}
+        saved={current?.items ?? []}
+        players={players}
+        openPromptId={openPromptId}
+        displayName={profile.display_name ?? "You"}
+        avatarUrl={profile.avatar_url ?? null}
+        username={profile.username}
+      />
       <section id="history" aria-labelledby="history-heading" className="mt-10">
         <h2 id="history-heading" className="type-label font-bold text-fg-muted">History</h2>
         <div className="mt-3">

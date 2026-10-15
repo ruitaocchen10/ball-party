@@ -272,8 +272,8 @@ final class FriendActivityTests: XCTestCase {
 
     private func entryIds(_ entries: [HomeFeedEntry]) -> [String] { entries.map(\.id) }
 
-    func testHomeFiltersAreAllPromptsFriends() {
-        XCTAssertEqual(HomeFilter.allCases.map(\.title), ["All", "Prompts", "Friends"])
+    func testHomeFiltersAreAllPromptsFriendsLists() {
+        XCTAssertEqual(HomeFilter.allCases.map(\.title), ["All", "Prompts", "Friends", "Lists"])
     }
 
     func testAllInterleavesPromptsAndMomentsByTime() {

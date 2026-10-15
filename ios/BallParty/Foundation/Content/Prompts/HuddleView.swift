@@ -6,6 +6,7 @@ import SwiftUI
 struct HuddleScreen: View {
     @StateObject private var viewModel: HuddleViewModel
     @StateObject private var activity: FriendActivityViewModel
+    @StateObject private var listUpdates: ListUpdatesViewModel
     @State private var filter: HomeFilter = .all
     private let friendsClient: FriendsClient
 
@@ -24,10 +25,13 @@ struct HuddleScreen: View {
                 friendsClient: friends
             )
         )
+        _listUpdates = StateObject(
+            wrappedValue: ListUpdatesViewModel(client: SupabaseListsClient(client: SupabaseConfig.client), viewerId: viewerId)
+        )
     }
 
     var body: some View {
-        HuddleFeedView(viewModel: viewModel, activity: activity, filter: $filter, client: friendsClient)
+        HuddleFeedView(viewModel: viewModel, activity: activity, listUpdates: listUpdates, filter: $filter, client: friendsClient)
             .screenBackground()
             .screenHeader("Home") { RootBell() }
     }
@@ -36,6 +40,7 @@ struct HuddleScreen: View {
 struct HuddleFeedView: View {
     @ObservedObject var viewModel: HuddleViewModel
     @ObservedObject var activity: FriendActivityViewModel
+    @ObservedObject var listUpdates: ListUpdatesViewModel
     @Binding var filter: HomeFilter
     let client: FriendsClient
     @Environment(\.scenePhase) private var scenePhase
@@ -79,7 +84,8 @@ struct HuddleFeedView: View {
         await viewModel.load()
         async let moments: Void = activity.load()
         async let answered: Void = activity.loadAnswerers(postIds: viewModel.posts.map(\.id))
-        _ = await (moments, answered)
+        async let updates: Void = listUpdates.load()
+        _ = await (moments, answered, updates)
     }
 
     private var entries: [HomeFeedEntry] {
@@ -88,7 +94,8 @@ struct HuddleFeedView: View {
             answerers: activity.answerers,
             moments: activity.events,
             filter: filter,
-            hasMoreMoments: activity.hasMore
+            hasMoreMoments: activity.hasMore,
+            listUpdates: listUpdates.updates
         )
     }
 
@@ -113,18 +120,16 @@ struct HuddleFeedView: View {
                         .buttonStyle(.plain)
                     case .moment(let item):
                         GameMomentCard(item: item, client: client)
+                    case .listUpdate(let update):
+                        ListUpdateCardView(update: update, players: listUpdates.players, viewerId: listUpdates.viewerId, client: client)
                     }
                 }
-                if filter != .prompts && activity.hasMore {
-                    VStack(spacing: 8) {
-                        if activity.loadMoreFailed {
-                            Text("Couldn’t load more.").font(.sans(14)).foregroundStyle(Theme.hiddenText)
-                        }
-                        Button(activity.isLoadingMore ? "Loading…" : "Load more") {
-                            Task { await activity.loadMore() }
-                        }
-                        .buttonStyle(.ghost)
-                        .disabled(activity.isLoadingMore)
+                if filter == .lists {
+                    if listUpdates.hasMore { loadMore(failed: listUpdates.loadMoreFailed, loading: listUpdates.isLoadingMore) { await listUpdates.loadMore() } }
+                } else if filter != .prompts && activity.hasMore {
+                    loadMore(failed: activity.loadMoreFailed, loading: activity.isLoadingMore) {
+                        await activity.loadMore()
+                        await listUpdates.loadMore()
                     }
                 }
             }
@@ -132,9 +137,25 @@ struct HuddleFeedView: View {
         }
     }
 
+    private func loadMore(failed: Bool, loading: Bool, action: @escaping () async -> Void) -> some View {
+        VStack(spacing: 8) {
+            if failed {
+                Text("Couldn’t load more.").font(.sans(14)).foregroundStyle(Theme.hiddenText)
+            }
+            Button(loading ? "Loading…" : "Load more") { Task { await action() } }
+                .buttonStyle(.ghost)
+                .disabled(loading)
+        }
+    }
+
     @ViewBuilder
     private var emptyState: some View {
-        if filter == .friends {
+        if filter == .lists {
+            EmptyState(
+                title: "No list updates yet",
+                message: "When you or a friend shares a change to a list, it shows up here. Build yours from the Lists tab."
+            )
+        } else if filter == .friends {
             if activity.hasFriends {
                 EmptyState(
                     title: "No recent activity",

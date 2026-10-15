@@ -72,7 +72,7 @@ export function ListHistory({
                   <span className="group-open:hidden">Show the list</span>
                   <span className="hidden group-open:inline">Hide the list</span>
                 </summary>
-                <div className="mt-2 -mx-3 border-t border-panel-line">
+                <div className="mt-3 -mx-3">
                   <ListRows items={version.items} itemKind={itemKind} players={players} previous={previous} />
                 </div>
               </details>

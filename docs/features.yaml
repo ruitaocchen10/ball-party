@@ -142,33 +142,28 @@ features:
   - id: profile.player-lists
     summary: Lists tab on Profile and on another player's profile (their lists at the size they chose, with History)
     web: done
-    ios: missing
-    ticket: BPP-33
-    note: Web shows each list in full on your own profile and on other players' profiles (/u/<username>?tab=lists), the newest open first; a 32-team Power Rankings shows all 32. Another player's profile now has the same Stats, Takes and Lists tabs as yours; their Takes tab shows only takes on prompts the viewer has answered or that have locked. iOS still shows the "Player lists are coming" placeholder. What a viewer sees is decided in SQL (get_ranking_lists, get_ranking_list; migrations 0210 to 0213).
+    ios: done
+    note: Web shows each list in full on your own profile and on other players' profiles (/u/<username>?tab=lists), the newest open first; a 32-team Power Rankings shows all 32. Another player's profile now has the same Stats, Takes and Lists tabs as yours; their Takes tab shows only takes on prompts the viewer has answered or that have locked.  iOS has the same Lists tab on Profile and on another player's profile (Stats and Lists only; their Takes tab is a separate gap). What a viewer sees is decided in SQL (get_ranking_lists, get_ranking_list; migrations 0210 to 0213).
   - id: lists.tab
     summary: Lists in the main navigation, after Home, where you build your lists
     web: done
-    ios: missing
-    ticket: BPP-33
-    note: Web has a Lists sidebar item (and drawer item) after Home, opening /lists. iOS should add a Lists tab between Home and Games.
+    ios: done
+    note: Web has a Lists sidebar item (and drawer item) after Home, opening /lists. iOS has a Lists tab between Home and Games.
   - id: lists.editor
-    summary: Build and edit a list (Power Rankings 5, 10 or 32; QB, RB, WR and TE top 10), pick up then place, save with a note, share with friends by default
+    summary: Build and edit a list (Power Rankings 5, 10 or 32; QB, RB and WR top 10), laid out like a prompt answer, pick up then place, save with a take, share with friends by default
     web: done
-    ios: missing
-    ticket: BPP-33
-    note: 'Moving is pick up, then tap a row to place, or Up, Down, To #1 and To bottom. Nothing saves until Save. Position lists start empty and fill from the player search. The save sheet has an optional note (280 characters) and "Share this update with friends", on by default; off saves quietly and the version still shows in history. The server decides refusals (one saved edit per list per 24 hours, a prompt that is open, no change); the client shows its message. While a ranking prompt is open the list is read-only and links to the prompt. Rules: docs/architecture/ranking-lists.md.'
+    ios: done
+    note: 'Moving is drag and drop: drag a row onto the place it should take, and drag a benched team onto a place to bring it in (the last team drops to the bench). iOS drags by press and hold and is drag only (VoiceOver gets Move up and Move down actions). Web also keeps pick up then tap a row to place, or Up, Down, To #1 and To bottom, because mobile browsers do not drag reliably. Nothing saves until Save. Position lists start empty and fill from the player search. The page is laid out like a prompt answer page: a header, your card (author line, an optional take of 280 characters, the board, a "Share this update with friends" checkbox on by default and one Save button) and an About this list rail; off saves quietly and the version still shows in history. The server decides refusals (one saved edit per list per 24 hours, a prompt that is open, no change); the client shows its message. While a ranking prompt is open the list is read-only and links to the prompt. Rules: docs/architecture/ranking-lists.md.'
   - id: lists.history
     summary: Version history for a list, newest first, with what moved and the note (own lists at /lists/<kind>, others at /u/<username>/lists/<kind>)
     web: done
-    ios: missing
-    ticket: BPP-33
+    ios: done
     note: Every saved version shows, published or not. Notes and "Shared with friends" markers show only to the owner and their friends.
   - id: lists.update-card
-    summary: A shared list update as a friends-only card (biggest moves, note, replies), on the home Lists pill and in All and Friends
+    summary: A shared list update as a friends-only take card (note, the whole list with each item's movement, replies), on the home Lists pill and in All and Friends
     web: done
-    ios: missing
-    ticket: BPP-34
-    note: The home feed gets a Lists pill beside All, Prompts and Friends (/?filter=lists). The card shows the biggest moves against the version it replaced, and Open and reply goes to /lists/updates/<id> with the thread. Update cards are friends-only (and yours); everyone else gets not found. Update cards are kept out of the prompt feed, takes history and sitemap.
+    ios: done
+    note: The home feed gets a Lists pill beside All, Prompts and Friends (/?filter=lists). The card is a take card: the note, then the whole new list with how far each item moved against the version it replaced; the reply icon goes to /lists/updates/<id> with the thread. Update cards are friends-only (and yours); everyone else gets not found. Update cards are kept out of the prompt feed, takes history and sitemap.
   - id: lists.prompt-prefill
     summary: Answering a ranking prompt opens pre-filled with your list and saves a new version
     web: missing

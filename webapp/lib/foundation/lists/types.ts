@@ -18,6 +18,10 @@ export type ListSummary = {
   savedAt: string;
   versionCount: number;
   items: string[];
+  /** The newest version's note. Only the owner and their friends get it. */
+  note: string | null;
+  /** The version it replaced, for movement marks. Null on a first version. */
+  previousItems: string[] | null;
 };
 
 /** One saved version in a list's history. */

@@ -9,11 +9,14 @@ struct OtherProfileView: View {
     @StateObject private var viewModel: OtherProfileViewModel
     /// Asks before an action that is awkward to take back.
     @State private var confirming: RelationshipAction?
+    @State private var tab: ProfileTab = .stats
+    private let username: String
 
     init(
         username: String,
         client: FriendsClient = SupabaseFriendsClient(client: SupabaseConfig.client)
     ) {
+        self.username = username
         _viewModel = StateObject(wrappedValue: OtherProfileViewModel(client: client, username: username))
     }
 
@@ -69,17 +72,23 @@ struct OtherProfileView: View {
                 if viewModel.isClosed {
                     EmptyState(title: "Private profile", message: OtherProfileViewModel.privateNote)
                 } else {
-                    StatsCard(
-                        title: "Stats",
-                        statsView: $viewModel.statsView,
-                        statsRange: $viewModel.statsRange,
-                        knower: viewModel.selectedKnowerHighlight,
-                        status: viewModel.knowerStatus,
-                        statusDetail: viewModel.knowerStatusDetail,
-                        gamer: viewModel.gamerHighlight,
-                        unrankedStandingText: "No ranked picks yet",
-                        noStreakText: "No current win streak"
-                    ) { EmptyView() }
+                    ProfileTabBar(selection: $tab, tabs: [.stats, .lists])
+                        .padding(.top, -8)
+                    if tab == .lists, let viewerId = SupabaseConfig.client.auth.currentSession?.user.id {
+                        ProfileListsTab(username: username, viewerId: viewerId)
+                    } else {
+                        StatsCard(
+                            title: "Stats",
+                            statsView: $viewModel.statsView,
+                            statsRange: $viewModel.statsRange,
+                            knower: viewModel.selectedKnowerHighlight,
+                            status: viewModel.knowerStatus,
+                            statusDetail: viewModel.knowerStatusDetail,
+                            gamer: viewModel.gamerHighlight,
+                            unrankedStandingText: "No ranked picks yet",
+                            noStreakText: "No current win streak"
+                        ) { EmptyView() }
+                    }
                 }
             }
         }

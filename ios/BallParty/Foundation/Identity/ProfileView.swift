@@ -92,7 +92,7 @@ struct ProfileView: View {
                 switch tab {
                 case .stats: HighlightsCard(viewModel: viewModel)
                 case .takes: TakesHistory(huddle: huddle)
-                case .lists: PlayerListsPlaceholder()
+                case .lists: ProfileListsTab(viewerId: viewerId)
                 }
             }
             .padding(16)
@@ -235,9 +235,8 @@ private struct ProfileActionStyle: ButtonStyle {
     }
 }
 
-/// The three sections under the header. Lists is a placeholder until player
-/// lists exist.
-private enum ProfileTab: CaseIterable, Hashable {
+/// The sections under the header.
+enum ProfileTab: CaseIterable, Hashable {
     case stats, takes, lists
 
     var title: String {
@@ -250,12 +249,14 @@ private enum ProfileTab: CaseIterable, Hashable {
 }
 
 /// Underlined tabs: the selected one is the normal text colour with a red rule.
-private struct ProfileTabBar: View {
+struct ProfileTabBar: View {
     @Binding var selection: ProfileTab
+    /// Another player's profile has no Takes tab yet.
+    var tabs: [ProfileTab] = ProfileTab.allCases
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(ProfileTab.allCases, id: \.self) { tab in
+            ForEach(tabs, id: \.self) { tab in
                 let isSelected = tab == selection
                 Button {
                     selection = tab
@@ -275,16 +276,6 @@ private struct ProfileTabBar: View {
         .overlay(alignment: .bottom) { LineRule() }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Profile section")
-    }
-}
-
-/// Player lists are a later feature; the tab holds their place.
-private struct PlayerListsPlaceholder: View {
-    var body: some View {
-        EmptyState(
-            title: "Player lists are coming",
-            message: "Rank players, share your lists with friends and see where you agree."
-        )
     }
 }
 

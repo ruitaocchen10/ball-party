@@ -43,7 +43,7 @@ export function ListUpdateThread({
   }
 
   return (
-    <section aria-label="Replies" className="mt-5">
+    <section aria-label="Replies" className="p-4">
       <h2 className="type-label font-bold text-fg-muted">{replies.length ? `${replies.length} ${replies.length === 1 ? "reply" : "replies"}` : "Replies"}</h2>
       {takeId ? (
         <div className="mt-3 rounded-card border border-line bg-surface-raised p-3">

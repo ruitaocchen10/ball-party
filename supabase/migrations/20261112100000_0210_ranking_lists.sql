@@ -27,8 +27,7 @@ insert into public.ranking_list_kinds (id, label, item_kind, player_position, si
   ('power_rankings', 'Power Rankings',   'team',   null, '{5,10,32}'),
   ('qb',             'Quarterbacks',     'player', 'QB', '{10}'),
   ('rb',             'Running backs',    'player', 'RB', '{10}'),
-  ('wr',             'Wide receivers',   'player', 'WR', '{10}'),
-  ('te',             'Tight ends',       'player', 'TE', '{10}');
+  ('wr',             'Wide receivers',   'player', 'WR', '{10}');
 
 alter table public.ranking_list_kinds enable row level security;
 create policy ranking_list_kinds_select on public.ranking_list_kinds
@@ -171,7 +170,7 @@ set search_path = ''
 as $$
   select array[
     'ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN','DET','GB','HOU','IND','JAX','KC',
-    'LA','LAC','LV','MIA','MIN','NE','NO','NYG','NYJ','PHI','PIT','SEA','SF','TB','TEN','WAS'
+    'LAC','LAR','LV','MIA','MIN','NE','NO','NYG','NYJ','PHI','PIT','SEA','SF','TB','TEN','WAS'
   ]::text[];
 $$;
 

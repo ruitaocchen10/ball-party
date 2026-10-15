@@ -26,7 +26,7 @@ export const TEAMS: Team[] = [
   { code: "TEN", name: "Titans", conference: "AFC", division: "AFC South" },
   { code: "SEA", name: "Seahawks", conference: "NFC", division: "NFC West" },
   { code: "SF", name: "49ers", conference: "NFC", division: "NFC West" },
-  { code: "LA", name: "Rams", conference: "NFC", division: "NFC West" },
+  { code: "LAR", name: "Rams", conference: "NFC", division: "NFC West" },
   { code: "ARI", name: "Cardinals", conference: "NFC", division: "NFC West" },
   { code: "PHI", name: "Eagles", conference: "NFC", division: "NFC East" },
   { code: "DAL", name: "Cowboys", conference: "NFC", division: "NFC East" },

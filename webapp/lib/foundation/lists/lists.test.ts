@@ -81,6 +81,11 @@ describe("team pool", () => {
     for (const code of NFL_TEAM_CODES) expect(listTeamName(code)).not.toBe(code);
   });
 
+  it("calls the Rams LAR, never LA", () => {
+    expect(NFL_TEAM_CODES).toContain("LAR");
+    expect(NFL_TEAM_CODES).not.toContain("LA");
+  });
+
   it("benches the teams a list leaves out", () => {
     expect(benchTeams(["KC", "BUF"])).toHaveLength(30);
     expect(benchTeams(["KC", "BUF"])).not.toContain("KC");

@@ -2852,6 +2852,8 @@ export type Database = {
           items: string[]
           kind: string
           label: string
+          note: string
+          prev_items: string[]
           version_count: number
           version_id: string
           version_no: number

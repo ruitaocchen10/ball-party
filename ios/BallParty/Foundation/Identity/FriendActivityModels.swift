@@ -237,15 +237,16 @@ struct FriendAnswerer: Decodable, Equatable, Sendable, Identifiable {
 }
 
 /// The pills over Home's one feed. Friends is the prompts a friend answered
-/// plus their game moments.
+/// plus their game moments. Lists is the shared list updates alone.
 enum HomeFilter: Hashable, CaseIterable {
-    case all, prompts, friends
+    case all, prompts, friends, lists
 
     var title: String {
         switch self {
         case .all: "All"
         case .prompts: "Prompts"
         case .friends: "Friends"
+        case .lists: "Lists"
         }
     }
 }
@@ -253,11 +254,13 @@ enum HomeFilter: Hashable, CaseIterable {
 enum HomeFeedEntry: Equatable, Identifiable {
     case prompt(PromptPost, answerers: [FriendAnswerer])
     case moment(FriendActivityItem)
+    case listUpdate(ListUpdate)
 
     var id: String {
         switch self {
         case .prompt(let post, _): "prompt-\(post.id)"
         case .moment(let item): item.id
+        case .listUpdate(let update): "list-\(update.postId)"
         }
     }
 
@@ -265,6 +268,7 @@ enum HomeFeedEntry: Equatable, Identifiable {
         switch self {
         case .prompt(let post, _): post.createdAt
         case .moment(let item): item.event.occurredAt
+        case .listUpdate(let update): update.savedAt
         }
     }
 }
@@ -279,10 +283,14 @@ enum HomeFeed {
         answerers: [UUID: [FriendAnswerer]],
         moments: [FriendActivityEvent],
         filter: HomeFilter,
-        hasMoreMoments: Bool
+        hasMoreMoments: Bool,
+        listUpdates: [ListUpdate] = []
     ) -> [HomeFeedEntry] {
         if filter == .prompts {
             return posts.map { .prompt($0, answerers: []) }
+        }
+        if filter == .lists {
+            return listUpdates.sorted { $0.savedAt > $1.savedAt }.map { .listUpdate($0) }
         }
         let prompts: [(entry: HomeFeedEntry, date: Date)] = posts.compactMap { post in
             let who = (answerers[post.id] ?? []).sorted { $0.answeredAt > $1.answeredAt }
@@ -293,8 +301,9 @@ enum HomeFeed {
             return (.prompt(post, answerers: who), post.createdAt)
         }
         let games: [(entry: HomeFeedEntry, date: Date)] = FriendActivityItem.grouped(moments).map { (.moment($0), $0.event.occurredAt) }
+        let updates: [(entry: HomeFeedEntry, date: Date)] = listUpdates.map { (.listUpdate($0), $0.savedAt) }
         let floor = hasMoreMoments ? moments.last?.occurredAt : nil
-        return (prompts + games)
+        return (prompts + games + updates)
             .filter { floor == nil || $0.date >= floor! }
             .sorted { $0.date > $1.date }
             .map(\.entry)

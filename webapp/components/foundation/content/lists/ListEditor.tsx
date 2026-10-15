@@ -1,18 +1,18 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 
+import { AuthorIdentity } from "@/components/foundation/content/prompts/AuthorIdentity";
 import { PlayerPicker } from "@/components/foundation/content/prompts/PlayerPicker";
+import { Badge } from "@/components/foundation/ui-kit/Badge";
 import { Button, ButtonLink } from "@/components/foundation/ui-kit/Button";
-import { Textarea } from "@/components/foundation/ui-kit/Input";
-import { Modal, ModalTitle } from "@/components/foundation/ui-kit/Modal";
 import { searchPlayers, type PlayerResult, type PlayerSearch } from "@/lib/foundation/content/prompts/players";
-import { benchTeams, listTeamName, movedCount, moveItem, placeChange, resizeTeams, sizeLabel } from "@/lib/foundation/lists/lists";
+import { benchTeams, listTeamName, listTitle, movedCount, moveItem, placeChange, resizeTeams, sizeLabel } from "@/lib/foundation/lists/lists";
 import { saveErrorMessage } from "@/lib/foundation/lists/messages";
 import type { ListKind, ListPlayer } from "@/lib/foundation/lists/types";
 import { createClient } from "@/lib/supabase/client";
-import { ListItemFace, PlaceChange } from "./ListRows";
+import { ListTile, listGridClass } from "./ListRows";
 
 const NOTE_LIMIT = 280;
 
@@ -30,6 +30,9 @@ export function ListEditor({
   saved,
   players: knownPlayers,
   openPromptId,
+  displayName,
+  avatarUrl,
+  username,
 }: {
   kind: ListKind;
   /** The newest saved version's items, or empty when the player has not started this list. */
@@ -37,6 +40,9 @@ export function ListEditor({
   players: Record<string, ListPlayer>;
   /** The open prompt that feeds this list. While it is open the list is edited there. */
   openPromptId: string | null;
+  displayName: string;
+  avatarUrl: string | null;
+  username: string | null;
 }) {
   const router = useRouter();
   const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
@@ -49,12 +55,12 @@ export function ListEditor({
   const [players, setPlayers] = useState(knownPlayers);
   const [selected, setSelected] = useState<string | null>(null);
   const [status, setStatus] = useState("");
-  const [dialog, setDialog] = useState(false);
   const [note, setNote] = useState("");
   const [share, setShare] = useState(true);
+  const [dragged, setDragged] = useState<string | null>(null);
+  const [over, setOver] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const noteRef = useRef<HTMLTextAreaElement>(null);
 
   const nameOf = (item: string) => (isTeams ? listTeamName(item) : (players[item]?.name ?? "Player"));
   const bench = isTeams && items.length < 32 ? benchTeams(items) : [];
@@ -79,6 +85,35 @@ export function ListEditor({
     const next = [...items.slice(0, index), selected, ...items.slice(index)].slice(0, size);
     setItems(next);
     setStatus(`${selected} is now number ${index + 1}.`);
+  }
+
+  /** Something dragged onto a place: a ranked item moves there, a team from the bench takes the place. */
+  function dropOn(dragged: string, index: number) {
+    setDragged(null);
+    setOver(null);
+    if (readOnly) return;
+    if (items.includes(dragged)) return place(dragged, index);
+    if (!isTeams || !benchTeams(items).includes(dragged)) return;
+    setItems([...items.slice(0, index), dragged, ...items.slice(index)].slice(0, size));
+    setSelected(null);
+    setStatus(`${dragged} is now number ${index + 1}.`);
+  }
+
+  /** The props that make a tile draggable by its item (a team code or a player id). */
+  function dragProps(item: string) {
+    if (readOnly) return {};
+    return {
+      draggable: true,
+      onDragStart: (event: DragEvent<HTMLElement>) => {
+        event.dataTransfer.setData("text/plain", item);
+        event.dataTransfer.effectAllowed = "move";
+        setDragged(item);
+      },
+      onDragEnd: () => {
+        setDragged(null);
+        setOver(null);
+      },
+    };
   }
 
   function changeSize(next: number) {
@@ -124,17 +159,18 @@ export function ListEditor({
       return;
     }
     setBaseline(items);
-    setDialog(false);
     setNote("");
     setSelected(null);
     setStatus(share ? "Saved and shared with your friends." : "Saved.");
     router.refresh();
   }
 
+  const title = listTitle(kind, size).replace(/^My /, "");
+
   return (
-    <section aria-label={`Edit ${kind.label}`} className="mt-5">
+    <section aria-label={`Edit ${kind.label}`} className="mt-5 w-full pb-16">
       {readOnly ? (
-        <div className="mb-4 rounded-card bg-surface-raised p-4 shadow-well">
+        <div className="mb-5 rounded-card bg-surface-raised p-4 shadow-well">
           <p className="text-sm leading-6 text-fg">
             This week&apos;s prompt for this list is open. Your list opens pre-filled there, and your answer saves a new version.
           </p>
@@ -144,110 +180,126 @@ export function ListEditor({
         </div>
       ) : null}
 
-      {isTeams && kind.sizes.length > 1 ? (
-        <div role="group" aria-label="List size" className="mb-4 flex gap-2">
-          {kind.sizes.map((option) => (
-            <button
-              key={option}
-              type="button"
-              disabled={readOnly}
-              aria-pressed={option === size}
-              onClick={() => changeSize(option)}
-              className={`min-h-10 rounded-full border px-4 type-label transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg disabled:opacity-60 ${
-                option === size ? "border-hidden bg-hidden text-fg" : "border-line text-fg-muted hover:text-fg"
-              }`}
-            >
-              {sizeLabel(option, kind.itemKind)}
-            </button>
-          ))}
+      <div className="relative overflow-hidden rounded-card border border-line bg-surface-raised text-fg shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
+        <div className="flex items-center gap-2.5 px-4 pt-4">
+          <AuthorIdentity name={displayName} avatarUrl={avatarUrl} username={username} />
+          <Badge>You</Badge>
         </div>
-      ) : null}
 
-      <ol className="flex flex-col gap-1.5" aria-label={`${kind.label}, ${items.length} of ${size}`}>
-        {items.map((item, index) => {
-          const picked = selected === item;
-          return (
-            <li key={item} className="flex items-stretch gap-1.5">
-              <button
-                type="button"
-                disabled={readOnly}
-                aria-pressed={picked}
-                aria-label={`${index + 1}, ${nameOf(item)}${picked ? ", picked up" : ""}`}
-                onClick={() => onRow(item, index)}
-                className={`grid min-h-14 min-w-0 flex-1 grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 rounded-card border px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${
-                  picked
-                    ? "border-hidden bg-hidden text-fg"
-                    : selected
-                      ? "border-dashed border-panel-line bg-panel hover:border-hidden-text"
-                      : "border-panel-line bg-panel hover:bg-panel-hover"
-                }`}
-              >
-                <span className="text-center font-slab text-2xl leading-none tabular-nums">{index + 1}</span>
-                <span className={picked ? "[&_*]:!text-fg" : ""}>
-                  <ListItemFace item={item} itemKind={kind.itemKind} players={players} />
-                </span>
-                {baseline.length ? <PlaceChange change={placeChange(baseline, items, index)} /> : <span />}
-              </button>
-              {!isTeams && !readOnly ? (
-                <button
-                  type="button"
-                  onClick={() => removeItem(item)}
-                  aria-label={`Remove ${players[item]?.name ?? "player"}`}
-                  className="w-11 shrink-0 rounded-card border border-panel-line bg-panel type-label text-panel-muted hover:text-panel-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
-                >
-                  <span aria-hidden>✕</span>
-                </button>
-              ) : null}
-            </li>
-          );
-        })}
-      </ol>
-
-      {!isTeams && !readOnly && items.length < size ? (
-        <div className="mt-4">
-          <p className="type-label text-fg-muted">{items.length} of {size} · add a {kind.label.toLowerCase().replace(/s$/, "")}</p>
-          <div className="mt-2">
-            <PlayerPicker value={null} onChange={addPlayer} label={`Add to ${kind.label}`} search={search} />
-          </div>
+        <div className="px-4 pt-4">
+          <label htmlFor={`list-take-${kind.id}`} className="type-label text-fg-muted">
+            Add a take <span className="normal-case">(optional)</span>
+          </label>
+          <textarea
+            id={`list-take-${kind.id}`}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            maxLength={NOTE_LIMIT}
+            rows={2}
+            disabled={readOnly}
+            placeholder="Why the change? Friends see this with your update."
+            className="mt-2 block w-full resize-none rounded-card border border-line bg-surface px-3 py-2 text-lg leading-6 text-fg placeholder:text-fg-muted focus:border-fg focus:outline-none disabled:opacity-60"
+          />
         </div>
-      ) : null}
 
-      {bench.length ? (
-        <div className="mt-6">
-          <div className="flex items-baseline justify-between">
-            <h2 className="font-slab text-xl uppercase">Not ranked</h2>
-            <span className="type-label text-fg-muted">{bench.length} teams</span>
-          </div>
-          <ul className="mt-2 flex flex-col gap-1.5">
-            {bench.map((code) => {
-              const picked = selected === code;
-              return (
-                <li key={code}>
+        <div className="px-4 pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-slab text-2xl uppercase">Your {title}</p>
+              <p className="font-mono text-xs text-fg-muted">Drag a row where it goes, or tap one to pick it up and tap its new spot.</p>
+            </div>
+            {isTeams && kind.sizes.length > 1 ? (
+              <div role="group" aria-label="List size" className="flex shrink-0 gap-1">
+                {kind.sizes.map((option) => (
                   <button
+                    key={option}
                     type="button"
                     disabled={readOnly}
-                    aria-pressed={picked}
-                    aria-label={`${nameOf(code)}, not ranked${picked ? ", picked up" : ""}`}
-                    onClick={() => setSelected(picked ? null : code)}
-                    className={`grid min-h-12 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-card border px-3 py-1.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${
-                      picked ? "border-hidden bg-hidden" : "border-line bg-surface hover:bg-surface-raised"
-                    }`}
+                    aria-pressed={option === size}
+                    onClick={() => changeSize(option)}
+                    className={`rounded-card px-2.5 py-2 font-mono text-[10px] uppercase disabled:cursor-default ${option === size ? "bg-hidden text-fg" : "border border-line bg-surface text-fg-muted"}`}
                   >
-                    <span className={picked ? "[&_*]:!text-fg" : ""}><ListItemFace item={code} itemKind="team" players={players} /></span>
-                    <span className="type-label-xs text-fg-muted">{picked ? "Picked" : "Bring in"}</span>
+                    {sizeLabel(option, kind.itemKind)}
                   </button>
-                </li>
-              );
-            })}
-          </ul>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <ol className={`mt-4 ${listGridClass(size)}`} aria-label={`${kind.label}, ${items.length} of ${size}`}>
+            {items.map((item, index) => (
+              <li
+                key={item}
+                {...dragProps(item)}
+                onDragOver={(event) => {
+                  if (readOnly || !dragged) return;
+                  event.preventDefault();
+                  setOver(index);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  dropOn(event.dataTransfer.getData("text/plain") || (dragged ?? ""), index);
+                }}
+                className={`relative min-w-0 rounded-card ${dragged === item ? "opacity-40" : ""} ${over === index && dragged !== item ? "outline-2 outline-fg" : ""}`}
+              >
+                <ListTile
+                  item={item}
+                  itemKind={kind.itemKind}
+                  players={players}
+                  rank={index + 1}
+                  change={baseline.length ? placeChange(baseline, items, index) : undefined}
+                  picked={selected === item}
+                  disabled={readOnly}
+                  onClick={() => onRow(item, index)}
+                  ariaLabel={`${index + 1}, ${nameOf(item)}${selected === item ? ", picked up" : ""}`}
+                  trailing={!isTeams && !readOnly ? <span aria-hidden className="type-label text-surface">✕</span> : undefined}
+                />
+                {!isTeams && !readOnly ? (
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item)}
+                    aria-label={`Remove ${players[item]?.name ?? "player"}`}
+                    className="absolute inset-y-0 right-0 w-9 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg"
+                  />
+                ) : null}
+              </li>
+            ))}
+          </ol>
+
+          {!isTeams && !readOnly && items.length < size ? (
+            <div className="mt-4">
+              <p className="type-label text-fg-muted">{items.length} of {size} · add a {kind.label.toLowerCase().replace(/s$/, "")}</p>
+              <div className="mt-2">
+                <PlayerPicker value={null} onChange={addPlayer} label={`Add to ${kind.label}`} search={search} />
+              </div>
+            </div>
+          ) : null}
+
+          {bench.length ? (
+            <div className="mt-5">
+              <p className="mb-1.5 type-label text-fg-muted">Not ranked · {bench.length} teams</p>
+              <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                {bench.map((code) => (
+                  <li key={code} {...dragProps(code)} className={`min-w-0 ${dragged === code ? "opacity-40" : ""}`}>
+                    <ListTile
+                      item={code}
+                      itemKind="team"
+                      players={players}
+                      rank={null}
+                      picked={selected === code}
+                      disabled={readOnly}
+                      onClick={() => setSelected(selected === code ? null : code)}
+                      ariaLabel={`${nameOf(code)}, not ranked${selected === code ? ", picked up" : ""}`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
-      ) : null}
 
-      <div role="status" aria-live="polite" className="sr-only">{status}</div>
-
-      <div className="sticky bottom-0 z-10 -mx-4 mt-6 border-t border-line bg-surface px-4 pt-3 pb-4 sm:mx-0 sm:rounded-card sm:border sm:px-4">
         {selected && !readOnly ? (
-          <div className="mb-3 grid gap-2">
+          <div className="mx-4 mt-4 grid gap-2 rounded-card border border-line bg-surface p-3">
             {selectedIndex >= 0 ? (
               <>
                 <p className="text-sm text-fg-muted">
@@ -268,62 +320,41 @@ export function ListEditor({
             <Button variant="text" size="sm" fullWidth={false} onClick={() => setSelected(null)}>Done moving</Button>
           </div>
         ) : null}
-        <div className="flex items-center gap-3">
-          <p className="min-w-0 flex-1 text-sm leading-5 text-fg-muted">
-            {readOnly
-              ? "Editing is paused until the prompt locks."
-              : !complete
-                ? `${items.length} of ${size} chosen. Finish the list to save it.`
-                : dirty
-                  ? <><span className="font-semibold text-fg">{moves} moved</span> since your saved list.</>
-                  : "No changes yet."}
-          </p>
-          {dirty && baseline.length ? (
-            <Button variant="text" fullWidth={false} onClick={() => { setItems(isTeams ? resizeTeams(baseline, baseline.length) : baseline); setSize(kind.sizes.find((candidate) => candidate === baseline.length) ?? size); setSelected(null); }}>
-              Undo
-            </Button>
-          ) : null}
-          <Button fullWidth={false} disabled={readOnly || !dirty || !complete} onClick={() => { setError(null); setDialog(true); }}>
-            Save
-          </Button>
-        </div>
-      </div>
 
-      {dialog ? (
-        <Modal onClose={() => !pending && setDialog(false)} closeLabel="Close save" initialFocusRef={noteRef}>
-          <ModalTitle className="font-slab text-3xl uppercase">Save your {kind.label.toLowerCase()}</ModalTitle>
-          <p className="mt-1 text-sm text-fg-muted">
-            {moves} moved. It joins your history right away.
-          </p>
-          <label className="mt-4 block">
-            <span className="type-label text-fg-muted">Why the change? (optional)</span>
-            <Textarea
-              ref={noteRef}
-              variant="well"
-              className="mt-1.5 min-h-24"
-              maxLength={NOTE_LIMIT}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="Friends see this with your update."
-            />
-            <span className="mt-1 block text-right type-label-xs text-fg-muted">{note.length} / {NOTE_LIMIT}</span>
-          </label>
-          <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-card border border-line bg-surface-raised p-3">
-            <input type="checkbox" checked={share} onChange={(event) => setShare(event.target.checked)} className="mt-1 h-4 w-4 accent-hidden" />
+        <div role="status" aria-live="polite" className="sr-only">{status}</div>
+
+        <div className="mt-5 px-4 pb-4">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input type="checkbox" checked={share} disabled={readOnly} onChange={(event) => setShare(event.target.checked)} className="mt-1 h-4 w-4 accent-hidden" />
             <span>
               <span className="block text-sm font-semibold text-fg">Share this update with friends</span>
-              <span className="block text-xs leading-5 text-fg-muted">
-                Friends only, and they can reply. Turn it off to save quietly. The version still shows in your history.
-              </span>
+              <span className="block text-xs leading-5 text-fg-muted">Friends only, and they can reply. Turn it off to save quietly; the version still shows in your history.</span>
             </span>
           </label>
-          {error ? <p role="alert" className="mt-3 text-sm text-hidden-text">{error}</p> : null}
-          <div className="mt-4 grid gap-2">
-            <Button disabled={pending} onClick={save}>{pending ? "Saving…" : share ? "Save and share" : "Save"}</Button>
-            <Button variant="text" disabled={pending} onClick={() => setDialog(false)}>Keep editing</Button>
+          <div className="mt-4 flex items-center gap-3">
+            <p className="min-w-0 flex-1 text-sm leading-5 text-fg-muted">
+              {readOnly
+                ? "Editing is paused until the prompt locks."
+                : !complete
+                  ? `${items.length} of ${size} chosen. Finish the list to save it.`
+                  : dirty
+                    ? <><span className="font-semibold text-fg">{moves} moved</span> since your saved list.</>
+                    : "No changes yet."}
+            </p>
+            {dirty && baseline.length ? (
+              <Button variant="text" fullWidth={false} onClick={() => { setItems(isTeams ? resizeTeams(baseline, baseline.length) : baseline); setSize(kind.sizes.find((candidate) => candidate === baseline.length) ?? size); setSelected(null); }}>
+                Undo
+              </Button>
+            ) : null}
           </div>
-        </Modal>
-      ) : null}
+          <div className="mt-3">
+            <Button variant="solid" fullWidth disabled={readOnly || !dirty || !complete || pending} onClick={save}>
+              {pending ? "Saving…" : share ? "Save and share" : "Save"}
+            </Button>
+          </div>
+          {error ? <p role="alert" className="mt-3 text-sm text-hidden-text">{error}</p> : null}
+        </div>
+      </div>
     </section>
   );
 }
