@@ -42,24 +42,14 @@ export function friendInvitePath(code: string): string {
   return `/friends/invite/${encodeURIComponent(code)}`;
 }
 
-/** A row of `friend_activity`, camel-cased for the UI. */
+/** A game moment from `friend_activity` (a multiplayer win or a new solo best), camel-cased for the UI. */
 export type ActivityEvent = {
-  type: "take" | "pick_made" | "win" | "high_score";
+  type: "win" | "high_score";
   occurredAt: string;
   actorId: string;
   username: string | null;
   displayName: string;
   avatarUrl: string | null;
-  postId: string | null;
-  postCaption: string | null;
-  /** The take posted with the answer. Only on a revealed `take`. */
-  takeBody: string | null;
-  /** The take's comment, for its thread. Null when the friend answered without posting a take. */
-  commentId: string | null;
-  replyCount: number;
-  /** The answer, `{slot id: option ids}`. Only on a revealed `take`; an open prompt's answer never leaves the server. */
-  response: Record<string, string[]> | null;
-  points: number | null;
   matchId: string | null;
   game: string | null;
   placement: number | null;
@@ -88,13 +78,6 @@ type ActivityRow = {
   username: string | null;
   display_name: string;
   avatar_url: string | null;
-  post_id: string | null;
-  post_caption: string | null;
-  take_body: string | null;
-  comment_id: string | null;
-  reply_count: number | null;
-  response: unknown;
-  points: number | null;
   match_id: string | null;
   game: string | null;
   placement: number | null;
@@ -108,7 +91,7 @@ type ActivityRow = {
   friend_count: number | null;
 };
 
-const ACTIVITY_TYPES = ["take", "pick_made", "win", "high_score"] as const;
+const ACTIVITY_TYPES = ["win", "high_score"] as const;
 
 export function activityEvents(rows: ActivityRow[]): ActivityEvent[] {
   return rows.flatMap((row) => {
@@ -121,13 +104,6 @@ export function activityEvents(rows: ActivityRow[]): ActivityEvent[] {
       username: row.username,
       displayName: row.display_name,
       avatarUrl: row.avatar_url,
-      postId: row.post_id,
-      postCaption: row.post_caption,
-      takeBody: row.take_body,
-      commentId: row.comment_id,
-      replyCount: row.reply_count ?? 0,
-      response: row.response && typeof row.response === "object" ? (row.response as Record<string, string[]>) : null,
-      points: row.points,
       matchId: row.match_id,
       game: row.game,
       placement: row.placement,
@@ -163,6 +139,102 @@ export function groupActivity(events: ActivityEvent[]): ActivityItem[] {
     }
   }
   return items;
+}
+
+/** A friend who answered a prompt: the fact only, never the pick. */
+export type FriendAnswerer = {
+  actorId: string;
+  username: string | null;
+  displayName: string;
+  avatarUrl: string | null;
+  answeredAt: string;
+};
+
+type AnswererRow = { post_id: string; actor_id: string; username: string | null; display_name: string; avatar_url: string | null; answered_at: string };
+
+/** `friends_who_answered` rows grouped by prompt, newest answer first. */
+export function answerersByPost(rows: AnswererRow[]): Record<string, FriendAnswerer[]> {
+  const byPost: Record<string, FriendAnswerer[]> = {};
+  for (const row of rows) {
+    const list = byPost[row.post_id] ?? [];
+    list.push({ actorId: row.actor_id, username: row.username, displayName: row.display_name, avatarUrl: row.avatar_url, answeredAt: row.answered_at });
+    byPost[row.post_id] = list;
+  }
+  for (const list of Object.values(byPost)) list.sort((a, b) => Date.parse(b.answeredAt) - Date.parse(a.answeredAt));
+  return byPost;
+}
+
+/**
+ * Who answered, friends first. With the prompt's total: "Sam and 5 others have answered",
+ * "Sam, Jo and 4 others have answered", "Sam and Jo have answered". Without it (the
+ * headcount is hidden): "Sam answered", "Sam & Jo answered", "Sam, Jo & 2 other friends answered".
+ */
+export function friendsAnsweredLine(answerers: FriendAnswerer[], total?: number): string | null {
+  const names = answerers.map((a) => a.displayName);
+  if (names.length === 0) return null;
+  if (total !== undefined) {
+    const shown = names.slice(0, 2);
+    const rest = Math.max(0, total - shown.length);
+    const list = shown.length === 2 && rest === 0 ? `${shown[0]} and ${shown[1]}` : shown.join(", ");
+    if (rest > 0) return `${list} and ${rest} ${rest === 1 ? "other has" : "others have"} answered`;
+    return `${list} ${shown.length === 1 ? "has" : "have"} answered`;
+  }
+  if (names.length === 1) return `${names[0]} answered`;
+  if (names.length === 2) return `${names[0]} & ${names[1]} answered`;
+  const others = names.length - 2;
+  return `${names[0]}, ${names[1]} & ${others} other ${others === 1 ? "friend" : "friends"} answered`;
+}
+
+export type HomeFilter = "all" | "prompts" | "friends" | "lists";
+
+export function parseHomeFilter(value: string | undefined, canUseFriends: boolean): HomeFilter {
+  if (!canUseFriends) return "all";
+  return value === "prompts" || value === "friends" || value === "lists" ? value : "all";
+}
+
+export type HomeFeedItem<P extends { id: string; createdAt: string }> =
+  | { kind: "prompt"; at: string; post: P; answerers: FriendAnswerer[] }
+  | { kind: "moment"; at: string; item: ActivityItem };
+
+/**
+ * One feed from prompts and game moments, newest first. A prompt is dated by
+ * when it was posted (All) or by the newest friend answer (Friends, which only
+ * keeps prompts a friend answered). Game moments come from the paged
+ * `friend_activity`, so the feed pages with them: a full activity page bounds the
+ * window at its oldest event, and `olderBefore` is that bound for the next page.
+ * Prompts and moments older than `before` only; a short page means no more moments, so no bound.
+ */
+export function buildHomeFeed<P extends { id: string; createdAt: string }>({
+  posts,
+  answerers,
+  moments,
+  filter,
+  before,
+  pageFull,
+}: {
+  posts: P[];
+  answerers: Record<string, FriendAnswerer[]>;
+  moments: ActivityEvent[];
+  filter: HomeFilter;
+  before: string | null;
+  pageFull: boolean;
+}): { items: HomeFeedItem<P>[]; olderBefore: string | null } {
+  // The Lists pill is only list updates, which the feed adds itself (lib/foundation/lists).
+  if (filter === "lists") return { items: [], olderBefore: null };
+  if (filter === "prompts") {
+    return { items: posts.map((post) => ({ kind: "prompt", at: post.createdAt, post, answerers: [] })), olderBefore: null };
+  }
+  const prompts: HomeFeedItem<P>[] = posts.flatMap((post) => {
+    const who = answerers[post.id] ?? [];
+    if (filter === "friends" && who.length === 0) return [];
+    return [{ kind: "prompt" as const, at: filter === "friends" ? who[0].answeredAt : post.createdAt, post, answerers: who }];
+  });
+  const games: HomeFeedItem<P>[] = groupActivity(moments).map((item) => ({ kind: "moment", at: item.event.occurredAt, item }));
+  const floor = pageFull && moments.length > 0 ? moments[moments.length - 1].occurredAt : null;
+  const items = [...prompts, ...games]
+    .filter((entry) => (before === null || Date.parse(entry.at) < Date.parse(before)) && (floor === null || Date.parse(entry.at) >= Date.parse(floor)))
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  return { items, olderBefore: floor };
 }
 
 export function ordinalPlace(value: number): string {

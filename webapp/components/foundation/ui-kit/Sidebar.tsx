@@ -2,6 +2,7 @@
 
 import {
   House,
+  ListOrdered,
   LogIn,
   Menu,
   MessageSquarePlus,
@@ -171,6 +172,7 @@ function FeedbackButton({ compact, onOpen }: { compact: boolean; onOpen: () => v
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: House },
+  { href: "/lists", label: "Lists", Icon: ListOrdered },
   { href: "/party", label: "Party", Icon: Users },
   { href: "/leaderboard", label: "Leaderboard", Icon: Trophy },
 ];

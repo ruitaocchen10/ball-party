@@ -34,7 +34,7 @@ describe("GamerLeaderboard", () => {
     render(<GamerLeaderboard window="week" scope="friends" rows={[]} standing={unrankedGamer} />);
     expect(screen.getByText("Not ranked yet")).toBeInTheDocument();
     expect(screen.getByText("No friends on the board yet")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Find friends" })).toHaveAttribute("href", "/profile?tab=friends");
+    expect(screen.getByRole("link", { name: "Find friends" })).toHaveAttribute("href", "/friends");
   });
 });
 

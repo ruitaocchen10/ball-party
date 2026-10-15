@@ -35,82 +35,85 @@ private struct PowerTeamMark: View {
 
 // MARK: - Cover
 
-/// The feed card's art: six teams the admin chose, in placement order — two
-/// large in the top corners, two large in the bottom, a smaller pair between —
-/// behind the title, with green climbing on one side and red falling on the
-/// other. It is the same for every viewer.
+/// The feed card's art: the six teams the admin chose, in placement order, the
+/// first three climbing on the green side and the last three falling on the red,
+/// each side with a big vertical block arrow behind its logos. It is the same for
+/// every viewer.
 struct PowerRankingsCover: View {
     let teamCodes: [String]
 
-    private static let red = Color(hex: 0xEF4444)
-    private static let green = Color(hex: 0x4ADE80)
+    /// Where a logo sits: how far in from its own edge and down from the top (as
+    /// fractions of the banner, so the spread follows its width) and its size.
+    private struct Place { let x: CGFloat; let y: CGFloat; let size: CGFloat }
+
+    /// Outside in: risers climb toward the middle and grow as they go (so #1 is the
+    /// biggest, nearest the middle); fallers fall away from it and shrink (#4
+    /// nearest the middle, #6 at the edge). Matches the web's banner.
+    private static let risers = [Place(x: 0.03, y: 0.57, size: 36), Place(x: 0.13, y: 0.37, size: 54), Place(x: 0.27, y: 0.02, size: 92)]
+    private static let fallers = [Place(x: 0.27, y: 0.18, size: 92), Place(x: 0.13, y: 0.41, size: 54), Place(x: 0.03, y: 0.61, size: 36)]
 
     var body: some View {
-        PromptTicket {
-            ZStack {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+            ZStack(alignment: .topLeading) {
                 HStack(spacing: 0) {
-                    LinearGradient(colors: [Self.green.opacity(0.16), .clear], startPoint: .leading, endPoint: .trailing)
-                    LinearGradient(colors: [.clear, Self.red.opacity(0.16)], startPoint: .leading, endPoint: .trailing)
+                    LinearGradient(colors: [PromptArt.greenBase.opacity(0.26), .clear], startPoint: .leading, endPoint: .trailing)
+                    LinearGradient(colors: [.clear, PromptArt.red.opacity(0.26)], startPoint: .leading, endPoint: .trailing)
                 }
-                chevrons
-                logo(0, size: 92, angle: -18, opacity: 0.9, alignment: .topLeading, x: -14, y: -6)
-                logo(1, size: 92, angle: 18, opacity: 0.9, alignment: .topTrailing, x: 14, y: -6)
-                logo(2, size: 92, angle: 14, opacity: 0.75, alignment: .bottomLeading, x: -14, y: 6)
-                logo(3, size: 92, angle: -14, opacity: 0.75, alignment: .bottomTrailing, x: 6, y: 6)
-                logo(4, size: 60, angle: 12, opacity: 0.75, alignment: .leading, x: 58, y: 0)
-                logo(5, size: 60, angle: -12, opacity: 0.75, alignment: .trailing, x: -58, y: 0)
-                title
+                arrow(color: PromptArt.greenBase, height: height * 0.78)
+                    .position(x: width * 0.07 + height * 0.78 / 3, y: height * 0.12 + height * 0.39)
+                arrow(color: PromptArt.red, height: height * 0.78)
+                    .rotationEffect(.degrees(180))
+                    .position(x: width * 0.93 - height * 0.78 / 3, y: height * 0.10 + height * 0.39)
+                // The first three are the risers, shown from the edge in: #3, #2, #1.
+                ForEach(Array(teamCodes.prefix(3).enumerated()), id: \.offset) { index, code in
+                    let place = Self.risers[Self.risers.count - 1 - index]
+                    logo(code, place.size)
+                        .position(x: width * place.x + place.size / 2, y: height * place.y + place.size / 2)
+                }
+                ForEach(Array(teamCodes.dropFirst(3).prefix(3).enumerated()), id: \.offset) { index, code in
+                    let place = Self.fallers[index]
+                    logo(code, place.size)
+                        .position(x: width * (1 - place.x) - place.size / 2, y: height * place.y + place.size / 2)
+                }
             }
-            .frame(height: 208)
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: PromptArt.height)
+        .background(Theme.surface)
+        .clipped()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Power Rankings")
     }
 
-    private var title: some View {
-        VStack(spacing: 4) {
-            Text("NFL · Your order").monoLabel(9, weight: .bold, tracking: 0.2, color: .white)
-            VStack(spacing: -6) {
-                Text("Power").slabTitle(48, color: .white)
-                Text("Rankings").slabTitle(48, color: Self.red)
-            }
-            Text("Top 5 · Top 10 · All 32").monoLabel(9, tracking: 0.12, color: Color(hex: 0xFFF8E4, opacity: 0.85))
-        }
-        .shadow(color: .black.opacity(0.9), radius: 6, x: 0, y: 3)
-        .padding(.horizontal, 64)
+    private func logo(_ code: String, _ size: CGFloat) -> some View {
+        TeamLogo(code: code, size: size)
+            .shadow(color: .black.opacity(0.7), radius: 5, x: 0, y: 5)
     }
 
-    private var chevrons: some View {
-        ZStack {
-            VStack(alignment: .leading, spacing: 2) {
-                ForEach([0.7, 0.45, 0.25], id: \.self) { opacity in
-                    Image(systemName: "chevron.up").font(.system(size: 26, weight: .black)).foregroundStyle(Self.green.opacity(opacity))
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(.leading, 14).padding(.top, 8)
-            VStack(alignment: .trailing, spacing: 2) {
-                ForEach([0.25, 0.45, 0.7], id: \.self) { opacity in
-                    Image(systemName: "chevron.down").font(.system(size: 26, weight: .black)).foregroundStyle(Self.red.opacity(opacity))
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            .padding(.trailing, 14).padding(.bottom, 8)
-        }
+    private func arrow(color: Color, height: CGFloat) -> some View {
+        BlockArrow()
+            .fill(color.opacity(0.3))
+            .frame(width: height * 2 / 3, height: height)
     }
+}
 
-    @ViewBuilder
-    private func logo(
-        _ index: Int, size: CGFloat, angle: Double, opacity: Double, alignment: Alignment, x: CGFloat, y: CGFloat
-    ) -> some View {
-        if teamCodes.indices.contains(index) {
-            TeamLogo(code: teamCodes[index], size: size)
-                .rotationEffect(.degrees(angle))
-                .opacity(opacity)
-                .shadow(color: .black.opacity(0.8), radius: 6, x: 0, y: 6)
-                .offset(x: x, y: y)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-        }
+/// A block arrow pointing up, as the web's `BlockArrow` draws it.
+private struct BlockArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width / 24
+        let h = rect.height / 36
+        var path = Path()
+        path.move(to: CGPoint(x: 12 * w, y: 0))
+        path.addLine(to: CGPoint(x: 24 * w, y: 15 * h))
+        path.addLine(to: CGPoint(x: 16 * w, y: 15 * h))
+        path.addLine(to: CGPoint(x: 16 * w, y: 36 * h))
+        path.addLine(to: CGPoint(x: 8 * w, y: 36 * h))
+        path.addLine(to: CGPoint(x: 8 * w, y: 15 * h))
+        path.addLine(to: CGPoint(x: 0, y: 15 * h))
+        path.closeSubpath()
+        return path
     }
 }
 

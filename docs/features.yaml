@@ -33,6 +33,11 @@ features:
     summary: One take card layout on every prompt, Bold Predictions included (reply left, View take right; your own take starts open)
     web: done
     ios: done
+  - id: huddle.prompt-card-layout
+    summary: Prompt card is art on top (timer or state chip in its corner), then title, subtitle, who answered and the button, short enough for two cards on a phone
+    web: done
+    ios: done
+    note: 'BPP-22. The chip reads Closes in 2d while open, then Completed (you answered), Locked, Resolved or Void. Art is one banner height for every kind (112px, 128px on wider web screens): a game is a broadcast graphic (each club color and an oversized logo bleeding off its edge, names big in the middle over kickoff and venue), a weekly slate is the game count as a headline beside the clubs of its first four games instead of a pager, Power Rankings is the six cover teams at mixed sizes, the first three climbing beside a green block arrow and the last three falling beside a red one, Weekly Awards is six medals, one per award (football, shield, trophy, flame, thumbs down, an L), Bold Predictions is six exclamation speech bubbles, blue on the left and red on the right, and the rest keep their covers as wordless banners. Layout gap: a pick-one prompt shows its candidates as headshot tiles on web and as a row of round badges on iOS.'
   - id: huddle.bold-predictions
     summary: Bold Predictions prompts
     web: done
@@ -129,12 +134,54 @@ features:
     ios: done
     note: The Huddle's take cards, newest first, each with an Answering strip that opens the prompt, the picks folded behind View take, and a reply count that opens the take's thread.
 
+  - id: profile.layout
+    summary: Profile header is the avatar, name and username, then Edit profile and Friends buttons, then Stats, Takes and Lists tabs
+    web: done
+    ios: done
+    note: No email or join date on your own profile. Web keeps the join date on other players' profiles (/u/<username>). On iOS Edit profile and Friends moved out of the Profile menu into the buttons.
+  - id: profile.player-lists
+    summary: Lists tab on Profile and on another player's profile (their lists at the size they chose, with History)
+    web: done
+    ios: missing
+    ticket: BPP-33
+    note: Web shows each list in full on your own profile and on other players' profiles (/u/<username>?tab=lists), the newest open first; a 32-team Power Rankings shows all 32. Another player's profile now has the same Stats, Takes and Lists tabs as yours; their Takes tab shows only takes on prompts the viewer has answered or that have locked. iOS still shows the "Player lists are coming" placeholder. What a viewer sees is decided in SQL (get_ranking_lists, get_ranking_list; migrations 0210 to 0213).
+  - id: lists.tab
+    summary: Lists in the main navigation, after Home, where you build your lists
+    web: done
+    ios: missing
+    ticket: BPP-33
+    note: Web has a Lists sidebar item (and drawer item) after Home, opening /lists. iOS should add a Lists tab between Home and Games.
+  - id: lists.editor
+    summary: Build and edit a list (Power Rankings 5, 10 or 32; QB, RB, WR and TE top 10), pick up then place, save with a note, share with friends by default
+    web: done
+    ios: missing
+    ticket: BPP-33
+    note: 'Moving is pick up, then tap a row to place, or Up, Down, To #1 and To bottom. Nothing saves until Save. Position lists start empty and fill from the player search. The save sheet has an optional note (280 characters) and "Share this update with friends", on by default; off saves quietly and the version still shows in history. The server decides refusals (one saved edit per list per 24 hours, a prompt that is open, no change); the client shows its message. While a ranking prompt is open the list is read-only and links to the prompt. Rules: docs/architecture/ranking-lists.md.'
+  - id: lists.history
+    summary: Version history for a list, newest first, with what moved and the note (own lists at /lists/<kind>, others at /u/<username>/lists/<kind>)
+    web: done
+    ios: missing
+    ticket: BPP-33
+    note: Every saved version shows, published or not. Notes and "Shared with friends" markers show only to the owner and their friends.
+  - id: lists.update-card
+    summary: A shared list update as a friends-only card (biggest moves, note, replies), on the home Lists pill and in All and Friends
+    web: done
+    ios: missing
+    ticket: BPP-34
+    note: The home feed gets a Lists pill beside All, Prompts and Friends (/?filter=lists). The card shows the biggest moves against the version it replaced, and Open and reply goes to /lists/updates/<id> with the thread. Update cards are friends-only (and yours); everyone else gets not found. Update cards are kept out of the prompt feed, takes history and sitemap.
+  - id: lists.prompt-prefill
+    summary: Answering a ranking prompt opens pre-filled with your list and saves a new version
+    web: missing
+    ios: missing
+    ticket: BPP-32 (web), BPP-34 (iOS)
+    note: The database already does this (ranking_list_prefill, and submit_response saves the version, migration 0212). No client reads the prefill yet.
+
   # --- Friends ---------------------------------------------------------------
   - id: friends.list
     summary: Friends list, remove, block and unblock
     web: done
     ios: done
-    note: Web is the Friends tab on Profile; iOS is Friends in the Profile menu.
+    note: Both clients open it from the Friends button on Profile (web /friends, iOS the Friends screen), which shows the friend count and a badge for pending requests. The screen has Friends, Requests and Add sections.
   - id: friends.requests-search-invite
     summary: Friend requests, username typeahead (prefix match, 3+ characters) and a shareable invite link
     web: done
@@ -145,10 +192,15 @@ features:
     web: done
     ios: done
   - id: friends.activity-feed
-    summary: Friends' answers to prompts (with the take they posted, once the prompt locks), multiplayer wins and new solo high scores from the last 30 days
+    summary: Home is one feed with All, Prompts and Friends pills; Friends is the prompts a friend answered plus friends' multiplayer wins and new solo high scores from the last 30 days
     web: done
     ios: done
-    note: The Friends tab on Home, next to Huddle (web /?view=friends). Real accounts only; guests and signed-out visitors see just the Huddle. While a prompt is open the feed only says a friend answered; the answer appears at the lock. Answers are the Huddle's take cards (the take, with the picks folded behind View take); wins and new bests are lighter game cards (a best shows the number, the friend's rank among you and your friends, and Beat it; a win names who it was over; one friend's wins on a day fold into one card). Losses, one-player matches and solo runs that set no new best are left out. Beat it and Play are underlined buttons with an arrow-up-right icon on both clients. Layout gaps: web pages with an Older link and its Beat it / Play buttons jump to /solo and /party, while iOS pages with Load more, Beat it opens the game's board and Play switches to the Party tab.
+    note: Replaces the old Huddle | Friends tabs (migration 0209). All interleaves prompt cards and game moments newest first; Prompts is the prompts alone; Friends keeps only prompts a friend answered (dated by the newest friend answer) and the game moments. Real accounts only; guests and signed-out visitors see just the prompts, with no pills on web. A friend's answer is no longer its own card; it is the friends-answered line on the prompt card (see huddle.friends-answered). Wins and new bests are lighter game cards (a best shows the number, the friend's rank among you and your friends, and Beat it; a win names who it was over; one friend's wins on a day fold into one card). Losses, one-player matches and solo runs that set no new best are left out. Beat it and Play are underlined buttons with an arrow-up-right icon on both clients. Layout gaps: web pages with an Older link (/?filter=…&before=…) and its Beat it / Play buttons jump to /solo and /party, while iOS pages with Load more, Beat it opens the game's board and Play switches to the Party tab. Older iOS builds lose friends' takes from their Friends tab once 0209 is applied.
+  - id: huddle.friends-answered
+    summary: A prompt card says which friends answered it ("Sam & Jo answered", with their avatars), never what they picked
+    web: done
+    ios: done
+    note: Server read is friends_who_answered (migration 0209). Shown on the All and Friends pills only. The picks stay hidden until the prompt locks and then live in the prompt's thread (huddle.friend-takes).
 
   # --- Leaderboard -----------------------------------------------------------
   - id: leaderboard.ball-knower

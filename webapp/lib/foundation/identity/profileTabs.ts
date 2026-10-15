@@ -1,4 +1,4 @@
-export const PROFILE_TABS = ["stats", "takes", "friends"] as const;
+export const PROFILE_TABS = ["stats", "takes", "lists"] as const;
 export type ProfileTab = (typeof PROFILE_TABS)[number];
 
 /** `?tab=` on /profile; anything unknown is the Stats tab. */

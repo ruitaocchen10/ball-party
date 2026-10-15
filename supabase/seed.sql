@@ -572,4 +572,9 @@ select a.post_id, a.profile_id, '', true, a.at
     where c.post_id = a.post_id and c.author_id = a.profile_id
       and c.posted_with_pick and c.parent_comment_id is null);
 
+-- Answering a Power Rankings prompt also saves the player's list version
+-- (0212). The responses above were inserted directly, so give them theirs with
+-- the same function the migration used.
+select private.ranking_backfill_power_rankings();
+
 commit;

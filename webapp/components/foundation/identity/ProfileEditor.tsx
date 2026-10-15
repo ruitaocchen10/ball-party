@@ -45,14 +45,9 @@ export function ProfileEditor(props: ProfileEditorProps) {
 
   return (
     <>
-      <button
-        ref={trigger}
-        type="button"
-        onClick={() => setEditing(true)}
-        className="rounded-card bg-hidden px-3.5 py-3 type-label font-bold text-white transition-colors hover:bg-hidden-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
-      >
+      <Button ref={trigger} type="button" fullWidth={false} onClick={() => setEditing(true)} className="w-[calc(50%-4px)] sm:w-44">
         Edit profile
-      </button>
+      </Button>
       {editing ? <ProfileEditorDialog {...props} onClose={close} /> : null}
     </>
   );

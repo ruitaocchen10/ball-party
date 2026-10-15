@@ -9,11 +9,12 @@ import type { ReactNode } from "react";
  * `muted` and `outline` sit quietly on the background. `success` is the green
  * of a completed state, and `hidden` is red, which is reserved for concealed
  * things, so use it only for those. `ink` is a dark chip for sitting on a
- * light card.
+ * light card. `scrim` is a dark, blurred chip for sitting on top of art (a
+ * prompt card's timer), where a flat tone would vanish into whatever is behind.
  *
  * `xs` is the denser size, for chips that sit beside a heading or a stat.
  */
-type Tone = "solid" | "soft" | "muted" | "outline" | "success" | "hidden" | "ink";
+type Tone = "solid" | "soft" | "muted" | "outline" | "success" | "hidden" | "ink" | "scrim";
 
 const TONES: Record<Tone, string> = {
   solid: "bg-fg text-surface",
@@ -23,6 +24,7 @@ const TONES: Record<Tone, string> = {
   success: "bg-grade-elite text-fg",
   hidden: "bg-hidden text-fg/90",
   ink: "bg-surface text-fg",
+  scrim: "bg-surface/80 text-fg ring-1 ring-line ring-inset backdrop-blur-sm",
 };
 
 const SIZES = {

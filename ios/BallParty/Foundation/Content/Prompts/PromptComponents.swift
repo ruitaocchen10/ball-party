@@ -64,6 +64,16 @@ struct PostStatusLabel: View {
         case .void: Text("Void")
         }
     }
+
+    /// `in 2d`, the way the web's `relativeTime` says it: whole hours under a day,
+    /// whole days after, and "a few min" in the last hour. Short, because the
+    /// feed card's chip shares the art's corner with a team logo.
+    nonisolated static func countdown(to date: Date, now: Date) -> String {
+        let hours = Int((abs(date.timeIntervalSince(now)) / 3600).rounded())
+        if hours < 1 { return "in a few min" }
+        if hours < 24 { return "in \(hours)h" }
+        return "in \(Int((Double(hours) / 24).rounded()))d"
+    }
 }
 
 /// One take — or one reply — with its author, its age and, on a take that was

@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(18);
 
 \ir support/harness.psql
 
@@ -80,8 +80,8 @@ select tests.act_as((select v from tests.fx where k = 'me'));
 
 select is(
   (select array_agg(event_type order by occurred_at desc) from public.friend_activity()),
-  array['high_score', 'pick_made', 'high_score', 'win', 'take'],
-  'the feed has the friend''s open pick, bests, multiplayer win and revealed answer, newest first'
+  array['high_score', 'high_score', 'win'],
+  'the feed has the friend''s bests and multiplayer win, newest first, and no prompt answers'
 );
 select is(
   (select count(*)::integer from public.friend_activity() where actor_id = (select v from tests.fx where k = 'stranger')),
@@ -92,20 +92,6 @@ select is(
   (select count(*)::integer from public.friend_activity() where actor_id = (select v from tests.fx where k = 'me')),
   0,
   'your own activity is not in your friends feed'
-);
-select is(
-  (select (post_caption, take_body, points, response)::text from public.friend_activity() where event_type = 'take'),
-  '("Resolved one","Mahomes in a walk",25,"{""20000000-0000-0000-0000-000000000001"": [""50000000-0000-0000-0000-000000000001""]}")',
-  'a revealed answer carries the prompt, the take, the points and the chosen option ids per slot'
-);
-select ok(
-  (select comment_id is not null and reply_count = 0 from public.friend_activity() where event_type = 'take'),
-  'a take locates its thread'
-);
-select is(
-  (select (post_caption, take_body, comment_id, response)::text from public.friend_activity() where event_type = 'pick_made'),
-  '("Open one",,,)',
-  'an open prompt shows that a friend answered, with neither the answer nor the take'
 );
 select is(
   (select count(*)::integer from public.friend_activity() where event_type = 'win'),
@@ -133,11 +119,6 @@ select is(
   'a high score carries the game, the new best and the QB mode; a best older than 30 days is left out'
 );
 select is(
-  (select count(*)::integer from public.friend_activity() where post_caption = 'Old one'),
-  0,
-  'prompts answered more than 30 days ago are not included'
-);
-select is(
   (select count(*)::integer
      from pg_proc p, unnest(p.proargnames) n
     where p.proname = 'friend_activity' and n in ('chosen_option_ids', 'is_guest', 'is_private', 'deleted_at')),
@@ -148,31 +129,35 @@ select is(
 select is((select count(*)::integer from public.friend_activity(1)), 1, 'p_limit caps the rows');
 select is(
   (select event_type from public.friend_activity(10, (select occurred_at from public.friend_activity() offset 1 limit 1)) limit 1),
-  'high_score',
+  'win',
   'p_before pages past the rows already seen'
 );
 
--- Once the open prompt locks, the same row becomes a revealed answer.
-select tests.act_as_admin();
-update public.prompt_posts set lock_at = now() - interval '1 minute', status = 'locked'
- where id = '10000000-0000-0000-0000-000000000002';
-select tests.act_as((select v from tests.fx where k = 'me'));
+-- Which friends answered a prompt: the fact only, whether or not it has locked.
 select is(
-  (select (take_body, response is not null)::text from public.friend_activity() where post_caption = 'Open one'),
-  '("Secret take",t)',
-  'a locked prompt reveals the answer and the take'
+  (select array_agg(post_id::text || ':' || display_name order by post_id) from public.friends_who_answered(array[
+    '10000000-0000-0000-0000-000000000001'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, '10000000-0000-0000-0000-000000000003'::uuid])),
+  array['10000000-0000-0000-0000-000000000001:FaFriend', '10000000-0000-0000-0000-000000000002:FaFriend', '10000000-0000-0000-0000-000000000003:FaFriend'],
+  'friends_who_answered names a friend who answered, on an open or a locked prompt'
 );
 select is(
-  (select event_type from public.friend_activity() where post_caption = 'Open one'),
-  'take',
-  'and is a take event, not a pick_made'
+  (select count(*)::integer from public.friends_who_answered(array['10000000-0000-0000-0000-000000000002'::uuid]) where actor_id = (select v from tests.fx where k = 'stranger')),
+  0,
+  'a stranger who answered is not named'
+);
+select is(
+  (select count(*)::integer
+     from pg_proc p, unnest(p.proargnames) n
+    where p.proname = 'friends_who_answered' and n in ('chosen_option_ids', 'response', 'take_body')),
+  0,
+  'and the pick itself never comes down'
 );
 
 -- A void prompt drops out entirely.
 select tests.act_as_admin();
 update public.prompt_posts set status = 'void', void_reason = 'test' where id = '10000000-0000-0000-0000-000000000002';
 select tests.act_as((select v from tests.fx where k = 'me'));
-select is((select count(*)::integer from public.friend_activity() where post_caption = 'Open one'), 0, 'a void prompt is not in the feed');
+select is((select count(*)::integer from public.friends_who_answered(array['10000000-0000-0000-0000-000000000002'::uuid])), 1, 'friends_who_answered does not hide a void prompt: the card is the feed''s call');
 
 -- Removing the friend empties the feed.
 select public.remove_friend((select v from tests.fx where k = 'friend'));

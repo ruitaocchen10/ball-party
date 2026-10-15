@@ -123,7 +123,7 @@ The shell puts its children in a single 760px column, so a page never sets its o
 | A panel with a title and stats | `Card`, with `CardTitle`, `CardMeta`, `CardStats` and `Stat`. A raised dark surface with a hairline edge. `tone="light"` is the `fg` cream with `surface` text, for the people in a room (a taken seat) against dark surfaces around them. |
 | A dialog | `Modal` with a `ModalTitle` (its accessible name). Escape and overlay-click close it, focus is trapped and returned, and scroll is locked. `initialFocusRef` sets the first focus. |
 | An empty list or feed | `EmptyState`. |
-| A small tag ("You", "Locked") | `Badge`. `tone`: `solid`, `soft`, `muted`, `outline`, `success`, `hidden` (red, concealed things only), `ink` (a dark chip for a light card). `size`: `sm` or `xs`. |
+| A small tag ("You", "Locked") | `Badge`. `tone`: `solid`, `soft`, `muted`, `outline`, `success`, `hidden` (red, concealed things only), `ink` (a dark chip for a light card), `scrim` (a dark blurred chip for sitting on top of art, like a prompt card's timer). `size`: `sm` or `xs`. |
 | A page heading | `PageHeader` (title, optional eyebrow, description, and back link). |
 | A secondary side panel on a dashboard | `DashboardRail`. |
 

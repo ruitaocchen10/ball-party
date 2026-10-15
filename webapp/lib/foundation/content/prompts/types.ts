@@ -114,6 +114,8 @@ export type Post = {
   responseCount: number;
   /** Bold Predictions only: how many predictions people have written. The text stays hidden until a viewer locks in their own response. */
   predictionCount?: number;
+  /** Bold Predictions only: how many people have made predictions, the headcount the friends line folds in. */
+  predictorCount?: number;
   viewerAnswered: boolean;
   viewerResponse?: Record<string, string[]>;
   /** Power Rankings only: the six teams the admin chose for the cover art, in placement order. */

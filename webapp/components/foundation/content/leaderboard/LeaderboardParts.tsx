@@ -233,7 +233,7 @@ function BoardRowView({ row, grid }: { row: BoardRow; grid: string }) {
 /** The empty state for a friends board, which points at the profile Friends tab. */
 export function FindFriendsLink() {
   return (
-    <Link href="/profile?tab=friends" className={`text-fg underline underline-offset-2 ${LINK_FOCUS}`}>
+    <Link href="/friends" className={`text-fg underline underline-offset-2 ${LINK_FOCUS}`}>
       Find friends
     </Link>
   );
