@@ -12,10 +12,14 @@ struct ProfileView: View {
     @StateObject private var huddle: HuddleViewModel
     private let viewerId: UUID
     private let profileClient: ProfileClient
+    private let friendsClient: FriendsClient = SupabaseFriendsClient(client: SupabaseConfig.client)
 
     @State private var editor: ProfileEditorViewModel?
     @State private var privacy: PrivacySettingsViewModel?
     @State private var showFriends = false
+    @State private var tab: ProfileTab = .stats
+    @State private var friendCount = 0
+    @State private var pendingRequests = 0
     @State private var showNotifications = false
     @State private var confirmingDelete = false
     @State private var deleteFailed = false
@@ -36,25 +40,10 @@ struct ProfileView: View {
         )
     }
 
-    /// Friends, editing, privacy, support and the way out. It sits opposite the
+    /// Privacy, notifications, support and the way out. It sits opposite the
     /// bell in the header, so it is a button the same size.
     private var profileMenu: some View {
         Menu {
-            Button {
-                showFriends = true
-            } label: {
-                Label("Friends", systemImage: "person.2")
-            }
-            Button {
-                editor = ProfileEditorViewModel(
-                    client: profileClient, userId: viewerId,
-                    displayName: viewModel.profile?.displayName ?? "",
-                    avatarURL: viewModel.avatarURL,
-                    username: viewModel.profile?.username
-                )
-            } label: {
-                Label("Edit profile", systemImage: "pencil")
-            }
             Button {
                 privacy = PrivacySettingsViewModel(
                     client: profileClient, isPrivate: viewModel.profile?.isPrivate ?? false
@@ -97,8 +86,14 @@ struct ProfileView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 header
-                HighlightsCard(viewModel: viewModel)
-                TakesHistory(huddle: huddle)
+                actions
+                ProfileTabBar(selection: $tab)
+                    .padding(.top, -12)
+                switch tab {
+                case .stats: HighlightsCard(viewModel: viewModel)
+                case .takes: TakesHistory(huddle: huddle)
+                case .lists: ProfileListsTab(viewerId: viewerId)
+                }
             }
             .padding(16)
         }
@@ -109,6 +104,9 @@ struct ProfileView: View {
             RootBell()
         }
         .navigationDestination(isPresented: $showFriends) { FriendsView() }
+        .onChange(of: showFriends) { _, isShowing in
+            if !isShowing { Task { await loadFriendCounts() } }
+        }
         .confirmationDialog(
             "Delete your account?", isPresented: $confirmingDelete, titleVisibility: .visible
         ) {
@@ -144,12 +142,13 @@ struct ProfileView: View {
         .task {
             await viewModel.load()
             await huddle.load()
+            await loadFriendCounts()
         }
     }
 
     private var header: some View {
         HStack(spacing: 16) {
-            Avatar(name: viewModel.displayName, url: viewModel.avatarURL)
+            Avatar(name: viewModel.displayName, url: viewModel.avatarURL, size: 80)
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(viewModel.displayName)
@@ -161,23 +160,122 @@ struct ProfileView: View {
                     .accessibilityAddTraits(.isHeader)
                 if let usernameLabel = viewModel.usernameLabel {
                     Text(usernameLabel)
-                        .font(.sans(15))
+                        .font(.sans(16))
                         .foregroundStyle(Theme.fgMuted)
-                }
-                if let email = viewModel.email, viewModel.displayName != email {
-                    Text(email)
-                        .font(.sans(15))
-                        .foregroundStyle(Theme.fgMuted)
-                }
-                if let joined = viewModel.joinedLabel {
-                    Text(joined).monoLabel(10, tracking: 0.12)
-                        .padding(.top, 8)
+                        .padding(.top, 4)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, 16)
+    }
+
+    /// Edit profile, and Friends, which opens the friends screen (friends,
+    /// requests and adding someone) and carries the friend and pending counts.
+    private var actions: some View {
+        HStack(spacing: 8) {
+            Button("Edit profile") {
+                editor = ProfileEditorViewModel(
+                    client: profileClient, userId: viewerId,
+                    displayName: viewModel.profile?.displayName ?? "",
+                    avatarURL: viewModel.avatarURL,
+                    username: viewModel.profile?.username
+                )
+            }
+            .buttonStyle(ProfileActionStyle(isPrimary: true))
+
+            Button {
+                showFriends = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.badge.plus")
+                    Text("Friends")
+                    Text("\(friendCount)").font(.mono(13, weight: .bold))
+                    if pendingRequests > 0 {
+                        Text("\(pendingRequests)")
+                            .font(.mono(10, weight: .bold))
+                            .foregroundStyle(Theme.fg)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Theme.hidden, in: Capsule())
+                    }
+                }
+            }
+            .buttonStyle(ProfileActionStyle(isPrimary: false))
+            .accessibilityLabel(
+                pendingRequests > 0
+                    ? "Friends, \(friendCount), \(pendingRequests) pending requests"
+                    : "Friends, \(friendCount)"
+            )
+        }
+    }
+
+    private func loadFriendCounts() async {
+        guard let friends = try? await friendsClient.friends(),
+              let requests = try? await friendsClient.requests()
+        else { return }
+        friendCount = friends.count
+        pendingRequests = requests.filter { $0.direction == .incoming }.count
+    }
+}
+
+// MARK: - Actions and tabs
+
+/// A profile button: the primary one is the light fill, the other a panel.
+private struct ProfileActionStyle: ButtonStyle {
+    let isPrimary: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.sans(14, weight: .semibold))
+            .foregroundStyle(isPrimary ? Theme.surface : Theme.fg)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(isPrimary ? Theme.fg : Theme.panel, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(isPrimary ? Theme.fg : Theme.line, lineWidth: 1))
+            .opacity(configuration.isPressed ? 0.8 : 1)
+    }
+}
+
+/// The sections under the header.
+enum ProfileTab: CaseIterable, Hashable {
+    case stats, takes, lists
+
+    var title: String {
+        switch self {
+        case .stats: "Stats"
+        case .takes: "Takes"
+        case .lists: "Lists"
+        }
+    }
+}
+
+/// Underlined tabs: the selected one is the normal text colour with a red rule.
+struct ProfileTabBar: View {
+    @Binding var selection: ProfileTab
+    /// Another player's profile has no Takes tab yet.
+    var tabs: [ProfileTab] = ProfileTab.allCases
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(tabs, id: \.self) { tab in
+                let isSelected = tab == selection
+                Button {
+                    selection = tab
+                } label: {
+                    Text(tab.title)
+                        .monoLabel(11, weight: .bold, tracking: 0.14, color: isSelected ? Theme.fg : Theme.fgMuted)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .overlay(alignment: .bottom) {
+                            Rectangle().fill(isSelected ? Theme.hidden : .clear).frame(height: 2)
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
         .overlay(alignment: .bottom) { LineRule() }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Profile section")
     }
 }
 
@@ -283,8 +381,6 @@ private struct TakesHistory: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(text: "Your takes")
-
             switch huddle.phase {
             case .loading:
                 LoadingSpinner().frame(maxWidth: .infinity, alignment: .center)

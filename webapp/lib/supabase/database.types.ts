@@ -801,6 +801,44 @@ export type Database = {
           },
         ]
       }
+      device_tokens: {
+        Row: {
+          created_at: string
+          environment: string
+          id: string
+          last_seen: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          environment: string
+          id?: string
+          last_seen?: string
+          platform?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          id?: string
+          last_seen?: string
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           created_at: string
@@ -1394,6 +1432,57 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          recipient_id: string
+          ref_id: string
+          reply_count: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id: string
+          ref_id: string
+          reply_count?: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id?: string
+          ref_id?: string
+          reply_count?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_game_actions: {
         Row: {
           choice: Database["public"]["Enums"]["post_game_choice"]
@@ -1528,6 +1617,7 @@ export type Database = {
           is_opinion: boolean
           lock_at: string
           prompt_text: string
+          ranking_kind: string | null
           resolution_criteria: string
           resolution_source: Json | null
           resolved_at: string | null
@@ -1545,6 +1635,7 @@ export type Database = {
           is_opinion?: boolean
           lock_at: string
           prompt_text: string
+          ranking_kind?: string | null
           resolution_criteria: string
           resolution_source?: Json | null
           resolved_at?: string | null
@@ -1562,6 +1653,7 @@ export type Database = {
           is_opinion?: boolean
           lock_at?: string
           prompt_text?: string
+          ranking_kind?: string | null
           resolution_criteria?: string
           resolution_source?: Json | null
           resolved_at?: string | null
@@ -1576,6 +1668,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_posts_ranking_kind_fkey"
+            columns: ["ranking_kind"]
+            isOneToOne: false
+            referencedRelation: "ranking_list_kinds"
             referencedColumns: ["id"]
           },
         ]
@@ -1756,6 +1855,79 @@ export type Database = {
           },
         ]
       }
+      push_outbox: {
+        Row: {
+          actor_id: string | null
+          attempts: number
+          available_at: string
+          claimed_at: string | null
+          created_at: string
+          dead_at: string | null
+          id: number
+          item_key: string | null
+          kind: string
+          last_error: string | null
+          post_id: string | null
+          recipient_id: string
+          ref_id: string
+          sent_at: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          attempts?: number
+          available_at?: string
+          claimed_at?: string | null
+          created_at?: string
+          dead_at?: string | null
+          id?: never
+          item_key?: string | null
+          kind: string
+          last_error?: string | null
+          post_id?: string | null
+          recipient_id: string
+          ref_id: string
+          sent_at?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          attempts?: number
+          available_at?: string
+          claimed_at?: string | null
+          created_at?: string
+          dead_at?: string | null
+          id?: never
+          item_key?: string | null
+          kind?: string
+          last_error?: string | null
+          post_id?: string | null
+          recipient_id?: string
+          ref_id?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_outbox_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_outbox_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_outbox_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       qb_season_builder_matches: {
         Row: {
           current_round: number
@@ -1889,6 +2061,163 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ranking_list_items: {
+        Row: {
+          place: number
+          player_id: string | null
+          team_code: string | null
+          version_id: string
+        }
+        Insert: {
+          place: number
+          player_id?: string | null
+          team_code?: string | null
+          version_id: string
+        }
+        Update: {
+          place?: number
+          player_id?: string | null
+          team_code?: string | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ranking_list_items_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "ranking_list_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ranking_list_kinds: {
+        Row: {
+          id: string
+          item_kind: string
+          label: string
+          player_position: string | null
+          sizes: number[]
+        }
+        Insert: {
+          id: string
+          item_kind: string
+          label: string
+          player_position?: string | null
+          sizes: number[]
+        }
+        Update: {
+          id?: string
+          item_kind?: string
+          label?: string
+          player_position?: string | null
+          sizes?: number[]
+        }
+        Relationships: []
+      }
+      ranking_list_versions: {
+        Row: {
+          created_at: string
+          id: string
+          list_id: string
+          note: string | null
+          post_id: string | null
+          source: string
+          update_post_id: string | null
+          updated_at: string
+          version_no: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          list_id: string
+          note?: string | null
+          post_id?: string | null
+          source: string
+          update_post_id?: string | null
+          updated_at?: string
+          version_no: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          list_id?: string
+          note?: string | null
+          post_id?: string | null
+          source?: string
+          update_post_id?: string | null
+          updated_at?: string
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ranking_list_versions_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "ranking_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_list_versions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_list_versions_update_post_id_fkey"
+            columns: ["update_post_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ranking_lists: {
+        Row: {
+          created_at: string
+          current_version_id: string | null
+          id: string
+          kind: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_version_id?: string | null
+          id?: string
+          kind: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          current_version_id?: string | null
+          id?: string
+          kind?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ranking_lists_current_version_fk"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "ranking_list_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_lists_kind_fkey"
+            columns: ["kind"]
+            isOneToOne: false
+            referencedRelation: "ranking_list_kinds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_lists_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2341,6 +2670,7 @@ export type Database = {
         }[]
       }
       block_user: { Args: { p_user_id: string }; Returns: boolean }
+      can_see_ranking_update: { Args: { p_author: string }; Returns: boolean }
       cancel_friend_request: { Args: { p_user_id: string }; Returns: boolean }
       choose_post_game: {
         Args: {
@@ -2365,6 +2695,7 @@ export type Database = {
         }
       }
       claim_guest_identity: { Args: never; Returns: string }
+      claim_push_batch: { Args: { p_limit?: number }; Returns: Json }
       claim_username: { Args: { p_username: string }; Returns: string }
       close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       create_lobby: {
@@ -2385,7 +2716,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      claim_push_batch: { Args: { p_limit?: number }; Returns: Json }
       decline_friend_request: { Args: { p_user_id: string }; Returns: boolean }
       decline_room_invite: { Args: { p_invite_id: string }; Returns: boolean }
       delete_device_tokens: { Args: { p_tokens: string[] }; Returns: number }
@@ -2420,6 +2750,35 @@ export type Database = {
           response: Json
           run_mode: string
           take_body: string
+          username: string
+        }[]
+      }
+      friend_list_updates: {
+        Args: { p_before?: string; p_limit?: number; p_post_id?: string }
+        Returns: {
+          author_id: string
+          avatar_url: string
+          created_at: string
+          display_name: string
+          item_kind: string
+          items: string[]
+          kind: string
+          label: string
+          note: string
+          post_id: string
+          prev_items: string[]
+          username: string
+          version_no: number
+        }[]
+      }
+      friends_who_answered: {
+        Args: { p_post_ids: string[] }
+        Returns: {
+          actor_id: string
+          answered_at: string
+          avatar_url: string
+          display_name: string
+          post_id: string
           username: string
         }[]
       }
@@ -2468,6 +2827,36 @@ export type Database = {
           mode: Database["public"]["Enums"]["run_mode"]
           placement: number
           raw_score: number
+        }[]
+      }
+      get_ranking_list: {
+        Args: { p_kind: string; p_username: string }
+        Returns: {
+          created_at: string
+          is_current: boolean
+          items: string[]
+          note: string
+          post_id: string
+          source: string
+          update_post_id: string
+          updated_at: string
+          version_id: string
+          version_no: number
+        }[]
+      }
+      get_ranking_lists: {
+        Args: { p_username: string }
+        Returns: {
+          created_at: string
+          item_kind: string
+          items: string[]
+          kind: string
+          label: string
+          note: string
+          prev_items: string[]
+          version_count: number
+          version_id: string
+          version_no: number
         }[]
       }
       heartbeat_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
@@ -2653,6 +3042,24 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      ranking_list_prefill: {
+        Args: { p_post_id: string }
+        Returns: {
+          option_id: string
+          place: number
+          slot_id: string
+        }[]
+      }
+      ranking_players: {
+        Args: { p_ids: string[] }
+        Returns: {
+          display_name: string
+          headshot_url: string
+          player_id: string
+          position: string
+          team: string
+        }[]
+      }
       record_guest_account_collision: {
         Args: { p_nonce: string }
         Returns: undefined
@@ -2683,6 +3090,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_ranking_list: {
+        Args: {
+          p_items: string[]
+          p_kind: string
+          p_note?: string
+          p_publish?: boolean
+        }
+        Returns: string
       }
       search_users_by_username: {
         Args: { p_query: string }

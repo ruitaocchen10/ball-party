@@ -104,7 +104,7 @@ enum PromptFeed {
         powerTopFive: [UUID: [PromptPowerTopFiveRow]] = [:],
         revealed: [UUID: [PromptRevealedResponseRow]] = [:],
         bold: [UUID: BoldPredictionRows] = [:],
-        boldCounts: [UUID: Int] = [:],
+        boldCounts: [UUID: BoldPredictionCountRow] = [:],
         viewerId: UUID
     ) -> [PromptPost] {
         let slotsByPost = Dictionary(grouping: rows.slots, by: \.postId)
@@ -201,7 +201,10 @@ enum PromptFeed {
                         )
                     },
                     predictionCount: row.templateKind == PromptPost.boldPredictionsKind
-                        ? boldCounts[row.id] ?? bold[row.id]?.predictions.count ?? 0
+                        ? boldCounts[row.id]?.predictionCount ?? bold[row.id]?.predictions.count ?? 0
+                        : nil,
+                    predictorCount: row.templateKind == PromptPost.boldPredictionsKind
+                        ? boldCounts[row.id]?.authorCount ?? Set(bold[row.id]?.predictions.map(\.authorId) ?? []).count
                         : nil,
                     boldPredictions: boldPredictions(bold[row.id], fallbackNames: nameById, viewerId: viewerId)
                 )

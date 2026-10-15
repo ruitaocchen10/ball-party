@@ -319,6 +319,7 @@ final class PromptModelsTests: XCTestCase {
          {"post_id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A12", "prediction_count": "7", "author_count": "3"}]
         """)
         XCTAssertEqual(rows.map(\.predictionCount), [12, 7])
+        XCTAssertEqual(rows.map(\.authorCount), [4, 3])
     }
 
     func test_boldTarget_isDescribedByItsKind() {
@@ -385,5 +386,18 @@ final class PromptModelsTests: XCTestCase {
         XCTAssertEqual(withMargin.margin, "7_plus")
         XCTAssertNil(without.margin)
     }
-}
 
+    // The feed card's chip counts down the way the web's `relativeTime` does.
+    func test_countdown_saysFewMinutesHoursAndDaysLikeTheWeb() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        func countdown(_ seconds: TimeInterval) -> String {
+            PostStatusLabel.countdown(to: now.addingTimeInterval(seconds), now: now)
+        }
+        XCTAssertEqual(countdown(20 * 60), "in a few min")
+        XCTAssertEqual(countdown(5 * 3600), "in 5h")
+        XCTAssertEqual(countdown(23 * 3600), "in 23h")
+        XCTAssertEqual(countdown(24 * 3600), "in 1d")
+        XCTAssertEqual(countdown(2 * 86_400 + 4 * 3600), "in 2d")
+        XCTAssertEqual(countdown(29 * 86_400 + 3 * 3600), "in 29d")
+    }
+}

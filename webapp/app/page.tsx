@@ -6,7 +6,6 @@ import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { HuddleFeed } from "@/components/home/HuddleFeed";
 import { QuickActions } from "@/components/home/QuickActions";
 import { SearchQueryProvider } from "@/components/home/search-context";
-import { ActivityFeed } from "@/components/foundation/friends/ActivityFeed";
 import { UsernamePrompt } from "@/components/foundation/identity/UsernamePrompt";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
@@ -15,7 +14,8 @@ import { createClient } from "@/lib/supabase/server";
 import { canAnswerPrompt, canViewProfile, chromeIdentity, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { fetchPromptFeed } from "@/lib/foundation/content/prompts/feed";
 import { fetchGameContexts } from "@/lib/foundation/content/nfl/schedule";
-import { ACTIVITY_PAGE_SIZE, activityEvents } from "@/lib/foundation/friends/friends";
+import { fetchListPlayers, fetchListUpdates } from "@/lib/foundation/lists/server";
+import { ACTIVITY_PAGE_SIZE, activityEvents, answerersByPost, parseHomeFilter, type HomeFilter } from "@/lib/foundation/friends/friends";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
@@ -37,37 +37,43 @@ export default async function Home(props: PageProps<"/">) {
   const claims = data?.claims;
 
   const viewer = isSignedInViewer(claims);
-  // Real accounts get a Huddle | Friends switch (?view=friends); guests and
-  // signed-out visitors only have the Huddle.
-  const hasFriendsTab = canViewProfile(claims);
+  // Real accounts get filter pills (?filter=prompts|friends) over the one feed;
+  // guests and signed-out visitors only have the prompts.
+  const hasFriendsFilter = canViewProfile(claims);
   const params = await props.searchParams;
-  const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
-  const view: HomeView = hasFriendsTab && viewParam === "friends" ? "friends" : "huddle";
-  // Friends pages by `?before=<occurred_at of the last event shown>`, so each page can load the prompts its take cards need.
+  const filterParam = Array.isArray(params.filter) ? params.filter[0] : params.filter;
+  const filter = parseHomeFilter(filterParam, hasFriendsFilter);
+  // Game moments page by `?before=<occurred_at of the oldest one shown>`; prompts and moments older than it fill the next page.
   const beforeParam = Array.isArray(params.before) ? params.before[0] : params.before;
-  const before = view === "friends" && typeof beforeParam === "string" && !Number.isNaN(Date.parse(beforeParam)) ? beforeParam : null;
+  const before = filter !== "prompts" && hasFriendsFilter && typeof beforeParam === "string" && !Number.isNaN(Date.parse(beforeParam)) ? beforeParam : null;
+  const wantsFriends = hasFriendsFilter && filter !== "prompts" && filter !== "lists";
+  // Shared list updates (yours and your friends') sit in the feed beside prompts and game moments.
+  const wantsUpdates = hasFriendsFilter && filter !== "prompts";
 
   // Independent of each other, so they go together rather than in sequence.
   // The Huddle is readable before a player has an account or a temporary
   // lobby session. The per-player queries remain conditional, but the public
   // feed and its optional schedule treatment always load.
-  const [profileResult, room, { posts, gameContexts }, friends, activity] = await Promise.all([
+  const [profileResult, room, { posts, gameContexts, answerers }, friends, activity, listUpdates] = await Promise.all([
     viewer
       ? supabase.from("profiles").select("display_name, avatar_url, username").eq("id", claims!.sub).single()
       : Promise.resolve({ data: null }),
     viewer ? currentRoom(supabase, claims!.sub) : Promise.resolve(null),
-    fetchPromptFeed(supabase, viewer ? claims!.sub : null).then(async (feed) => ({
-      posts: feed,
-      // Only the games these posts are about, read from the same table the iOS
-      // app uses. A schedule outage should never hide the feed; it only drops
-      // the venue, kickoff and primetime details from the covers.
-      gameContexts: view === "friends"
-        ? []
-        : await fetchGameContexts(supabase, feed.flatMap((post) => post.slots.flatMap((slot) => slot.sourceGameId ?? []))).catch(() => []),
-    })),
-    view === "friends" ? supabase.rpc("list_friends") : null,
-    view === "friends" ? supabase.rpc("friend_activity", { p_limit: ACTIVITY_PAGE_SIZE, ...(before ? { p_before: before } : {}) }) : null,
+    fetchPromptFeed(supabase, viewer ? claims!.sub : null).then(async (feed) => {
+      const [gameContexts, answered] = await Promise.all([
+        // Only the games these posts are about, read from the same table the iOS
+        // app uses. A schedule outage should never hide the feed; it only drops
+        // the venue, kickoff and primetime details from the covers.
+        fetchGameContexts(supabase, feed.flatMap((post) => post.slots.flatMap((slot) => slot.sourceGameId ?? []))).catch(() => []),
+        wantsFriends && feed.length ? supabase.rpc("friends_who_answered", { p_post_ids: feed.map((post) => post.id) }) : null,
+      ]);
+      return { posts: feed, gameContexts, answerers: answerersByPost(answered?.data ?? []) };
+    }),
+    wantsFriends ? supabase.rpc("list_friends") : null,
+    wantsFriends ? supabase.rpc("friend_activity", { p_limit: ACTIVITY_PAGE_SIZE, ...(before ? { p_before: before } : {}) }) : null,
+    wantsUpdates ? fetchListUpdates(supabase, { limit: LIST_UPDATE_PAGE_SIZE, before }) : Promise.resolve([]),
   ]);
+  const listPlayers = await fetchListPlayers(supabase, listUpdates.filter((update) => update.itemKind === "player").flatMap((update) => [...update.items, ...(update.previousItems ?? [])]));
 
   const { displayName, email, avatarUrl } = chromeIdentity(claims, profileResult.data);
 
@@ -97,43 +103,51 @@ export default async function Home(props: PageProps<"/">) {
           />
         ) : null}
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
-        <PageHeader eyebrow="Social" title={view === "friends" ? "Friends" : "The huddle"} />
-        {hasFriendsTab ? <HomeTabs active={view} /> : null}
-        {view === "friends" ? (
-          friends?.error || activity?.error ? (
-            <EmptyState title="Couldn't load friend activity" className="mt-6">Try again in a moment.</EmptyState>
-          ) : (
-            <ActivityFeed
-              events={activityFeedEvents}
-              posts={new Map(posts.map((post) => [post.id, post]))}
-              hasFriends={(friends?.data ?? []).length > 0}
-              olderHref={(activity?.data ?? []).length >= ACTIVITY_PAGE_SIZE && activityFeedEvents.length > 0 ? `/?view=friends&before=${encodeURIComponent((activity!.data ?? [])[(activity!.data ?? []).length - 1].occurred_at)}` : null}
-            />
-          )
+        <PageHeader eyebrow="Social" title="The huddle" />
+        {hasFriendsFilter ? <HomeFilters active={filter} /> : null}
+        {friends?.error || activity?.error ? (
+          <EmptyState title="Couldn't load friend activity" className="mt-6">Try again in a moment.</EmptyState>
         ) : (
-          <HuddleFeed posts={pickPosts} canAnswer={canAnswerPrompt(claims)} gameContexts={gameContexts} />
+          <HuddleFeed
+            posts={pickPosts}
+            canAnswer={canAnswerPrompt(claims)}
+            gameContexts={gameContexts}
+            filter={filter}
+            answerers={answerers}
+            moments={activityFeedEvents}
+            before={before}
+            pageFull={(activity?.data ?? []).length >= ACTIVITY_PAGE_SIZE}
+            hasFriends={(friends?.data ?? []).length > 0}
+            listUpdates={listUpdates}
+            listPlayers={listPlayers}
+            viewerId={viewer ? claims!.sub : null}
+            listUpdatesFull={listUpdates.length >= LIST_UPDATE_PAGE_SIZE}
+          />
         )}
       </PageShell>
     </SearchQueryProvider>
   );
 }
 
-type HomeView = "huddle" | "friends";
+const FILTERS: { key: HomeFilter; label: string; href: string }[] = [
+  { key: "all", label: "All", href: "/" },
+  { key: "prompts", label: "Prompts", href: "/?filter=prompts" },
+  { key: "friends", label: "Friends", href: "/?filter=friends" },
+  { key: "lists", label: "Lists", href: "/?filter=lists" },
+];
 
-function HomeTabs({ active }: { active: HomeView }) {
-  const tabs: { key: HomeView; label: string; href: string }[] = [
-    { key: "huddle", label: "Huddle", href: "/" },
-    { key: "friends", label: "Friends", href: "/?view=friends" },
-  ];
+const LIST_UPDATE_PAGE_SIZE = 20;
+
+function HomeFilters({ active }: { active: HomeFilter }) {
   return (
-    <nav aria-label="Home sections" className="mt-4 flex overflow-hidden rounded-card border border-line">
-      {tabs.map(({ key, label, href }) => (
+    <nav aria-label="Filter the feed" className="mt-4 flex gap-2">
+      {FILTERS.map(({ key, label, href }) => (
         <Link
           key={key}
           href={href}
           aria-current={key === active ? "page" : undefined}
-          className={`flex min-h-12 flex-1 items-center justify-center font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg ${
-            key === active ? "bg-hidden text-fg" : "text-fg hover:text-fg-muted"
+          className={`flex min-h-10 items-center rounded-full border px-4 type-label transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${
+            key === active ? "border-fg bg-fg text-surface" : "border-line text-fg hover:text-fg-muted"
           }`}
         >
           {label}

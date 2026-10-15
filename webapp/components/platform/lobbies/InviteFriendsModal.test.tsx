@@ -49,6 +49,6 @@ describe("InviteFriendsModal", () => {
   it("points at the profile Friends tab when there are no friends", async () => {
     rpc.mockResolvedValue({ data: [], error: null });
     render(<InviteFriendsModal lobbyId="lobby-1" onClose={() => {}} />);
-    expect(await screen.findByRole("link", { name: "Find friends" })).toHaveAttribute("href", "/profile?tab=friends");
+    expect(await screen.findByRole("link", { name: "Find friends" })).toHaveAttribute("href", "/friends");
   });
 });

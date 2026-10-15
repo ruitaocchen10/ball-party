@@ -224,14 +224,16 @@ struct BoldPredictionRows: Equatable, Sendable {
 struct BoldPredictionCountRow: Decodable, Equatable, Sendable {
     let postId: UUID
     let predictionCount: Int
+    /// How many people wrote them.
+    let authorCount: Int
 
-    init(postId: UUID, predictionCount: Int) {
-        self.postId = postId; self.predictionCount = predictionCount
+    init(postId: UUID, predictionCount: Int, authorCount: Int = 0) {
+        self.postId = postId; self.predictionCount = predictionCount; self.authorCount = authorCount
     }
 
     private enum CodingKeys: String, CodingKey {
         case postId = "post_id"
-        case predictionCount = "prediction_count"
+        case predictionCount = "prediction_count", authorCount = "author_count"
     }
 
     /// `bigint` arrives as a number or a string, like the other aggregate columns.
@@ -239,5 +241,6 @@ struct BoldPredictionCountRow: Decodable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         postId = try c.decode(UUID.self, forKey: .postId)
         predictionCount = try c.decodeNumericIfPresent(forKey: .predictionCount).map { Int($0) } ?? 0
+        authorCount = try c.decodeNumericIfPresent(forKey: .authorCount).map { Int($0) } ?? 0
     }
 }

@@ -7,30 +7,29 @@ type ProfileHeaderProps = {
   avatarUrl: string | null;
   /** Shown as @username under the name when the player has one. */
   username?: string | null;
-  joinedLabel: string;
-  /** A profile owner can supply an edit control; public profiles need not. */
+  /** A small line under the username, for a profile that wants one. */
+  joinedLabel?: string;
+  /** Buttons under the identity: edit and friends on your own profile, friend actions on another's. */
   action?: ReactNode;
 };
 
 /**
- * The identity-specific counterpart to PageHeader.
- *
- * It keeps the shared eyebrow, display type, supporting copy, and divider,
- * while owning the avatar-and-action layout that would make PageHeader's
- * otherwise compact interface profile-specific.
+ * The identity block of a profile: a large avatar with the name in display
+ * type and the username beside it. The profile's buttons sit to the right from
+ * `sm` up and drop below on a phone.
  */
 export function ProfileHeader({ displayName, avatarUrl, username = null, joinedLabel, action }: ProfileHeaderProps) {
   return (
-    <header className="w-full border-b border-line pb-5 sm:pb-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
-        <ProfileAvatar name={displayName} avatarUrl={avatarUrl} />
+    <header className="mb-4 flex w-full flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
+      <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
+        <ProfileAvatar name={displayName} avatarUrl={avatarUrl} size={80} />
         <div className="min-w-0 flex-1">
-          <p className="type-label font-semibold text-fg-muted">{joinedLabel}</p>
-          <h1 className="mt-1 font-slab text-[34px] leading-none uppercase sm:text-[42px]">{displayName}</h1>
-          {username ? <p className="mt-1.5 type-label text-fg-muted">@{username}</p> : null}
+          <h1 className="font-slab text-[34px] leading-none uppercase [overflow-wrap:anywhere] sm:text-[42px]">{displayName}</h1>
+          {username ? <p className="mt-0.5 text-base text-fg-muted">@{username}</p> : null}
+          {joinedLabel ? <p className="mt-2 type-label text-fg-muted">{joinedLabel}</p> : null}
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
+      {action ? <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0 sm:flex-col">{action}</div> : null}
     </header>
   );
 }

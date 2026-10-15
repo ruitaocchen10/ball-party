@@ -41,7 +41,7 @@ language sql as $$
   with teams as (
     select jsonb_agg(jsonb_build_object('label', code, 'team_code', code, 'sort_order', n - 1) order by n) as options
       from unnest(array['ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN','DET','GB','HOU','IND','JAX','KC',
-                        'LA','LAC','LV','MIA','MIN','NE','NO','NYG','NYJ','PHI','PIT','SEA','SF','TB','TEN','WAS'])
+                        'LAC','LAR','LV','MIA','MIN','NE','NO','NYG','NYJ','PHI','PIT','SEA','SF','TB','TEN','WAS'])
            with ordinality as t(code, n)
   )
   select jsonb_build_array(

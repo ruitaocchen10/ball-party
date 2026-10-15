@@ -7,6 +7,8 @@ protocol FriendActivityClient: Sendable {
     /// `friend_activity`: newest first, at most `limit` events strictly older
     /// than `before` (an `occurred_at` exactly as the server printed it).
     func activity(limit: Int, before: String?) async throws -> [FriendActivityEvent]
+    /// `friends_who_answered`: which of the caller's friends answered each prompt.
+    func answerers(postIds: [UUID]) async throws -> [FriendAnswerer]
 }
 
 struct SupabaseFriendActivityClient: FriendActivityClient {
@@ -23,9 +25,20 @@ struct SupabaseFriendActivityClient: FriendActivityClient {
             .execute().value
         return page.events
     }
+
+    private struct AnswererParams: Encodable, Sendable {
+        let p_post_ids: [UUID]
+    }
+
+    func answerers(postIds: [UUID]) async throws -> [FriendAnswerer] {
+        guard !postIds.isEmpty else { return [] }
+        return try await client
+            .rpc("friends_who_answered", params: AnswererParams(p_post_ids: postIds))
+            .execute().value
+    }
 }
 
-/// The feed of what friends have been up to. The server picks the friends and
+/// The game moments friends have been up to, and which of them answered which prompt. The server picks the friends and
 /// the window (30 days); this pages through it newest-first.
 @MainActor
 final class FriendActivityViewModel: ObservableObject {
@@ -48,6 +61,9 @@ final class FriendActivityViewModel: ObservableObject {
     /// False only when the feed is empty and the player is known to have no
     /// friends, which picks the empty-state copy. Unknown counts as true.
     @Published private(set) var hasFriends = true
+
+    /// Friends who answered each prompt, for the line on its card. A failed read leaves the cards without it.
+    @Published private(set) var answerers: [UUID: [FriendAnswerer]] = [:]
 
     private let client: FriendActivityClient
     private let friendsClient: FriendsClient?
@@ -84,6 +100,11 @@ final class FriendActivityViewModel: ObservableObject {
         } catch {
             if events.isEmpty { phase = .failed }
         }
+    }
+
+    func loadAnswerers(postIds: [UUID]) async {
+        guard let rows = try? await client.answerers(postIds: postIds) else { return }
+        answerers = Dictionary(grouping: rows, by: \.postId)
     }
 
     /// Reads the page older than the oldest event shown.

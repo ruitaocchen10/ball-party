@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Lock } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Lock } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
@@ -10,9 +10,12 @@ import { Input, Textarea } from "@/components/foundation/ui-kit/Input";
 import { Select } from "@/components/foundation/ui-kit/Select";
 import type { NflScheduleGame } from "@/lib/foundation/content/nfl/schedule";
 import { OptionIcon } from "./SlotFaces";
-import { MatchupPicker } from "./MatchupPicker";
+import { MatchupBanner, SlateBanner } from "./MatchupBanner";
 import { PickOneBoard } from "./PickOneBoard";
-import { COVER_LOGO_COUNT, CoverShape, PromptCover } from "./PromptCover";
+import { BoldPredictionsBanner } from "./BoldPredictionsBanner";
+import { COVER_LOGO_COUNT, PromptCover } from "./PromptCover";
+import { PowerRankingsBanner } from "./PowerRankingsBanner";
+import { WeeklyAwardsBanner } from "./WeeklyAwardsBanner";
 import { SharePromptButton } from "./SharePromptButton";
 import { usePromptDeadlineNow } from "./usePromptDeadline";
 import {
@@ -35,6 +38,8 @@ import {
 } from "./ComposerFields";
 import { COVER_OPTION_LIMIT, coverOptions, isPicksPost, isPromptOpenForAnswers, needsCoverChoice, relativeTime } from "@/lib/foundation/content/prompts/logic";
 import type { MatchupGameContext, Option, Player, Post, Slot, TemplateKind } from "@/lib/foundation/content/prompts/types";
+import { FriendsAnswered } from "@/components/foundation/friends/FriendsAnswered";
+import type { FriendAnswerer } from "@/lib/foundation/friends/friends";
 import { Badge } from "@/components/foundation/ui-kit/Badge";
 
 /**
@@ -77,13 +82,22 @@ export function PromptPostFeed({
   );
 }
 
-function PostCardC({
+/**
+ * One prompt in the feed: its art across the top with the timer (or the state)
+ * in a chip on the art's corner, then the title and subtitle, who has answered,
+ * and the button to make your pick. The art is short on purpose, so a phone fits
+ * a couple of these at once instead of one and a half.
+ */
+export function PostCardC({
   post,
   viewerCanAnswer,
   onOpenAnswer,
   gameContexts = [],
+  friendsAnswered = [],
 }: {
   post: Post;
+  /** Friends who answered, as a line of avatars and names; never their picks. */
+  friendsAnswered?: FriendAnswerer[];
   viewerCanAnswer: boolean;
   onOpenAnswer: () => void;
   gameContexts?: MatchupGameContext[];
@@ -96,37 +110,38 @@ function PostCardC({
   const actionLabel = bold
     ? promptOpen ? "Make your predictions" : "See predictions"
     : canAnswer ? "Make your picks" : post.viewerAnswered && promptOpen ? "View your picks" : "See takes";
-  const timingLabel = postTimingLabel(post, now);
-  const statusChip = post.viewerAnswered
-    ? <Badge tone="success" size="xs" icon={<Check aria-hidden className="h-3 w-3" strokeWidth={3} />}>Complete</Badge>
-    : post.status !== "void" && !promptOpen && post.status !== "resolved"
-      ? <Badge tone="outline" size="xs" icon={<Lock aria-hidden className="h-3 w-3" strokeWidth={2.5} />}>Locked</Badge>
-      : post.status === "resolved"
-        ? <Badge tone="soft" size="xs">Resolved</Badge>
-      : null;
 
   return (
     <Card className={void_ ? "opacity-45" : ""}>
-      <div className="flex items-start gap-3 px-4 pt-4">
-        <h2 className="min-w-0 flex-1 font-slab text-2xl leading-[1.05] uppercase">{post.promptText}</h2>
-        {statusChip ?? <span className="shrink-0 pt-0.5 type-label text-fg-muted">{timingLabel}</span>}
+      <div className="relative">
+        <PostTeaser post={post} gameContexts={gameContexts} />
+        <PostStatusChip post={post} promptOpen={promptOpen} />
       </div>
-      <p className="px-4 pt-1 text-[13px] text-fg-muted">{post.caption}</p>
 
-      {void_ ? (
-        <p className="mx-4 mt-3 flex items-center gap-2 rounded-chip bg-surface px-3 py-2 type-label text-fg-muted">
-          {post.voidReason}
-        </p>
-      ) : null}
+      <div className="px-4 pt-3">
+        <h2 className="line-clamp-2 font-slab text-2xl leading-[1.05] uppercase">{post.promptText}</h2>
+        {post.caption ? <p className="pt-0.5 text-[13px] text-fg-muted">{post.caption}</p> : null}
 
-      <PostTeaser post={post} gameContexts={gameContexts} />
-      <div className="flex items-center justify-between gap-3 px-4 pt-4">
-        <p className="type-label text-fg-muted">
-          {bold
-            ? `${post.predictionCount ?? 0} ${post.predictionCount === 1 ? "prediction" : "predictions"} made`
-            : `${post.responseCount} ${post.responseCount === 1 ? "person has" : "people have"} answered`}
-        </p>
+        {void_ ? (
+          <p className="mt-3 flex items-center gap-2 rounded-chip bg-surface px-3 py-2 type-label text-fg-muted">
+            {post.voidReason}
+          </p>
+        ) : null}
+
+        {/* With friends among the answerers, their line carries the headcount too. */}
+        {friendsAnswered.length === 0 ? (
+          <p className="pt-2.5 type-label text-fg-muted">
+            {bold
+              ? `${post.predictionCount ?? 0} ${post.predictionCount === 1 ? "prediction" : "predictions"} made`
+              : `${post.responseCount} ${post.responseCount === 1 ? "person has" : "people have"} answered`}
+          </p>
+        ) : (
+          <div className="pt-2.5">
+            <FriendsAnswered answerers={friendsAnswered} total={bold ? post.predictorCount : post.responseCount} />
+          </div>
+        )}
       </div>
+
       <div className="px-4 pt-3 pb-4">
         {(bold ? promptOpen : canAnswer) && !viewerCanAnswer ? (
           <Link href="/login?next=/" className="flex h-12 items-center justify-center rounded-card bg-fg px-4 font-slab text-[15px] tracking-[0.04em] text-surface uppercase hover:bg-panel-ink-hover">
@@ -140,22 +155,37 @@ function PostCardC({
   );
 }
 
-function postTimingLabel(post: Post, now: number) {
-  return isPromptOpenForAnswers(post, now) ? `Closes ${relativeTime(post.lockAt)}` : relativeTime(post.createdAt);
+/**
+ * The chip in the art's top-right corner. While a prompt is open it counts
+ * down ("Closes in 2d"); it then turns into what became of it for this viewer:
+ * Completed if they answered, otherwise Locked, or Resolved once it is graded.
+ */
+function PostStatusChip({ post, promptOpen }: { post: Post; promptOpen: boolean }) {
+  const className = "absolute top-2 right-2 z-10";
+  if (post.viewerAnswered) {
+    return <Badge tone="success" size="xs" className={className} icon={<Check aria-hidden className="h-3 w-3" strokeWidth={3} />}>Completed</Badge>;
+  }
+  if (post.status === "void") return <Badge tone="scrim" size="xs" className={className}>Void</Badge>;
+  if (post.status === "resolved") return <Badge tone="scrim" size="xs" className={className}>Resolved</Badge>;
+  if (!promptOpen) {
+    return <Badge tone="scrim" size="xs" className={className} icon={<Lock aria-hidden className="h-3 w-3" strokeWidth={2.5} />}>Locked</Badge>;
+  }
+  return <Badge tone="scrim" size="xs" className={className}>Closes {relativeTime(post.lockAt)}</Badge>;
 }
 
 /**
- * A non-interactive teaser for an open, unanswered post. A single matchup is
- * a game-poster cover; a set puts that same cover in a compact carousel.
+ * The art for a post. A single matchup is a game banner; a slate of them is
+ * one banner of small pairs; Power Rankings, Weekly Awards and Bold Predictions
+ * have their own covers; and anything else shows the faces of what is on offer.
  */
 function PostTeaser({ post, gameContexts }: { post: Post; gameContexts: MatchupGameContext[] }) {
   if (isPicksPost(post) && post.slots.length === 1) {
     const slot = post.slots[0];
-    return <div className="mx-4 mt-4"><MatchupPicker slot={slot} context={gameContexts.find((game) => game.id === slot.sourceGameId)} testId="single-game-matchup-preview" variant="featured" mode="preview" /></div>;
+    return <MatchupBanner slot={slot} context={gameContexts.find((game) => game.id === slot.sourceGameId)} testId="single-game-matchup-preview" />;
   }
 
   if (isPicksPost(post)) {
-    return <WeeklyMatchupCarousel post={post} gameContexts={gameContexts} />;
+    return <SlateBanner slots={post.slots} label={`${post.templateName} matchups`} testId="multi-game-matchup-preview" />;
   }
 
   if (post.templateKind === "power_rankings") {
@@ -163,11 +193,11 @@ function PostTeaser({ post, gameContexts }: { post: Post; gameContexts: MatchupG
   }
 
   if (post.templateKind === "bold_predictions") {
-    return <BoldPredictionsCover />;
+    return <BoldPredictionsBanner testId="bold-predictions-cover" />;
   }
 
   if (post.templateKind === "weekly_awards") {
-    return <WeeklyAwardsCover />;
+    return <WeeklyAwardsBanner testId="weekly-awards-cover" />;
   }
 
   if (post.templateKind === "stat_leader" && post.slots.length === 1) {
@@ -177,73 +207,32 @@ function PostTeaser({ post, gameContexts }: { post: Post; gameContexts: MatchupG
 
   const allOptions = post.slots.flatMap((slot) => slot.options);
   const options = [...new Map(allOptions.map((option) => [option.id, option])).values()];
-  const shown = options.slice(0, 6);
-  const overflow = options.length - shown.length;
+  const overflow = options.length - COVER_LOGO_COUNT;
 
   return (
-    <div className="mt-3 flex flex-col items-center gap-2 px-4">
-      {post.slots.length > 1 ? (
-        <p className="type-label text-fg-muted">{post.slots.length} picks to make</p>
-      ) : null}
-      <div className="flex items-center gap-2">
-        {shown.map((option) => (
-          <OptionIcon key={option.id} option={option} className="h-8 w-8" />
-        ))}
-        {overflow > 0 ? (
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface font-mono text-[10px] text-fg-muted">+{overflow}</span>
-        ) : null}
-      </div>
-    </div>
+    <PromptCover
+      testId="options-cover"
+      ariaLabel="Options"
+      leftGlow={BLUE_GLOW}
+      rightGlow={RED_GLOW}
+      logos={options.slice(0, COVER_LOGO_COUNT)}
+      art={
+        <>
+          {post.slots.length > 1 ? <Badge tone="scrim" size="xs" className="absolute top-2 left-2 z-10">{post.slots.length} picks to make</Badge> : null}
+          {overflow > 0 ? <Badge tone="scrim" size="xs" className="absolute bottom-2 left-2 z-10">+{overflow} more</Badge> : null}
+        </>
+      }
+    />
   );
 }
 
 const COVER_TEAM_COUNT = COVER_LOGO_COUNT;
 
-function BoldPredictionsCover() {
-  return (
-    <PromptCover
-      testId="bold-predictions-cover"
-      ariaLabel="Bold Predictions"
-      title={["Bold", "Predictions"]}
-      subtitle="Call it before it happens"
-      leftGlow="bg-[radial-gradient(ellipse_at_left,rgb(59_130_246_/_0.24),transparent_70%)]"
-      rightGlow="bg-[radial-gradient(ellipse_at_right,rgb(239_68_68_/_0.22),transparent_70%)]"
-      art={
-        <>
-          <CoverShape shape="bolt" className="top-2 left-4 h-28 w-24 rotate-[-12deg] text-blue-500/75 sm:h-32 sm:w-28" />
-          <CoverShape shape="bolt" className="top-24 left-24 h-16 w-14 rotate-[10deg] text-blue-500/45" />
-          <CoverShape shape="bolt" className="bottom-3 left-3 h-14 w-12 rotate-[-6deg] text-blue-500/30" />
-          <CoverShape shape="bolt" className="right-4 bottom-2 h-28 w-24 rotate-[168deg] text-red-500/75 sm:h-32 sm:w-28" />
-          <CoverShape shape="bolt" className="top-6 right-24 h-16 w-14 rotate-[190deg] text-red-500/45" />
-          <CoverShape shape="bolt" className="top-3 right-3 h-14 w-12 rotate-[174deg] text-red-500/30" />
-        </>
-      }
-    />
-  );
-}
-
-function WeeklyAwardsCover() {
-  return (
-    <PromptCover
-      testId="weekly-awards-cover"
-      ariaLabel="Weekly Awards"
-      title={["Weekly", "Awards"]}
-      subtitle="Hand out the hardware"
-      leftGlow="bg-[radial-gradient(ellipse_at_left,rgb(59_130_246_/_0.24),transparent_70%)]"
-      rightGlow="bg-[radial-gradient(ellipse_at_right,rgb(239_68_68_/_0.22),transparent_70%)]"
-      art={
-        <>
-          <CoverShape shape="star" className="top-2 left-4 h-28 w-28 rotate-[-12deg] text-blue-500/75 sm:h-32 sm:w-32" />
-          <CoverShape shape="star" className="top-24 left-24 h-16 w-16 rotate-[10deg] text-blue-500/45" />
-          <CoverShape shape="star" className="bottom-3 left-3 h-14 w-14 rotate-[-6deg] text-blue-500/30" />
-          <CoverShape shape="star" className="right-4 bottom-2 h-28 w-28 rotate-[12deg] text-red-500/75 sm:h-32 sm:w-32" />
-          <CoverShape shape="star" className="top-6 right-24 h-16 w-16 rotate-[-10deg] text-red-500/45" />
-          <CoverShape shape="star" className="top-3 right-3 h-14 w-14 rotate-[6deg] text-red-500/30" />
-        </>
-      }
-    />
-  );
-}
+// Motif colors: blue against red is the app's two-sides theme, and green/red the
+// risers and fallers of Power Rankings. They are art, not UI chrome, so they
+// are written out rather than taken from tokens.
+const BLUE_GLOW = "bg-[radial-gradient(ellipse_at_left,rgb(59_130_246_/_0.24),transparent_70%)]";
+const RED_GLOW = "bg-[radial-gradient(ellipse_at_right,rgb(239_68_68_/_0.22),transparent_70%)]";
 
 /**
  * The Power Rankings cover shows six teams the admin chose while composing
@@ -253,53 +242,7 @@ function PowerRankingsBoard({ post }: { post: Post }) {
   const byTeamCode = new Map(post.slots[0]?.options.filter((option) => option.teamCode).map((option) => [option.teamCode!, option]) ?? []);
   const options = (post.coverTeamCodes ?? []).map((teamCode) => byTeamCode.get(teamCode)).filter((option): option is Option => Boolean(option));
 
-  return (
-    <PromptCover
-      testId="power-rankings-board"
-      ariaLabel="Power Rankings board"
-      title={["Power", "Rankings"]}
-      subtitle="Your NFL standings"
-      leftGlow="bg-[radial-gradient(ellipse_at_left,rgb(34_197_94_/_0.18),transparent_68%)]"
-      rightGlow="bg-[radial-gradient(ellipse_at_right,rgb(239_68_68_/_0.18),transparent_68%)]"
-      logos={options}
-      art={
-        <>
-          <CoverShape shape="chevronUp" className="top-1 left-3 h-12 w-20 text-green-400/70" />
-          <CoverShape shape="chevronUp" className="top-11 left-10 h-10 w-16 text-green-400/45" />
-          <CoverShape shape="chevronUp" className="top-20 left-2 h-8 w-12 text-green-400/25" />
-          <CoverShape shape="chevronDown" className="right-3 bottom-1 h-12 w-20 text-red-500/70" />
-          <CoverShape shape="chevronDown" className="right-10 bottom-11 h-10 w-16 text-red-500/45" />
-          <CoverShape shape="chevronDown" className="right-2 bottom-20 h-8 w-12 text-red-500/25" />
-        </>
-      }
-    />
-  );
-}
-
-function WeeklyMatchupCarousel({ post, gameContexts }: { post: Post; gameContexts: MatchupGameContext[] }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const slot = post.slots[activeIndex];
-  const total = post.slots.length;
-  const goTo = (index: number) => setActiveIndex((index + total) % total);
-
-  return (
-    <section data-testid="multi-game-matchup-preview" aria-label={`${post.templateName} matchup carousel`} className="mx-4 mt-4">
-      <MatchupPicker slot={slot} context={gameContexts.find((game) => game.id === slot.sourceGameId)} variant="featured" mode="preview" />
-      <div className="mt-2 flex items-center justify-between gap-3 px-1">
-        <button type="button" onClick={() => goTo(activeIndex - 1)} aria-label="Previous matchup" className="flex h-8 w-8 items-center justify-center rounded-chip border border-line bg-surface text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">
-          <ChevronLeft className="h-4 w-4" strokeWidth={2} />
-        </button>
-        <div className="flex items-center gap-1.5" aria-label={`Showing matchup ${activeIndex + 1} of ${total}`}>
-          {post.slots.map((matchup, index) => (
-            <button key={matchup.id} type="button" onClick={() => goTo(index)} aria-label={`Show matchup ${index + 1}`} aria-current={index === activeIndex ? "true" : undefined} className={`h-1.5 transition-[width,background-color] ${index === activeIndex ? "w-6 bg-fg" : "w-1.5 bg-line hover:bg-fg-muted"}`} />
-          ))}
-        </div>
-        <button type="button" onClick={() => goTo(activeIndex + 1)} aria-label="Next matchup" className="flex h-8 w-8 items-center justify-center rounded-chip border border-line bg-surface text-fg transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg">
-          <ChevronRight className="h-4 w-4" strokeWidth={2} />
-        </button>
-      </div>
-    </section>
-  );
+  return <PowerRankingsBanner testId="power-rankings-board" options={options} />;
 }
 
 /** `datetime-local` needs `YYYY-MM-DDTHH:mm` in the browser's own timezone — Date#toISOString is UTC and won't round-trip into the input. */

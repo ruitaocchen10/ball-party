@@ -22,7 +22,7 @@ describe("BallKnowerLeaderboard scope toggle", () => {
   it("points an empty friends board at the profile Friends tab", () => {
     render(<BallKnowerLeaderboard window="week" scope="friends" rows={[]} standing={unranked} />);
     expect(screen.getByText("No friends on the board yet")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Find friends" })).toHaveAttribute("href", "/profile?tab=friends");
+    expect(screen.getByRole("link", { name: "Find friends" })).toHaveAttribute("href", "/friends");
   });
 
   it("keeps the global empty copy on the everyone board", () => {

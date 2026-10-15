@@ -16,7 +16,7 @@ import type { Post } from "@/lib/foundation/content/prompts/types";
 
 const weekGames: NflScheduleGame[] = [
   { id: "2026_05_BUF_KC", season: 2026, week: 5, kickoff: "2099-10-08T00:20:00.000Z", away: "BUF", home: "KC", label: "Bills @ Chiefs", stadium: "Arrowhead", primetime: true },
-  { id: "2026_05_SF_LA", season: 2026, week: 5, kickoff: "2099-10-09T17:00:00.000Z", away: "SF", home: "LA", label: "49ers @ Rams", stadium: "SoFi", primetime: false },
+  { id: "2026_05_SF_LA", season: 2026, week: 5, kickoff: "2099-10-09T17:00:00.000Z", away: "SF", home: "LAR", label: "49ers @ Rams", stadium: "SoFi", primetime: false },
 ];
 
 const mahomes: PlayerResult = { id: "00-0033873", name: "Patrick Mahomes", position: "QB", team: "KC", headshotUrl: null, status: "ACT" };
@@ -328,7 +328,7 @@ it("points a locked Bold Predictions card at the reveal", () => {
 const composerGames: NflScheduleGame[] = [
   { id: "2099_04_A", season: 2099, week: 4, kickoff: "2099-09-30T17:00:00.000Z", away: "BUF", home: "MIA", label: "Bills @ Dolphins", stadium: "Hard Rock", primetime: false },
   { id: "2099_05_B", season: 2099, week: 5, kickoff: "2099-10-08T17:00:00.000Z", away: "KC", home: "BUF", label: "Chiefs @ Bills", stadium: "Highmark", primetime: false },
-  { id: "2099_05_C", season: 2099, week: 5, kickoff: "2099-10-07T00:20:00.000Z", away: "SF", home: "LA", label: "49ers @ Rams", stadium: "SoFi", primetime: true },
+  { id: "2099_05_C", season: 2099, week: 5, kickoff: "2099-10-07T00:20:00.000Z", away: "SF", home: "LAR", label: "49ers @ Rams", stadium: "SoFi", primetime: true },
 ];
 
 async function chooseBoldWeek(user: ReturnType<typeof userEvent.setup>) {

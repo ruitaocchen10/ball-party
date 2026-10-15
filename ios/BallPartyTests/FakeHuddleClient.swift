@@ -470,9 +470,12 @@ final class FakeHuddleClient: HuddleClient, @unchecked Sendable {
         }
     }
 
-    func boldPredictionCounts(postIds: [UUID]) async throws -> [UUID: Int] {
+    func boldPredictionCounts(postIds: [UUID]) async throws -> [UUID: BoldPredictionCountRow] {
         lock.withLock {
-            Dictionary(postIds.map { id in (id, boldRows.filter { $0.postId == id }.count) }, uniquingKeysWith: { first, _ in first })
+            Dictionary(postIds.map { id in
+                let rows = boldRows.filter { $0.postId == id }
+                return (id, BoldPredictionCountRow(postId: id, predictionCount: rows.count, authorCount: Set(rows.map(\.authorId)).count))
+            }, uniquingKeysWith: { first, _ in first })
         }
     }
 

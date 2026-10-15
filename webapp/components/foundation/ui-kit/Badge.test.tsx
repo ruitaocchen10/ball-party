@@ -15,6 +15,7 @@ describe("Badge", () => {
     ["success", "bg-grade-elite"],
     ["hidden", "bg-hidden"],
     ["muted", "bg-surface"],
+    ["scrim", "bg-surface/80"],
   ] as const)("renders the %s tone", (tone, cls) => {
     render(<Badge tone={tone}>Tag</Badge>);
 

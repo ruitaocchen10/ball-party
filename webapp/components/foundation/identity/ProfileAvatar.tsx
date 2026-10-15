@@ -6,7 +6,7 @@ import { useState } from "react";
 import { fade } from "@/lib/foundation/ui-kit/motion";
 import { GeneratedAvatar } from "./GeneratedAvatar";
 
-export function ProfileAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
+export function ProfileAvatar({ name, avatarUrl, size = 80 }: { name: string; avatarUrl: string | null; size?: number }) {
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = avatarUrl && !imageFailed;
 
@@ -26,7 +26,8 @@ export function ProfileAvatar({ name, avatarUrl }: { name: string; avatarUrl: st
           initial="initial"
           animate="animate"
           exit="exit"
-          className="h-20 w-20 shrink-0 rounded-full border-4 border-fg object-cover shadow-card"
+          style={{ width: size, height: size }}
+          className="shrink-0 rounded-full border-4 border-fg object-cover shadow-card"
         />
       ) : (
         <motion.div
@@ -36,9 +37,10 @@ export function ProfileAvatar({ name, avatarUrl }: { name: string; avatarUrl: st
           initial="initial"
           animate="animate"
           exit="exit"
-          className="grid h-20 w-20 shrink-0 place-items-center rounded-full border-4 border-fg bg-hidden font-slab text-2xl text-fg shadow-card"
+          style={{ width: size, height: size }}
+          className="grid shrink-0 place-items-center rounded-full border-4 border-fg bg-hidden font-slab text-2xl text-fg shadow-card"
         >
-          <GeneratedAvatar name={name} size={80} />
+          <GeneratedAvatar name={name} size={size} />
         </motion.div>
       )}
     </AnimatePresence>

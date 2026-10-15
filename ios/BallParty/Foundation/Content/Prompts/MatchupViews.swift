@@ -414,46 +414,6 @@ struct MatchupTile: View {
     }
 }
 
-// MARK: - A set of games
-
-/// A weekly slate as a row of posters to swipe through, with the web's dots
-/// underneath. The poster it is sized from is drawn invisibly first, so the
-/// pager takes exactly a poster's height — Dynamic Type included.
-struct MatchupCarousel: View {
-    let slots: [PromptSlot]
-    @State private var index = 0
-
-    var body: some View {
-        VStack(spacing: 10) {
-            if let first = slots.first?.matchup {
-                MatchupPoster(away: first.away, home: first.home, game: slots[0].game)
-                    .hidden()
-                    .overlay {
-                        TabView(selection: $index) {
-                            ForEach(Array(slots.enumerated()), id: \.element.id) { position, slot in
-                                if let matchup = slot.matchup {
-                                    MatchupPoster(away: matchup.away, home: matchup.home, game: slot.game)
-                                        .tag(position)
-                                }
-                            }
-                        }
-                        .tabViewStyle(.page(indexDisplayMode: .never))
-                    }
-            }
-            HStack(spacing: 6) {
-                ForEach(slots.indices, id: \.self) { position in
-                    Capsule()
-                        .fill(position == index ? Theme.fg : Theme.line)
-                        .frame(width: position == index ? 24 : 6, height: 6)
-                }
-            }
-            .animation(.easeOut(duration: 0.15), value: index)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Game \(index + 1) of \(slots.count)")
-        }
-    }
-}
-
 // MARK: - Winner and margin
 
 /// A Game Picks game's four choices — each team "by <7" and "by 7+" — in a grid
@@ -552,29 +512,5 @@ struct MarginChoices: View {
     private func ring(verdict: Bool?, selected: Bool) -> Color {
         if let verdict { return verdict ? Theme.gradeElite : Theme.gradeRough }
         return selected ? Theme.fg.opacity(0.7) : Theme.line
-    }
-}
-
-// MARK: - Everything else
-
-/// The candidates of a prompt that isn't a set of matchups, as a short strip of
-/// badges with a "+n" for the rest.
-struct OptionStrip: View {
-    let options: [PromptOption]
-    var limit = 6
-
-    var body: some View {
-        let shown = options.prefix(limit)
-        HStack(spacing: 8) {
-            ForEach(Array(shown)) { OptionBadge(option: $0, size: 32) }
-            if options.count > limit {
-                Text("+\(options.count - limit)")
-                    .font(.mono(10))
-                    .foregroundStyle(Theme.fgMuted)
-                    .frame(width: 32, height: 32)
-                    .background(Theme.surface, in: Circle())
-            }
-        }
-        .frame(maxWidth: .infinity)
     }
 }

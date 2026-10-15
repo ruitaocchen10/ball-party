@@ -248,6 +248,8 @@ struct PromptPost: Identifiable, Equatable, Sendable {
     /// Bold Predictions only: how many predictions people have written. The text
     /// stays hidden until the viewer has locked in their own response.
     var predictionCount: Int?
+    /// Bold Predictions only: how many people made them.
+    var predictorCount: Int?
     /// Bold Predictions only: what the server lets this viewer read — their own
     /// before they answer, everyone's once they have or the post has locked.
     var boldPredictions: [BoldPrediction] = []

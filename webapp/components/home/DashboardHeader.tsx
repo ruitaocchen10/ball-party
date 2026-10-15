@@ -1,4 +1,3 @@
-import { Plus } from "lucide-react";
 import Link from "next/link";
 
 import { AccountMenu } from "@/components/foundation/ui-kit/AccountMenu";
@@ -29,13 +28,6 @@ export function DashboardHeader({
         <HuddleSearchField />
 
         <div className="flex shrink-0 items-center gap-1.5">
-          <Link
-            href="/party"
-            className="flex h-10 items-center gap-2 rounded-card bg-fg px-3.5 type-label font-bold text-surface transition-colors hover:bg-panel-ink-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg"
-          >
-            <Plus aria-hidden className="h-4 w-4" strokeWidth={2} />
-            <span className="hidden lg:inline">Start a party</span>
-          </Link>
           {displayName ? <NotificationBell /> : null}
           {displayName ? (
             <AccountMenu displayName={displayName} email={email} avatarUrl={avatarUrl} compact />

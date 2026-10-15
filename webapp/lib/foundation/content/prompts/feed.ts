@@ -35,6 +35,9 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
   const { data: postRows } = await supabase
     .from("prompt_posts")
     .select("*")
+    // A list update card is not a prompt: it has no slots to answer. It shows
+    // on the Lists pill and its list's page (lib/foundation/lists).
+    .neq("template_kind", "ranking_update")
     .order("created_at", { ascending: false });
   if (!postRows || postRows.length === 0) return [];
 
@@ -134,6 +137,7 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
     ? await supabase.schema("prompts").rpc("bold_prediction_counts", { p_post_ids: boldPostIds }).then((result) => result.data ?? [])
     : [];
   const predictionCountByPost = new Map(predictionCounts.map((row) => [row.post_id, Number(row.prediction_count)]));
+  const predictorCountByPost = new Map(predictionCounts.map((row) => [row.post_id, Number(row.author_count)]));
 
   // Individual calls become social content only after the board closes. The
   // RPC is security-definer rather than a wider RLS policy, so an open prompt
@@ -163,6 +167,7 @@ export async function fetchPromptFeed(supabase: SupabaseServerClient, viewerId: 
     revealedByPost,
     previousRankByPowerPost,
     predictionCountByPost,
+    predictorCountByPost,
   }));
 }
 
@@ -199,6 +204,7 @@ function mapPost(
     revealedByPost: Map<string, RevealedResponseRow[]>;
     previousRankByPowerPost: Map<string, Record<string, number>>;
     predictionCountByPost: Map<string, number>;
+    predictorCountByPost: Map<string, number>;
   },
 ): Post {
   const slots: Slot[] = (ctx.slotsByPost.get(row.id) ?? []).map((slotRow) => ({
@@ -281,6 +287,7 @@ function mapPost(
     comments,
     responseCount,
     predictionCount: row.template_kind === "bold_predictions" ? ctx.predictionCountByPost.get(row.id) ?? 0 : undefined,
+    predictorCount: row.template_kind === "bold_predictions" ? ctx.predictorCountByPost.get(row.id) ?? 0 : undefined,
     viewerAnswered,
     viewerResponse,
     viewerPointsAwarded,

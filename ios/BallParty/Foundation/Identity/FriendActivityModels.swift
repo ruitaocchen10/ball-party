@@ -1,30 +1,14 @@
 import Foundation
 
-// The friends activity feed's types: the rows of `friend_activity`
-// (migrations 0188 and 0194) and the sentence each one reads as. Which friends, which
-// 30 days and what is left out (a pick's chosen options never come down the
-// wire) are the server's calls; nothing here filters.
+// Home's friend-driven types: the game moments of `friend_activity` (migrations
+// 0188, 0194 and 0209) and `friends_who_answered` (0209), plus the merge of both
+// with the prompts into the one feed. Which friends, which 30 days and what is
+// left out (a pick's chosen options never come down the wire) are the server's
+// calls; nothing here filters except dropping event types this build doesn't know.
 
-/// A take's thread and answer, as `friend_activity` returns them.
-struct FriendTake: Equatable, Sendable {
-    let postId: UUID
-    let caption: String?
-    /// The take posted with the answer; nil when the friend answered without one.
-    let body: String?
-    let commentId: UUID?
-    let replyCount: Int
-    /// `{slot → chosen options}`, in the order chosen.
-    let response: [UUID: [UUID]]
-    let points: Int?
-}
-
-/// What happened. A `take` is an answer to a prompt that has locked, so it
-/// carries the answer and the take posted with it; while a prompt is open
-/// the feed only says a friend answered (`pickMade`) and the server leaves the
-/// choice out. Game results are only multiplayer wins and new solo bests.
+/// What happened: only game moments, a multiplayer win or a new solo best. A
+/// friend's answer to a prompt is not an event; it is a line on the prompt's card.
 enum FriendActivityKind: Equatable, Sendable {
-    case take(FriendTake)
-    case pickMade(postId: UUID, caption: String?)
     /// `opponents` are the beaten players who are the caller's friends,
     /// `opponentYou` says the caller was one, `opponentCount` is everyone beaten.
     case win(matchId: UUID, game: String, score: Double?, opponents: [String], opponentYou: Bool, opponentCount: Int)
@@ -43,8 +27,6 @@ struct FriendActivityEvent: Decodable, Equatable, Sendable, Identifiable {
 
     var id: String {
         switch kind {
-        case .take(let take): "take-\(actor.profileId)-\(take.postId)"
-        case .pickMade(let postId, _): "pick_made-\(actor.profileId)-\(postId)"
         case .win(let matchId, _, _, _, _, _): "win-\(actor.profileId)-\(matchId)"
         case .highScore(let game, _, let mode, _, _): "high_score-\(actor.profileId)-\(game)-\(mode ?? "")"
         }
@@ -53,7 +35,7 @@ struct FriendActivityEvent: Decodable, Equatable, Sendable, Identifiable {
     private enum CodingKeys: String, CodingKey {
         case eventType = "event_type", occurredAt = "occurred_at", actorId = "actor_id"
         case username, displayName = "display_name", avatarURL = "avatar_url"
-        case postId = "post_id", postCaption = "post_caption", takeBody = "take_body", commentId = "comment_id", replyCount = "reply_count", response, mode, points
+        case mode
         case matchId = "match_id", game, placement, rawScore = "raw_score", runMode = "run_mode"
         case opponents, opponentYou = "opponent_you", opponentCount = "opponent_count"
         case friendRank = "friend_rank", friendCount = "friend_count"
@@ -82,23 +64,6 @@ struct FriendActivityEvent: Decodable, Equatable, Sendable, Identifiable {
             avatarURL: try c.decodeIfPresent(String.self, forKey: .avatarURL).flatMap(URL.init(string:))
         )
         switch type {
-        case "take":
-            // `{slot id: [option ids]}`; ids that aren't UUIDs would be a server bug, so they are dropped.
-            let raw = try c.decodeIfPresent([String: [UUID]].self, forKey: .response) ?? [:]
-            kind = .take(FriendTake(
-                postId: try c.decode(UUID.self, forKey: .postId),
-                caption: try c.decodeIfPresent(String.self, forKey: .postCaption),
-                body: try c.decodeIfPresent(String.self, forKey: .takeBody),
-                commentId: try c.decodeIfPresent(UUID.self, forKey: .commentId),
-                replyCount: try c.decodeIfPresent(Int.self, forKey: .replyCount) ?? 0,
-                response: Dictionary(uniqueKeysWithValues: raw.compactMap { key, value in UUID(uuidString: key).map { ($0, value) } }),
-                points: try c.decodeIfPresent(Int.self, forKey: .points)
-            ))
-        case "pick_made":
-            kind = .pickMade(
-                postId: try c.decode(UUID.self, forKey: .postId),
-                caption: try c.decodeIfPresent(String.self, forKey: .postCaption)
-            )
         case "win":
             kind = .win(
                 matchId: try c.decode(UUID.self, forKey: .matchId),
@@ -122,16 +87,10 @@ struct FriendActivityEvent: Decodable, Equatable, Sendable, Identifiable {
     }
 
     /// The one-line description of the event, without the actor's name. The
-    /// take, win and high-score cards draw their own bodies; this is what a
-    /// screen reader hears and what an open pick shows.
+    /// win and high-score cards draw their own bodies; this is what a screen
+    /// reader hears.
     var summary: String {
         switch kind {
-        case .take(let take):
-            var line = "answered" + Self.onPrompt(take.caption)
-            if let points = take.points, points > 0 { line += " · +\(points)" }
-            return line
-        case .pickMade(_, let caption):
-            return "answered" + Self.onPrompt(caption) + ". Their picks show when it locks."
         case .win(_, let game, let score, _, _, _):
             var line = "won \(Self.gameName(game))"
             if let score { line += " · score \(Self.formatScore(score))" }
@@ -161,11 +120,6 @@ struct FriendActivityEvent: Decodable, Equatable, Sendable, Identifiable {
     static func gameName(_ game: String) -> String {
         if game == "qb_season_builder" { return SoloBoard.qbSeasonBuilder.title }
         return MatchGame(rawValue: game)?.label ?? humanized(game)
-    }
-
-    private static func onPrompt(_ caption: String?) -> String {
-        guard let caption, !caption.isEmpty else { return "" }
-        return " on “\(caption)”"
     }
 
     private static func humanized(_ raw: String) -> String {
@@ -224,5 +178,134 @@ struct FriendActivityPage: Decodable, Sendable {
             if let event = try container.decode(Lossy.self).event { events.append(event) }
         }
         self.events = events
+    }
+}
+
+
+/// A friend who answered a prompt: the fact only, never the pick.
+struct FriendAnswerer: Decodable, Equatable, Sendable, Identifiable {
+    let postId: UUID
+    let identity: PlayerIdentity
+    let answeredAt: Date
+
+    var id: String { "\(postId)-\(identity.profileId)" }
+
+    init(postId: UUID, identity: PlayerIdentity, answeredAt: Date) {
+        self.postId = postId
+        self.identity = identity
+        self.answeredAt = answeredAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case postId = "post_id", actorId = "actor_id", username
+        case displayName = "display_name", avatarURL = "avatar_url", answeredAt = "answered_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        postId = try c.decode(UUID.self, forKey: .postId)
+        identity = PlayerIdentity(
+            profileId: try c.decode(UUID.self, forKey: .actorId),
+            username: try c.decodeIfPresent(String.self, forKey: .username) ?? "",
+            displayName: try c.decode(String.self, forKey: .displayName),
+            avatarURL: try c.decodeIfPresent(String.self, forKey: .avatarURL).flatMap(URL.init(string:))
+        )
+        answeredAt = try PostgresTimestamp.parse(try c.decode(String.self, forKey: .answeredAt))
+    }
+
+    /// Who answered, friends first. With the prompt's total: "Sam and 5 others have
+    /// answered", "Sam and Jo have answered". Without it (the headcount is hidden until
+    /// the viewer answers): "Sam answered", "Sam & Jo answered", "Sam, Jo & 2 other friends answered".
+    static func line(_ answerers: [FriendAnswerer], total: Int? = nil) -> String? {
+        let names = answerers.map(\.identity.displayName)
+        guard !names.isEmpty else { return nil }
+        if let total {
+            let shown = Array(names.prefix(2))
+            let rest = max(0, total - shown.count)
+            let list = shown.count == 2 && rest == 0 ? "\(shown[0]) and \(shown[1])" : shown.joined(separator: ", ")
+            if rest > 0 { return "\(list) and \(rest) \(rest == 1 ? "other has" : "others have") answered" }
+            return "\(list) \(shown.count == 1 ? "has" : "have") answered"
+        }
+        switch names.count {
+        case 1: return "\(names[0]) answered"
+        case 2: return "\(names[0]) & \(names[1]) answered"
+        default:
+            let others = names.count - 2
+            return "\(names[0]), \(names[1]) & \(others) other \(others == 1 ? "friend" : "friends") answered"
+        }
+    }
+}
+
+/// The pills over Home's one feed. Friends is the prompts a friend answered
+/// plus their game moments. Lists is the shared list updates alone.
+enum HomeFilter: Hashable, CaseIterable {
+    case all, prompts, friends, lists
+
+    var title: String {
+        switch self {
+        case .all: "All"
+        case .prompts: "Prompts"
+        case .friends: "Friends"
+        case .lists: "Lists"
+        }
+    }
+}
+
+enum HomeFeedEntry: Equatable, Identifiable {
+    case prompt(PromptPost, answerers: [FriendAnswerer])
+    case moment(FriendActivityItem)
+    case listUpdate(ListUpdate)
+
+    var id: String {
+        switch self {
+        case .prompt(let post, _): "prompt-\(post.id)"
+        case .moment(let item): item.id
+        case .listUpdate(let update): "list-\(update.postId)"
+        }
+    }
+
+    var date: Date {
+        switch self {
+        case .prompt(let post, _): post.createdAt
+        case .moment(let item): item.event.occurredAt
+        case .listUpdate(let update): update.savedAt
+        }
+    }
+}
+
+enum HomeFeed {
+    /// Prompts and game moments, newest first. Under Friends a prompt is dated by
+    /// its newest friend answer and only prompts a friend answered stay. Moments
+    /// page, so while more remain the feed stops at the oldest one loaded and
+    /// "Load more" moves that line back. Mirrors `buildHomeFeed` on the web.
+    static func build(
+        posts: [PromptPost],
+        answerers: [UUID: [FriendAnswerer]],
+        moments: [FriendActivityEvent],
+        filter: HomeFilter,
+        hasMoreMoments: Bool,
+        listUpdates: [ListUpdate] = []
+    ) -> [HomeFeedEntry] {
+        if filter == .prompts {
+            return posts.map { .prompt($0, answerers: []) }
+        }
+        if filter == .lists {
+            return listUpdates.sorted { $0.savedAt > $1.savedAt }.map { .listUpdate($0) }
+        }
+        let prompts: [(entry: HomeFeedEntry, date: Date)] = posts.compactMap { post in
+            let who = (answerers[post.id] ?? []).sorted { $0.answeredAt > $1.answeredAt }
+            if filter == .friends {
+                guard let newest = who.first else { return nil }
+                return (.prompt(post, answerers: who), newest.answeredAt)
+            }
+            return (.prompt(post, answerers: who), post.createdAt)
+        }
+        let games: [(entry: HomeFeedEntry, date: Date)] = FriendActivityItem.grouped(moments).map { (.moment($0), $0.event.occurredAt) }
+        let updates: [(entry: HomeFeedEntry, date: Date)] = listUpdates.map { (.listUpdate($0), $0.savedAt) }
+        let floor = hasMoreMoments ? moments.last?.occurredAt : nil
+        return (prompts + games + updates)
+            .filter { floor == nil || $0.date >= floor! }
+            .sorted { $0.date > $1.date }
+            .map(\.entry)
     }
 }

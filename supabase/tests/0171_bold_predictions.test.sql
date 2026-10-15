@@ -60,7 +60,7 @@ delete from public.nfl_games;
 -- Week 5 is the post's week (first kickoff after lock_at); week 6 is not.
 insert into public.nfl_games (id, season, week, kickoff, away_team, home_team) values
   ('2026_05_BUF_KC', 2026, 5, now() + interval '2 days', 'BUF', 'KC'),
-  ('2026_06_SF_LA',  2026, 6, now() + interval '9 days', 'SF', 'LA');
+  ('2026_06_SF_LA',  2026, 6, now() + interval '9 days', 'SF', 'LAR');
 
 -- ------------------------------------------------------------- the post --
 

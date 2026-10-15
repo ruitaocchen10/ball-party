@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { UserPlus } from "lucide-react";
 
-import { FriendsManager } from "@/components/foundation/friends/FriendsManager";
 import { ProfileEditor } from "@/components/foundation/identity/ProfileEditor";
 import { ProfileHeader } from "@/components/foundation/identity/ProfileHeader";
 import { ProfileHighlightsCard } from "@/components/foundation/identity/ProfileHighlights";
@@ -14,11 +15,14 @@ import { GuestUpgrade } from "@/components/foundation/identity/GuestUpgrade";
 import { fetchPromptFeed } from "@/lib/foundation/content/prompts/feed";
 import { isPicksPost } from "@/lib/foundation/content/prompts/logic";
 import { completedMatchesFromHistory } from "@/lib/foundation/identity/summary";
-import { joinedMonth, profileHighlights } from "@/lib/foundation/identity/highlights";
+import { profileHighlights } from "@/lib/foundation/identity/highlights";
 import type { Comment, Post } from "@/lib/foundation/content/prompts/types";
-import { friendsDataFromRows } from "@/lib/foundation/friends/friends";
-import { PROFILE_TABS, parseProfileTab, type ProfileTab } from "@/lib/foundation/identity/profileTabs";
+import { parseProfileTab } from "@/lib/foundation/identity/profileTabs";
+import { ProfileTabs } from "@/components/foundation/identity/ProfileTabs";
+import { ListSummaries } from "@/components/foundation/content/lists/ListSummaries";
+import { fetchListPlayers, fetchLists } from "@/lib/foundation/lists/server";
 import { createClient } from "@/lib/supabase/server";
+import { ButtonLink } from "@/components/foundation/ui-kit/Button";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 
@@ -31,11 +35,14 @@ export default async function ProfilePage(props: PageProps<"/profile">) {
   if (!isSignedInViewer(claims)) return <SignedOutProfile />;
   if (!canViewProfile(claims)) return <GuestProfile />;
 
-  const tab = parseProfileTab((await props.searchParams).tab);
+  const rawTab = (await props.searchParams).tab;
+  // Friends used to be a tab here; old links and bookmarks land on its own page.
+  if (rawTab === "friends") redirect("/friends");
+  const tab = parseProfileTab(rawTab);
 
-  // Each tab fetches only what it shows. Pending requests are read on every tab
-  // because the Friends tab label counts them.
-  const [{ data: profile }, historyRows, knowerRows, takeRows, promptFeed, friends, requests, blocked, code] = await Promise.all([
+  // Each tab fetches only what it shows. Friends and pending requests are read
+  // on every tab because the Friends button shows both counts.
+  const [{ data: profile }, historyRows, knowerRows, takeRows, promptFeed, friends, requests] = await Promise.all([
     supabase
       .from("profiles")
       .select("display_name, avatar_url, created_at, username")
@@ -54,11 +61,14 @@ export default async function ProfilePage(props: PageProps<"/profile">) {
           .order("created_at", { ascending: false })
       : null,
     tab === "takes" ? fetchPromptFeed(supabase, claims.sub) : null,
-    tab === "friends" ? supabase.rpc("list_friends") : null,
+    supabase.rpc("list_friends"),
     supabase.rpc("list_friend_requests"),
-    tab === "friends" ? supabase.rpc("list_blocked_users") : null,
-    tab === "friends" ? supabase.rpc("get_my_friend_code") : null,
   ]);
+
+  const ownLists = tab === "lists" && profile?.username ? await fetchLists(supabase, profile.username) : null;
+  const listPlayers = ownLists
+    ? await fetchListPlayers(supabase, ownLists.lists.filter((list) => list.itemKind === "player").flatMap((list) => list.items))
+    : {};
 
   const matches = completedMatchesFromHistory(historyRows?.data ?? []);
   const highlights = profileHighlights(matches, knowerRows?.data ?? []);
@@ -69,7 +79,7 @@ export default async function ProfilePage(props: PageProps<"/profile">) {
     return post && comment && comment.body.trim() ? [{ post, comment }] : [];
   });
   const pendingRequests = (requests.data ?? []).filter((row) => row.direction === "incoming").length;
-  const friendsFailed = friends?.error || blocked?.error || requests.error;
+  const friendCount = friends.error ? null : (friends.data ?? []).length;
   const displayName = profile?.display_name ?? (claims.email as string | undefined) ?? "Player";
   const email = (claims.email as string | undefined) ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
@@ -92,11 +102,15 @@ export default async function ProfilePage(props: PageProps<"/profile">) {
           displayName={displayName}
           avatarUrl={profile?.avatar_url ?? null}
           username={profile?.username ?? null}
-          joinedLabel={`Playing since ${joinedMonth(profile?.created_at)}`}
-          action={<ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} userId={claims.sub} username={profile?.username ?? null} />}
+          action={
+            <>
+              <ProfileEditor displayName={displayName} avatarUrl={profile?.avatar_url ?? null} userId={claims.sub} username={profile?.username ?? null} />
+              <FriendsButton count={friendCount} pendingRequests={pendingRequests} />
+            </>
+          }
         />
 
-        <ProfileTabs active={tab} pendingRequests={pendingRequests} />
+        <ProfileTabs active={tab} basePath="/profile" />
 
         {tab === "stats" ? (
           <>
@@ -116,43 +130,38 @@ export default async function ProfilePage(props: PageProps<"/profile">) {
               <EmptyTakeHistory />
             )}
           </section>
-        ) : friendsFailed ? (
-          <EmptyState title="Couldn't load your friends">Try again in a moment.</EmptyState>
         ) : (
-          <FriendsManager
-            initial={friendsDataFromRows(friends?.data ?? [], requests.data ?? [], blocked?.data ?? [])}
-            inviteCode={code?.error ? null : (code?.data ?? null)}
-          />
+          <section aria-labelledby="lists-heading" className="pt-2">
+            <div className="flex items-baseline justify-between gap-3">
+              <SectionHeading id="lists-heading">Your lists</SectionHeading>
+              <Link href="/lists" className="type-label text-fg underline underline-offset-2">Build your lists</Link>
+            </div>
+            {ownLists?.failed ? (
+              <EmptyState title="Couldn't load your lists" className="mt-3">Try again in a moment.</EmptyState>
+            ) : (
+              <ListSummaries lists={ownLists?.lists ?? []} players={listPlayers} emptyText="Rank teams and players, and your lists show up here for friends to see." />
+            )}
+          </section>
         )}
       </PageShell>
     </>
   );
 }
 
-const TAB_LABEL: Record<ProfileTab, string> = { stats: "Stats", takes: "Takes", friends: "Friends" };
-
-function ProfileTabs({ active, pendingRequests }: { active: ProfileTab; pendingRequests: number }) {
+/** Opens the friends page, which holds friends, requests and adding someone. */
+function FriendsButton({ count, pendingRequests }: { count: number | null; pendingRequests: number }) {
   return (
-    <nav aria-label="Profile sections" className="flex overflow-hidden rounded-card border border-line">
-      {PROFILE_TABS.map((key) => (
-        <Link
-          key={key}
-          href={key === "stats" ? "/profile" : `/profile?tab=${key}`}
-          aria-current={key === active ? "page" : undefined}
-          className={`flex min-h-12 flex-1 items-center justify-center gap-2 font-slab text-[17px] tracking-[0.04em] uppercase transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg ${
-            key === active ? "bg-hidden text-fg" : "text-fg hover:text-fg-muted"
-          }`}
-        >
-          {TAB_LABEL[key]}
-          {key === "friends" && pendingRequests > 0 ? (
-            <span className="rounded-full bg-hidden px-1.5 font-mono text-[10px] leading-4 text-fg">
-              <span className="sr-only">{pendingRequests} pending requests </span>
-              <span aria-hidden="true">{pendingRequests}</span>
-            </span>
-          ) : null}
-        </Link>
-      ))}
-    </nav>
+    <ButtonLink href="/friends" variant="ghost" fullWidth={false} className="w-[calc(50%-4px)] gap-2 sm:w-44">
+      <UserPlus aria-hidden className="h-4 w-4" strokeWidth={2} />
+      Friends
+      {count !== null ? <span className="font-mono text-[13px] font-bold">{count}</span> : null}
+      {pendingRequests > 0 ? (
+        <span className="rounded-full bg-hidden px-1.5 font-mono text-[10px] leading-4 text-fg">
+          <span className="sr-only">{pendingRequests} pending requests </span>
+          <span aria-hidden="true">{pendingRequests}</span>
+        </span>
+      ) : null}
+    </ButtonLink>
   );
 }
 

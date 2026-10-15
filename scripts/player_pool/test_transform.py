@@ -66,10 +66,10 @@ class TestTeamCodes(unittest.TestCase):
     """nflverse normalises team codes to the modern franchise. The matchup is
     one of only four recall cues on a card, so they get reversed at load time."""
 
-    def assert_code(self, *, modern, historical, last_historical_season):
+    def assert_code(self, *, modern, historical, last_historical_season, current=None):
         for season, expected in [
             (last_historical_season, historical),
-            (last_historical_season + 1, modern),
+            (last_historical_season + 1, current or modern),
         ]:
             with self.subTest(season=season, column="team"):
                 out = transform(
@@ -85,7 +85,7 @@ class TestTeamCodes(unittest.TestCase):
                 self.assertEqual(field(out, "opponent"), [expected])
 
     def test_rams_are_st_louis_through_2015(self):
-        self.assert_code(modern="LA", historical="STL", last_historical_season=2015)
+        self.assert_code(modern="LA", historical="STL", last_historical_season=2015, current="LAR")
 
     def test_rams_lar_alias_is_also_remapped(self):
         out = transform(season_for("p1", "RB", 2015, {1: "10.0"}, team="LAR"), BANDS)

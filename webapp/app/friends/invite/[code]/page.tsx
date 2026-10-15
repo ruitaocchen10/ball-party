@@ -61,7 +61,7 @@ export default async function FriendInvitePage(props: PageProps<"/friends/invite
           eyebrow="Friend invite"
           title="Invite isn't available"
           body="This link may have expired, been reset, or be your own. Ask your friend for a fresh one."
-          action={<ButtonLink href="/profile?tab=friends" variant="ghost">Go to friends</ButtonLink>}
+          action={<ButtonLink href="/friends" variant="ghost">Go to friends</ButtonLink>}
         />
       )}
     </Shell>

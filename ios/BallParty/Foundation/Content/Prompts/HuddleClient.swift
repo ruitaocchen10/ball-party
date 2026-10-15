@@ -86,7 +86,7 @@ protocol HuddleClient: Sendable {
 
     /// `prompts.bold_prediction_counts` — how many predictions each post has.
     /// Safe before lock: a count is not the text.
-    func boldPredictionCounts(postIds: [UUID]) async throws -> [UUID: Int]
+    func boldPredictionCounts(postIds: [UUID]) async throws -> [UUID: BoldPredictionCountRow]
 
     /// `prompts.submit_bold_predictions` — locks in the whole response at once.
     func submitBoldPredictions(postId: UUID, predictions: [BoldDraft]) async throws
@@ -220,13 +220,13 @@ struct SupabaseHuddleClient: HuddleClient {
         }
     }
 
-    func boldPredictionCounts(postIds: [UUID]) async throws -> [UUID: Int] {
+    func boldPredictionCounts(postIds: [UUID]) async throws -> [UUID: BoldPredictionCountRow] {
         guard !postIds.isEmpty else { return [:] }
         struct Params: Encodable, Sendable { let p_post_ids: [UUID] }
         return try await wrapped {
             let rows: [BoldPredictionCountRow] = try await prompts.rpc("bold_prediction_counts", params: Params(p_post_ids: postIds))
                 .execute().value
-            return Dictionary(rows.map { ($0.postId, $0.predictionCount) }, uniquingKeysWith: { first, _ in first })
+            return Dictionary(rows.map { ($0.postId, $0) }, uniquingKeysWith: { first, _ in first })
         }
     }
 

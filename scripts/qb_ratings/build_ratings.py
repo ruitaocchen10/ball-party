@@ -91,7 +91,7 @@ BATCH_SIZE = 1_000
 
 # nflverse's weekly files use the modern team codes (LA, LV), which the AV
 # pool's map — built for a roster file that uses period-correct ones — lacks.
-EXTRA_TEAM_CODES = {"LA": "ram", "LV": "rai"}
+EXTRA_TEAM_CODES = {"LA": "ram", "LAR": "ram", "LV": "rai"}
 
 # ------------------------------------------------------------------- guards --
 

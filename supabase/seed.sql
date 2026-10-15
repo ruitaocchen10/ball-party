@@ -130,7 +130,7 @@ values
   ('seed_2026_02_MIN_CHI', 2026, 2, now() + interval '30 days' + interval '3 hours', 'MIN', 'CHI', 'Soldier Field',               false),
   ('seed_2026_01_DEN_KC',  2026, 1, now() - interval '5 days',                       'DEN', 'KC',  'GEHA Field at Arrowhead Stadium', true),
   ('seed_2026_01_NE_SEA',  2026, 1, now() - interval '6 days',                       'NE',  'SEA', 'Lumen Field',                 true),
-  ('seed_2026_01_SF_LA',   2026, 1, now() - interval '6 days' + interval '1 day',    'SF',  'LA',  'SoFi Stadium',                false)
+  ('seed_2026_01_SF_LA',   2026, 1, now() - interval '6 days' + interval '1 day',    'SF',  'LAR', 'SoFi Stadium',                false)
 on conflict (id) do nothing;
 
 -- Week 1 board. winner / demo / tasha are 'A' (away) or 'H' (home). One table
@@ -353,10 +353,9 @@ insert into public.prompt_slots (id, post_id, label, shape, pick_count, points, 
 select slot_id, post_id, label, 'pick', null, 1, sort_order, kind = 'player'
   from award_slots;
 
--- The Rams are 'LA' in nflverse; the power-rankings pool above predates that.
 insert into public.prompt_slot_options (id, slot_id, label, sublabel, team_code, sort_order)
 select ('00000000-0000-0000-0000-c3' || lpad(a.n::text, 2, '0') || lpad(t.sort::text, 2, '0') || '000000')::uuid,
-       a.slot_id, t.name, null, case t.code when 'LAR' then 'LA' else t.code end, t.sort
+       a.slot_id, t.name, null, t.code, t.sort
   from award_slots a
   cross join power_teams t
  where a.kind = 'team';
@@ -388,7 +387,7 @@ values
   ('00-0034844', 'Saquon Barkley',  'saquon barkley',  'RB', 'PHI', 'https://static.www.nfl.com/image/upload/f_auto,q_auto/league/qcayrzjpura2zydszonh', 'ACT', 2026),
   ('00-0035717', 'Nick Bosa',       'nick bosa',       'DL', 'SF',  'https://static.www.nfl.com/image/upload/f_auto,q_auto/league/c7grjmvod7lnrfz4ordx', 'ACT', 2026),
   ('00-0033868', 'Myles Garrett',   'myles garrett',   'DL', 'CLE', 'https://static.www.nfl.com/image/upload/f_auto,q_auto/league/y2d1lvpgfarfv76hjcqm', 'ACT', 2026),
-  ('00-0038001', 'Joshua Karty',    'joshua karty',    'K',  'LA',  null, 'ACT', 2026)
+  ('00-0038001', 'Joshua Karty',    'joshua karty',    'K',  'LAR', null, 'ACT', 2026)
 on conflict (player_id) do nothing;
 
 -- Week 1's player options, as submit_response would have created them.
@@ -420,7 +419,7 @@ select a.post_id, a.slot_id, b.profile_id, array[o.id], null
   from award_ballots b
   join award_slots a on a.n = b.n
   join public.prompt_slot_options o on o.slot_id = a.slot_id
-   and case a.kind when 'team' then o.team_code = case b.pick when 'LAR' then 'LA' else b.pick end
+   and case a.kind when 'team' then o.team_code = b.pick
                    when 'game' then o.sublabel = b.pick
                    else o.player_id = b.pick end;
 
@@ -485,8 +484,8 @@ values
   ('00000000-0000-0000-0000-00000000c608', '00000000-0000-0000-0000-00000000b602', 'Seahawks by 7+',  'Wins by 7 or more', 'SEA', 3, '7_plus'),
   ('00000000-0000-0000-0000-00000000c609', '00000000-0000-0000-0000-00000000b603', '49ers by <7',     'Wins by 1–6',       'SF',  0, 'under_7'),
   ('00000000-0000-0000-0000-00000000c610', '00000000-0000-0000-0000-00000000b603', '49ers by 7+',     'Wins by 7 or more', 'SF',  1, '7_plus'),
-  ('00000000-0000-0000-0000-00000000c611', '00000000-0000-0000-0000-00000000b603', 'Rams by <7',      'Wins by 1–6',       'LA',  2, 'under_7'),
-  ('00000000-0000-0000-0000-00000000c612', '00000000-0000-0000-0000-00000000b603', 'Rams by 7+',      'Wins by 7 or more', 'LA',  3, '7_plus');
+  ('00000000-0000-0000-0000-00000000c611', '00000000-0000-0000-0000-00000000b603', 'Rams by <7',      'Wins by 1–6',       'LAR', 2, 'under_7'),
+  ('00000000-0000-0000-0000-00000000c612', '00000000-0000-0000-0000-00000000b603', 'Rams by 7+',      'Wins by 7 or more', 'LAR', 3, '7_plus');
 
 insert into public.prompt_responses (post_id, slot_id, profile_id, chosen_option_ids, points_earned)
 values
@@ -571,5 +570,10 @@ select a.post_id, a.profile_id, '', true, a.at
    select 1 from public.prompt_comments c
     where c.post_id = a.post_id and c.author_id = a.profile_id
       and c.posted_with_pick and c.parent_comment_id is null);
+
+-- Answering a Power Rankings prompt also saves the player's list version
+-- (0212). The responses above were inserted directly, so give them theirs with
+-- the same function the migration used.
+select private.ranking_backfill_power_rankings();
 
 commit;

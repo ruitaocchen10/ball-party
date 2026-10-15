@@ -37,7 +37,7 @@ enum NFLTeams {
         ("KC", "Chiefs"), ("LV", "Raiders"), ("LAC", "Chargers"), ("DEN", "Broncos"),
         ("BAL", "Ravens"), ("CIN", "Bengals"), ("CLE", "Browns"), ("PIT", "Steelers"),
         ("HOU", "Texans"), ("IND", "Colts"), ("JAX", "Jaguars"), ("TEN", "Titans"),
-        ("SEA", "Seahawks"), ("SF", "49ers"), ("LA", "Rams"), ("ARI", "Cardinals"),
+        ("SEA", "Seahawks"), ("SF", "49ers"), ("LAR", "Rams"), ("ARI", "Cardinals"),
         ("PHI", "Eagles"), ("DAL", "Cowboys"), ("NYG", "Giants"), ("WAS", "Commanders"),
         ("CHI", "Bears"), ("DET", "Lions"), ("GB", "Packers"), ("MIN", "Vikings"),
         ("ATL", "Falcons"), ("CAR", "Panthers"), ("NO", "Saints"), ("TB", "Buccaneers"),

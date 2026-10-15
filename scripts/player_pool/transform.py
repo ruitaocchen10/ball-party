@@ -160,7 +160,8 @@ def _period_code(code, season):
     for modern, historical, last_season in RELOCATIONS:
         if code in modern and season <= last_season:
             return historical
-    return code
+    # The app calls the Rams LAR, never nflverse's LA, so no code reads as the Chargers' LAC.
+    return "LAR" if code == "LA" else code
 
 
 def _modal(counter):

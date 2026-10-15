@@ -43,15 +43,15 @@ const chiefsAtBills = {
   ],
 };
 
-it("gives a single matchup its own poster treatment and lets a weekly set page through posters", async () => {
-  const user = userEvent.setup();
+it("draws a single matchup as a game banner and a weekly set as one slate of small pairs", () => {
   const gameContexts = [{ id: "2026_01_KC_BUF", stadium: "Highmark Stadium", kickoff: "2026-09-11T00:20:00.000Z", primetime: true }];
   const { rerender } = render(<PromptPostFeed posts={[post([chiefsAtBills])]} viewerCanAnswer onSelectPost={() => {}} gameContexts={gameContexts} />);
 
-  expect(screen.getByTestId("single-game-matchup-preview")).toHaveStyle({ clipPath: expect.stringContaining("polygon") });
-  expect(screen.getByText("Primetime")).toBeInTheDocument();
-  expect(screen.getByText("Highmark Stadium")).toBeInTheDocument();
-  expect(screen.getByText(/8:20 PM/)).toBeInTheDocument();
+  const banner = screen.getByTestId("single-game-matchup-preview");
+  expect(banner).toHaveAccessibleName("Chiefs at Bills");
+  expect(within(banner).getByText("Primetime")).toBeInTheDocument();
+  expect(within(banner).getByText("Highmark Stadium")).toBeInTheDocument();
+  expect(within(banner).getByText(/8:20 PM/)).toBeInTheDocument();
 
   rerender(<PromptPostFeed posts={[post([chiefsAtBills, {
     ...chiefsAtBills,
@@ -64,20 +64,35 @@ it("gives a single matchup its own poster treatment and lets a weekly set page t
   }])]} viewerCanAnswer onSelectPost={() => {}} gameContexts={gameContexts} />);
 
   expect(screen.queryByTestId("single-game-matchup-preview")).not.toBeInTheDocument();
-  expect(screen.getByTestId("multi-game-matchup-preview")).toBeInTheDocument();
-  expect(screen.getByLabelText("Showing matchup 1 of 2")).toBeInTheDocument();
-  expect(screen.getByText("Chiefs")).toBeInTheDocument();
+  const slate = screen.getByTestId("multi-game-matchup-preview");
+  expect(within(slate).getByText("2")).toBeInTheDocument();
+  expect(within(slate).getByText("Games this week")).toBeInTheDocument();
+  // Both games at a glance, with no pager to flip through.
+  expect(slate.querySelectorAll("img")).toHaveLength(4);
+  expect(screen.queryByRole("button", { name: "Next matchup" })).not.toBeInTheDocument();
+});
 
-  await user.click(screen.getByRole("button", { name: "Next matchup" }));
+it("headlines the game count and draws only the first four games' clubs on a long slate", () => {
+  const games = Array.from({ length: 8 }, (_, index) => ({ ...chiefsAtBills, id: `game-${index}` }));
+  render(<PromptPostFeed posts={[post(games)]} viewerCanAnswer onSelectPost={() => {}} />);
 
-  expect(screen.getByLabelText("Showing matchup 2 of 2")).toBeInTheDocument();
-  expect(screen.getByText("Ravens")).toBeInTheDocument();
+  const slate = screen.getByTestId("multi-game-matchup-preview");
+  expect(within(slate).getByText("8")).toBeInTheDocument();
+  expect(slate.querySelectorAll("img")).toHaveLength(8);
+});
+
+it("counts down to the deadline in a chip on the art while the prompt is open", () => {
+  render(<PromptPostFeed posts={[post([chiefsAtBills])]} viewerCanAnswer onSelectPost={() => {}} />);
+
+  expect(screen.getByText(/^Closes in \d+d$/)).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Week 1 picks" })).toBeInTheDocument();
+  expect(screen.getByText("Make the call.")).toBeInTheDocument();
 });
 
 it("replaces a completed prompt's timing label with a completion marker", () => {
   render(<PromptPostFeed posts={[{ ...post([chiefsAtBills]), lockAt: "2099-09-20T12:00:00.000Z", viewerAnswered: true, viewerResponse: { "chiefs-bills": ["kc"] } }]} viewerCanAnswer onSelectPost={() => {}} />);
 
-  expect(screen.getByText("Complete")).toBeInTheDocument();
+  expect(screen.getByText("Completed")).toBeInTheDocument();
   expect(screen.queryByText(/^Closes /)).not.toBeInTheDocument();
 });
 
@@ -267,22 +282,22 @@ it("shows the admin's six chosen teams on the Power Rankings cover for every vie
   expect(board).not.toHaveTextContent("#1");
 });
 
-it("shows the Weekly Awards cover with a single subheadline and no team logos", () => {
+it("shows the Weekly Awards cover as wordless motif art with no team logos", () => {
   const awardsPost: Post = { ...post([]), templateKind: "weekly_awards", templateName: "Weekly Awards", isOpinion: true };
   render(<PromptPostFeed posts={[awardsPost]} viewerCanAnswer onSelectPost={() => {}} />);
 
+  // The words sit under the art, in the card's own title, so the art has none.
   const cover = screen.getByTestId("weekly-awards-cover");
-  expect(cover).toHaveTextContent("Hand out the hardware");
+  expect(cover).toHaveTextContent("");
   expect(cover.querySelectorAll("img")).toHaveLength(0);
 });
 
-it("shows the Bold Predictions cover with a single subheadline and no team logos", () => {
+it("shows the Bold Predictions cover as wordless motif art with no team logos", () => {
   const boldPost: Post = { ...post([]), templateKind: "bold_predictions", templateName: "Bold Predictions" };
   render(<PromptPostFeed posts={[boldPost]} viewerCanAnswer onSelectPost={() => {}} />);
 
   const cover = screen.getByTestId("bold-predictions-cover");
-  expect(cover).toHaveTextContent("Call it before it happens");
-  expect(cover).not.toHaveTextContent("Private until lock");
+  expect(cover).toHaveTextContent("");
   expect(cover.querySelectorAll("img")).toHaveLength(0);
 });
 

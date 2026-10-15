@@ -101,7 +101,7 @@ function OptionMark({ option, className }: { option: Option; className: string }
   return option.teamCode ? <PromptTeamLogo code={option.teamCode} className={className} /> : null;
 }
 
-function formatGameTime(kickoff: string | undefined) {
+export function formatGameTime(kickoff: string | undefined) {
   if (!kickoff || Number.isNaN(new Date(kickoff).getTime())) return "Game time TBD";
   return new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(kickoff));
 }
