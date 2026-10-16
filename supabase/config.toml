@@ -420,3 +420,8 @@ enabled = true
 # by a shared secret rather than a user's JWT.
 [functions.send-push]
 verify_jwt = false
+
+# Woken once a day by the database (prompts_private.schedule_digest_tick),
+# authenticated by a shared secret rather than a user's JWT.
+[functions.send-schedule-digest]
+verify_jwt = false

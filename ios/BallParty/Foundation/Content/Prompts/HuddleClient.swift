@@ -276,6 +276,8 @@ struct SupabaseHuddleClient: HuddleClient {
         return try await wrapped {
             // The week a post is about is the one whose first kickoff follows its
             // lock time, which is how `validate_bold_target` (0171) decides too.
+            // Only games from the lock on can be tagged (0217): the post locks
+            // at the week's first Sunday kickoff, so Thursday's game is out.
             let first: [Week] = try await client.from("nfl_games")
                 .select("season, week")
                 .gte("kickoff", value: since)
@@ -287,6 +289,7 @@ struct SupabaseHuddleClient: HuddleClient {
                 .select("id, kickoff, away_team, home_team")
                 .eq("season", value: week.season)
                 .eq("week", value: week.week)
+                .gte("kickoff", value: since)
                 .order("kickoff")
                 .order("id")
                 .execute().value
