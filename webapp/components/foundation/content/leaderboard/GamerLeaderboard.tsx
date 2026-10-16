@@ -1,5 +1,5 @@
-import { BoardList, FindFriendsLink, ScopeNav, StandingBlock, WindowNav, type BoardRow } from "@/components/foundation/content/leaderboard/LeaderboardParts";
-import { boardHref, gamerStandingCopy, type GamerStanding } from "@/lib/foundation/content/leaderboard/boards";
+import { BoardList, FindFriendsLink, StandingBlock, type BoardRow } from "@/components/foundation/content/leaderboard/LeaderboardParts";
+import { gamerStandingCopy, type GamerStanding } from "@/lib/foundation/content/leaderboard/boards";
 import type { LeaderboardScope, LeaderboardWindow } from "@/lib/foundation/content/leaderboard/windows";
 
 export type GamerRow = {
@@ -46,8 +46,6 @@ export function GamerLeaderboard({
 
   return (
     <div>
-      <ScopeNav scope={scope} hrefFor={(key) => boardHref({ board: "gamer", window, scope: key })} />
-      <WindowNav window={window} hrefFor={(key) => boardHref({ board: "gamer", window: key, scope })} />
 
       <div className="mt-4">
         <StandingBlock

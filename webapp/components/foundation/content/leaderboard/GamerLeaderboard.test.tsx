@@ -8,12 +8,6 @@ const unrankedGamer = { status: "unranked", rank: null, wins: 0, gamesPlayed: 0,
 const unrankedSolo = { status: "unranked", rank: null, bestScore: null, rankedCount: 0 } as const;
 
 describe("GamerLeaderboard", () => {
-  it("keeps the board in window and scope links", () => {
-    render(<GamerLeaderboard window="month" scope="friends" rows={[]} standing={unrankedGamer} />);
-    expect(screen.getByRole("link", { name: "Everyone" })).toHaveAttribute("href", "/leaderboard?board=gamer&window=month");
-    expect(screen.getByRole("link", { name: "Year" })).toHaveAttribute("href", "/leaderboard?board=gamer&window=year&scope=friends");
-  });
-
   it("shows wins and games, and links a row only when it carries a username", () => {
     const row = { rank: 1, profileId: "p1", displayName: "Ava", avatarUrl: null, wins: 12, gamesPlayed: 30, isMe: false };
     render(

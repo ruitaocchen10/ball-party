@@ -3,10 +3,8 @@ import Link from "next/link";
 import { AuthorAvatar } from "@/components/foundation/content/prompts/AuthorIdentity";
 import { Card } from "@/components/foundation/ui-kit/Card";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
-import { ScopeNav, WindowNav } from "@/components/foundation/content/leaderboard/LeaderboardParts";
 import {
   LEADERBOARD_WINDOW_COPY,
-  leaderboardHref,
   standingCopy,
   type LeaderboardScope,
   type LeaderboardWindow,
@@ -51,8 +49,6 @@ export function BallKnowerLeaderboard({
 
   return (
     <div>
-      <ScopeNav scope={scope} hrefFor={(key) => leaderboardHref(window, key)} />
-      <WindowNav window={window} hrefFor={(key) => leaderboardHref(key, scope)} />
 
       <div className="mt-4">
         {standing.status === "ranked" ? (

@@ -60,6 +60,10 @@ struct ListTile: View {
     var compact = false
     /// A four-column board's tile: no name, since a column is under 80 points wide.
     var tiny = false
+    /// A grip cell at the trailing edge; the caller lays the drag gesture over it.
+    var grip = false
+
+    static func gripWidth(tiny: Bool) -> CGFloat { tiny ? GripGlyph.tinyWidth : GripGlyph.fullWidth }
 
     private var player: ListPlayer? { itemKind == .player ? players[item] : nil }
     private var team: String? { itemKind == .team ? item : player?.team }
@@ -91,6 +95,7 @@ struct ListTile: View {
                     .background(Theme.fg)
                     .accessibilityHidden(true)
             }
+            if grip { GripGlyph(width: Self.gripWidth(tiny: true), height: height) }
         }
         .frame(height: height)
         .background(picked ? AnyShapeStyle(Theme.hidden) : AnyShapeStyle(gradient))
@@ -142,6 +147,7 @@ struct ListTile: View {
                     .background(Theme.fg)
                     .accessibilityHidden(true)
             }
+            if grip { GripGlyph(width: Self.gripWidth(tiny: false), height: height) }
         }
         .frame(height: height)
         .background(picked ? AnyShapeStyle(Theme.hidden) : AnyShapeStyle(gradient))
@@ -178,38 +184,6 @@ struct ListTile: View {
     }
 }
 
-/// A list laid out as the web lays it out: one column up to 5, two columns
-/// of 5 for a top 10, four of 8 for all 32. It fills down each column first.
-struct ListGrid<Tile: View>: View {
-    let count: Int
-    /// The size the list is laid out for, when it shows only part of itself.
-    let size: Int
-    @ViewBuilder let tile: (Int) -> Tile
-
-    init(count: Int, size: Int? = nil, @ViewBuilder tile: @escaping (Int) -> Tile) {
-        self.count = count
-        self.size = size ?? count
-        self.tile = tile
-    }
-
-    static func columns(for size: Int) -> Int { size > 10 ? 4 : size > 5 ? 2 : 1 }
-
-    var body: some View {
-        let columns = Self.columns(for: size)
-        let rows = Int((Double(max(size, 1)) / Double(columns)).rounded(.up))
-        HStack(alignment: .top, spacing: 6) {
-            ForEach(0..<columns, id: \.self) { column in
-                VStack(spacing: 6) {
-                    ForEach(Array(stride(from: column * rows, to: min(count, (column + 1) * rows), by: 1)), id: \.self) { index in
-                        tile(index)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .top)
-            }
-        }
-    }
-}
-
 /// A saved list in order as tiles, optionally with movement against the version it replaced.
 struct ListRowsView: View {
     let items: [String]
@@ -219,11 +193,11 @@ struct ListRowsView: View {
     var size: Int?
 
     var body: some View {
-        ListGrid(count: items.count, size: size) { index in
+        RankBoard(size: size ?? items.count, places: items.count) { index, density in
             ListTile(
                 item: items[index], itemKind: itemKind, players: players, rank: index + 1,
                 movement: previous.map { ListMovement(change: ListLogic.placeChange(previous: $0, items: items, index: index)) },
-                compact: (size ?? items.count) > 5, tiny: (size ?? items.count) > 10
+                compact: density != .full, tiny: density == .tiny
             )
         }
     }

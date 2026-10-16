@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C9E4B03F6D815207F3A6C9E4 /* RankBoard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F5C14A7E926318A4B7D0F5 /* RankBoard.swift */; };
+		A7C2E91D4B6F3085D1E4A7C2 /* ReorderDrag.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D3FA2E5C704196E2F5B8D3 /* ReorderDrag.swift */; };
 		049039634109B21268632190 /* QbSeasonBuilderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4009D6CBF6F7B19C037FACB /* QbSeasonBuilderModels.swift */; };
 		062FFEB16D185BDF53F1A976 /* HuddleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D847D9122D409870135D24C5 /* HuddleView.swift */; };
 		07E051BD31CC211613846724 /* IdentityConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC8A96142A0621FD8ABEA33 /* IdentityConstants.swift */; };
@@ -131,6 +133,7 @@
 		F41E000000000000000B0006 /* OtherProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0006 /* OtherProfileView.swift */; };
 		F41E000000000000000B0007 /* StatsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E000000000000000A0007 /* StatsCard.swift */; };
 		CAC5F136454928795283C382 /* TakeThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98EF401B82882F0056E7A29B /* TakeThreadView.swift */; };
+		7B1A5C0E3D2F4A6B8C9D0E1F /* TakeBallVote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1A5C0E3D2F4A6B8C9D0E20 /* TakeBallVote.swift */; };
 		D954CFA4B4F65D4815B354CC /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 23F185FD6F85A3A67B64E719 /* Supabase */; };
 		DA697A93DFAE4A042F2B8E16 /* PromptDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E13C467022F862423E0B66 /* PromptDetailView.swift */; };
 		DA7C9E60EA753D9C0D7ECD2E /* PromptComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D318883C9DB837B2177EF1A /* PromptComponents.swift */; };
@@ -197,6 +200,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D0F5C14A7E926318A4B7D0F5 /* RankBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankBoard.swift; sourceTree = "<group>"; };
+		B8D3FA2E5C704196E2F5B8D3 /* ReorderDrag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReorderDrag.swift; sourceTree = "<group>"; };
 		016E6BC6E0E39A918F04E15F /* MatchStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchStatus.swift; sourceTree = "<group>"; };
 		041D8BEABE7186812BFA28E7 /* QbSeasonBuilderClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderClient.swift; sourceTree = "<group>"; };
 		04B44F7FC9C4A21EC4000278 /* MatchupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchupTests.swift; sourceTree = "<group>"; };
@@ -273,6 +278,7 @@
 		F41E000000000000000A0043 /* RoomInvitesViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomInvitesViewModels.swift; sourceTree = "<group>"; };
 		F41E000000000000000A0044 /* RoomInvitesViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomInvitesViews.swift; sourceTree = "<group>"; };
 		98EF401B82882F0056E7A29B /* TakeThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakeThreadView.swift; sourceTree = "<group>"; };
+		7B1A5C0E3D2F4A6B8C9D0E20 /* TakeBallVote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakeBallVote.swift; sourceTree = "<group>"; };
 		9BB3B711B5508796FC1E770E /* AppleSignInNonceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInNonceTests.swift; sourceTree = "<group>"; };
 		9BD9CB3F2559907FABE59D7D /* QbSeasonBuilderViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderViewModelTests.swift; sourceTree = "<group>"; };
 		A00AEBECD0570CBE0D379EDC /* MatchClockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchClockTests.swift; sourceTree = "<group>"; };
@@ -526,6 +532,7 @@
 				3D318883C9DB837B2177EF1A /* PromptComponents.swift */,
 				E0E13C467022F862423E0B66 /* PromptDetailView.swift */,
 				98EF401B82882F0056E7A29B /* TakeThreadView.swift */,
+				7B1A5C0E3D2F4A6B8C9D0E20 /* TakeBallVote.swift */,
 				D14025B7D4BB51302FBC7BD9 /* NFLTeams.swift */,
 				A31C7E5B2D9048F6B1E70C24 /* PowerRankingsViews.swift */,
 				FB175A4E9D62C3A81E5B4D79 /* BoldPredictionsViews.swift */,
@@ -559,6 +566,8 @@
 				7A1C0DE1A2B3C4D5E6F70832 /* TabAvatar.swift */,
 				E4B9FF71111FD9D9735FE017 /* Surfaces.swift */,
 				E1ED474535F9547864F48E5B /* Theme.swift */,
+				B8D3FA2E5C704196E2F5B8D3 /* ReorderDrag.swift */,
+				D0F5C14A7E926318A4B7D0F5 /* RankBoard.swift */,
 				FEBF9C390AB10C9BB64C5105 /* ComingSoonView.swift */,
 			);
 			path = UIKit;
@@ -953,6 +962,8 @@
 				7B5218E514D1DD9BF2F20B0C /* QbSeasonBuilderViewModel.swift in Sources */,
 				4838A1C17569AF4F5208604F /* QbSpinReel.swift in Sources */,
 				4FB9FA662D4DE41707B4F431 /* Theme.swift in Sources */,
+				A7C2E91D4B6F3085D1E4A7C2 /* ReorderDrag.swift in Sources */,
+				C9E4B03F6D815207F3A6C9E4 /* RankBoard.swift in Sources */,
 				7A1C0DE1A2B3C4D5E6F70811 /* GameTabs.swift in Sources */,
 				7A1C0DE1A2B3C4D5E6F70821 /* ScreenHeader.swift in Sources */,
 				7A1C0DE1A2B3C4D5E6F70851 /* DataTable.swift in Sources */,
@@ -1050,6 +1061,7 @@
 				DA7C9E60EA753D9C0D7ECD2E /* PromptComponents.swift in Sources */,
 				DA697A93DFAE4A042F2B8E16 /* PromptDetailView.swift in Sources */,
 				CAC5F136454928795283C382 /* TakeThreadView.swift in Sources */,
+				7B1A5C0E3D2F4A6B8C9D0E1F /* TakeBallVote.swift in Sources */,
 				4FDA21D1094F96EBA2E80C55 /* NFLTeams.swift in Sources */,
 				5E80D2A91B4C37F0A6D9E813 /* PowerRankingsViews.swift in Sources */,
 				608DC4F3AB5E729BD4F3C068 /* BoldPredictionsViews.swift in Sources */,

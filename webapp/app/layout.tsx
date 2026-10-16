@@ -4,6 +4,7 @@ import { Barlow, Bebas_Neue, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import { MotionProvider } from "@/components/foundation/ui-kit/MotionProvider";
+import { NoFlashSidebarScript } from "@/components/foundation/ui-kit/NoFlashSidebarScript";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo/site";
 
 // Barlow reads; Bebas Neue is the display voice and is only ever used large;
@@ -48,17 +49,6 @@ export const metadata: Metadata = {
 // installed app's splash sit on the same near-black as the page.
 export const viewport: Viewport = { themeColor: "#111311" };
 
-// Runs before first paint so a reload lands at the sidebar width the user
-// last chose instead of flashing expanded-then-collapsing. Mirrors the
-// classic no-flash dark-mode script — same reasoning, one attribute.
-const NO_FLASH_SIDEBAR_SCRIPT = `
-  try {
-    if (localStorage.getItem("sidebar-collapsed") === "true") {
-      document.documentElement.setAttribute("data-sidebar-collapsed", "");
-    }
-  } catch (e) {}
-`;
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -71,7 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SIDEBAR_SCRIPT }} />
+        <NoFlashSidebarScript />
       </head>
       <body className="flex min-h-full flex-col">
         <MotionProvider>{children}</MotionProvider>

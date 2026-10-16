@@ -248,34 +248,14 @@ enum ProfileTab: CaseIterable, Hashable {
     }
 }
 
-/// Underlined tabs: the selected one is the normal text colour with a red rule.
+/// The profile's sections, as the shared `TabBar`.
 struct ProfileTabBar: View {
     @Binding var selection: ProfileTab
     /// Another player's profile has no Takes tab yet.
     var tabs: [ProfileTab] = ProfileTab.allCases
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(tabs, id: \.self) { tab in
-                let isSelected = tab == selection
-                Button {
-                    selection = tab
-                } label: {
-                    Text(tab.title)
-                        .monoLabel(11, weight: .bold, tracking: 0.14, color: isSelected ? Theme.fg : Theme.fgMuted)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .overlay(alignment: .bottom) {
-                            Rectangle().fill(isSelected ? Theme.hidden : .clear).frame(height: 2)
-                        }
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(isSelected ? .isSelected : [])
-            }
-        }
-        .overlay(alignment: .bottom) { LineRule() }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Profile section")
+        TabBar(selection: $selection, options: tabs, title: \.title, accessibilityName: "Profile section")
     }
 }
 
@@ -334,15 +314,12 @@ private struct HighlightsCard: View {
 
     var body: some View {
         StatsCard(
-            title: "Your stats",
             statsView: $viewModel.statsView,
             statsRange: $viewModel.statsRange,
             knower: viewModel.selectedKnowerHighlight,
             status: viewModel.knowerStatus,
             statusDetail: viewModel.knowerStatusDetail,
-            gamer: viewModel.gamerHighlight,
-            unrankedStandingText: "Make a correct pick to enter the rankings",
-            noStreakText: "Win your next multiplayer game to start one"
+            gamer: viewModel.gamerHighlight
         ) {
             leaderboardLink
         }

@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
  * no brand rail, no account menu, just where the admin sections are.
  */
 const ADMIN_NAV_ITEMS = [
+  { href: "/admin", label: "Calendar" },
   { href: "/admin/prompts", label: "Compose" },
   { href: "/admin/queue", label: "Queue" },
   { href: "/admin/posts", label: "Posts" },

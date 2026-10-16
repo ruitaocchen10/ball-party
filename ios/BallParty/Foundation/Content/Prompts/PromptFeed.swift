@@ -185,7 +185,8 @@ enum PromptFeed {
                     isOpinion: row.isOpinion,
                     slots: slots,
                     comments: commentTree(
-                        commentsByPost[row.id] ?? [], names: nameById, avatars: avatarById, usernames: usernameById, viewerId: viewerId, tickets: ticketsByAuthor
+                        commentsByPost[row.id] ?? [], names: nameById, avatars: avatarById, usernames: usernameById, viewerId: viewerId, tickets: ticketsByAuthor,
+                        reactions: rows.reactions
                     ),
                     responseCount: responseCount,
                     viewerResponse: mine.isEmpty ? nil : Dictionary(mine.map { ($0.slotId, $0.chosenOptionIds) }, uniquingKeysWith: { _, latest in latest }),
@@ -285,7 +286,7 @@ enum PromptFeed {
     /// web's `buildCommentTree` makes.
     private static func commentTree(
         _ rows: [PromptCommentRow], names: [UUID: String], avatars: [UUID: URL], usernames: [UUID: String], viewerId: UUID,
-        tickets: [UUID: [UUID: [UUID]]]
+        tickets: [UUID: [UUID: [UUID]]], reactions: [UUID: TakeReaction]
     ) -> [PromptComment] {
         let ids = Set(rows.map(\.id))
         var repliesByParent: [UUID: [PromptCommentRow]] = [:]
@@ -305,7 +306,8 @@ enum PromptFeed {
                 isViewer: row.authorId == viewerId,
                 postedWithPick: row.postedWithPick,
                 response: row.postedWithPick ? tickets[row.authorId] : nil,
-                replies: (repliesByParent[row.id] ?? []).sorted { $0.createdAt < $1.createdAt }.map(build)
+                replies: (repliesByParent[row.id] ?? []).sorted { $0.createdAt < $1.createdAt }.map(build),
+                reaction: row.parentCommentId == nil ? reactions[row.id] : nil
             )
         }
 

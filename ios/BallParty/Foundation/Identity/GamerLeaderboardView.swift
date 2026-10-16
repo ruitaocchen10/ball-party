@@ -1,48 +1,32 @@
 import SwiftUI
 
 /// The multiplayer wins board, hosted by `LeaderboardView` beside Ball Knower.
-/// Mirrors the web's `GamerLeaderboard`: a board picker, a scope picker, a
-/// window picker, the caller's own standing and the ranked list.
+/// Mirrors the web's `GamerLeaderboard`: a window menu (with the scope toggle
+/// beside it; the board tabs sit under the navigation bar, from `LeaderboardView`), the
+/// caller's own standing and the ranked list.
 struct GamerLeaderboardView: View {
     @StateObject private var viewModel: GamerLeaderboardViewModel
-    @Binding private var board: LeaderboardBoard
 
     init(
-        board: Binding<LeaderboardBoard>,
         client: GamerLeaderboardClient = SupabaseGamerLeaderboardClient(client: SupabaseConfig.client)
     ) {
-        _board = board
         _viewModel = StateObject(wrappedValue: GamerLeaderboardViewModel(source: .wins, client: client))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            PageHeader(
-                eyebrow: "Leaderboard",
-                title: LeaderboardBoard.gamer.title,
-                description: LeaderboardBoard.gamer.description(for: viewModel.scope)
-            )
-
-            SegmentedChoice(
-                selection: $board,
-                options: LeaderboardBoard.allCases,
-                title: { $0.label },
-                accessibilityName: "Leaderboard"
-            )
-
-            SegmentedChoice(
-                selection: $viewModel.scope,
-                options: LeaderboardScope.allCases,
-                title: { $0.label },
-                accessibilityName: "Board"
-            )
-
-            SegmentedChoice(
-                selection: $viewModel.window,
-                options: LeaderboardWindow.allCases,
-                title: { $0.label },
-                accessibilityName: "Time window"
-            )
+            HStack {
+                SegmentedChoice(
+                    selection: $viewModel.scope,
+                    options: [.friends, .all],
+                    title: { $0.label },
+                    accessibilityName: "Board",
+                    pill: true
+                )
+                .fixedSize()
+                Spacer()
+                MenuPill(label: "Time window", selection: $viewModel.window, options: LeaderboardWindow.allCases, title: \.label)
+            }
 
             BoardContent(viewModel: viewModel, caption: caption, rule: rule)
         }

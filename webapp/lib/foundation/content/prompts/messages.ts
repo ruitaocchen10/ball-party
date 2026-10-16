@@ -28,8 +28,13 @@ export const PROMPT_MESSAGES: Record<string, string> = {
   already_answered: "You've already locked in your predictions.",
   invalid_target: "That tag isn't valid for this post anymore. Pick another.",
   not_bold_predictions: "This post doesn't take predictions.",
+  slot_not_editable: "That slot has already opened, or no longer exists.",
+  slot_not_found: "That slot no longer exists.",
+  invalid_payload: "That draft couldn't be saved.",
 };
 
 export function promptErrorMessage(message: string): string {
+  // mark_ready (0215) names the missing steps: "not_ready: No open time; No caption".
+  if (message.startsWith("not_ready: ")) return `Not ready yet — ${message.slice("not_ready: ".length)}.`;
   return PROMPT_MESSAGES[message] ?? message;
 }

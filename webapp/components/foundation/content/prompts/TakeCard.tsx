@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
 import { AuthorIdentity } from "./AuthorIdentity";
+import { TakeBallVote } from "./TakeBallVote";
 import { relativeTime } from "@/lib/foundation/content/prompts/logic";
 import type { Comment } from "@/lib/foundation/content/prompts/types";
 import { Badge } from "@/components/foundation/ui-kit/Badge";
@@ -50,7 +51,7 @@ export function TakeCard({
 }) {
   const [takeExpanded, setTakeExpanded] = useState(!collapsedByDefault || expandedByDefault);
   const canCollapseTake = (collapsedByDefault || expandedByDefault) && Boolean(children);
-  const hasBottomRow = Boolean(commentHref || canCollapseTake || footer);
+  const hasBottomRow = Boolean(comment.reaction || commentHref || canCollapseTake || footer);
 
   return (
     <article className="relative rounded-card border border-line bg-surface-raised shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
@@ -66,6 +67,7 @@ export function TakeCard({
       {takeExpanded && children && !hasBottomRow ? <div className="pb-4" /> : null}
       {hasBottomRow ? (
         <div className="flex items-center gap-3 px-4 pt-4 pb-4">
+          {comment.reaction ? <TakeBallVote takeId={comment.id} initial={comment.reaction} /> : null}
           {commentHref ? (
             <Link href={commentHref} aria-label={`Comment on ${comment.author}'s take`} className="inline-flex items-center gap-1.5 text-fg-muted transition-colors hover:text-fg">
               <MessageCircle className="h-5 w-5" strokeWidth={1.8} />

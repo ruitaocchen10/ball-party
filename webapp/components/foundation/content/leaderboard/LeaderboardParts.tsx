@@ -4,17 +4,9 @@ import { AuthorAvatar } from "@/components/foundation/content/prompts/AuthorIden
 import { Card } from "@/components/foundation/ui-kit/Card";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 import {
-  LEADERBOARD_BOARDS,
-  LEADERBOARD_BOARD_COPY,
-  type LeaderboardBoard,
-} from "@/lib/foundation/content/leaderboard/boards";
-import {
   LEADERBOARD_SCOPES,
   LEADERBOARD_SCOPE_LABEL,
-  LEADERBOARD_WINDOWS,
-  LEADERBOARD_WINDOW_COPY,
   type LeaderboardScope,
-  type LeaderboardWindow,
 } from "@/lib/foundation/content/leaderboard/windows";
 
 const FOCUS = "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg";
@@ -37,22 +29,20 @@ const ROW_GRID_WITH_DETAIL =
   "grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[3.5rem_minmax(0,1fr)_5rem_6rem] sm:gap-4";
 const ROW_GRID_VALUE_ONLY = "grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[3.5rem_minmax(0,1fr)_6rem] sm:gap-4";
 
-/** The tabs between boards. Switching a board resets the window, the scope and the mode to what the destination defaults to. */
-export function BoardNav({ board, hrefFor }: { board: LeaderboardBoard; hrefFor: (board: LeaderboardBoard) => string }) {
+/** Friends / Everyone as a pill toggle, the same look as the profile's Ball knower / Gamer toggle. */
+export function ScopeToggle({ scope, hrefFor }: { scope: LeaderboardScope; hrefFor: (scope: LeaderboardScope) => string }) {
   return (
-    <nav aria-label="Leaderboard" className="mb-3 flex overflow-hidden rounded-card border border-line">
-      {LEADERBOARD_BOARDS.map((key) => {
-        const active = key === board;
+    <nav aria-label="Leaderboard scope" className="inline-flex w-fit shrink-0 rounded-full border border-line bg-surface p-1">
+      {(["friends", "all"] as const).map((key) => {
+        const active = key === scope;
         return (
           <Link
             key={key}
             href={hrefFor(key)}
             aria-current={active ? "page" : undefined}
-            className={`flex min-h-10 flex-1 items-center justify-center px-2 type-label-lg font-bold transition-colors ${FOCUS} ${
-              active ? "bg-hidden text-fg" : "text-fg hover:text-fg-muted"
-            }`}
+            className={`flex min-h-9 items-center rounded-full px-4 type-label font-black transition-colors ${FOCUS} ${active ? "bg-hidden text-white" : "text-fg-muted hover:text-fg"}`}
           >
-            {LEADERBOARD_BOARD_COPY[key].label}
+            {LEADERBOARD_SCOPE_LABEL[key]}
           </Link>
         );
       })}
@@ -75,28 +65,6 @@ export function ScopeNav({ scope, hrefFor }: { scope: LeaderboardScope; hrefFor:
             }`}
           >
             {LEADERBOARD_SCOPE_LABEL[key]}
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
-export function WindowNav({ window, hrefFor }: { window: LeaderboardWindow; hrefFor: (window: LeaderboardWindow) => string }) {
-  return (
-    <nav aria-label="Time window" className="flex overflow-hidden rounded-card border border-line">
-      {LEADERBOARD_WINDOWS.map((key) => {
-        const active = key === window;
-        return (
-          <Link
-            key={key}
-            href={hrefFor(key)}
-            aria-current={active ? "page" : undefined}
-            className={`flex min-h-12 flex-1 items-center justify-center font-slab text-[17px] tracking-[0.04em] uppercase transition-colors ${FOCUS} ${
-              active ? "bg-hidden text-fg" : "text-fg hover:text-fg-muted"
-            }`}
-          >
-            {LEADERBOARD_WINDOW_COPY[key].label}
           </Link>
         );
       })}

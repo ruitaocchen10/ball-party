@@ -44,6 +44,9 @@
   --grade-even: #6b665a;
   --grade-rough: #855238;
 
+  /* a ball given to a take: football leather, so a like is never red */
+  --ball: #c27a3e;
+
   /* text on the background */
   --fg: #e8e3d6;
   --fg-muted: #8f8b7f;
@@ -86,6 +89,7 @@ html[data-sidebar-collapsed] {
   --color-grade-strong: var(--grade-strong);
   --color-grade-even: var(--grade-even);
   --color-grade-rough: var(--grade-rough);
+  --color-ball: var(--ball);
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
   --color-line: var(--line);
@@ -408,4 +412,89 @@ body {
     font-size: 0.75rem;
     font-weight: 700;
   }
+}
+
+/* The admin prompt calendar (FullCalendar, components/admin/ScheduleCalendar).
+   FullCalendar is themed through its own variables, mapped here to our tokens
+   so it follows them; nothing in this block is a literal color. */
+.schedule-calendar {
+  --fc-page-bg-color: var(--surface);
+  --fc-neutral-bg-color: var(--panel-shade);
+  --fc-border-color: var(--line);
+  --fc-today-bg-color: var(--panel-shade);
+  --fc-event-bg-color: transparent;
+  --fc-event-border-color: transparent;
+  --fc-event-text-color: var(--fg);
+  --fc-more-link-bg-color: var(--surface-raised);
+  --fc-non-business-color: var(--surface);
+  --fc-small-font-size: 0.75rem;
+  --fc-button-bg-color: transparent;
+  --fc-button-border-color: var(--line);
+  --fc-button-text-color: var(--fg-muted);
+  --fc-button-hover-bg-color: transparent;
+  --fc-button-hover-border-color: var(--fg);
+  --fc-button-active-bg-color: var(--fg);
+  --fc-button-active-border-color: var(--fg);
+  color: var(--fg);
+}
+.schedule-calendar .fc-toolbar-title {
+  font-family: var(--font-slab);
+  text-transform: uppercase;
+  font-size: 1.125rem;
+  line-height: 1;
+}
+.schedule-calendar .fc-button-primary {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+}
+.schedule-calendar .fc-button-primary:hover,
+.schedule-calendar .fc-button-primary:not(:disabled):active {
+  background: transparent;
+  border-color: var(--fg);
+  color: var(--fg);
+}
+.schedule-calendar .fc-button-primary:not(:disabled).fc-button-active {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--surface);
+}
+.schedule-calendar .fc-button-primary:disabled {
+  opacity: 0.4;
+}
+.schedule-calendar .fc-col-header-cell-cushion,
+.schedule-calendar .fc-daygrid-day-number {
+  color: var(--fg-muted);
+  text-decoration: none;
+}
+.schedule-calendar .fc-day-today .fc-daygrid-day-number {
+  color: var(--fg);
+  font-weight: 700;
+}
+.schedule-calendar .fc-event {
+  display: block;
+  padding: 0;
+  margin: 0.25rem 0.25rem 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  white-space: normal;
+}
+.schedule-calendar .fc-event:hover > span {
+  border-color: var(--fg);
+}
+.schedule-calendar .fc-daygrid-event-harness {
+  margin-top: 0;
+}
+.schedule-calendar .fc-popover {
+  background: var(--surface-raised);
+  border-color: var(--line);
+}
+.schedule-calendar .fc-popover-header {
+  background: var(--panel-shade);
+  color: var(--fg);
 }

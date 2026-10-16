@@ -82,24 +82,28 @@ function toCreatePostSlots(slots: Slot[]) {
  */
 export type PromptResolutionSource = { provider: "nflverse"; rule: "winner" };
 
-export async function createPromptPost(
-  supabase: SupabaseBrowserClient,
-  params: {
-    templateKind: TemplateKind;
-    templateName: string;
-    caption: string;
-    promptText: string;
-    resolutionCriteria: string;
-    lockAt: string;
-    slots: Slot[];
-    resolutionSource?: PromptResolutionSource;
-    isOpinion?: boolean;
-    coverTeamCodes?: string[];
-    /** Defaults to true; false skips the iOS push for this post (0206). */
-    sendPush?: boolean;
-  },
-): Promise<{ id: string } | { error: string }> {
-  const { data, error } = await supabase.schema("prompts").rpc("create_post", {
+export type CreatePostParams = {
+  templateKind: TemplateKind;
+  templateName: string;
+  caption: string;
+  promptText: string;
+  resolutionCriteria: string;
+  lockAt: string;
+  slots: Slot[];
+  resolutionSource?: PromptResolutionSource;
+  isOpinion?: boolean;
+  coverTeamCodes?: string[];
+  /** Defaults to true; false skips the iOS push for this post (0206). */
+  sendPush?: boolean;
+};
+
+/**
+ * The named arguments prompts.create_post takes. The calendar stores exactly
+ * this as a draft (0215), so a scheduled prompt opens through the same call
+ * and the same checks as one published now.
+ */
+export function buildCreatePostArgs(params: CreatePostParams) {
+  return {
     p_template_kind: params.templateKind,
     p_template_name: params.templateName,
     p_caption: params.caption,
@@ -113,12 +117,19 @@ export async function createPromptPost(
     ...(params.resolutionSource
       ? {
           p_resolution_source: {
-          provider: params.resolutionSource.provider,
-          rule: params.resolutionSource.rule,
+            provider: params.resolutionSource.provider,
+            rule: params.resolutionSource.rule,
           },
         }
       : {}),
-  });
+  };
+}
+
+export async function createPromptPost(
+  supabase: SupabaseBrowserClient,
+  params: CreatePostParams,
+): Promise<{ id: string } | { error: string }> {
+  const { data, error } = await supabase.schema("prompts").rpc("create_post", buildCreatePostArgs(params));
   if (error) return { error: promptErrorMessage(error.message) };
   return { id: data };
 }

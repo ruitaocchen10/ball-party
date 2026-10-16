@@ -8,7 +8,7 @@ import {
 /** Builds the profile highlights card from match history and the knower windows. Shared by /profile and /u/[username]. */
 export function profileHighlights(
   matches: CompletedMatchWithMode[],
-  knowerRows: { window_key: string; total_points: number; percentile: number | null }[],
+  knowerRows: { window_key: string; total_points: number; percentile: number | null; pick_points: number; like_points: number }[],
 ): ProfileHighlights {
   const knowerByRange = new Map(knowerRows.map((row) => [row.window_key, row]));
   const now = new Date();
@@ -16,7 +16,12 @@ export function profileHighlights(
   return {
     knower: Object.fromEntries(profileStatRanges.map((range) => {
       const row = knowerByRange.get(range);
-      return [range, { totalPoints: row?.total_points ?? 0, percentile: row?.percentile ?? null }];
+      return [range, {
+        totalPoints: row?.total_points ?? 0,
+        percentile: row?.percentile ?? null,
+        pickPoints: row?.pick_points ?? 0,
+        likePoints: row?.like_points ?? 0,
+      }];
     })) as ProfileHighlights["knower"],
     gamer: Object.fromEntries(profileStatRanges.map((range) => {
       const summary = summarizeMultiplayerProfileRange(matches, range, now);

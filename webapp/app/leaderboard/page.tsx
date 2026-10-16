@@ -3,16 +3,19 @@ import { redirect } from "next/navigation";
 
 import { BallKnowerLeaderboard, type LeaderboardRow } from "@/components/foundation/content/leaderboard/BallKnowerLeaderboard";
 import { GamerLeaderboard } from "@/components/foundation/content/leaderboard/GamerLeaderboard";
-import { BoardNav } from "@/components/foundation/content/leaderboard/LeaderboardParts";
+import { ScopeToggle } from "@/components/foundation/content/leaderboard/LeaderboardParts";
+import { WindowSelect } from "@/components/foundation/content/leaderboard/WindowSelect";
 import { SignedOutLeaderboard } from "@/components/foundation/content/leaderboard/SignedOutLeaderboard";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 import { PageHeader } from "@/components/foundation/ui-kit/PageHeader";
 import { PageShell } from "@/components/foundation/ui-kit/PageShell";
+import { TabBar } from "@/components/foundation/ui-kit/TabBar";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
 import { DashboardHeader } from "@/components/home/DashboardHeader";
 import {
   asSoloBoard,
   boardHref,
+  LEADERBOARD_BOARDS,
   LEADERBOARD_BOARD_COPY,
   parseLeaderboardBoard,
   parseQbMode,
@@ -20,22 +23,11 @@ import {
   type GamerStanding,
   type LeaderboardBoard,
 } from "@/lib/foundation/content/leaderboard/boards";
-import { parseLeaderboardScope, parseLeaderboardWindow, type LeaderboardScope, type LeaderboardWindow, type Standing } from "@/lib/foundation/content/leaderboard/windows";
+import { LEADERBOARD_WINDOWS, parseLeaderboardScope, parseLeaderboardWindow, type LeaderboardScope, type LeaderboardWindow, type Standing } from "@/lib/foundation/content/leaderboard/windows";
 import { canViewProfile, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Leaderboard" };
-
-const BOARD_DESCRIPTION = {
-  "ball-knower": {
-    all: "Points from your resolved picks, ranked against everyone who plays the weekly prompts.",
-    friends: "Points from your resolved picks, ranked against your friends.",
-  },
-  gamer: {
-    all: "Multiplayer wins, ranked against everyone who plays in rooms.",
-    friends: "Multiplayer wins, ranked against your friends.",
-  },
-} as const;
 
 /**
  * The leaderboards: Ball Knower points and multiplayer wins. The solo games'
@@ -73,14 +65,18 @@ export default async function LeaderboardPage(props: { searchParams: Promise<Rec
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <PageShell variant="dashboard">
-        <PageHeader
-          eyebrow="Leaderboard"
-          title={LEADERBOARD_BOARD_COPY[board].title}
-          description={BOARD_DESCRIPTION[board][scope]}
-        />
-        <div className="mt-6">
-          <BoardNav board={board} hrefFor={(key) => boardHref({ board: key, scope })} />
-          {content ?? <EmptyState title="Couldn't load the leaderboard">Try again in a moment.</EmptyState>}
+        <PageHeader title="Leaderboard" />
+        <div className="mt-4">
+          <TabBar
+            ariaLabel="Leaderboard"
+            active={board}
+            items={LEADERBOARD_BOARDS.map((key) => ({ key, label: LEADERBOARD_BOARD_COPY[key].label, href: boardHref({ board: key, scope }) }))}
+          />
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <ScopeToggle scope={scope} hrefFor={(key) => boardHref({ board, window, scope: key })} />
+            <WindowSelect window={window} hrefs={Object.fromEntries(LEADERBOARD_WINDOWS.map((key) => [key, boardHref({ board, window: key, scope })])) as Record<LeaderboardWindow, string>} />
+          </div>
+          <div className="mt-4">{content ?? <EmptyState title="Couldn't load the leaderboard">Try again in a moment.</EmptyState>}</div>
         </div>
       </PageShell>
     </>

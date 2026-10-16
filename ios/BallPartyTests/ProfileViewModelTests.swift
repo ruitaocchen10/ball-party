@@ -105,7 +105,7 @@ final class ProfileViewModelTests: XCTestCase {
         viewModel.statsRange = .week
 
         XCTAssertEqual(viewModel.knowerStatus, "Ball god")
-        XCTAssertEqual(viewModel.knowerStatusDetail, "Lifetime · 81st percentile")
+        XCTAssertEqual(viewModel.knowerStatusDetail, "81st percentile")
     }
 
     func test_knowerStatus_withNoResolvedPicksYet_isUnranked() async {
@@ -116,7 +116,7 @@ final class ProfileViewModelTests: XCTestCase {
         await viewModel.load()
 
         XCTAssertEqual(viewModel.knowerStatus, "Unranked")
-        XCTAssertEqual(viewModel.knowerStatusDetail, "Your lifetime score will set your status")
+        XCTAssertEqual(viewModel.knowerStatusDetail, "Not ranked yet")
     }
 
     func test_gamerHighlight_countsOnlyMultiplayerWinsWithinTheLifetimeWindow() async {
@@ -130,7 +130,7 @@ final class ProfileViewModelTests: XCTestCase {
 
         await viewModel.load()
 
-        XCTAssertEqual(viewModel.gamerHighlight, GamerHighlight(gamesPlayed: 2, wins: 1, winRate: 50, currentStreak: 1))
+        XCTAssertEqual(viewModel.gamerHighlight, GamerHighlight(gamesPlayed: 2, wins: 1, winRate: 50))
     }
 
     func test_matchHistory_rowsWithAnUnknownGameOrMode_areLeftOutOfTheGamerHighlight() async {
@@ -142,7 +142,7 @@ final class ProfileViewModelTests: XCTestCase {
 
         await viewModel.load()
 
-        XCTAssertEqual(viewModel.gamerHighlight, GamerHighlight(gamesPlayed: 1, wins: 1, winRate: 100, currentStreak: 1))
+        XCTAssertEqual(viewModel.gamerHighlight, GamerHighlight(gamesPlayed: 1, wins: 1, winRate: 100))
     }
 
     // MARK: - Avatar storage

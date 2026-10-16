@@ -32,7 +32,7 @@ struct LeaderboardView: View {
                 } else {
                     // A new identity per board, so switching boards starts the
                     // new one on its own defaults, as the web does.
-                    GamerLeaderboardView(board: $board)
+                    GamerLeaderboardView()
                         .id(board)
                 }
             }
@@ -41,36 +41,23 @@ struct LeaderboardView: View {
         .screenBackground()
         .navigationTitle("Leaderboard")
         .navigationBarTitleDisplayMode(.inline)
+        .tabsUnderNavigationBar(selection: $board, options: LeaderboardBoard.allCases, title: \.label, accessibilityName: "Leaderboard")
     }
 
     private var ballKnower: some View {
         VStack(alignment: .leading, spacing: 16) {
-            PageHeader(
-                eyebrow: "Leaderboard",
-                title: "Ball Knower",
-                description: viewModel.scope.description
-            )
-
-            SegmentedChoice(
-                selection: $board,
-                options: LeaderboardBoard.allCases,
-                title: { $0.label },
-                accessibilityName: "Leaderboard"
-            )
-
-            SegmentedChoice(
-                selection: $viewModel.scope,
-                options: LeaderboardScope.allCases,
-                title: { $0.label },
-                accessibilityName: "Board"
-            )
-
-            SegmentedChoice(
-                selection: $viewModel.window,
-                options: LeaderboardWindow.allCases,
-                title: { $0.label },
-                accessibilityName: "Time window"
-            )
+            HStack {
+                SegmentedChoice(
+                    selection: $viewModel.scope,
+                    options: [.friends, .all],
+                    title: { $0.label },
+                    accessibilityName: "Board",
+                    pill: true
+                )
+                .fixedSize()
+                Spacer()
+                MenuPill(label: "Time window", selection: $viewModel.window, options: LeaderboardWindow.allCases, title: \.label)
+            }
 
             content
         }

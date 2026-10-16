@@ -229,12 +229,15 @@ struct ListUpdateCardView: View {
 
     private var footer: some View {
         HStack(spacing: 12) {
+            if let ball = update.ball { TakeBallVoteView(takeId: ball.takeId, initial: ball.reaction) }
             if !full {
                 NavigationLink { ListUpdateScreen(postId: update.postId, viewerId: viewerId) } label: {
-                    Label("Reply", systemImage: "bubble.left")
-                        .monoLabel(10, weight: .semibold, tracking: 0.1)
+                    Image(systemName: "bubble.left")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.fgMuted)
                         .frame(minHeight: 32)
-                        .contentShape(Rectangle())
+                        .contentShape(Rectangle().inset(by: -8))
+                        .accessibilityLabel("Reply")
                 }
                 .buttonStyle(.plain)
             }

@@ -134,6 +134,40 @@ extension View {
     }
 }
 
+// MARK: - Counted text area
+
+/// A captioned multi-line box with a running `n/limit` count under it: the
+/// "Add a take" box on prompts and lists, the bold prediction box. The text
+/// starts at the top left and the box is never shorter than `lines.lowerBound`
+/// lines, empty or not; input past `limit` is cut off.
+struct CountedTextArea: View {
+    let label: String
+    let placeholder: String
+    @Binding var text: String
+    let limit: Int
+    var lines: ClosedRange<Int> = 2...5
+    var isDisabled = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).fieldLabel()
+            TextField(placeholder, text: $text, axis: .vertical)
+                .lineLimit(lines)
+                .disabled(isDisabled)
+                .frame(maxWidth: .infinity, minHeight: CGFloat(lines.lowerBound) * 22, alignment: .topLeading)
+                .padding(.vertical, 12)
+                .fieldStyle()
+                .onChange(of: text) { _, value in
+                    if value.count > limit { text = String(value.prefix(limit)) }
+                }
+                .accessibilityLabel(label)
+            Text("\(text.count)/\(limit)")
+                .monoLabel(10, tracking: 0.08)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+}
+
 // MARK: - Segmented choice
 
 /// A row of mutually exclusive options. The selected one is a red fill,
@@ -144,8 +178,43 @@ struct SegmentedChoice<Value: Hashable>: View {
     let title: (Value) -> String
     /// Read by VoiceOver as the group's name.
     var accessibilityName: String = ""
+    /// A capsule track with a capsule selection, like the web's profile
+    /// toggle, instead of the 8px segmented row.
+    var pill = false
 
     var body: some View {
+        if pill { pillBody } else { segmentedBody }
+    }
+
+    private var pillBody: some View {
+        HStack(spacing: 0) {
+            ForEach(options, id: \.self) { option in
+                let isSelected = option == selection
+                Button {
+                    selection = option
+                } label: {
+                    Text(title(option))
+                        .font(.slab(15, relativeTo: .body))
+                        .tracking(0.6)
+                        .textCase(.uppercase)
+                        .foregroundStyle(isSelected ? Theme.fg : Theme.fgMuted)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .background(isSelected ? Theme.hidden : .clear, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(Theme.surface, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 1))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilityName)
+    }
+
+    private var segmentedBody: some View {
         HStack(spacing: 0) {
             ForEach(options, id: \.self) { option in
                 let isSelected = option == selection
@@ -169,6 +238,110 @@ struct SegmentedChoice<Value: Hashable>: View {
         .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityName)
+    }
+}
+
+// MARK: - Tab bar
+
+/// Underlined tabs: the selected one is red with a 4pt red rule under it; the
+/// others have none, just a hairline along the bottom of the whole bar. Web's `TabBar`. The profile's sections use it, and
+/// the leaderboard attaches one to its header.
+struct TabBar<Value: Hashable>: View {
+    @Binding var selection: Value
+    let options: [Value]
+    let title: (Value) -> String
+    /// Read by VoiceOver as the group's name.
+    var accessibilityName: String = ""
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options, id: \.self) { option in
+                let isSelected = option == selection
+                Button {
+                    selection = option
+                } label: {
+                    Text(title(option))
+                        .monoLabel(11, weight: .bold, tracking: 0.14, color: isSelected ? Theme.hiddenText : Theme.fgMuted)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .overlay(alignment: .bottom) {
+                            Rectangle().fill(isSelected ? Theme.hidden : .clear).frame(height: 4)
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .overlay(alignment: .bottom) { LineRule() }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilityName)
+    }
+}
+
+// MARK: - Navigation bar with tabs
+
+extension View {
+    /// A navigation bar variation with a `TabBar` attached under it: the bar
+    /// loses its bottom rule and the tabs sit on the same solid surface, so the
+    /// two read as one block, closed by the tabs' hairline.
+    func tabsUnderNavigationBar<Value: Hashable>(
+        selection: Binding<Value>,
+        options: [Value],
+        title: @escaping (Value) -> String,
+        accessibilityName: String = ""
+    ) -> some View {
+        background(NavigationBarWithoutRule())
+            .safeAreaInset(edge: .top, spacing: 0) {
+                TabBar(selection: selection, options: options, title: title, accessibilityName: accessibilityName)
+                    .background(Theme.surface)
+            }
+    }
+}
+
+/// Swaps the hosting screen's navigation bar appearance for the rule-less one.
+/// SwiftUI has no modifier for the bar's shadow, so this reaches the
+/// `UINavigationItem` through a zero-size view controller.
+private struct NavigationBarWithoutRule: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller { Controller() }
+    func updateUIViewController(_ controller: Controller, context: Context) {}
+
+    final class Controller: UIViewController {
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            let appearance = Theme.navigationBarAppearance(hairline: false)
+            let item = navigationController?.topViewController?.navigationItem
+            item?.standardAppearance = appearance
+            item?.scrollEdgeAppearance = appearance
+            item?.compactAppearance = appearance
+        }
+    }
+}
+
+// MARK: - Menu pill
+
+/// A dropdown drawn as a capsule, to sit beside pill controls (the stats
+/// card's range, the leaderboard's window).
+struct MenuPill<Value: Hashable>: View {
+    let label: String
+    @Binding var selection: Value
+    let options: [Value]
+    let title: (Value) -> String
+
+    var body: some View {
+        Picker(label, selection: $selection) {
+            ForEach(options, id: \.self) { option in
+                Text(title(option)).tag(option)
+            }
+        }
+        .pickerStyle(.menu)
+        .font(.sans(13))
+        .foregroundStyle(Theme.fg)
+        .tint(Theme.fg)
+        .padding(.horizontal, 12)
+        .frame(minHeight: 44)
+        .background(Theme.surface, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 1))
+        .fixedSize()
     }
 }
 

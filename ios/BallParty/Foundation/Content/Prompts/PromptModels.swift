@@ -173,6 +173,45 @@ struct MarginGame: Equatable, Sendable {
 }
 
 /// A take (top-level comment) or a reply to one.
+/// Balls on a take: the net, the viewer's own reaction (1, -1 or 0) and what
+/// the server says the viewer may do. One row of `take_reaction_summary`.
+struct TakeReaction: Equatable, Sendable, Decodable {
+    var net: Int
+    var mine: Int
+    var canLike: Bool
+    var canDislike: Bool
+
+    /// The reaction `next` asks for: tapping the one you already gave removes it.
+    func value(toggling next: Int) -> Int { mine == next ? 0 : next }
+
+    /// This reaction as it would stand after `value`, before the server answers.
+    func applying(_ value: Int) -> TakeReaction {
+        var copy = self
+        copy.net += value - mine
+        copy.mine = value
+        return copy
+    }
+}
+
+/// One row of `take_reaction_summary`.
+struct TakeReactionRow: Decodable, Equatable, Sendable {
+    let commentId: UUID
+    let netBalls: Int
+    let myReaction: Int
+    let canLike: Bool
+    let canDislike: Bool
+
+    var reaction: TakeReaction { TakeReaction(net: netBalls, mine: myReaction, canLike: canLike, canDislike: canDislike) }
+
+    private enum CodingKeys: String, CodingKey {
+        case commentId = "comment_id"
+        case netBalls = "net_balls"
+        case myReaction = "my_reaction"
+        case canLike = "can_like"
+        case canDislike = "can_dislike"
+    }
+}
+
 struct PromptComment: Identifiable, Equatable, Sendable {
     let id: UUID
     /// Who wrote it; nil for a take built without one.
@@ -192,6 +231,8 @@ struct PromptComment: Identifiable, Equatable, Sendable {
     let response: [UUID: [UUID]]?
     /// One level deep: `post_comment` refuses a reply to a reply.
     let replies: [PromptComment]
+    /// Balls on this take (0216). Nil on a reply, and where the server did not say.
+    var reaction: TakeReaction? = nil
 
     /// False for a take whose author only answered: every answer is a take
     /// (migration 0208), with nothing written when they said nothing.
@@ -584,6 +625,8 @@ struct PromptFeedRows: Equatable, Sendable {
     var viewerResponses: [PromptResponseRow] = []
     var comments: [PromptCommentRow] = []
     var profiles: [PromptProfileRow] = []
+    /// Balls on each top-level take, by take id.
+    var reactions: [UUID: TakeReaction] = [:]
     /// The schedule entries the slots point at. May come back empty — the
     /// schedule is garnish for a cover, never a reason to lose the feed.
     var games: [NFLGame] = []

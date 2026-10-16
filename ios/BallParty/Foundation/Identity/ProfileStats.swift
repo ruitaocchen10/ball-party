@@ -62,6 +62,17 @@ struct KnowerHighlight: Equatable, Sendable {
     let totalPoints: Int
     /// 1–100, higher is better; `nil` until a resolved pick has scored.
     let percentile: Int?
+    /// The server's split of `totalPoints`; likes are net of dislikes, so
+    /// `likePoints` can be negative.
+    let pickPoints: Int
+    let likePoints: Int
+
+    init(totalPoints: Int, percentile: Int?, pickPoints: Int = 0, likePoints: Int = 0) {
+        self.totalPoints = totalPoints
+        self.percentile = percentile
+        self.pickPoints = pickPoints
+        self.likePoints = likePoints
+    }
 }
 
 extension KnowerHighlight {
@@ -82,23 +93,18 @@ extension KnowerHighlight {
     /// line, which differs between your own profile and someone else's.
     func statusDetail(unrankedDetail: String) -> String {
         guard let percentile else { return unrankedDetail }
-        return "Lifetime · \(percentile.ordinal) percentile"
+        return "\(percentile.ordinal) percentile"
     }
 }
 
 /// Multiplayer results. The web only ever shows the lifetime window for this
 /// half of the card, so unlike `KnowerHighlight` there is no per-range table.
 struct GamerHighlight: Equatable, Sendable {
-    static let empty = GamerHighlight(gamesPlayed: 0, wins: 0, winRate: 0, currentStreak: 0)
+    static let empty = GamerHighlight(gamesPlayed: 0, wins: 0, winRate: 0)
 
     let gamesPlayed: Int
     let wins: Int
     let winRate: Int
-    /// Consecutive wins counting back from the most recent multiplayer game —
-    /// `0` once a non-win breaks the run. `matches` arrives newest-first
-    /// (`my_match_history`'s `order by ended_at desc`), so this reads
-    /// straight off the front of the already-fetched history; no extra RPC.
-    let currentStreak: Int
 }
 
 /// Pure summary math, kept apart from any network read so it is exercised the
@@ -118,8 +124,7 @@ enum ProfileStats {
         let played = Self.matches(matches, in: range, now: now).filter { $0.mode != .solo }
         let wins = played.filter { $0.placement == 1 }.count
         let winRate = played.isEmpty ? 0 : Int((Double(wins) / Double(played.count) * 100).rounded())
-        let currentStreak = played.prefix { $0.placement == 1 }.count
-        return GamerHighlight(gamesPlayed: played.count, wins: wins, winRate: winRate, currentStreak: currentStreak)
+        return GamerHighlight(gamesPlayed: played.count, wins: wins, winRate: winRate)
     }
 }
 
@@ -173,14 +178,19 @@ struct ProfileKnowerHighlightRow: Decodable, Equatable, Sendable {
     let windowKey: String
     let totalPoints: Int
     let percentile: Int?
+    let pickPoints: Int
+    let likePoints: Int
 
     private enum CodingKeys: String, CodingKey {
         case windowKey = "window_key", totalPoints = "total_points", percentile
+        case pickPoints = "pick_points", likePoints = "like_points"
     }
 
-    init(windowKey: String, totalPoints: Int, percentile: Int? = nil) {
+    init(windowKey: String, totalPoints: Int, percentile: Int? = nil, pickPoints: Int = 0, likePoints: Int = 0) {
         self.windowKey = windowKey
         self.totalPoints = totalPoints
         self.percentile = percentile
+        self.pickPoints = pickPoints
+        self.likePoints = likePoints
     }
 }

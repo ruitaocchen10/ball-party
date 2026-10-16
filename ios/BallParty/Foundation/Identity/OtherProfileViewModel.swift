@@ -110,7 +110,7 @@ final class OtherProfileViewModel: ObservableObject {
         if let rows = try? await client.knowerHighlights(profileId: profileId) {
             knowerHighlights = Dictionary(uniqueKeysWithValues: rows.compactMap { row in
                 ProfileStatRange(rawValue: row.windowKey).map {
-                    ($0, KnowerHighlight(totalPoints: row.totalPoints, percentile: row.percentile))
+                    ($0, KnowerHighlight(totalPoints: row.totalPoints, percentile: row.percentile, pickPoints: row.pickPoints, likePoints: row.likePoints))
                 }
             })
         }

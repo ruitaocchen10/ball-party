@@ -361,6 +361,32 @@ export type Database = {
           slot_id: string
         }[]
       }
+      schedule_clear: { Args: { p_slot: string }; Returns: undefined }
+      schedule_get: { Args: { p_slot: string }; Returns: Json }
+      schedule_link_post: {
+        Args: {
+          p_game_id?: string
+          p_kind: string
+          p_post: string
+          p_season: number
+          p_week: number
+        }
+        Returns: undefined
+      }
+      schedule_mark_ready: { Args: { p_slot: string }; Returns: undefined }
+      schedule_prefill: { Args: never; Returns: number }
+      schedule_queue: { Args: never; Returns: Json }
+      schedule_range: { Args: { p_from: string; p_to: string }; Returns: Json }
+      schedule_save_draft: {
+        Args: {
+          p_lock_at: string
+          p_opens_at: string
+          p_payload: Json
+          p_slot: string
+        }
+        Returns: undefined
+      }
+      schedule_unready: { Args: { p_slot: string }; Returns: undefined }
       search_players: {
         Args: { p_limit?: number; p_query: string }
         Returns: {
@@ -2696,6 +2722,7 @@ export type Database = {
       }
       claim_guest_identity: { Args: never; Returns: string }
       claim_push_batch: { Args: { p_limit?: number }; Returns: Json }
+      claim_schedule_digest: { Args: never; Returns: Json }
       claim_username: { Args: { p_username: string }; Returns: string }
       close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       create_lobby: {
@@ -2813,7 +2840,9 @@ export type Database = {
       get_profile_knower_highlights: {
         Args: { p_profile_id: string }
         Returns: {
+          like_points: number
           percentile: number
+          pick_points: number
           total_points: number
           window_key: string
         }[]
@@ -3008,7 +3037,9 @@ export type Database = {
       my_profile_knower_highlights: {
         Args: never
         Returns: {
+          like_points: number
           percentile: number
+          pick_points: number
           total_points: number
           window_key: string
         }[]
@@ -3058,6 +3089,13 @@ export type Database = {
           player_id: string
           position: string
           team: string
+        }[]
+      }
+      react_to_take: {
+        Args: { p_comment_id: string; p_value: number }
+        Returns: {
+          my_reaction: number
+          net_balls: number
         }[]
       }
       record_guest_account_collision: {
@@ -3181,6 +3219,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      take_reaction_summary: {
+        Args: { p_comment_ids: string[] }
+        Returns: {
+          can_dislike: boolean
+          can_like: boolean
+          comment_id: string
+          my_reaction: number
+          net_balls: number
+        }[]
       }
       unblock_user: { Args: { p_user_id: string }; Returns: boolean }
       unregister_device_token: {

@@ -226,23 +226,15 @@ private struct AnswerForm: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Add a take (optional)").fieldLabel()
-                TextField(
-                    "Share your reasoning…",
-                    text: Binding(
-                        get: { viewModel.takeDraft(for: post.id) },
-                        set: { viewModel.setTakeDraft($0, for: post.id) }
-                    ),
-                    axis: .vertical
-                )
-                .lineLimit(2...5)
-                .padding(.vertical, 10)
-                .fieldStyle()
-                Text("\(viewModel.takeDraft(for: post.id).count)/\(HuddleViewModel.commentMax)")
-                    .monoLabel(10, tracking: 0.08)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
+            CountedTextArea(
+                label: "Add a take (optional)",
+                placeholder: "Share your reasoning…",
+                text: Binding(
+                    get: { viewModel.takeDraft(for: post.id) },
+                    set: { viewModel.setTakeDraft($0, for: post.id) }
+                ),
+                limit: HuddleViewModel.commentMax
+            )
 
             Button {
                 Task { await viewModel.submitAnswer(post.id) }
