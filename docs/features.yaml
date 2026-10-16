@@ -64,7 +64,7 @@ features:
     summary: Give a take a ball (thumbs up) or take one away (thumbs down); net balls add to the Ball Knower score
     web: done
     ios: done
-    note: 'BPP-39, migration 0216. Every take's action row has a thumbs up, the net ball count and a thumbs down, then the comment icon with its reply count (icons only, no container); once you like a take the thumbs up becomes a leather football. Top-level takes only, so a picks-only answer and a friends-only list update card count, replies do not. Your own take (and a reader who cannot react) shows a football and the count. Anyone with an account can like; only an accepted friend of the author can dislike (the down thumb is not drawn otherwise); you cannot react to your own take, and a guest or signed-out reader sees the count only. One reaction per player per take: the same thumb again removes it, the other switches it. The server decides all of it (`react_to_take`, and `take_reaction_summary` returns can_like and can_dislike), clients draw what it says. The leather-orange `ball` token is in globals.css and Theme.swift. Net balls are added into Ball Knower points, windowed by when the reaction was given or switched, so the board, profile and standing all show one number; the 3-scored-pick floor is unchanged, so balls alone never rank a player.'
+    note: 'BPP-39, migration 0216. Every take's action row has a thumbs up, the net ball count and a thumbs down, then the comment icon with its reply count (icons only, no container); once you like a take the thumbs up becomes a leather football. Top-level takes only, so a picks-only answer and a friends-only list update card count, replies do not. Anyone with an account can like; only an accepted friend of the author can dislike (the down thumb is not drawn otherwise); you cannot react to your own take, and a guest or signed-out reader sees the count only. One reaction per player per take: the same thumb again removes it, the other switches it. The server decides all of it (`react_to_take`, and `take_reaction_summary` returns can_like and can_dislike), clients draw what it says. The leather-orange `ball` token is in globals.css and Theme.swift. Net balls are added into Ball Knower points, windowed by when the reaction was given or switched, so the board, profile and standing all show one number; the 3-scored-pick floor is unchanged, so balls alone never rank a player.'
   - id: huddle.search
     summary: Search the feed
     web: done
@@ -130,6 +130,7 @@ features:
     summary: Ball Knower and Gamer highlights
     web: done
     ios: done
+    note: 'Migration 0218. The Ball Knower half is two tiles side by side. Ball knower points is a half-circle bar with the total inside, filled to the player''s percentile for the selected range and split into picks and likes by their share of the points (likes below zero draw no likes segment); the server returns pick_points and like_points beside total_points. Status is always lifetime and shows the percentile ("62nd percentile"). The old standing ring is gone; the leaderboard link stays.'
   - id: profile.match-history
     summary: Match history and stats
     web: done

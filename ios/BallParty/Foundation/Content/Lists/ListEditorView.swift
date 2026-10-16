@@ -6,7 +6,6 @@ import SwiftUI
 /// the database decides every refusal, this only shows what it says.
 struct ListEditorView: View {
     @StateObject private var viewModel: ListEditorViewModel
-    @State private var dropTarget: Int?
     let viewerId: UUID
 
     init(
@@ -32,21 +31,11 @@ struct ListEditorView: View {
 
     /// The take that goes with the update, as on a prompt's answer form.
     private var takeField: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Add a take (optional)").fieldLabel()
-            TextField("Why the change? Friends see this with your update.", text: $viewModel.note, axis: .vertical)
-                .lineLimit(2...5)
-                .padding(.vertical, 10)
-                .disabled(viewModel.readOnly)
-                .fieldStyle()
-                .onChange(of: viewModel.note) { _, value in
-                    if value.count > ListLogic.noteLimit { viewModel.note = String(value.prefix(ListLogic.noteLimit)) }
-                }
-                .accessibilityLabel("Add a take, optional")
-            Text("\(viewModel.note.count)/\(ListLogic.noteLimit)")
-                .monoLabel(10, tracking: 0.08)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-        }
+        CountedTextArea(
+            label: "Add a take (optional)",
+            placeholder: "Why the change?",
+            text: $viewModel.note, limit: ListLogic.noteLimit, isDisabled: viewModel.readOnly
+        )
     }
 
     private var board: some View {
@@ -56,14 +45,22 @@ struct ListEditorView: View {
                 Text(viewModel.readOnly
                     ? "Editing is paused until the prompt locks."
                     : viewModel.isTeams
-                        ? "Press and hold a team, then drag it where it goes."
-                        : "Search to add players, then press and hold a row and drag it into order.")
+                        ? "Drag a team by its grip to where it goes."
+                        : "Search to add players, then drag a row by its grip into order.")
                     .font(.sans(14)).foregroundStyle(Theme.fgMuted)
             }
             if viewModel.isTeams, viewModel.kind.sizes.count > 1 { sizeChoice }
 
-            ListGrid(count: viewModel.items.count, size: viewModel.size) { index in
-                row(index)
+            RankBoard(size: viewModel.size) { index, density in
+                if viewModel.items.indices.contains(index) {
+                    row(index)
+                } else {
+                    EmptyRankSlot(
+                        rank: index + 1, density: density,
+                        prompt: viewModel.isTeams ? "Choose a team" : "Add a \(singularLabel)"
+                    )
+                    .reorderSlot(index)
+                }
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel("\(viewModel.kind.label), \(viewModel.items.count) of \(viewModel.size)")
@@ -82,45 +79,57 @@ struct ListEditorView: View {
 
             if !viewModel.bench.isEmpty { bench }
         }
+        .reorderSpace { dropped, index in
+            guard !viewModel.readOnly else { return }
+            viewModel.drop(dropped, onto: index)
+        }
     }
 
     @ViewBuilder private func row(_ index: Int) -> some View {
         let item = viewModel.items[index]
         let name = viewModel.name(of: item)
+        let tiny = viewModel.size > 10
+        let grip = !viewModel.readOnly
         ZStack(alignment: .trailing) {
             ListTile(
                 item: item, itemKind: viewModel.kind.itemKind, players: viewModel.players, rank: index + 1,
                 movement: viewModel.change(at: index),
-                removable: !viewModel.isTeams && !viewModel.readOnly, compact: viewModel.size > 5, tiny: viewModel.size > 10
+                removable: !viewModel.isTeams && !viewModel.readOnly, compact: viewModel.size > 5, tiny: tiny, grip: grip
             )
-            if !viewModel.isTeams, !viewModel.readOnly {
-                Button { viewModel.remove(item) } label: { Color.clear.frame(width: 34).contentShape(Rectangle()) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Remove \(name)")
+            HStack(spacing: 0) {
+                if !viewModel.isTeams, !viewModel.readOnly {
+                    Button { viewModel.remove(item) } label: { Color.clear.frame(width: 34).contentShape(Rectangle()) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Remove \(name)")
+                }
+                if grip {
+                    Color.clear.frame(width: ListTile.gripWidth(tiny: tiny))
+                        .reorderGrip(item: item, preview: dragPreview(item))
+                }
             }
         }
-        .overlay {
-            if dropTarget == index { RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.fg, lineWidth: 2) }
-        }
-        .modifier(DraggableItem(item: item, enabled: !viewModel.readOnly))
-        .dropDestination(for: String.self) { items, _ in
-            guard !viewModel.readOnly, let dropped = items.first else { return false }
-            viewModel.drop(dropped, onto: index)
-            return true
-        } isTargeted: { isTargeted in
-            if isTargeted { dropTarget = index } else if dropTarget == index { dropTarget = nil }
-        }
+        .reorderSlot(index)
         .accessibilityAction(named: "Move up") { viewModel.nudge(index, by: -1) }
         .accessibilityAction(named: "Move down") { viewModel.nudge(index, by: 1) }
     }
 
+    /// The tile that follows the finger while it is dragged.
+    private func dragPreview(_ item: String) -> some View {
+        ListTile(item: item, itemKind: viewModel.kind.itemKind, players: viewModel.players, rank: nil, compact: true)
+    }
+
     private var bench: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Not ranked · \(viewModel.bench.count) teams · drag one into your list").monoLabel(10, weight: .bold, tracking: 0.12)
+            Text("Not ranked · \(viewModel.bench.count) teams · drag one by its grip into your list").monoLabel(10, weight: .bold, tracking: 0.12)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
                 ForEach(viewModel.bench, id: \.self) { code in
-                    ListTile(item: code, itemKind: .team, players: [:], rank: nil, compact: true, tiny: true)
-                        .modifier(DraggableItem(item: code, enabled: !viewModel.readOnly))
+                    ZStack(alignment: .trailing) {
+                        ListTile(item: code, itemKind: .team, players: [:], rank: nil, compact: true, tiny: true, grip: !viewModel.readOnly)
+                        if !viewModel.readOnly {
+                            Color.clear.frame(width: ListTile.gripWidth(tiny: true))
+                                .reorderGrip(item: code, preview: dragPreview(code))
+                        }
+                    }
                 }
             }
         }
@@ -150,11 +159,7 @@ struct ListEditorView: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle(isOn: $viewModel.share) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Share this update with friends").font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
-                    Text("Friends only, and they can reply. Turn it off to save quietly; the version still shows in your history.")
-                        .font(.sans(12)).foregroundStyle(Theme.fgMuted)
-                }
+                Text("Share this update with friends").font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
             }
             .tint(Theme.hiddenText)
             .disabled(viewModel.readOnly)
@@ -224,15 +229,5 @@ private struct OpenPromptScreen: View {
             }
         }
         .task { await huddle.load() }
-    }
-}
-
-/// Makes a tile draggable by its item (a team code or a player id), while editing is open.
-private struct DraggableItem: ViewModifier {
-    let item: String
-    let enabled: Bool
-
-    @ViewBuilder func body(content: Content) -> some View {
-        if enabled { content.draggable(item) } else { content }
     }
 }

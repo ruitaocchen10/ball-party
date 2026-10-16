@@ -139,6 +139,7 @@ The shell puts its children in a single 760px column, so a page never sets its o
 | A team logo | `TeamLogo`. |
 | A floating list under a field | `AnchoredList` (portaled, so clipped cards don't crop it). |
 | An expand/collapse affordance | `Chevron`. |
+| Underlined tabs that switch a page's sections (profile sections, leaderboard boards) | `TabBar`: link-based, the page owns the active one. iOS has the same `TabBar`; the leaderboard pins it directly under the navigation bar. |
 
 App chrome (`Sidebar`, `AccountMenu`, `BrandMark`, `MotionProvider`) is also in the kit, but pages don't compose it directly beyond the dashboard stack above.
 

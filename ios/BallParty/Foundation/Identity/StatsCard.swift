@@ -1,16 +1,13 @@
 import SwiftUI
 
 /// The Ball Knower / Gamer dashboard, shared by the signed-in player's own
-/// Profile tab and another player's profile. Unlike the web profile card,
-/// which can let its three tiles wrap on a wide-enough viewport, a phone never
-/// has the width for that, so the two smaller tiles sit side by side and the
-/// richer third (the standing ring / streak) gets its own full-width row
-/// beneath them, instead of a horizontal scroller that hides it off-screen.
+/// Profile tab and another player's profile. The Ball Knower half is two
+/// tiles side by side (the points gauge and the status); the Gamer half keeps
+/// two tiles.
 ///
 /// It owns no data: the caller passes the numbers and the two bindings, and
 /// may append a `footer` (the own profile adds the leaderboard link).
 struct StatsCard<Footer: View>: View {
-    let title: String
     @Binding var statsView: ProfileViewModel.StatsView
     @Binding var statsRange: ProfileStatRange
     let knower: KnowerHighlight
@@ -18,22 +15,17 @@ struct StatsCard<Footer: View>: View {
     let status: String
     let statusDetail: String
     let gamer: GamerHighlight
-    /// What sits beside the empty ring.
-    let unrankedStandingText: String
-    /// What the streak tile says at zero.
-    let noStreakText: String
     @ViewBuilder var footer: Footer
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            SectionTitle(text: title)
-
             HStack(spacing: 12) {
                 SegmentedChoice(
                     selection: $statsView,
                     options: [.knower, .gamer],
                     title: { $0 == .knower ? "Ball knower" : "Gamer" },
-                    accessibilityName: "Profile stat type"
+                    accessibilityName: "Profile stat type",
+                    pill: true
                 )
 
                 // Kept in the layout (just hidden) on Gamer rather than
@@ -55,105 +47,38 @@ struct StatsCard<Footer: View>: View {
         }
     }
 
-    /// The reporting-range control, restyled to match `SegmentedChoice`'s
-    /// bordered well instead of looking like a bare system menu next to it.
+    /// The reporting-range control, a capsule to match the pill toggle beside it.
     private var rangeMenu: some View {
-        Picker("Range", selection: $statsRange) {
-            ForEach(ProfileStatRange.allCases, id: \.self) { range in
-                Text(range.label).tag(range)
-            }
-        }
-        .pickerStyle(.menu)
-        .monoLabel(11, weight: .bold, tracking: 0.12, color: Theme.fg)
-        .tint(Theme.fg)
-        .padding(.horizontal, 12)
-        .frame(minHeight: 44)
-        .well()
-        .fixedSize()
+        MenuPill(label: "Range", selection: $statsRange, options: Array(ProfileStatRange.allCases), title: \.label)
     }
 
     private var knowerTiles: some View {
         VStack(spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
-                HighlightTile(
-                    label: "Total points",
-                    value: knower.totalPoints.formatted(),
-                    detail: statsRange.windowLabel
-                )
-                HighlightTile(label: "Ball knower status", value: status, detail: statusDetail)
+                KnowerPointsTile(knower: knower)
+                HighlightTile(label: "Status", value: status, detail: statusDetail)
             }
-            standingTile
+            // The tiles stretch to the taller one, so the pair always matches.
+            .fixedSize(horizontal: false, vertical: true)
             footer
         }
     }
 
-    private var standingTile: some View {
-        let percentile = knower.percentile
-        return VStack(alignment: .leading, spacing: 10) {
-            Text("Ball knower standing").monoLabel(10, weight: .bold, tracking: 0.13, color: Theme.hiddenText)
-            HStack(spacing: 16) {
-                PercentileRing(percentile: percentile)
-                Text(
-                    percentile == nil
-                        ? unrankedStandingText
-                        : "\(statsRange.label) · among active ball knowers"
-                )
-                .font(.sans(14))
-                .foregroundStyle(Theme.fgMuted)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .well()
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            percentile == nil ? "Not ranked yet" : "\(percentile!)th percentile among active ball knowers, \(statsRange.label.lowercased())"
-        )
-    }
-
     private var gamerTiles: some View {
-        VStack(spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                HighlightTile(
-                    label: "Games played",
-                    value: "\(gamer.gamesPlayed)",
-                    detail: "All-time multiplayer games"
-                )
-                HighlightTile(
-                    label: "Win rate",
-                    value: "\(gamer.winRate)%",
-                    detail: "\(gamer.wins) multiplayer \(gamer.wins == 1 ? "win" : "wins")"
-                )
-            }
-            streakTile
+        HStack(alignment: .top, spacing: 12) {
+            HighlightTile(
+                label: "Games played",
+                value: "\(gamer.gamesPlayed)",
+                detail: "All-time multiplayer games"
+            )
+            HighlightTile(
+                label: "Win rate",
+                value: "\(gamer.winRate)%",
+                detail: "\(gamer.wins) multiplayer \(gamer.wins == 1 ? "win" : "wins")"
+            )
         }
-    }
-
-    /// The Gamer half's answer to `standingTile` — same full-width, richer
-    /// row, so switching tabs doesn't leave Gamer feeling like the thinner
-    /// half of the toggle.
-    private var streakTile: some View {
-        let streak = gamer.currentStreak
-        return VStack(alignment: .leading, spacing: 10) {
-            Text("Current streak").monoLabel(10, weight: .bold, tracking: 0.13, color: Theme.hiddenText)
-            HStack(spacing: 16) {
-                StreakDots(streak: streak)
-                Text(
-                    streak == 0
-                        ? noStreakText
-                        : "\(streak) consecutive \(streak == 1 ? "win" : "wins")"
-                )
-                .font(.sans(14))
-                .foregroundStyle(Theme.fgMuted)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .well()
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(streak == 0 ? "No current win streak" : "\(streak) game win streak")
+        // The tiles stretch to the taller one, so the pair always matches.
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -166,62 +91,109 @@ private struct HighlightTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label).monoLabel(10, weight: .bold, tracking: 0.13, color: Theme.hiddenText)
+            Spacer(minLength: 8)
             Text(value)
                 .slabTitle(40)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
+            Spacer(minLength: 8)
             Text(detail)
                 .font(.sans(13))
                 .foregroundStyle(Theme.fgMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 180, maxHeight: .infinity, alignment: .topLeading)
         .well()
         .accessibilityElement(children: .combine)
     }
 }
 
-/// A player's lifetime-window percentile as a ring, the same 1–100 gauge the
-/// web draws with an SVG circle.
-private struct PercentileRing: View {
-    let percentile: Int?
+/// The Ball Knower points gauge: a half-circle bar that fills to the player's
+/// percentile for the selected range, split into picks and likes by each one's
+/// share of the points (mirrors the web's `KnowerPoints`). A negative like
+/// total draws no likes segment. The total sits inside the arc.
+private struct KnowerPointsTile: View {
+    let knower: KnowerHighlight
+
+    private let lineWidth: CGFloat = 24
+    private var cap: StrokeStyle { StrokeStyle(lineWidth: lineWidth, lineCap: .round) }
 
     var body: some View {
-        let fraction = Double(max(0, min(100, percentile ?? 0))) / 100
-        ZStack {
-            Circle().stroke(Theme.line, lineWidth: 6)
-            Circle()
-                .trim(from: 0, to: fraction)
-                .stroke(Theme.hiddenText, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            Text(percentile.map { "\($0)%" } ?? "—")
-                .font(.slab(18))
-                .foregroundStyle(Theme.fg)
+        let fill = Double(max(0, min(100, knower.percentile ?? 0))) / 100
+        let picks = Double(max(0, knower.pickPoints))
+        let likes = Double(max(0, knower.likePoints))
+        let likeShare = picks + likes > 0 ? likes / (picks + likes) : 0
+        let pickEnd = fill * (1 - likeShare)
+        let likeEnd = fill
+
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Ball knower points").monoLabel(10, weight: .bold, tracking: 0.13, color: Theme.hiddenText)
+
+            Spacer(minLength: 8)
+
+            ZStack(alignment: .bottom) {
+                HalfArc().stroke(Theme.line, style: cap)
+                // Likes run the full fill and the picks draw over their
+                // share, so both ends stay round without a seam.
+                if likeEnd > pickEnd {
+                    HalfArc().trim(from: 0, to: likeEnd).stroke(Theme.ball, style: cap)
+                }
+                if pickEnd > 0 {
+                    HalfArc().trim(from: 0, to: pickEnd).stroke(Theme.fg, style: cap)
+                }
+                Text(knower.totalPoints.formatted())
+                    .slabTitle(30)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .padding(.horizontal, lineWidth)
+            }
+            .padding(lineWidth / 2)
+            .aspectRatio(2, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 12) {
+                KeyDot(color: Theme.fg, label: "Picks")
+                KeyDot(color: Theme.ball, label: "Likes")
+            }
+            .frame(maxWidth: .infinity)
         }
-        .frame(width: 64, height: 64)
-        .accessibilityHidden(true)
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 180, maxHeight: .infinity, alignment: .topLeading)
+        .well()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            knower.percentile.map { "\(knower.totalPoints) points, \($0.ordinal) percentile" }
+                ?? "\(knower.totalPoints) points, not ranked yet"
+        )
     }
 }
 
-/// The Gamer half's counterpart to `PercentileRing` — a win streak has no
-/// natural 0–100 gauge, so it reads as filled beads instead, capped at 5 so a
-/// long streak doesn't stretch the row; the count alongside always says the
-/// real number.
-private struct StreakDots: View {
-    let streak: Int
+/// The upper half of a circle, left to right, so `trim` fills it like a gauge.
+private struct HalfArc: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addArc(
+            center: CGPoint(x: rect.midX, y: rect.maxY),
+            radius: rect.width / 2,
+            startAngle: .degrees(180),
+            endAngle: .degrees(0),
+            clockwise: false
+        )
+        return path
+    }
+}
+
+private struct KeyDot: View {
+    let color: Color
+    let label: String
 
     var body: some View {
-        HStack(spacing: 6) {
-            if streak == 0 {
-                Circle().strokeBorder(Theme.line, lineWidth: 1).frame(width: 14, height: 14)
-            } else {
-                ForEach(0..<min(streak, 5), id: \.self) { _ in
-                    Circle().fill(Theme.hiddenText).frame(width: 14, height: 14)
-                }
-            }
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 9, height: 9)
+            Text(label).font(.sans(12)).foregroundStyle(Theme.fgMuted)
         }
-        .frame(minWidth: 64, alignment: .leading)
-        .accessibilityHidden(true)
     }
 }

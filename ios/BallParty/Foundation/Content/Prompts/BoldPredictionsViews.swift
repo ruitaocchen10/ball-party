@@ -166,19 +166,10 @@ private struct BoldForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Your prediction").fieldLabel()
-                TextField("Make your boldest call…", text: $text, axis: .vertical)
-                    .lineLimit(3...6)
-                    .padding(.vertical, 10)
-                    .fieldStyle()
-                    .onChange(of: text) { _, value in
-                        if value.count > BoldLimits.bodyMax { text = String(value.prefix(BoldLimits.bodyMax)) }
-                    }
-                Text("\(text.count)/\(BoldLimits.bodyMax)")
-                    .monoLabel(10, tracking: 0.08)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
+            CountedTextArea(
+                label: "Your prediction", placeholder: "Make your boldest call…",
+                text: $text, limit: BoldLimits.bodyMax, lines: 3...6
+            )
             VStack(alignment: .leading, spacing: 8) {
                 Text("Tag — required").fieldLabel()
                 BoldTagPicker(viewModel: viewModel, postId: postId, target: $target)

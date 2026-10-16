@@ -326,10 +326,7 @@ export function ListEditor({
         <div className="mt-5 px-4 pb-4">
           <label className="flex cursor-pointer items-start gap-3">
             <input type="checkbox" checked={share} disabled={readOnly} onChange={(event) => setShare(event.target.checked)} className="mt-1 h-4 w-4 accent-hidden" />
-            <span>
-              <span className="block text-sm font-semibold text-fg">Share this update with friends</span>
-              <span className="block text-xs leading-5 text-fg-muted">Friends only, and they can reply. Turn it off to save quietly; the version still shows in your history.</span>
-            </span>
+            <span className="block text-sm font-semibold text-fg">Share this update with friends</span>
           </label>
           <div className="mt-4 flex items-center gap-3">
             <p className="min-w-0 flex-1 text-sm leading-5 text-fg-muted">

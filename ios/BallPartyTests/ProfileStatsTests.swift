@@ -40,7 +40,7 @@ final class ProfileStatsTests: XCTestCase {
 
         let highlight = ProfileStats.gamerHighlight(matches, in: .lifetime, now: now)
 
-        XCTAssertEqual(highlight, GamerHighlight(gamesPlayed: 3, wins: 1, winRate: 33, currentStreak: 1))
+        XCTAssertEqual(highlight, GamerHighlight(gamesPlayed: 3, wins: 1, winRate: 33))
     }
 
     func test_gamerHighlight_excludesSoloRuns() {
@@ -48,25 +48,8 @@ final class ProfileStatsTests: XCTestCase {
 
         XCTAssertEqual(
             ProfileStats.gamerHighlight(matches, in: .lifetime, now: now),
-            GamerHighlight(gamesPlayed: 1, wins: 1, winRate: 100, currentStreak: 1)
+            GamerHighlight(gamesPlayed: 1, wins: 1, winRate: 100)
         )
-    }
-
-    func test_gamerHighlight_streakCountsBackFromTheMostRecentGameOnly() {
-        let matches = [
-            match(daysAgo: 1, placement: 1),
-            match(daysAgo: 2, placement: 1),
-            match(daysAgo: 3, placement: 2),
-            match(daysAgo: 4, placement: 1),
-        ]
-
-        XCTAssertEqual(ProfileStats.gamerHighlight(matches, in: .lifetime, now: now).currentStreak, 2)
-    }
-
-    func test_gamerHighlight_streakIsZeroWhenTheMostRecentGameWasNotAWin() {
-        let matches = [match(daysAgo: 1, placement: 2), match(daysAgo: 2, placement: 1)]
-
-        XCTAssertEqual(ProfileStats.gamerHighlight(matches, in: .lifetime, now: now).currentStreak, 0)
     }
 
     func test_gamerHighlight_withNoMatches_isZeroNotDivideByZero() {

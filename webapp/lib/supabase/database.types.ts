@@ -2840,7 +2840,9 @@ export type Database = {
       get_profile_knower_highlights: {
         Args: { p_profile_id: string }
         Returns: {
+          like_points: number
           percentile: number
+          pick_points: number
           total_points: number
           window_key: string
         }[]
@@ -3035,7 +3037,9 @@ export type Database = {
       my_profile_knower_highlights: {
         Args: never
         Returns: {
+          like_points: number
           percentile: number
+          pick_points: number
           total_points: number
           window_key: string
         }[]

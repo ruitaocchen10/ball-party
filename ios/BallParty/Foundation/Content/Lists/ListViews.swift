@@ -60,6 +60,10 @@ struct ListTile: View {
     var compact = false
     /// A four-column board's tile: no name, since a column is under 80 points wide.
     var tiny = false
+    /// A grip cell at the trailing edge; the caller lays the drag gesture over it.
+    var grip = false
+
+    static func gripWidth(tiny: Bool) -> CGFloat { tiny ? GripGlyph.tinyWidth : GripGlyph.fullWidth }
 
     private var player: ListPlayer? { itemKind == .player ? players[item] : nil }
     private var team: String? { itemKind == .team ? item : player?.team }
@@ -91,6 +95,7 @@ struct ListTile: View {
                     .background(Theme.fg)
                     .accessibilityHidden(true)
             }
+            if grip { GripGlyph(width: Self.gripWidth(tiny: true), height: height) }
         }
         .frame(height: height)
         .background(picked ? AnyShapeStyle(Theme.hidden) : AnyShapeStyle(gradient))
@@ -142,6 +147,7 @@ struct ListTile: View {
                     .background(Theme.fg)
                     .accessibilityHidden(true)
             }
+            if grip { GripGlyph(width: Self.gripWidth(tiny: false), height: height) }
         }
         .frame(height: height)
         .background(picked ? AnyShapeStyle(Theme.hidden) : AnyShapeStyle(gradient))
@@ -178,38 +184,6 @@ struct ListTile: View {
     }
 }
 
-/// A list laid out as the web lays it out: one column up to 5, two columns
-/// of 5 for a top 10, four of 8 for all 32. It fills down each column first.
-struct ListGrid<Tile: View>: View {
-    let count: Int
-    /// The size the list is laid out for, when it shows only part of itself.
-    let size: Int
-    @ViewBuilder let tile: (Int) -> Tile
-
-    init(count: Int, size: Int? = nil, @ViewBuilder tile: @escaping (Int) -> Tile) {
-        self.count = count
-        self.size = size ?? count
-        self.tile = tile
-    }
-
-    static func columns(for size: Int) -> Int { size > 10 ? 4 : size > 5 ? 2 : 1 }
-
-    var body: some View {
-        let columns = Self.columns(for: size)
-        let rows = Int((Double(max(size, 1)) / Double(columns)).rounded(.up))
-        HStack(alignment: .top, spacing: 6) {
-            ForEach(0..<columns, id: \.self) { column in
-                VStack(spacing: 6) {
-                    ForEach(Array(stride(from: column * rows, to: min(count, (column + 1) * rows), by: 1)), id: \.self) { index in
-                        tile(index)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .top)
-            }
-        }
-    }
-}
-
 /// A saved list in order as tiles, optionally with movement against the version it replaced.
 struct ListRowsView: View {
     let items: [String]
@@ -219,11 +193,11 @@ struct ListRowsView: View {
     var size: Int?
 
     var body: some View {
-        ListGrid(count: items.count, size: size) { index in
+        RankBoard(size: size ?? items.count, places: items.count) { index, density in
             ListTile(
                 item: items[index], itemKind: itemKind, players: players, rank: index + 1,
                 movement: previous.map { ListMovement(change: ListLogic.placeChange(previous: $0, items: items, index: index)) },
-                compact: (size ?? items.count) > 5, tiny: (size ?? items.count) > 10
+                compact: density != .full, tiny: density == .tiny
             )
         }
     }
@@ -327,8 +301,8 @@ struct ListStartCard: View {
     var body: some View {
         ListCardShell {
             art
-                .frame(height: 96)
                 .frame(maxWidth: .infinity)
+                .frame(height: PromptArt.height)
                 .background(Theme.surface)
                 .clipped()
             VStack(alignment: .leading, spacing: 6) {
@@ -349,26 +323,90 @@ struct ListStartCard: View {
         }
     }
 
+    /// Tilts alternate so a row of six reads as a spread, not a table
+    /// (`LOGO_TILTS` and `RankNumerals` in the web's `PromptCover` and `ListStartCard`).
+    private static let logoTilts: [Double] = [-10, 8, -6, 10, -8, 6]
+    private static let numeralTilts: [Double] = [-8, 6, -5, 9, -7, 5]
+
+    /// The web's cover for the card: a glow on each side, then the teams' logos,
+    /// a lineup of the position's best, or tilted rank numerals when their
+    /// photos are not available.
     @ViewBuilder private var art: some View {
-        if kind.isTeams {
-            HStack(spacing: -8) {
-                ForEach(Array(Self.coverTeams.enumerated()), id: \.offset) { index, code in
-                    TeamLogo(code: code, size: 56)
-                        .rotationEffect(.degrees(index.isMultiple(of: 2) ? -6 : 6))
-                        .shadow(color: .black.opacity(0.6), radius: 4, x: 0, y: 4)
+        let lineup = players.filter { $0.headshotURL != nil }
+        ZStack {
+            if kind.isTeams {
+                PromptGlow(left: PromptArt.greenBase, right: PromptArt.red, leftOpacity: 0.22, rightOpacity: 0.22)
+                spread(tilts: Self.logoTilts) { index in
+                    TeamLogo(code: Self.coverTeams[index], size: 48)
+                        .shadow(color: .black.opacity(0.8), radius: 4, x: 0, y: 6)
                 }
-            }
-        } else if players.count >= 3 {
-            HStack(spacing: 0) {
-                ForEach(players, id: \.id) { player in
-                    ZStack(alignment: .bottom) {
-                        (NFLTeams.primaryColor(for: player.team) ?? Theme.panelShade).opacity(0.55)
-                        Portrait(name: player.name, url: player.headshotURL, size: 76)
+                .padding(.top, 16)
+            } else {
+                PromptGlow(leftOpacity: 0.22, rightOpacity: 0.22)
+                if lineup.count >= 3 {
+                    ListPlayerLineup(players: lineup)
+                } else {
+                    spread(tilts: Self.numeralTilts) { index in
+                        Text("\(index + 1)").font(.slab(60)).foregroundStyle(Theme.fg.opacity(0.8))
+                            .shadow(color: .black.opacity(0.7), radius: 4, x: 0, y: 6)
                     }
                 }
             }
-        } else {
-            Text("1  2  3").font(.slab(44)).foregroundStyle(Theme.fgMuted.opacity(0.5))
+        }
+    }
+
+    /// One tilted mark per tilt, each centered in an equal share of the width (`justify-around`).
+    private func spread<Mark: View>(tilts: [Double], @ViewBuilder mark: @escaping (Int) -> Mark) -> some View {
+        HStack(spacing: 0) {
+            ForEach(Array(tilts.enumerated()), id: \.offset) { index, tilt in
+                mark(index).rotationEffect(.degrees(tilt)).frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 12)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Each player's headshot standing on a column of their team's color, side by
+/// side across the cover (`PlayerLineup` on the web). Each column crops the
+/// photo to its middle, so the face stays centered at any width.
+private struct ListPlayerLineup: View {
+    let players: [ListPlayer]
+
+    /// NFL.com headshots are all 3400 x 2450: head and shoulders on a transparent background.
+    private static let aspect: CGFloat = 3400 / 2450
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(players.enumerated()), id: \.element.id) { index, player in
+                column(player)
+                    .overlay(alignment: .trailing) {
+                        if index < players.count - 1 { Rectangle().fill(.white.opacity(0.1)).frame(width: 1) }
+                    }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func column(_ player: ListPlayer) -> some View {
+        // A team's primary color is data, not a token, as on the prompt boards.
+        let color = NFLTeams.primaryColor(for: player.team) ?? Color(hex: 0x30332E)
+        return GeometryReader { proxy in
+            let height = proxy.size.height * 0.92
+            ZStack(alignment: .bottom) {
+                LinearGradient(colors: [color, .clear], startPoint: .bottom, endPoint: UnitPoint(x: 0.5, y: 0.15))
+                AsyncImage(url: player.headshotURL.map { NFLHeadshot.resized($0, width: 400) }) { phase in
+                    if let image = phase.image {
+                        image.resizable().aspectRatio(Self.aspect, contentMode: .fit)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(width: height * Self.aspect, height: height)
+                .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 6)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
         }
     }
 }

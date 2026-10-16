@@ -313,5 +313,31 @@ final class MatchupTests: XCTestCase {
         XCTAssertNil(tied.winnerId, "but nobody won")
         XCTAssertNil(tied.isCorrect(options[0].id))
     }
-}
 
+    // MARK: - Headshots (the web's `headshots.test.ts`)
+
+    func test_nflHeadshotsAreRequestedAtTheWidthTheyAreDrawn() {
+        let upload = URL(string: "https://static.www.nfl.com/image/upload/f_auto,q_auto/league/abc")!
+        let priv = URL(string: "https://static.www.nfl.com/image/private/f_auto,q_auto/league/abc")!
+
+        XCTAssertEqual(
+            NFLHeadshot.resized(upload, width: 600).absoluteString,
+            "https://static.www.nfl.com/image/upload/f_png,q_auto,w_600/league/abc"
+        )
+        XCTAssertEqual(
+            NFLHeadshot.resized(priv, width: 900).absoluteString,
+            "https://static.www.nfl.com/image/private/f_png,q_auto,w_900/league/abc"
+        )
+    }
+
+    func test_aHeadshotFromAnotherHostIsLeftAlone() {
+        let other = URL(string: "https://example.com/qb.jpg")!
+        XCTAssertEqual(NFLHeadshot.resized(other, width: 600), other)
+    }
+
+    func test_headshotWidthsStepInHundredsOfPixels() {
+        XCTAssertEqual(NFLHeadshot.width(forPoints: 22), 100)
+        XCTAssertEqual(NFLHeadshot.width(forPoints: 76), 300)
+        XCTAssertEqual(NFLHeadshot.width(forPoints: 128), 400)
+    }
+}

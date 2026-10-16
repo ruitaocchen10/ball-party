@@ -78,15 +78,12 @@ struct OtherProfileView: View {
                         ProfileListsTab(username: username, viewerId: viewerId)
                     } else {
                         StatsCard(
-                            title: "Stats",
                             statsView: $viewModel.statsView,
                             statsRange: $viewModel.statsRange,
                             knower: viewModel.selectedKnowerHighlight,
                             status: viewModel.knowerStatus,
                             statusDetail: viewModel.knowerStatusDetail,
-                            gamer: viewModel.gamerHighlight,
-                            unrankedStandingText: "No ranked picks yet",
-                            noStreakText: "No current win streak"
+                            gamer: viewModel.gamerHighlight
                         ) { EmptyView() }
                     }
                 }

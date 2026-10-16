@@ -165,20 +165,29 @@ extension View {
 // MARK: - App chrome
 
 extension Theme {
-    /// Navigation and tab bars are the pieces of chrome SwiftUI can't style
-    /// from the view side on iOS 17, so they go through UIKit's appearance
-    /// proxy. Call once, before the first scene.
+    /// The app's navigation bar: opaque `surface`, slab title. `hairline: false`
+    /// drops the rule under it, for a screen that attaches tabs below the bar
+    /// (`tabsUnderNavigationBar`).
     @MainActor
-    static func applyChrome() {
+    static func navigationBarAppearance(hairline: Bool) -> UINavigationBarAppearance {
         let bar = UINavigationBarAppearance()
         bar.configureWithOpaqueBackground()
         bar.backgroundColor = UIColor(surface)
-        bar.shadowColor = UIColor(line)
+        bar.shadowColor = hairline ? UIColor(line) : .clear
         bar.titleTextAttributes = [
             .foregroundColor: UIColor(fg),
             .font: UIFont(name: Face.slab, size: 22) ?? UIFont.systemFont(ofSize: 20, weight: .bold),
             .kern: 1.0,
         ]
+        return bar
+    }
+
+    /// Navigation and tab bars are the pieces of chrome SwiftUI can't style
+    /// from the view side on iOS 17, so they go through UIKit's appearance
+    /// proxy. Call once, before the first scene.
+    @MainActor
+    static func applyChrome() {
+        let bar = navigationBarAppearance(hairline: true)
         UINavigationBar.appearance().standardAppearance = bar
         UINavigationBar.appearance().compactAppearance = bar
         UINavigationBar.appearance().scrollEdgeAppearance = bar

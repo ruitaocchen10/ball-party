@@ -60,9 +60,9 @@ final class ListLogicTests: XCTestCase {
     }
 
     func testGridFillsDownColumnsFirst() {
-        XCTAssertEqual(ListGrid<EmptyView>.columns(for: 5), 1)
-        XCTAssertEqual(ListGrid<EmptyView>.columns(for: 10), 2)
-        XCTAssertEqual(ListGrid<EmptyView>.columns(for: 32), 4)
+        XCTAssertEqual(RankDensity(size: 5).columns, 1)
+        XCTAssertEqual(RankDensity(size: 10).columns, 2)
+        XCTAssertEqual(RankDensity(size: 32).columns, 4)
     }
 
     func testSaveErrorsAreInThePlayersWords() {

@@ -284,7 +284,7 @@ final class ProfileViewModel: ObservableObject {
 
     /// What sits under the status, mirroring `KnowerStatus`'s detail line.
     var knowerStatusDetail: String {
-        lifetimeKnowerHighlight.statusDetail(unrankedDetail: "Your lifetime score will set your status")
+        lifetimeKnowerHighlight.statusDetail(unrankedDetail: "Not ranked yet")
     }
 
     /// A failed read leaves whatever was already showing — the email
@@ -303,7 +303,7 @@ final class ProfileViewModel: ObservableObject {
         let highlightRows = (try? await client.knowerHighlights()) ?? []
         knowerHighlights = Dictionary(uniqueKeysWithValues: highlightRows.compactMap { row in
             ProfileStatRange(rawValue: row.windowKey).map {
-                ($0, KnowerHighlight(totalPoints: row.totalPoints, percentile: row.percentile))
+                ($0, KnowerHighlight(totalPoints: row.totalPoints, percentile: row.percentile, pickPoints: row.pickPoints, likePoints: row.likePoints))
             }
         })
     }

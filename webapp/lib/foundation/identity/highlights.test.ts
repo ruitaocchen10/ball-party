@@ -4,9 +4,9 @@ import { joinedMonth, profileHighlights } from "./highlights";
 
 describe("profileHighlights", () => {
   it("fills every window, defaulting missing knower rows to zero and unranked", () => {
-    const highlights = profileHighlights([], [{ window_key: "lifetime", total_points: 42, percentile: 80 }]);
-    expect(highlights.knower.lifetime).toEqual({ totalPoints: 42, percentile: 80 });
-    expect(highlights.knower.week).toEqual({ totalPoints: 0, percentile: null });
+    const highlights = profileHighlights([], [{ window_key: "lifetime", total_points: 42, percentile: 80, pick_points: 40, like_points: 2 }]);
+    expect(highlights.knower.lifetime).toEqual({ totalPoints: 42, percentile: 80, pickPoints: 40, likePoints: 2 });
+    expect(highlights.knower.week).toEqual({ totalPoints: 0, percentile: null, pickPoints: 0, likePoints: 0 });
     expect(highlights.gamer.lifetime.gamesPlayed).toBe(0);
   });
 
