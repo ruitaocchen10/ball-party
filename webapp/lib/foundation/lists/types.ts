@@ -1,3 +1,5 @@
+import type { TakeReaction } from "@/lib/foundation/content/prompts/types";
+
 /** A kind of list a player can keep (ranking_list_kinds): Power Rankings, QBs and so on. */
 export type ListKind = {
   id: string;
@@ -57,4 +59,6 @@ export type ListUpdate = {
   savedAt: string;
   items: string[];
   previousItems: string[] | null;
+  /** The take the note is (balls hang on it, not on the post), with its reaction. */
+  ball?: { takeId: string; reaction: TakeReaction };
 };

@@ -44,6 +44,9 @@
   --grade-even: #6b665a;
   --grade-rough: #855238;
 
+  /* a ball given to a take: football leather, so a like is never red */
+  --ball: #c27a3e;
+
   /* text on the background */
   --fg: #e8e3d6;
   --fg-muted: #8f8b7f;
@@ -86,6 +89,7 @@ html[data-sidebar-collapsed] {
   --color-grade-strong: var(--grade-strong);
   --color-grade-even: var(--grade-even);
   --color-grade-rough: var(--grade-rough);
+  --color-ball: var(--ball);
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
   --color-line: var(--line);

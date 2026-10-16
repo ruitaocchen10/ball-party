@@ -400,4 +400,28 @@ final class PromptModelsTests: XCTestCase {
         XCTAssertEqual(countdown(2 * 86_400 + 4 * 3600), "in 2d")
         XCTAssertEqual(countdown(29 * 86_400 + 3 * 3600), "in 29d")
     }
+
+    // MARK: - Balls on takes (0216)
+
+    func test_takeReactionRow_decodesTheSummaryAndNamesWhatTheViewerMayDo() throws {
+        let row = try decode(TakeReactionRow.self, """
+        {"comment_id": "8E0F2C3A-6B57-4E10-A8B1-6D0E5B6C7A11", "net_balls": 14, "my_reaction": -1, "can_like": true, "can_dislike": false}
+        """)
+
+        XCTAssertEqual(row.reaction, TakeReaction(net: 14, mine: -1, canLike: true, canDislike: false))
+    }
+
+    func test_takeReaction_togglesTheSameThumbOffAndSwitchesToTheOther() {
+        let fresh = TakeReaction(net: 4, mine: 0, canLike: true, canDislike: true)
+        let liked = fresh.applying(fresh.value(toggling: 1))
+        XCTAssertEqual(liked.net, 5)
+        XCTAssertEqual(liked.mine, 1)
+
+        XCTAssertEqual(liked.value(toggling: 1), 0, "tapping your like again takes it back")
+        XCTAssertEqual(liked.applying(0).net, 4)
+
+        let switched = liked.applying(liked.value(toggling: -1))
+        XCTAssertEqual(switched.net, 3, "a like switched to a dislike moves the net by two")
+        XCTAssertEqual(switched.mine, -1)
+    }
 }

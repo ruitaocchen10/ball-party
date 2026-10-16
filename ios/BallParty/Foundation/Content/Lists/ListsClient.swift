@@ -115,7 +115,26 @@ struct SupabaseListsClient: ListsClient {
     }
 
     private func fetchUpdates(_ params: Updates) async throws -> [ListUpdate] {
-        try await client.rpc("friend_list_updates", params: params).execute().value
+        var updates: [ListUpdate] = try await client.rpc("friend_list_updates", params: params).execute().value
+        guard !updates.isEmpty else { return updates }
+
+        // Balls are garnish: a failed read costs a card its count, never the card.
+        struct Take: Decodable { let id: UUID; let postId: UUID
+            private enum CodingKeys: String, CodingKey { case id; case postId = "post_id" }
+        }
+        let takes: [Take] = (try? await client.from("prompt_comments")
+            .select("id, post_id")
+            .in("post_id", values: updates.map(\.postId))
+            .is("parent_comment_id", value: nil)
+            .execute().value) ?? []
+        let takeByPost = Dictionary(takes.map { ($0.postId, $0.id) }, uniquingKeysWith: { first, _ in first })
+        let reactions = await huddle.takeReactions(for: Array(takeByPost.values))
+        for index in updates.indices {
+            if let takeId = takeByPost[updates[index].postId], let reaction = reactions[takeId] {
+                updates[index].ball = ListBall(takeId: takeId, reaction: reaction)
+            }
+        }
+        return updates
     }
 
     func thread(postId: UUID, viewerId: UUID) async throws -> ListThread {

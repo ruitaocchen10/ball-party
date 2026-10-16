@@ -34,7 +34,8 @@ export function ListUpdateCard({
   return (
     <TakeCard
       comment={{
-        id: update.postId,
+        id: update.ball?.takeId ?? update.postId,
+        reaction: update.ball?.reaction,
         authorId: update.authorId,
         author: update.displayName,
         authorAvatarUrl: update.avatarUrl,

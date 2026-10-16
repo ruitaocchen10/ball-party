@@ -37,6 +37,11 @@ struct HuddleServerError: Error, Equatable, Sendable {
         "invalid_target": "That tag isn't valid for this post anymore. Pick another.",
         "not_bold_predictions": "This post doesn't take predictions.",
         "not_authorized": "Sign in to search for players.",
+        "guests_cannot_react": "Create an account to give balls.",
+        "take_not_found": "That take isn't available anymore.",
+        "cannot_react_to_own_take": "You can't give balls to your own take.",
+        "dislike_friends_only": "Only friends can take a ball away.",
+        "invalid_reaction": "That isn't a valid reaction.",
     ]
 }
 
@@ -108,10 +113,17 @@ protocol HuddleClient: Sendable {
     /// `list_friends` — the ids of the viewer's accepted friends, so their
     /// takes can be read first.
     func friendIds() async throws -> Set<UUID>
+
+    /// `react_to_take` — 1 gives the take a ball, -1 takes one away, 0 removes
+    /// the viewer's reaction. Returns the take as it now stands.
+    func reactToTake(takeId: UUID, value: Int) async throws -> TakeReaction
 }
 
 extension HuddleClient {
     func friendIds() async throws -> Set<UUID> { [] }
+    func reactToTake(takeId: UUID, value: Int) async throws -> TakeReaction {
+        throw HuddleServerError(message: "not_supported")
+    }
 }
 
 struct SupabaseHuddleClient: HuddleClient {
@@ -161,9 +173,13 @@ struct SupabaseHuddleClient: HuddleClient {
                 .in("id", values: Array(authorIds))
                 .execute().value
 
+            // Balls are garnish like the schedule: a failed read costs the cards their
+            // count, never the player their feed.
+            let reactions = await takeReactions(for: commentRows.filter { $0.parentCommentId == nil }.map(\.id))
+
             return try await PromptFeedRows(
                 posts: posts, slots: slotRows, options: options,
-                viewerResponses: responses, comments: commentRows, profiles: profiles, games: games
+                viewerResponses: responses, comments: commentRows, profiles: profiles, reactions: reactions, games: games
             )
         }
     }
@@ -310,7 +326,37 @@ struct SupabaseHuddleClient: HuddleClient {
         }
     }
 
+    func reactToTake(takeId: UUID, value: Int) async throws -> TakeReaction {
+        struct Params: Encodable, Sendable {
+            let p_comment_id: UUID
+            let p_value: Int
+        }
+        struct Row: Decodable, Sendable {
+            let netBalls: Int
+            let myReaction: Int
+            private enum CodingKeys: String, CodingKey {
+                case netBalls = "net_balls"
+                case myReaction = "my_reaction"
+            }
+        }
+        let rows: [Row] = try await wrapped {
+            try await client.rpc("react_to_take", params: Params(p_comment_id: takeId, p_value: value)).execute().value
+        }
+        guard let row = rows.first else { throw HuddleServerError(message: "take_not_found") }
+        // The server answers with the net and the viewer's reaction; what the viewer may
+        // do did not change by reacting, so the caller keeps its own `canLike`/`canDislike`.
+        return TakeReaction(net: row.netBalls, mine: row.myReaction, canLike: true, canDislike: true)
+    }
+
     // MARK: - Private
+
+    /// `take_reaction_summary` for a page of takes. Never throws.
+    func takeReactions(for takeIds: [UUID]) async -> [UUID: TakeReaction] {
+        struct Params: Encodable, Sendable { let p_comment_ids: [UUID] }
+        guard !takeIds.isEmpty else { return [:] }
+        let rows: [TakeReactionRow]? = try? await client.rpc("take_reaction_summary", params: Params(p_comment_ids: takeIds)).execute().value
+        return Dictionary(uniqueKeysWithValues: (rows ?? []).map { ($0.commentId, $0.reaction) })
+    }
 
     /// The venue and kickoff of the games the feed's slots point at, from the
     /// same `nfl_games` table the web reads. Deliberately never throws: like

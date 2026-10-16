@@ -67,6 +67,14 @@ export type MatchupGameContext = {
   primetime: boolean;
 };
 
+/** Balls on a take (0216): the net, the viewer's own reaction, and what the viewer may do, as the server says. */
+export type TakeReaction = {
+  net: number;
+  mine: -1 | 0 | 1;
+  canLike: boolean;
+  canDislike: boolean;
+};
+
 export type Comment = {
   id: string;
   /** Who wrote it; lets a card that shows something other than this comment's own picks (Bold Predictions) find its take. */
@@ -85,6 +93,8 @@ export type Comment = {
   isFriend?: boolean;
   /** Whether the take was submitted at the same time as a pick. */
   postedWithPick: boolean;
+  /** Balls on this take. Absent on a reply, and where the server did not say. */
+  reaction?: TakeReaction;
   /** The author's choices, revealed only after the prompt has locked. */
   response?: Record<string, string[]>;
   /**

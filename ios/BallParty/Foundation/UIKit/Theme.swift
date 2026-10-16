@@ -43,6 +43,9 @@ enum Theme {
     static let gradeEven = Color(hex: 0x6B665A)
     static let gradeRough = Color(hex: 0x855238)
 
+    // A ball given to a take: football leather, so a like is never red.
+    static let ball = Color(hex: 0xC27A3E)
+
     // Text on the background.
     static let fg = Color(hex: 0xE8E3D6)
     static let fgMuted = Color(hex: 0x8F8B7F)
