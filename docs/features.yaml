@@ -42,6 +42,7 @@ features:
     summary: Bold Predictions prompts
     web: done
     ios: done
+    note: 'A post is about the week of the first game at or after its lock; a matchup tag may only be a game of that week that has not kicked off at the lock (0217), so a post that locks at the first Sunday kickoff (the calendar default, BPP-15) cannot tag Thursday''s game. Web and iOS both fetch only games from the lock on.'
   - id: huddle.answer
     summary: Submit an answer to a prompt
     web: done
@@ -326,3 +327,8 @@ features:
     web: done
     ios: no
     note: admin tooling is web only by design
+  - id: admin.calendar
+    summary: Plan prompts ahead on a weekly calendar, queue them to open on their own, and get a daily email digest of slots that need attention
+    web: done
+    ios: no
+    note: 'admin tooling is web only by design (BPP-15). /admin is a Monday-to-Sunday calendar, a column per day, each slot on the day it opens (or locks, until scheduled); slots are pre-filled from the NFL schedule (migration 0215, prompts_private.schedule_slots, kept apart from prompt_posts so drafts can never reach players). A slot goes empty, draft, ready, then live; a ready slot opens within a minute of its open time. /admin/queue lists drafts and ready slots. The daily digest is the send-schedule-digest Edge Function through Resend, to every admin; setup in docs/architecture/prompt-schedule.md.'

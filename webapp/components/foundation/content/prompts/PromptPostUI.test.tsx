@@ -417,3 +417,74 @@ it("regenerates a Power Rankings preview at Reel dimensions when that format is 
   // The card keeps its 4:5 post size and sits centered on the taller canvas.
   expect((canvas.lastElementChild as HTMLElement).style.height).toBe("675px");
 });
+
+it("composes into a calendar slot: saves a draft, marks it ready, and never offers Publish now", async () => {
+  const user = userEvent.setup();
+  const onPublish = vi.fn();
+  const onSaveDraft = vi.fn().mockResolvedValue({ error: null });
+  const onMarkReady = vi.fn().mockResolvedValue({ error: null });
+  const onScheduled = vi.fn();
+  const slot = {
+    id: "slot-1",
+    kind: "game_pick" as const,
+    gameId: composerGames[0].id,
+    season: composerGames[0].season,
+    week: composerGames[0].week,
+    opensAt: "2099-09-08T14:00:00.000Z",
+    lockAt: "2099-09-11T00:20:00.000Z",
+    state: "empty",
+    publishError: null,
+    composer: null,
+  };
+  render(
+    <PromptPostComposer
+      displayName="Admin"
+      games={composerGames}
+      players={[]}
+      onPublish={onPublish}
+      slot={slot}
+      onSaveDraft={onSaveDraft}
+      onMarkReady={onMarkReady}
+      onScheduled={onScheduled}
+    />,
+  );
+
+  expect(screen.queryByRole("button", { name: "Publish now" })).not.toBeInTheDocument();
+  // The slot fixes the template: no other kind to switch to.
+  expect(screen.queryByRole("button", { name: "Weekly Awards" })).not.toBeInTheDocument();
+
+  await user.click(screen.getAllByRole("button", { name: "Save draft" })[0]);
+  const draft = onSaveDraft.mock.calls[0][0];
+  expect(draft.post.templateKind).toBe("game_pick");
+  expect(draft.post.schedule).toEqual({ season: slot.season, week: slot.week, gameId: slot.gameId });
+  expect(draft.opensAt).toBe(slot.opensAt);
+  expect(draft.lockAt).toBe(slot.lockAt);
+  expect(onMarkReady).not.toHaveBeenCalled();
+
+  await user.click(screen.getAllByRole("button", { name: "Save and mark ready" })[0]);
+  expect(onMarkReady).toHaveBeenCalledTimes(1);
+  expect(onScheduled).toHaveBeenCalledWith(slot.opensAt);
+  expect(onPublish).not.toHaveBeenCalled();
+});
+
+it("shows what mark-ready refused instead of leaving the slot", async () => {
+  const user = userEvent.setup();
+  const onMarkReady = vi.fn().mockResolvedValue({ error: "Not ready yet — No caption." });
+  const onScheduled = vi.fn();
+  render(
+    <PromptPostComposer
+      displayName="Admin"
+      games={composerGames}
+      players={[]}
+      onPublish={vi.fn()}
+      slot={{ id: "s", kind: "game_pick", gameId: composerGames[0].id, season: composerGames[0].season, week: composerGames[0].week, opensAt: "2099-09-08T14:00:00.000Z", lockAt: "2099-09-11T00:20:00.000Z", state: "draft", publishError: null, composer: null }}
+      onSaveDraft={vi.fn().mockResolvedValue({ error: null })}
+      onMarkReady={onMarkReady}
+      onScheduled={onScheduled}
+    />,
+  );
+
+  await user.click(screen.getAllByRole("button", { name: "Save and mark ready" })[0]);
+  expect((await screen.findAllByRole("alert"))[0]).toHaveTextContent("Not ready yet — No caption.");
+  expect(onScheduled).not.toHaveBeenCalled();
+});

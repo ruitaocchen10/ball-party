@@ -361,6 +361,32 @@ export type Database = {
           slot_id: string
         }[]
       }
+      schedule_clear: { Args: { p_slot: string }; Returns: undefined }
+      schedule_get: { Args: { p_slot: string }; Returns: Json }
+      schedule_link_post: {
+        Args: {
+          p_game_id?: string
+          p_kind: string
+          p_post: string
+          p_season: number
+          p_week: number
+        }
+        Returns: undefined
+      }
+      schedule_mark_ready: { Args: { p_slot: string }; Returns: undefined }
+      schedule_prefill: { Args: never; Returns: number }
+      schedule_queue: { Args: never; Returns: Json }
+      schedule_range: { Args: { p_from: string; p_to: string }; Returns: Json }
+      schedule_save_draft: {
+        Args: {
+          p_lock_at: string
+          p_opens_at: string
+          p_payload: Json
+          p_slot: string
+        }
+        Returns: undefined
+      }
+      schedule_unready: { Args: { p_slot: string }; Returns: undefined }
       search_players: {
         Args: { p_limit?: number; p_query: string }
         Returns: {
@@ -2696,6 +2722,7 @@ export type Database = {
       }
       claim_guest_identity: { Args: never; Returns: string }
       claim_push_batch: { Args: { p_limit?: number }; Returns: Json }
+      claim_schedule_digest: { Args: never; Returns: Json }
       claim_username: { Args: { p_username: string }; Returns: string }
       close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
       create_lobby: {

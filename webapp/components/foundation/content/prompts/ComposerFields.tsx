@@ -38,16 +38,19 @@ const BOLD_LOCK_LEAD_MS = 3600_000;
 
 /**
  * Where a Bold Predictions post's lock time may fall. A post is about the week
- * whose first kickoff follows its lock (0171), so it must lock before this
- * week's first kickoff and after the previous week's last one — otherwise
- * matchup tags would be offered for, and validated against, the wrong week.
+ * whose first kickoff follows its lock (0171), so it must lock after the
+ * previous week's last kickoff and no later than this week's last one (a post
+ * that opens Saturday and locks at the first Sunday kickoff is fine; only games
+ * from the lock on can be tagged, 0217). Outside that, matchup tags would be
+ * offered for, and validated against, the wrong week.
  */
-export function boldLockBounds(games: NflScheduleGame[], season: number, week: number): { firstKickoff: Date | null; previousEnd: Date | null } {
+export function boldLockBounds(games: NflScheduleGame[], season: number, week: number): { firstKickoff: Date | null; lastKickoff: Date | null; previousEnd: Date | null } {
   const kickoffs = (wanted: number) => games.filter((game) => game.season === season && game.week === wanted).map((game) => new Date(game.kickoff).getTime());
   const thisWeek = kickoffs(week);
   const lastWeek = kickoffs(week - 1);
   return {
     firstKickoff: thisWeek.length ? new Date(Math.min(...thisWeek)) : null,
+    lastKickoff: thisWeek.length ? new Date(Math.max(...thisWeek)) : null,
     previousEnd: lastWeek.length ? new Date(Math.max(...lastWeek)) : null,
   };
 }

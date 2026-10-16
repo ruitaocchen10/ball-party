@@ -364,7 +364,7 @@ it("publishes a Bold Predictions post with no slots, as an opinion, locking befo
   expect(new Date(published.lockAt).toISOString()).toBe("2099-09-30T16:00:00.000Z");
 });
 
-it("holds Publish back when the lock falls after the week's first kickoff", async () => {
+it("holds Publish back when the lock falls after the week's last kickoff", async () => {
   const user = userEvent.setup();
   await chooseBoldWeek(user);
 
@@ -373,5 +373,5 @@ it("holds Publish back when the lock falls after the week's first kickoff", asyn
   await user.type(lock, "2099-10-01T12:00");
 
   expect(screen.getAllByRole("button", { name: "Publish now" })[0]).toBeDisabled();
-  expect(screen.getAllByText(/Locks after Week 3 ends and before Week 4 kicks off/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/Locks after Week 3 ends and before Week 4's last kickoff/).length).toBeGreaterThan(0);
 });

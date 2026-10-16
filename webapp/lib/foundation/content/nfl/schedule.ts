@@ -106,17 +106,20 @@ export async function fetchGameContexts(supabase: SupabaseClient<Database>, game
 }
 
 /**
- * The week a Bold Predictions post is about: the one whose first kickoff
- * follows the post's lock time, matching prompts_private.bold_prediction_week
- * (0171), which is what validates a matchup tag on write. Empty once the
- * schedule has nothing after the lock.
+ * The games a Bold Predictions post can still be about: the games of the week
+ * whose first kickoff follows the post's lock time, from that lock on. The
+ * week is decided as prompts_private.bold_prediction_week does (0171), and a
+ * matchup tag is only valid for a game that has not kicked off at the lock
+ * (0217), which is what validates a matchup tag on write. The post locks at
+ * the week's first Sunday kickoff, so the Thursday game is not among them.
+ * Empty once the schedule has nothing after the lock.
  */
 export async function fetchWeekAfter(supabase: SupabaseClient<Database>, lockAt: string): Promise<NflScheduleGame[]> {
   const first = await supabase.from("nfl_games").select("season, week").gte("kickoff", lockAt).order("kickoff").limit(1).maybeSingle();
   if (first.error) throw new Error("NFL schedule is unavailable");
   if (!first.data) return [];
   const { data, error } = await supabase
-    .from("nfl_games").select("*").eq("season", first.data.season).eq("week", first.data.week).order("kickoff").order("id");
+    .from("nfl_games").select("*").eq("season", first.data.season).eq("week", first.data.week).gte("kickoff", lockAt).order("kickoff").order("id");
   if (error) throw new Error("NFL schedule is unavailable");
   return data.map(toScheduleGame);
 }

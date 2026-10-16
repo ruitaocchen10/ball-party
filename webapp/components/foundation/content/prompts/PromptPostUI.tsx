@@ -273,6 +273,8 @@ export type CreatePromptPostParams = {
   isOpinion?: boolean;
   /** Send the iOS push for this post (on by default; untick for a correction or backfill). */
   sendPush?: boolean;
+  /** Which calendar slot this prompt would fill, so publishing now can mark it covered (BPP-15). */
+  schedule?: { season: number; week: number; gameId: string | null };
 };
 
 /** What "the setup is ready" means for each template, in the publish checklist. */
@@ -297,33 +299,93 @@ const SETUP_SECTION_TITLES: Record<ComposerKind, string> = {
   power_rankings: "Cover art",
 };
 
+/** The kinds the calendar plans; Compose-published ones of these cover their slot. */
+const SCHEDULED_KINDS: ComposerKind[] = ["game_pick", "weekly_picks", "weekly_awards", "bold_predictions", "power_rankings"];
+
 const OPINION_CRITERIA = "Opinion only — there's no correct answer, so no points are awarded. Just for the debate.";
+
+/**
+ * A calendar slot (BPP-15) the composer is filling. The kind, week, game and
+ * times come from the slot; `composer` is whatever editor state an earlier
+ * Save draft stored, to reopen the form where it was left.
+ */
+export type ComposerSlot = {
+  id: string;
+  kind: ComposerKind;
+  gameId: string | null;
+  season: number;
+  week: number;
+  opensAt: string | null;
+  lockAt: string | null;
+  state: string;
+  publishError: string | null;
+  composer: Record<string, unknown> | null;
+};
+
+/** The editor state a draft keeps beyond the post itself. */
+type SavedComposer = {
+  gameId: string;
+  weeklyGameIds: string[];
+  coverTeamCodes: string[];
+  pointsBySlot: Record<string, number>;
+  caption: string;
+  promptText: string;
+  criteria: string;
+  isOpinion: boolean;
+  sendPush: boolean;
+};
+
+export type SaveDraftParams = {
+  post: CreatePromptPostParams;
+  composer: Record<string, unknown>;
+  /** ISO time, or null while the open time is unset. */
+  opensAt: string | null;
+  lockAt: string;
+};
 
 export function PromptPostComposer({
   displayName,
   games,
   players,
   onPublish,
+  slot,
+  onSaveDraft,
+  onMarkReady,
+  onScheduled,
 }: {
   displayName: string;
   games: NflScheduleGame[];
   players: Player[];
   onPublish: (params: CreatePromptPostParams) => Promise<{ error: string } | { id: string }>;
+  /** Composing into a calendar slot: Publish now becomes Save draft and Mark ready. */
+  slot?: ComposerSlot;
+  onSaveDraft?: (params: SaveDraftParams) => Promise<{ error: string | null }>;
+  onMarkReady?: () => Promise<{ error: string | null }>;
+  /** Called once the slot is marked ready; the shell takes the admin to the day it opens. */
+  onScheduled?: (opensAt: string) => void;
 }) {
+  const saved = (slot?.composer ?? {}) as Partial<SavedComposer>;
+  const slotWeekGames = slot ? games.filter((game) => game.season === slot.season && game.week === slot.week) : [];
   // `games.csv` contains past seasons too. Start at the first unplayed game
   // rather than making the compose screen open on the oldest archived one.
-  const initialGame = games.find((game) => !isInPast(game.kickoff)) ?? games.at(-1);
+  const initialGame = slot
+    ? (slot.gameId ? games.find((game) => game.id === slot.gameId) : undefined) ?? slotWeekGames[0]
+    : games.find((game) => !isInPast(game.kickoff)) ?? games.at(-1);
+  const initialKind: ComposerKind = slot?.kind ?? "game_pick";
+  const initialOpinion = saved.isOpinion ?? OPINION_ONLY_KINDS.includes(initialKind);
+  const [opensAt, setOpensAt] = useState(slot?.opensAt ? toLocalInputValue(new Date(slot.opensAt)) : "");
+  const [notice, setNotice] = useState<string | null>(null);
   const [dockOpen, setDockOpen] = useState(true);
   const [published, setPublished] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [kind, setKind] = useState<ComposerKind>("game_pick");
-  const [isOpinion, setIsOpinion] = useState(false);
-  const [sendPush, setSendPush] = useState(true);
-  const [gameId, setGameId] = useState(initialGame?.id ?? "");
-  const [season, setSeason] = useState(String(initialGame?.season ?? ""));
-  const [week, setWeek] = useState(String(initialGame?.week ?? ""));
-  const [weeklyGameIds, setWeeklyGameIds] = useState<string[]>([]);
+  const [kind, setKind] = useState<ComposerKind>(initialKind);
+  const [isOpinion, setIsOpinion] = useState(initialOpinion);
+  const [sendPush, setSendPush] = useState(saved.sendPush ?? true);
+  const [gameId, setGameId] = useState(saved.gameId ?? initialGame?.id ?? "");
+  const [season, setSeason] = useState(String(slot?.season ?? initialGame?.season ?? ""));
+  const [week, setWeek] = useState(String(slot?.week ?? initialGame?.week ?? ""));
+  const [weeklyGameIds, setWeeklyGameIds] = useState<string[]>(saved.weeklyGameIds ?? (initialKind === "weekly_picks" ? slotWeekGames.map((game) => game.id) : []));
   const [playerIds, setPlayerIds] = useState<string[]>([]);
   // Players shown in a pick-one prompt's art, in placement order — only used once the pool outgrows the art.
   const [coverPlayerIds, setCoverPlayerIds] = useState<string[]>([]);
@@ -333,14 +395,16 @@ export function PromptPostComposer({
   const [rankingIds, setRankingIds] = useState<string[]>([]);
   const [rankCount, setRankCount] = useState(1);
   // Team codes in placement order; the Power Rankings cover shows exactly six.
-  const [coverTeamCodes, setCoverTeamCodes] = useState<string[]>([]);
+  const [coverTeamCodes, setCoverTeamCodes] = useState<string[]>(saved.coverTeamCodes ?? []);
   // Defaults live with each template's slot builder. This map only remembers
   // an author's deliberate overrides, including one value per game in a set.
-  const [pointsBySlot, setPointsBySlot] = useState<Record<string, number>>({});
-  const [caption, setCaption] = useState("");
-  const [promptText, setPromptText] = useState(defaultPromptText("game_pick", initialGame));
-  const [criteria, setCriteria] = useState(defaultCriteria("game_pick"));
-  const [lockAt, setLockAt] = useState(defaultLockAt);
+  const [pointsBySlot, setPointsBySlot] = useState<Record<string, number>>(saved.pointsBySlot ?? {});
+  const [caption, setCaption] = useState(saved.caption ?? "");
+  const [promptText, setPromptText] = useState(saved.promptText ?? defaultPromptText(initialKind, initialGame));
+  const [criteria, setCriteria] = useState(
+    saved.criteria ?? (initialOpinion && initialKind !== "weekly_awards" && initialKind !== "bold_predictions" ? OPINION_CRITERIA : defaultCriteria(initialKind)),
+  );
+  const [lockAt, setLockAt] = useState(() => (slot?.lockAt ? toLocalInputValue(new Date(slot.lockAt)) : defaultLockAt()));
 
   function pickTemplate(next: ComposerKind) {
     setKind(next);
@@ -442,10 +506,10 @@ export function PromptPostComposer({
   const lockAtDate = new Date(lockAt);
   const lockInPast = isInPast(lockAt);
   // The reveal is tied to the week the lock time falls before (0171), so the lock
-  // must sit between the previous week's last kickoff and this week's first.
+  // must sit after the previous week's last kickoff and no later than this week's last.
   const boldBounds = boldLockBounds(games, Number(season), Number(week));
-  const boldLockOk = Boolean(boldBounds.firstKickoff)
-    && lockAtDate.getTime() <= boldBounds.firstKickoff!.getTime()
+  const boldLockOk = Boolean(boldBounds.lastKickoff)
+    && lockAtDate.getTime() <= boldBounds.lastKickoff!.getTime()
     && (!boldBounds.previousEnd || lockAtDate.getTime() > boldBounds.previousEnd.getTime());
 
   // The same conditions that used to sit inline on Publish's `disabled`, split
@@ -462,7 +526,7 @@ export function PromptPostComposer({
     { label: SETUP_CHECK_LABELS[kind], ok: setupReady },
     { label: "Every point value is a whole number, 1 or more", ok: !hasInvalidPoints },
     { label: "Lock time is in the future", ok: !lockInPast },
-    ...(kind === "bold_predictions" ? [{ label: `Locks after Week ${Number(week) - 1} ends and before Week ${week} kicks off`, ok: boldLockOk }] : []),
+    ...(kind === "bold_predictions" ? [{ label: `Locks after Week ${Number(week) - 1} ends and before Week ${week}'s last kickoff`, ok: boldLockOk }] : []),
   ];
   const canPublish = !pending && checklist.every((item) => item.ok);
   const previewPost: Post = {
@@ -483,6 +547,32 @@ export function PromptPostComposer({
     slots,
     comments: [],
   };
+
+  const publishParams = (): CreatePromptPostParams => ({
+    templateKind: kind,
+    templateName,
+    caption: caption || "Preview caption",
+    promptText,
+    resolutionCriteria: criteria,
+    lockAt: lockAtDate.toISOString(),
+    slots,
+    isOpinion,
+    sendPush,
+    ...(SCHEDULED_KINDS.includes(kind) && season && week ? { schedule: { season: Number(season), week: Number(week), gameId: kind === "game_pick" ? gameId : null } } : {}),
+    ...(kind === "power_rankings" ? { coverTeamCodes } : {}),
+    ...((kind === "game_pick" || kind === "weekly_picks") && !isOpinion ? { resolutionSource: { provider: "nflverse", rule: "winner" } as const } : {}),
+  });
+
+  /** Stores what is on screen on the slot, as a draft. */
+  async function saveDraft(): Promise<{ error: string | null }> {
+    const composer: SavedComposer = { gameId, weeklyGameIds, coverTeamCodes, pointsBySlot, caption, promptText, criteria, isOpinion, sendPush };
+    return onSaveDraft!({
+      post: publishParams(),
+      composer,
+      opensAt: opensAt ? new Date(opensAt).toISOString() : null,
+      lockAt: lockAtDate.toISOString(),
+    });
+  }
 
   const previewContents = (
     <>
@@ -512,25 +602,55 @@ export function PromptPostComposer({
             <span className="text-sm text-fg-muted">Alerts everyone with the iOS app. Untick for a correction or backfill.</span>
           </span>
         </button>
+        {slot ? (
+          <div className="flex flex-col gap-2">
+            {slot.publishError ? <p role="alert" className="type-label text-grade-rough">Last attempt to open failed: {slot.publishError}</p> : null}
+            {notice ? <p role="status" className="type-label text-fg-muted">{notice}</p> : null}
+            <Button
+              fullWidth
+              variant="ghost"
+              disabled={pending || Number.isNaN(lockAtDate.getTime())}
+              onClick={async () => {
+                setPending(true);
+                setError(null);
+                setNotice(null);
+                const result = await saveDraft();
+                setPending(false);
+                if (result.error) setError(result.error);
+                else setNotice("Draft saved.");
+              }}
+            >
+              Save draft
+            </Button>
+            <Button
+              fullWidth
+              disabled={!canPublish || !opensAt}
+              onClick={async () => {
+                setPending(true);
+                setError(null);
+                setNotice(null);
+                const saved_ = await saveDraft();
+                const result = saved_.error ? saved_ : await onMarkReady!();
+                setPending(false);
+                if (result.error) {
+                  setError(result.error);
+                  return;
+                }
+                onScheduled?.(new Date(opensAt).toISOString());
+              }}
+            >
+              {pending ? "Saving…" : "Save and mark ready"}
+            </Button>
+            {!opensAt ? <p className="type-label-xs text-fg-muted">Set an open time to mark it ready.</p> : null}
+          </div>
+        ) : (
         <Button
           fullWidth
           disabled={!canPublish}
           onClick={async () => {
             setPending(true);
             setError(null);
-            const result = await onPublish({
-              templateKind: kind,
-              templateName,
-              caption: caption || "Preview caption",
-              promptText,
-              resolutionCriteria: criteria,
-              lockAt: lockAtDate.toISOString(),
-              slots,
-              isOpinion,
-              sendPush,
-              ...(kind === "power_rankings" ? { coverTeamCodes } : {}),
-              ...((kind === "game_pick" || kind === "weekly_picks") && !isOpinion ? { resolutionSource: { provider: "nflverse", rule: "winner" } } : {}),
-            });
+            const result = await onPublish(publishParams());
             setPending(false);
             if ("error" in result) {
               setError(result.error);
@@ -541,6 +661,7 @@ export function PromptPostComposer({
         >
           {pending ? "Publishing…" : "Publish now"}
         </Button>
+        )}
         {kind === "stat_leader" ? <div className="mt-2"><SharePromptButton promptText={promptText} options={slots[0]?.options ?? []} /></div> : null}
       </div>
     </>
@@ -600,7 +721,7 @@ export function PromptPostComposer({
         <Section n={1} title="Template">
         <div>
           <div className="flex flex-wrap gap-1.5">
-            {TEMPLATE_DEFS.map((t) => (
+            {TEMPLATE_DEFS.filter((t) => !slot || t.kind === slot.kind).map((t) => (
               <button
                 key={t.kind}
                 type="button"
@@ -806,6 +927,18 @@ export function PromptPostComposer({
                 </label>
               ))}
             </div>
+          </FieldBlock>
+        ) : null}
+
+        {slot ? (
+          <FieldBlock label="Opens at">
+            <input
+              type="datetime-local"
+              value={opensAt}
+              onChange={(e) => setOpensAt(e.target.value)}
+              className="w-full rounded-card border border-line bg-surface-raised px-3 py-2 text-sm"
+            />
+            <p className="mt-1 type-label-xs text-fg-muted">Once marked ready, the prompt goes live by itself at this time.</p>
           </FieldBlock>
         ) : null}
 
