@@ -1,4 +1,5 @@
 import type { ListKind, ListPlayer, ListSummary, ListUpdate, ListVersion } from "./types";
+import { fetchTakeReactions } from "@/lib/foundation/content/prompts/reactions";
 import type { createClient } from "@/lib/supabase/server";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -94,7 +95,19 @@ export async function fetchListUpdates(
     ...(postId ? { p_post_id: postId } : {}),
   });
   if (error) return [];
+  const postIds = (data ?? []).map((row) => row.post_id);
+  const takeByPost = new Map<string, string>();
+  if (postIds.length) {
+    const { data: takes } = await supabase.from("prompt_comments").select("id, post_id").in("post_id", postIds).is("parent_comment_id", null);
+    for (const take of takes ?? []) takeByPost.set(take.post_id, take.id);
+  }
+  const reactions = await fetchTakeReactions(supabase, [...takeByPost.values()]);
   return (data ?? []).map((row) => ({
+    ball: (() => {
+      const takeId = takeByPost.get(row.post_id);
+      const reaction = takeId ? reactions.get(takeId) : undefined;
+      return takeId && reaction ? { takeId, reaction } : undefined;
+    })(),
     postId: row.post_id,
     authorId: row.author_id,
     username: row.username,

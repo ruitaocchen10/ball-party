@@ -149,8 +149,9 @@ struct TakeCardView: View {
                     TicketView(post: post, response: response)
                 }
             }
-            if showsReplyCount || footer != nil || (collapsesPicks && hasPicks) {
-                HStack(spacing: 12) {
+            if comment.reaction != nil || showsReplyCount || footer != nil || (collapsesPicks && hasPicks) {
+                HStack(spacing: 14) {
+                    if let reaction = comment.reaction { TakeBallVoteView(takeId: comment.id, initial: reaction) }
                     if showsReplyCount { replyRow }
                     if let footer { footer() }
                     Spacer(minLength: 0)
@@ -172,7 +173,7 @@ struct TakeCardView: View {
         .well()
         // A link and a button inside it would fight for the same tap, so the
         // card is only ever combined into one element when it has neither.
-        .accessibilityElement(children: threadDestination == nil && !collapsesPicks ? .combine : .contain)
+        .accessibilityElement(children: comment.reaction == nil && threadDestination == nil && !collapsesPicks ? .combine : .contain)
     }
 
     @ViewBuilder
@@ -201,14 +202,17 @@ struct TakeCardView: View {
 
     @ViewBuilder
     private var replyRow: some View {
-        let label = Label(
-            comment.replies.isEmpty ? "Reply" : "\(comment.replies.count) \(comment.replies.count == 1 ? "reply" : "replies")",
-            systemImage: "bubble.left"
-        )
-        .monoLabel(10, weight: .semibold, tracking: 0.1)
+        let count = comment.replies.count
+        let label = HStack(spacing: 5) {
+            Image(systemName: "bubble.left").font(.system(size: 16))
+            if count > 0 { Text("\(count)").font(.mono(12, weight: .bold)) }
+        }
+        .foregroundStyle(Theme.fgMuted)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(count == 0 ? "Reply" : "\(count) \(count == 1 ? "reply" : "replies")")
         if let threadDestination {
             NavigationLink { threadDestination() } label: {
-                label.frame(minHeight: 32).contentShape(Rectangle())
+                label.frame(minHeight: 32).contentShape(Rectangle().inset(by: -8))
             }
             .buttonStyle(.plain)
         } else {

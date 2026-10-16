@@ -3060,6 +3060,13 @@ export type Database = {
           team: string
         }[]
       }
+      react_to_take: {
+        Args: { p_comment_id: string; p_value: number }
+        Returns: {
+          my_reaction: number
+          net_balls: number
+        }[]
+      }
       record_guest_account_collision: {
         Args: { p_nonce: string }
         Returns: undefined
@@ -3181,6 +3188,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      take_reaction_summary: {
+        Args: { p_comment_ids: string[] }
+        Returns: {
+          can_dislike: boolean
+          can_like: boolean
+          comment_id: string
+          my_reaction: number
+          net_balls: number
+        }[]
       }
       unblock_user: { Args: { p_user_id: string }; Returns: boolean }
       unregister_device_token: {

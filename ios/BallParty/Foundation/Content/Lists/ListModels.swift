@@ -174,6 +174,12 @@ struct ListPlayer: Equatable, Sendable, Decodable {
 
 /// A published edit in the home feed, with the list it replaced
 /// (`friend_list_updates`).
+/// The take behind an update card and what the viewer can do with its balls.
+struct ListBall: Equatable, Sendable {
+    let takeId: UUID
+    let reaction: TakeReaction
+}
+
 struct ListUpdate: Identifiable, Equatable, Sendable, Decodable {
     let postId: UUID
     let authorId: UUID
@@ -188,6 +194,9 @@ struct ListUpdate: Identifiable, Equatable, Sendable, Decodable {
     let savedAt: Date
     let items: [String]
     let previousItems: [String]?
+    /// The take the note is, with its balls. Balls hang on the take, not on the post.
+    /// Not part of the RPC: the client fills it in from `take_reaction_summary`.
+    var ball: ListBall?
 
     var id: UUID { postId }
 

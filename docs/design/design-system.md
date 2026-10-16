@@ -35,6 +35,7 @@ Each is a Tailwind color (`bg-panel`, `text-fg-muted`, `border-line`, …) backe
 | `hidden-text` | The same red, lifted to stay legible on the background. Also error text. |
 | `hidden-ink` | The same red, darkened: a hovered or pressed red surface. |
 | `grade-elite/strong/even/rough` | Revealed grades and verdicts (QB Season Builder, the Huddle). Deliberately not red. |
+| `ball` | A ball given to a take (the football in the take reaction control). Leather orange, never red. |
 
 A selected pill, tab or option is filled `hidden` red with `fg` text; a primary button is a `fg` fill with `surface` text.
 
