@@ -29,7 +29,9 @@ export function GamePickFace({
   onChange: (r: string[]) => void;
 }) {
   return (
-    <MatchupPicker slot={slot} response={response} onChange={disabled ? undefined : onChange} variant="featured" mode="picker" />
+    <div className="mt-5 px-4">
+      <MatchupPicker slot={slot} response={response} onChange={disabled ? undefined : onChange} mode="picker" />
+    </div>
   );
 }
 
@@ -55,7 +57,7 @@ export function YourCalls({
     <section className="mt-4 px-4" aria-label="Your calls">
       <div className={`grid gap-2 sm:gap-3 ${slots.length === 1 ? "" : "grid-cols-2"}`}>
         {visibleSlots.map((slot) => (
-          <MatchupPicker key={slot.id} slot={slot} response={responses[slot.id] ?? []} variant="compact" mode="revealed" />
+          <MatchupPicker key={slot.id} slot={slot} response={responses[slot.id] ?? []} mode="revealed" />
         ))}
       </div>
       {hiddenCount > 0 ? (
@@ -102,7 +104,7 @@ export function GamePickList({
       </div>
       <div className="grid gap-2 md:grid-cols-2">
         {slots.map((slot) => (
-          <MatchupPicker key={slot.id} slot={slot} response={responses[slot.id] ?? []} onChange={(response) => onChange(slot.id, response)} variant="compact" mode="picker" />
+          <MatchupPicker key={slot.id} slot={slot} response={responses[slot.id] ?? []} onChange={(response) => onChange(slot.id, response)} mode="picker" />
         ))}
       </div>
     </section>

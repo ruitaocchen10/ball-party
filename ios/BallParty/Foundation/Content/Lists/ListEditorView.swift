@@ -45,15 +45,15 @@ struct ListEditorView: View {
                 Text(viewModel.readOnly
                     ? "Editing is paused until the prompt locks."
                     : viewModel.isTeams
-                        ? "Drag a team by its grip to where it goes."
-                        : "Search to add players, then drag a row by its grip into order.")
+                        ? "Press and hold a team, then drag it to where it goes."
+                        : "Search to add players, then press and hold a row to drag it into order.")
                     .font(.sans(14)).foregroundStyle(Theme.fgMuted)
             }
             if viewModel.isTeams, viewModel.kind.sizes.count > 1 { sizeChoice }
 
             RankBoard(size: viewModel.size) { index, density in
                 if viewModel.items.indices.contains(index) {
-                    row(index)
+                    row(index, density: density)
                 } else {
                     EmptyRankSlot(
                         rank: index + 1, density: density,
@@ -85,75 +85,51 @@ struct ListEditorView: View {
         }
     }
 
-    @ViewBuilder private func row(_ index: Int) -> some View {
+    @ViewBuilder private func row(_ index: Int, density: RankDensity) -> some View {
         let item = viewModel.items[index]
-        let name = viewModel.name(of: item)
-        let tiny = viewModel.size > 10
-        let grip = !viewModel.readOnly
-        ZStack(alignment: .trailing) {
-            ListTile(
-                item: item, itemKind: viewModel.kind.itemKind, players: viewModel.players, rank: index + 1,
-                movement: viewModel.change(at: index),
-                removable: !viewModel.isTeams && !viewModel.readOnly, compact: viewModel.size > 5, tiny: tiny, grip: grip
-            )
-            HStack(spacing: 0) {
-                if !viewModel.isTeams, !viewModel.readOnly {
-                    Button { viewModel.remove(item) } label: { Color.clear.frame(width: 34).contentShape(Rectangle()) }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Remove \(name)")
-                }
-                if grip {
-                    Color.clear.frame(width: ListTile.gripWidth(tiny: tiny))
-                        .reorderGrip(item: item, preview: dragPreview(item))
-                }
-            }
-        }
+        RankedRow(
+            rank: index + 1,
+            subject: ListLogic.rankSubject(item: item, itemKind: viewModel.kind.itemKind, players: viewModel.players),
+            density: density,
+            movement: viewModel.change(at: index),
+            onRemove: !viewModel.isTeams && !viewModel.readOnly ? { viewModel.remove(item) } : nil,
+            dragItem: viewModel.readOnly ? nil : item
+        )
         .reorderSlot(index)
         .accessibilityAction(named: "Move up") { viewModel.nudge(index, by: -1) }
         .accessibilityAction(named: "Move down") { viewModel.nudge(index, by: 1) }
     }
 
-    /// The tile that follows the finger while it is dragged.
-    private func dragPreview(_ item: String) -> some View {
-        ListTile(item: item, itemKind: viewModel.kind.itemKind, players: viewModel.players, rank: nil, compact: true)
-    }
-
     private var bench: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Not ranked · \(viewModel.bench.count) teams · drag one by its grip into your list").monoLabel(10, weight: .bold, tracking: 0.12)
+            Text("Not ranked · \(viewModel.bench.count) teams · tap one to bring it in at #\(viewModel.size), or press and hold it and drag it to a place").monoLabel(10, weight: .bold, tracking: 0.12)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
                 ForEach(viewModel.bench, id: \.self) { code in
-                    ZStack(alignment: .trailing) {
-                        ListTile(item: code, itemKind: .team, players: [:], rank: nil, compact: true, tiny: true, grip: !viewModel.readOnly)
-                        if !viewModel.readOnly {
-                            Color.clear.frame(width: ListTile.gripWidth(tiny: true))
-                                .reorderGrip(item: code, preview: dragPreview(code))
-                        }
-                    }
+                    benchTile(code)
                 }
             }
+        }
+    }
+
+    /// The same tile the Power Rankings pool uses: tapped to bring in at the last place, or
+    /// held and dragged to the place it should take.
+    @ViewBuilder private func benchTile(_ code: String) -> some View {
+        let tile = TeamChoiceTile(code: code, name: ListLogic.teamName(code), adds: true) { viewModel.bringIn(code) }
+        if viewModel.readOnly {
+            tile.disabled(true)
+        } else {
+            tile.reorderHandle(item: code, preview: tile)
         }
     }
 
     private var sizeChoice: some View {
-        HStack(spacing: 6) {
-            ForEach(viewModel.kind.sizes, id: \.self) { option in
-                let isSelected = option == viewModel.size
-                Button { viewModel.changeSize(option) } label: {
-                    Text(ListLogic.sizeLabel(option, itemKind: viewModel.kind.itemKind))
-                        .monoLabel(11, weight: .bold, tracking: 0.1, color: isSelected ? Theme.panelFg : Theme.fgMuted)
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(isSelected ? Theme.hidden : Theme.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
-                        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(isSelected ? Color.clear : Theme.line, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                .disabled(viewModel.readOnly)
-                .accessibilityAddTraits(isSelected ? .isSelected : [])
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Number of teams to rank")
+        PillChoice(
+            selection: Binding(get: { viewModel.size }, set: { viewModel.changeSize($0) }),
+            options: viewModel.kind.sizes,
+            title: { ListLogic.sizeLabel($0, itemKind: viewModel.kind.itemKind) },
+            accessibilityName: "Number of teams to rank"
+        )
+        .disabled(viewModel.readOnly)
     }
 
     private var footer: some View {

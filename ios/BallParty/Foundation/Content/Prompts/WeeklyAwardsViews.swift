@@ -7,62 +7,9 @@ import SwiftUI
 
 // MARK: - Tiles
 
-/// How a tile in a group of choices looks: nothing chosen yet, this one chosen,
-/// or another one chosen.
-enum ChoiceTileState {
-    case idle, selected, dimmed
-
-    init(chosen: UUID?, option: UUID) {
-        self = chosen == nil ? .idle : chosen == option ? .selected : .dimmed
-    }
-}
-
-/// A club as a tile — the web's `TeamTile`: its colours behind an oversized,
-/// cropped logo, with a check and a white ring when chosen. The club is named
-/// for VoiceOver only; the mark says it for everyone else.
-struct AwardTeamTile: View {
-    let code: String
-    let name: String
-    var state: ChoiceTileState = .idle
-    let action: () -> Void
-
-    private static let cut = TicketShape(cutX: 10, cutY: 6)
-
-    var body: some View {
-        Button(action: action) {
-            Color.clear
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background {
-                    LinearGradient(
-                        colors: [NFLTeams.primaryColor(for: code) ?? Theme.surfaceRaised, Theme.surface],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                }
-                .overlay { TeamLogo(code: code, size: 88).shadow(color: .black.opacity(0.5), radius: 4, y: 3) }
-                .overlay(alignment: .topTrailing) {
-                    if state == .selected {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .black))
-                            .foregroundStyle(.white)
-                            .shadow(radius: 1)
-                            .padding(5)
-                    }
-                }
-                .clipShape(Self.cut)
-                .overlay { Self.cut.stroke(state == .selected ? Color.white : Color.white.opacity(0.2), lineWidth: state == .selected ? 2 : 1) }
-                .opacity(state == .dimmed ? 0.45 : 1)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(name)
-        .accessibilityAddTraits(state == .selected ? .isSelected : [])
-    }
-}
-
-/// A game as the compact ticket the winner picker uses, but tagging the whole
-/// game rather than a side — the web's `MatchupTile`. Both halves flood with
-/// their club's colour when chosen; the other games fade back.
+/// A whole game as a choice — the web's `MatchupTile` — tagging the game rather
+/// than a side. Both halves flood with their club's color when chosen; the other
+/// games fade back.
 struct AwardGameTile: View {
     let away: String
     let home: String
@@ -70,68 +17,24 @@ struct AwardGameTile: View {
     var state: ChoiceTileState = .idle
     let action: () -> Void
 
-    private static let logoSize: CGFloat = 80
     private var selected: Bool { state == .selected }
 
     var body: some View {
         Button(action: action) {
-            PromptTicket(ringed: true) {
-                VStack(spacing: 0) {
-                    ZStack {
-                        HStack(spacing: 0) {
-                            half(away)
-                            Theme.line.frame(width: 1)
-                            half(home)
-                        }
-                        Text("@")
-                            .font(.mono(10, weight: .bold))
-                            .foregroundStyle(Theme.fgMuted)
-                            .frame(width: 24, height: 24)
-                            .background(Theme.surface, in: Circle())
-                            .overlay(Circle().stroke(Theme.line, lineWidth: 1))
-                            .accessibilityHidden(true)
-                    }
-                    .frame(height: 64)
-                    .overlay(alignment: .topTrailing) {
-                        if selected {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .black))
-                                .foregroundStyle(.white)
-                                .shadow(radius: 1)
-                                .padding(6)
-                        }
-                    }
-                    Theme.line.opacity(0.7).frame(height: 1).padding(.horizontal, 8).padding(.top, 8)
-                        .accessibilityHidden(true)
-                }
+            TwoSidedFace {
+                half(away)
+            } home: {
+                half(home)
             }
-            .overlay { if selected { TicketShape().stroke(Theme.fg.opacity(0.7), lineWidth: 1) } }
-            .contentShape(Rectangle())
+            .choiceTile(mark: ChoiceMark(selected: selected))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    // The logo sits in an overlay so its size, far bigger than the strip, is
-    // cropped rather than setting the half's width.
     private func half(_ code: String) -> some View {
-        Color.clear
-            .frame(maxWidth: .infinity)
-            .frame(height: 64)
-            .background {
-                if selected, let color = NFLTeams.primaryColor(for: code) {
-                    LinearGradient(colors: [color, Theme.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
-                } else {
-                    Theme.surface.opacity(0.85)
-                }
-            }
-            .overlay {
-                TeamLogo(code: code, size: Self.logoSize)
-                    .grayscale(state == .dimmed ? 1 : 0)
-                    .opacity(state == .dimmed ? 0.4 : 1)
-            }
-            .clipped()
+        ChoiceHalf(code: code, flooded: selected, receded: state == .dimmed)
     }
 }
 
@@ -256,7 +159,7 @@ struct WeeklyAwardsPicker: View {
         } else if !slot.options.isEmpty, slot.options.allSatisfy({ $0.teamCode != nil }) {
             LazyVGrid(columns: teamColumns, spacing: 6) {
                 ForEach(slot.options) { option in
-                    AwardTeamTile(
+                    TeamChoiceTile(
                         code: option.teamCode ?? "", name: option.label,
                         state: ChoiceTileState(chosen: chosen, option: option.id)
                     ) { choose(option, in: slot) }

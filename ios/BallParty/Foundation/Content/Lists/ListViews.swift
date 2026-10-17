@@ -1,190 +1,23 @@
 import SwiftUI
 
-// The shared pieces of every list screen: the ticket-style tile, the column
+// The shared pieces of every list screen: the ranked row's subject, the column
 // grid, a saved list's card, the start card for a list not begun, and a list's
 // version history. The Swift counterpart of the web's `ListRows`,
 // `ListSummaries`, `ListStartCard` and `ListHistory`.
 
-/// How far an item moved against an earlier list, as the tile's mark. Not in
-/// the earlier list and unchanged both read "–", like the prompt boards; a
-/// screen reader still hears which.
-enum ListMovement: Equatable {
-    case up(Int), down(Int), same, new
-
-    init(change: Int?) {
-        switch change {
-        case .none: self = .new
-        case .some(0): self = .same
-        case .some(let places): self = places > 0 ? .up(places) : .down(-places)
-        }
-    }
-
-    var text: String {
-        switch self {
-        case .up(let places): "+\(places)"
-        case .down(let places): "−\(places)"
-        case .same, .new: "–"
-        }
-    }
-
-    var spoken: String {
-        switch self {
-        case .up(let places): "Up \(places)"
-        case .down(let places): "Down \(places)"
-        case .same: "Did not move"
-        case .new: "New"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .up: Theme.gradeElite
-        case .down: Theme.gradeRough
-        case .same, .new: Theme.panelMuted
+extension ListLogic {
+    /// What a saved list draws for `item`: the team, or the player the list knows by that id.
+    static func rankSubject(item: String, itemKind: ListKind.ItemKind, players: [String: ListPlayer]) -> RankSubject {
+        switch itemKind {
+        case .team: .team(code: item, name: teamName(item))
+        case .player:
+            players[item].map { .player(name: $0.name, position: $0.position, team: $0.team, headshotURL: $0.headshotURL) }
+                ?? .player(name: "Unknown", position: "", team: "", headshotURL: nil)
         }
     }
 }
 
-/// One item in a list, drawn like the Power Rankings board's ticket: its rank,
-/// the team's logo or the player's face, a short name, and (against an earlier
-/// list) how far it moved. `rank` is nil for a team on the bench.
-struct ListTile: View {
-    let item: String
-    let itemKind: ListKind.ItemKind
-    let players: [String: ListPlayer]
-    var rank: Int?
-    var movement: ListMovement?
-    var picked = false
-    /// A player's remove glyph in the trailing cell (the editor); the tap itself is the caller's.
-    var removable = false
-    var compact = false
-    /// A four-column board's tile: no name, since a column is under 80 points wide.
-    var tiny = false
-    /// A grip cell at the trailing edge; the caller lays the drag gesture over it.
-    var grip = false
-
-    static func gripWidth(tiny: Bool) -> CGFloat { tiny ? GripGlyph.tinyWidth : GripGlyph.fullWidth }
-
-    private var player: ListPlayer? { itemKind == .player ? players[item] : nil }
-    private var team: String? { itemKind == .team ? item : player?.team }
-    private var height: CGFloat { tiny || compact ? 48 : 56 }
-    private var markSize: CGFloat { tiny ? 34 : compact ? 30 : 36 }
-
-    var body: some View {
-        if tiny { tinyBody } else { fullBody }
-    }
-
-    private var tinyBody: some View {
-        HStack(spacing: 0) {
-            Text(rank.map(String.init) ?? "+")
-                .font(.slab(16))
-                .foregroundStyle(.white)
-                .monospacedDigit()
-                .frame(width: 22, height: height)
-                .background(Color.black.opacity(0.45))
-            mark
-                .frame(maxWidth: .infinity)
-                .clipped()
-            if let movement {
-                Text(movement.text)
-                    .font(.mono(10, weight: .bold))
-                    .foregroundStyle(movement.color)
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(1)
-                    .frame(width: 22, height: height)
-                    .background(Theme.fg)
-                    .accessibilityHidden(true)
-            }
-            if grip { GripGlyph(width: Self.gripWidth(tiny: true), height: height) }
-        }
-        .frame(height: height)
-        .background(picked ? AnyShapeStyle(Theme.hidden) : AnyShapeStyle(gradient))
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
-        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(picked ? Color.white : Color.white.opacity(0.25), lineWidth: 1))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spokenLabel)
-    }
-
-    private var fullBody: some View {
-        HStack(spacing: 0) {
-            Text(rank.map(String.init) ?? "+")
-                .font(.slab(compact ? 20 : 24))
-                .foregroundStyle(.white)
-                .monospacedDigit()
-                .frame(width: compact ? 28 : 34, height: height)
-                .background(Color.black.opacity(0.45))
-            HStack(spacing: compact ? 5 : 8) {
-                mark
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(title)
-                        .font(.slab(compact ? 16 : 19))
-                        .textCase(.uppercase)
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    if let player {
-                        Text("\(player.position) · \(player.team)")
-                            .font(.mono(9))
-                            .foregroundStyle(.white.opacity(0.7))
-                            .lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, compact ? 5 : 8)
-            if let movement {
-                Text(movement.text)
-                    .font(.mono(11, weight: .bold))
-                    .foregroundStyle(movement.color)
-                    .frame(width: compact ? 30 : 36, height: height)
-                    .background(Theme.fg)
-                    .accessibilityHidden(true)
-            } else if removable {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Theme.surface)
-                    .frame(width: 34, height: height)
-                    .background(Theme.fg)
-                    .accessibilityHidden(true)
-            }
-            if grip { GripGlyph(width: Self.gripWidth(tiny: false), height: height) }
-        }
-        .frame(height: height)
-        .background(picked ? AnyShapeStyle(Theme.hidden) : AnyShapeStyle(gradient))
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
-        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(picked ? Color.white : Color.white.opacity(0.25), lineWidth: 1))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spokenLabel)
-    }
-
-    private var title: String {
-        itemKind == .team ? ListLogic.teamName(item) : ListLogic.surname(player?.name ?? "Unknown")
-    }
-
-    private var spokenLabel: String {
-        var parts = [rank.map(String.init) ?? "Not ranked", itemKind == .team ? ListLogic.teamName(item) : (player?.name ?? "Unknown")]
-        if let movement { parts.append(movement.spoken) }
-        if picked { parts.append("picked up") }
-        return parts.joined(separator: ", ")
-    }
-
-    @ViewBuilder private var mark: some View {
-        if itemKind == .team {
-            TeamLogo(code: item, size: markSize)
-                .shadow(color: .black.opacity(0.6), radius: 3, x: 0, y: 3)
-        } else {
-            Portrait(name: player?.name ?? "Player", url: player?.headshotURL, size: markSize)
-        }
-    }
-
-    // A team's primary color is data, not a design token, as on the prompt boards.
-    private var gradient: LinearGradient {
-        let primary = team.flatMap(NFLTeams.primaryColor(for:)) ?? Color(hex: 0x252722)
-        return LinearGradient(colors: [primary, Color(hex: 0x171914)], startPoint: .topLeading, endPoint: UnitPoint(x: 0.72, y: 1))
-    }
-}
-
-/// A saved list in order as tiles, optionally with movement against the version it replaced.
+/// A saved list in order as rows, optionally with movement against the version it replaced.
 struct ListRowsView: View {
     let items: [String]
     let itemKind: ListKind.ItemKind
@@ -194,10 +27,10 @@ struct ListRowsView: View {
 
     var body: some View {
         RankBoard(size: size ?? items.count, places: items.count) { index, density in
-            ListTile(
-                item: items[index], itemKind: itemKind, players: players, rank: index + 1,
-                movement: previous.map { ListMovement(change: ListLogic.placeChange(previous: $0, items: items, index: index)) },
-                compact: density != .full, tiny: density == .tiny
+            RankedRow(
+                rank: index + 1, subject: ListLogic.rankSubject(item: items[index], itemKind: itemKind, players: players),
+                density: density,
+                movement: previous.map { RankMovement(change: ListLogic.placeChange(previous: $0, items: items, index: index)) }
             )
         }
     }

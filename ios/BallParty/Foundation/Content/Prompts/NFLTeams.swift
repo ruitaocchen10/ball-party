@@ -43,6 +43,20 @@ enum NFLTeams {
         ("ATL", "Falcons"), ("CAR", "Panthers"), ("NO", "Saints"), ("TB", "Buccaneers"),
     ]
 
+    /// Each club's city (or region), the line over its name on a ranking row.
+    private static let cities: [String: String] = [
+        "ARI": "Arizona", "ATL": "Atlanta", "BAL": "Baltimore", "BUF": "Buffalo", "CAR": "Carolina",
+        "CHI": "Chicago", "CIN": "Cincinnati", "CLE": "Cleveland", "DAL": "Dallas", "DEN": "Denver",
+        "DET": "Detroit", "GB": "Green Bay", "HOU": "Houston", "IND": "Indianapolis", "JAX": "Jacksonville",
+        "KC": "Kansas City", "LV": "Las Vegas", "LAC": "Los Angeles", "LAR": "Los Angeles", "LA": "Los Angeles",
+        "MIA": "Miami", "MIN": "Minnesota", "NE": "New England", "NO": "New Orleans", "NYG": "New York",
+        "NYJ": "New York", "PHI": "Philadelphia", "PIT": "Pittsburgh", "SEA": "Seattle", "SF": "San Francisco",
+        "TB": "Tampa Bay", "TEN": "Tennessee", "WAS": "Washington",
+    ]
+
+    /// The club's city, nil for a code this list doesn't know.
+    static func city(for code: String) -> String? { cities[code.uppercased()] }
+
     /// A club's name without its city, or the code itself for one this list
     /// doesn't know (`nflTeamName` on the web).
     static func name(for code: String) -> String {

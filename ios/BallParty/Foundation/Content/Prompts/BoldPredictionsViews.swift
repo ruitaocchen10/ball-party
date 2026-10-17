@@ -247,7 +247,7 @@ private struct BoldTagPicker: View {
     private var teams: some View {
         LazyVGrid(columns: teamColumns, spacing: 6) {
             ForEach(NFLTeams.all, id: \.code) { team in
-                AwardTeamTile(code: team.code, name: team.name, state: state(of: .team, team.code)) {
+                TeamChoiceTile(code: team.code, name: team.name, state: state(of: .team, team.code)) {
                     target = BoldTarget(type: .team, id: team.code)
                 }
             }

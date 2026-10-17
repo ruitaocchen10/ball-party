@@ -240,6 +240,19 @@ final class HuddleViewModel: ObservableObject {
         pickDrafts[postId, default: [:]][slotId] = chosen
     }
 
+    /// Brings an unranked option into a ranking at the place it was dropped on, the ones
+    /// below it moving down; a place past the last ranked one adds it to the end. Nothing
+    /// happens once the ranking is full.
+    func insertRanked(_ optionId: UUID, at index: Int, in slotId: UUID, of postId: UUID) {
+        guard canAnswer(postId), let post = post(postId),
+              let slot = post.slots.first(where: { $0.id == slotId }), slot.shape != .pick, !slot.playerSearch
+        else { return }
+        var chosen = selection(in: slotId, of: postId)
+        guard !chosen.contains(optionId), chosen.count < requiredCount(for: slot, in: post) else { return }
+        chosen.insert(optionId, at: min(max(index, 0), chosen.count))
+        pickDrafts[postId, default: [:]][slotId] = chosen
+    }
+
     /// Moves one ranked option to a new place in a ranking, the way a drag on
     /// the board does. `destination` is the place it ends up in, not the gap it
     /// is dropped into. Only the order of what is already chosen changes.

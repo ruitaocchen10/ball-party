@@ -22,12 +22,27 @@ final class ListLogicTests: XCTestCase {
     }
 
     func testMovementReadsDashForNewAndUnchanged() {
-        XCTAssertEqual(ListMovement(change: nil).text, "–")
-        XCTAssertEqual(ListMovement(change: 0).text, "–")
-        XCTAssertEqual(ListMovement(change: 3).text, "+3")
-        XCTAssertEqual(ListMovement(change: -2).text, "−2")
-        XCTAssertEqual(ListMovement(change: nil).spoken, "New")
-        XCTAssertEqual(ListMovement(change: 0).spoken, "Did not move")
+        XCTAssertEqual(RankMovement(change: nil).text, "—")
+        XCTAssertEqual(RankMovement(change: 0).text, "—")
+        XCTAssertEqual(RankMovement(change: 3).text, "3")
+        XCTAssertEqual(RankMovement(change: -2).text, "2")
+        XCTAssertEqual(RankMovement(change: 3).arrow, "chevron.up.2")
+        XCTAssertEqual(RankMovement(change: -2).arrow, "chevron.down.2")
+        XCTAssertNil(RankMovement(change: 0).arrow)
+        XCTAssertNil(RankMovement(change: nil).arrow)
+        XCTAssertEqual(RankMovement(change: nil).spoken, "New")
+        XCTAssertEqual(RankMovement(change: 0).spoken, "No change")
+    }
+
+    func testRankSubjectNamesATeamOrFindsAPlayerAndSurnamesHim() {
+        XCTAssertEqual(ListLogic.rankSubject(item: "KC", itemKind: .team, players: [:]), .team(code: "KC", name: ListLogic.teamName("KC")))
+        let player = ListPlayer(id: "p1", name: "Amon-Ra St. Brown", position: "WR", team: "DET")
+        let subject = ListLogic.rankSubject(item: "p1", itemKind: .player, players: ["p1": player])
+        XCTAssertEqual(subject.title, "St. Brown")
+        XCTAssertEqual(subject.detail, "WR · DET")
+        XCTAssertEqual(subject.teamCode, "DET")
+        XCTAssertNil(ListLogic.rankSubject(item: "gone", itemKind: .player, players: [:]).detail, "an unknown player has no position to show")
+        XCTAssertEqual(RankSubject.team(code: "KC", name: "Chiefs").title, "Chiefs")
     }
 
     func testMovedCountCountsPlacesHoldingADifferentItem() {
@@ -137,6 +152,17 @@ final class ListEditorViewModelTests: XCTestCase {
         model.drop("SF", onto: 1)
         XCTAssertEqual(model.items, ["KC", "SF", "BUF", "DET", "PHI"])
         XCTAssertTrue(model.bench.contains("BAL"))
+    }
+
+    func testTappingABenchTeamBringsItInAtTheLastPlace() {
+        let model = editor(teams, saved: ["KC", "BUF", "DET", "PHI", "BAL"])
+        model.bringIn("SF")
+        XCTAssertEqual(model.items, ["KC", "BUF", "DET", "PHI", "SF"])
+        XCTAssertTrue(model.bench.contains("BAL"))
+        model.bringIn("SF")
+        XCTAssertEqual(model.items, ["KC", "BUF", "DET", "PHI", "SF"], "a ranked team is not brought in twice")
+        model.bringIn("NOPE")
+        XCTAssertEqual(model.items, ["KC", "BUF", "DET", "PHI", "SF"], "something that is not a team is not brought in")
     }
 
     func testSomethingThatIsNotATeamIsNotDroppedIn() {

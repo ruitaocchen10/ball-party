@@ -247,17 +247,15 @@ private struct AnswerForm: View {
     }
 }
 
-/// The picks of a post made only of games: a single game is a full poster to
-/// tap a side of, a slate compact strips two to a row to work down.
+/// The picks of a post made only of games: one tile per game, a slate two to a row.
 private struct MatchupPicks: View {
     @ObservedObject var viewModel: HuddleViewModel
     let post: PromptPost
 
     var body: some View {
         if post.slots.count == 1, let slot = post.slots.first, let game = slot.marginGame {
-            // Winner and margin: the cover is just the game; the call is one of the four below it.
+            // Winner and margin: the call is one of the four.
             VStack(alignment: .leading, spacing: 12) {
-                MatchupPoster(away: game.cover.away, home: game.cover.home, game: slot.game)
                 Text("Pick the winner and margin").monoLabel(10, tracking: 0.1)
                 MarginChoices(
                     slot: slot, game: game, selected: viewModel.selection(in: slot.id, of: post.id).first,
@@ -265,8 +263,8 @@ private struct MatchupPicks: View {
                 )
             }
         } else if post.slots.count == 1, let slot = post.slots.first, let matchup = slot.matchup {
-            MatchupPoster(
-                away: matchup.away, home: matchup.home, game: slot.game,
+            MatchupTile(
+                away: matchup.away, home: matchup.home,
                 selected: viewModel.selection(in: slot.id, of: post.id).first,
                 onSelect: { viewModel.toggle($0, in: slot.id, of: post.id) }
             )
@@ -291,8 +289,7 @@ private struct MatchupPicks: View {
                             MatchupTile(
                                 away: matchup.away, home: matchup.home,
                                 selected: viewModel.selection(in: slot.id, of: post.id).first,
-                                onSelect: { viewModel.toggle($0, in: slot.id, of: post.id) },
-                                logoSize: 80
+                                onSelect: { viewModel.toggle($0, in: slot.id, of: post.id) }
                             )
                         }
                     }

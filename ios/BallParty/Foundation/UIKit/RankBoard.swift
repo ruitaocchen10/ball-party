@@ -1,7 +1,5 @@
 import SwiftUI
 
-let rankRowHeight: CGFloat = 56
-
 /// How dense a ranking board is, as on the web: five places are one column of
 /// full rows, ten are two columns of five, all thirty-two are four columns of
 /// eight — each column filled top to bottom before the next.
@@ -18,7 +16,8 @@ enum RankDensity {
         }
     }
 
-    var rowHeight: CGFloat { self == .full ? rankRowHeight : 48 }
+    /// Full rows are as tall as a choice tile; the denser boards are shorter so thirty-two fit.
+    var rowHeight: CGFloat { self == .full ? ChoiceTile.height : 48 }
 }
 
 /// The one board every ranking is drawn on — a list in the editor, history or a
@@ -71,8 +70,8 @@ struct EmptyRankSlot: View {
         .padding(.horizontal, density == .tiny ? 0 : 12)
         .frame(maxWidth: .infinity, minHeight: density.rowHeight, maxHeight: density.rowHeight)
         .background(Theme.surfaceRaised.opacity(0.5))
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
-        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
+        .clipShape(TicketShape.choice)
+        .overlay(TicketShape.choice.stroke(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Place \(rank), empty")
     }

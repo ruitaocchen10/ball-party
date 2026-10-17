@@ -557,6 +557,26 @@ final class HuddleViewModelTests: XCTestCase {
         )
     }
 
+    func test_powerRankings_droppingAPoolTeamOnAPlaceBringsItInThere() async throws {
+        let post = client.addPowerRankingsPost("Rank the NFL", teams: ["A", "B", "C", "D", "E", "F"])
+        await viewModel.load()
+        let o = post.options
+        for option in o.prefix(3) { viewModel.toggle(option, in: post.slotId, of: post.id) }
+
+        viewModel.insertRanked(o[4], at: 1, in: post.slotId, of: post.id)
+        XCTAssertEqual(viewModel.selection(in: post.slotId, of: post.id), [o[0], o[4], o[1], o[2]])
+
+        viewModel.insertRanked(o[5], at: 4, in: post.slotId, of: post.id)
+        XCTAssertEqual(
+            viewModel.selection(in: post.slotId, of: post.id), [o[0], o[4], o[1], o[2], o[5]], "a place past the last goes to the end"
+        )
+
+        viewModel.insertRanked(o[3], at: 0, in: post.slotId, of: post.id)
+        XCTAssertEqual(viewModel.selection(in: post.slotId, of: post.id).count, 5, "a full ballot takes no more")
+        viewModel.insertRanked(o[4], at: 0, in: post.slotId, of: post.id)
+        XCTAssertEqual(viewModel.selection(in: post.slotId, of: post.id).first, o[0], "a team already ranked is not inserted twice")
+    }
+
     func test_powerRankings_lockInSendsTheBallotInRankOrder() async throws {
         let post = client.addPowerRankingsPost("Rank the NFL", teams: ["A", "B", "C", "D", "E", "F"])
         await viewModel.load()

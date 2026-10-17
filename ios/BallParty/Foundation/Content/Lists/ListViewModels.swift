@@ -177,8 +177,8 @@ final class ListEditorViewModel: ObservableObject {
     }
 
     /// How an item moved against the saved list; nil while nothing is saved.
-    func change(at index: Int) -> ListMovement? {
-        baseline.isEmpty ? nil : ListMovement(change: ListLogic.placeChange(previous: baseline, items: items, index: index))
+    func change(at index: Int) -> RankMovement? {
+        baseline.isEmpty ? nil : RankMovement(change: ListLogic.placeChange(previous: baseline, items: items, index: index))
     }
 
     /// The footer line beside Undo.
@@ -198,6 +198,17 @@ final class ListEditorViewModel: ObservableObject {
             items = ListLogic.moveItem(items, from: from, to: index)
         } else if isTeams, ListLogic.teamCodes.contains(item) {
             items = Array((items[..<index] + [item] + items[index...]).prefix(size))
+        }
+    }
+
+    /// A tap on a benched team: it takes the last place and whoever was last goes to the
+    /// bench. Dragging it from the bench is how it reaches a place that is not the last.
+    func bringIn(_ team: String) {
+        guard !readOnly, isTeams, ListLogic.teamCodes.contains(team), !items.contains(team), !items.isEmpty else { return }
+        if items.count < size {
+            items.append(team)
+        } else {
+            drop(team, onto: size - 1)
         }
     }
 
