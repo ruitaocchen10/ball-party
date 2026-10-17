@@ -167,7 +167,10 @@ private struct GamesScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 12, alignment: .top), GridItem(.flexible(), spacing: 12, alignment: .top)],
+                spacing: 12
+            ) {
                 SoloGameCard(
                     name: ["QB season", "builder"],
                     tagline: "Spin a team-season six times and build one quarterback from the best trait on offer."
@@ -218,8 +221,9 @@ private struct GamesScreen: View {
 
 /// One game a lone player can start, read as a small games shelf card the way
 /// the web's `SoloCard` does: icon and a "1 player" tag, the name, the pitch,
-/// then Play solo. The card itself isn't the control — only the button at the
-/// bottom is — so a choice the run is locked to (`options`) can be made on it.
+/// then Play beside a settings button. The card itself isn't the control — only
+/// the buttons at the bottom are — and a choice the run is locked to (`options`)
+/// is made in the sheet the settings button opens.
 private struct SoloGameCard<Options: View, Destination: View>: View {
     let name: [String]
     let tagline: String
@@ -227,10 +231,9 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
     @ViewBuilder var options: Options
     @ViewBuilder var destination: Destination
 
-    /// Collapsed by default, like the web card's Settings section, so a card
-    /// with choices doesn't tower over one without. The choices live in the
-    /// parent's state, so shutting this keeps what was picked and the run
-    /// still starts with it.
+    /// The settings sheet, like the web card's settings dialog. The choices
+    /// live in the parent's state, so shutting it keeps what was picked and
+    /// the run still starts with it.
     @State private var settingsOpen = false
 
     /// The game's all-time best-run board, offered beside Play solo when set.
@@ -287,46 +290,48 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
                     Text(line)
                 }
             }
-            .slabTitle(28)
+            .slabTitle(22)
             .lineSpacing(0)
-            .padding(.top, 16)
+            .padding(.top, 12)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
 
             Text(tagline)
-                .font(.sans(15))
+                .font(.sans(13))
                 .foregroundStyle(Theme.fgMuted)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 8)
 
-            VStack(alignment: .leading, spacing: 12) {
-                if hasOptions {
-                    settingsDisclosure
-                }
+            Spacer(minLength: 16)
+
+            HStack(spacing: 8) {
                 NavigationLink {
                     destination
                 } label: {
-                    Text("Play solo")
+                    Text("Play")
                 }
                 .buttonStyle(.solid)
-                if let board = leaderboardBoard {
-                    NavigationLink {
-                        SoloLeaderboardScreen(board: board, mode: leaderboardMode)
+                if hasOptions || leaderboardBoard != nil {
+                    Button {
+                        settingsOpen = true
                     } label: {
-                        Text("Leaderboard")
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 18, weight: .regular))
+                            .frame(width: 20)
                     }
-                    .buttonStyle(.ghost)
+                    .buttonStyle(BPButtonStyle(variant: .ghost, fullWidth: false))
+                    .accessibilityLabel("\(name.joined(separator: " ")) settings")
                 }
             }
             .padding(.top, 12)
             .overlay(alignment: .top) { LineRule() }
-            .padding(.top, 16)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(Theme.surfaceRaised)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
         .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
+        .sheet(isPresented: $settingsOpen) { settingsSheet }
     }
 }
 
@@ -340,30 +345,36 @@ extension SoloGameCard {
         return card
     }
 
-    /// The Settings row and, when open, the card's choices.
-    @ViewBuilder fileprivate var settingsDisclosure: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) { settingsOpen.toggle() }
-            } label: {
-                HStack {
-                    Text("Settings").monoLabel(9, weight: .semibold, tracking: 0.1)
-                    Spacer()
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundStyle(Theme.fgMuted)
-                        .rotationEffect(.degrees(settingsOpen ? 180 : 0))
-                        .accessibilityHidden(true)
+    /// The card's choices and, where the game keeps a board, a way to it.
+    @ViewBuilder fileprivate var settingsSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if hasOptions {
+                        options
+                    }
+                    if let board = leaderboardBoard {
+                        NavigationLink {
+                            SoloLeaderboardScreen(board: board, mode: leaderboardMode)
+                        } label: {
+                            Text("Leaderboard")
+                        }
+                        .buttonStyle(.ghost)
+                    }
                 }
-                .contentShape(Rectangle())
+                .padding(16)
             }
-            .buttonStyle(.plain)
-            .accessibilityValue(settingsOpen ? "Expanded" : "Collapsed")
-
-            if settingsOpen {
-                options
+            .screenBackground()
+            .navigationTitle("\(name.joined(separator: " ")) settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { settingsOpen = false }
+                }
             }
         }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }
 
