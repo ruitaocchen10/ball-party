@@ -124,7 +124,7 @@ function KnowerPoints({ knower }: { knower: KnowerHighlight }) {
 }
 
 function KnowerStatus({ percentile }: { percentile: number | null }) {
-  const status = percentile === null ? "Unranked" : percentile < 20 ? "Rookie" : percentile < 40 ? "Casual" : percentile < 60 ? "Fan" : percentile < 80 ? "Ball knower" : "Ball god";
+  const status = percentile === null ? "Unranked" : percentile < 20 ? "Benchwarmer" : percentile < 40 ? "Role Player" : percentile < 60 ? "Starter" : percentile < 80 ? "All-Pro" : "Hall of Famer";
 
   return <div className="rounded-card border border-line bg-surface p-4 sm:p-5 flex min-h-[190px] flex-col justify-between">
     <span className="block type-label font-black text-hidden">Status</span>

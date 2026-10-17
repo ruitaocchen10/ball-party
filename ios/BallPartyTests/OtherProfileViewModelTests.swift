@@ -26,7 +26,7 @@ final class OtherProfileViewModelTests: XCTestCase {
         XCTAssertEqual(model.phase, .loaded)
         XCTAssertTrue(model.showsBody)
         XCTAssertFalse(model.isClosed)
-        XCTAssertEqual(model.knowerStatus, "Ball god")
+        XCTAssertEqual(model.knowerStatus, "Hall of Famer")
         XCTAssertEqual(model.selectedKnowerHighlight.totalPoints, 120)
         XCTAssertTrue(client.calls.contains("highlights"))
         XCTAssertTrue(client.calls.contains("history"))

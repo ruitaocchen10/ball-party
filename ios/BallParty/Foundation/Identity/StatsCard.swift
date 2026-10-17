@@ -11,7 +11,7 @@ struct StatsCard<Footer: View>: View {
     @Binding var statsView: ProfileViewModel.StatsView
     @Binding var statsRange: ProfileStatRange
     let knower: KnowerHighlight
-    /// "Rookie" through "Ball god", from the lifetime percentile.
+    /// "Benchwarmer" through "Hall of Famer", from the lifetime percentile.
     let status: String
     let statusDetail: String
     let gamer: GamerHighlight
@@ -56,7 +56,7 @@ struct StatsCard<Footer: View>: View {
         VStack(spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 KnowerPointsTile(knower: knower)
-                HighlightTile(label: "Status", value: status, detail: statusDetail)
+                HighlightTile(label: "Status", value: status, detail: statusDetail, valueSize: 32, valueLines: 2)
             }
             // The tiles stretch to the taller one, so the pair always matches.
             .fixedSize(horizontal: false, vertical: true)
@@ -87,15 +87,21 @@ private struct HighlightTile: View {
     let label: String
     let value: String
     let detail: String
+    /// Text values (the status) take a smaller size and may wrap; numbers keep
+    /// the big single line.
+    var valueSize: CGFloat = 40
+    var valueLines = 1
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label).monoLabel(10, weight: .bold, tracking: 0.13, color: Theme.hiddenText)
             Spacer(minLength: 8)
             Text(value)
-                .slabTitle(40)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .slabTitle(valueSize)
+                .lineLimit(valueLines)
+                // Wrapping comes first; this only catches a single word too
+                // long for the tile.
+                .minimumScaleFactor(valueLines > 1 ? 0.8 : 0.6)
             Spacer(minLength: 8)
             Text(detail)
                 .font(.sans(13))
@@ -142,11 +148,19 @@ private struct KnowerPointsTile: View {
                 if pickEnd > 0 {
                     HalfArc().trim(from: 0, to: pickEnd).stroke(Theme.fg, style: cap)
                 }
-                Text(knower.totalPoints.formatted())
-                    .slabTitle(30)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                    .padding(.horizontal, lineWidth)
+                VStack(spacing: 0) {
+                    Text(knower.totalPoints.formatted())
+                        .slabTitle(30)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                    Text("points")
+                        .font(.sans(12))
+                        .foregroundStyle(Theme.fgMuted)
+                }
+                .padding(.horizontal, lineWidth)
+                // Bottom-aligned to the arc's centerline, the label would
+                // stop short of the end caps; drop it to their bottom edge.
+                .offset(y: lineWidth / 2)
             }
             .padding(lineWidth / 2)
             .aspectRatio(2, contentMode: .fit)

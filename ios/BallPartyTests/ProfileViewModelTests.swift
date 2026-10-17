@@ -104,7 +104,7 @@ final class ProfileViewModelTests: XCTestCase {
         await viewModel.load()
         viewModel.statsRange = .week
 
-        XCTAssertEqual(viewModel.knowerStatus, "Ball god")
+        XCTAssertEqual(viewModel.knowerStatus, "Hall of Famer")
         XCTAssertEqual(viewModel.knowerStatusDetail, "81st percentile")
     }
 
