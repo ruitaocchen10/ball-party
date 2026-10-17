@@ -35,6 +35,14 @@ export default function SupportPage() {
               </p>
             </div>
             <div>
+              <h3 className="font-medium text-fg">How do I report or block someone?</h3>
+              <p className="mt-1 text-fg-muted">
+                Tap the flag on any take or reply to report it, or use Report on a player&rsquo;s profile. You can
+                block a player from their profile or your Friends list. See our{" "}
+                <Link href="/terms" className="underline underline-offset-2 text-fg">Terms</Link> for what isn&rsquo;t allowed.
+              </p>
+            </div>
+            <div>
               <h3 className="font-medium text-fg">I can&rsquo;t sign in.</h3>
               <p className="mt-1 text-fg-muted">
                 Try the same sign-in method you used originally (Apple, Google, or email) — accounts aren&rsquo;t

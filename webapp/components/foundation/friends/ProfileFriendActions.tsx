@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ConfirmAction } from "@/components/foundation/friends/ConfirmAction";
+import { ReportProfileButton } from "@/components/foundation/moderation/ReportButton";
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { SEND_RESULT_COPY, friendErrorMessage, parseSendResult, type Relationship } from "@/lib/foundation/friends/friends";
 import { createClient } from "@/lib/supabase/client";
@@ -97,7 +98,10 @@ export function ProfileFriendActions({
 
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
-      <div className="flex items-center gap-2">{buttons}</div>
+      <div className="flex items-center gap-2">
+        {buttons}
+        <ReportProfileButton profileId={profileId} displayName={displayName} />
+      </div>
       {message ? <p role="status" className="text-xs text-fg-muted">{message}</p> : null}
     </div>
   );

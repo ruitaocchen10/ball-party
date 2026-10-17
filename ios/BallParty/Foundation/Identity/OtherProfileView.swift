@@ -10,6 +10,7 @@ struct OtherProfileView: View {
     /// Asks before an action that is awkward to take back.
     @State private var confirming: RelationshipAction?
     @State private var tab: ProfileTab = .stats
+    @State private var reporting = false
     private let username: String
 
     init(
@@ -32,6 +33,12 @@ struct OtherProfileView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
         .refreshable { await viewModel.load() }
+        .sheet(isPresented: $reporting) {
+            if let player = viewModel.player {
+                ReportSheet(target: .profile(player.profileId), subject: "\(player.displayName)’s profile")
+                    .presentationBackground(Theme.surface)
+            }
+        }
         .confirmationDialog(
             confirming == .block ? "Block this player?" : "Remove this friend?",
             isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }),
@@ -129,6 +136,10 @@ struct OtherProfileView: View {
                     }
                 }
                 .buttonStyle(.ghost)
+            }
+            if viewModel.canReport {
+                Button("Report") { reporting = true }
+                    .buttonStyle(.quiet)
             }
         }
         .disabled(viewModel.isActing)

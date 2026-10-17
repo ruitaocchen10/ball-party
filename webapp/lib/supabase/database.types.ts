@@ -827,6 +827,64 @@ export type Database = {
           },
         ]
       }
+      content_reports: {
+        Row: {
+          comment_id: string | null
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          resolved_at: string | null
+          status: string
+          target_user_id: string
+        }
+        Insert: {
+          comment_id?: string | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          resolved_at?: string | null
+          status?: string
+          target_user_id: string
+        }
+        Update: {
+          comment_id?: string | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          resolved_at?: string | null
+          status?: string
+          target_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_reports_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_tokens: {
         Row: {
           created_at: string
@@ -1590,6 +1648,7 @@ export type Database = {
           parent_comment_id: string | null
           post_id: string
           posted_with_pick: boolean
+          removed_at: string | null
         }
         Insert: {
           author_id: string
@@ -1599,6 +1658,7 @@ export type Database = {
           parent_comment_id?: string | null
           post_id: string
           posted_with_pick?: boolean
+          removed_at?: string | null
         }
         Update: {
           author_id?: string
@@ -1608,6 +1668,7 @@ export type Database = {
           parent_comment_id?: string | null
           post_id?: string
           posted_with_pick?: boolean
+          removed_at?: string | null
         }
         Relationships: [
           {
@@ -2374,6 +2435,45 @@ export type Database = {
           },
         ]
       }
+      take_reactions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          reactor_id: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          reactor_id: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          reactor_id?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "take_reactions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "take_reactions_reactor_id_fkey"
+            columns: ["reactor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wavelength_cards: {
         Row: {
           card_id: number
@@ -2681,6 +2781,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_list_reports: {
+        Args: { p_status?: string }
+        Returns: {
+          comment_body: string
+          comment_id: string
+          created_at: string
+          details: string
+          id: string
+          kind: string
+          post_id: string
+          reason: string
+          reporter_name: string
+          status: string
+          target_name: string
+          target_report_count: number
+          target_user_id: string
+          target_username: string
+        }[]
+      }
+      admin_resolve_report: {
+        Args: { p_action: string; p_report_id: string }
+        Returns: undefined
+      }
       ball_knower_leaderboard: {
         Args: { p_limit?: number; p_scope?: string; p_window: string }
         Returns: {
@@ -2725,6 +2848,10 @@ export type Database = {
       claim_schedule_digest: { Args: never; Returns: Json }
       claim_username: { Args: { p_username: string }; Returns: string }
       close_lobby: { Args: { p_lobby_id: string }; Returns: undefined }
+      comment_visible: {
+        Args: { p_author_id: string; p_comment_id: string }
+        Returns: boolean
+      }
       create_lobby: {
         Args: never
         Returns: {
@@ -3108,6 +3235,14 @@ export type Database = {
         Returns: undefined
       }
       remove_friend: { Args: { p_user_id: string }; Returns: boolean }
+      report_profile: {
+        Args: { p_details?: string; p_reason: string; p_user_id: string }
+        Returns: undefined
+      }
+      report_take: {
+        Args: { p_comment_id: string; p_details?: string; p_reason: string }
+        Returns: undefined
+      }
       reset_friend_code: { Args: never; Returns: string }
       resume_match: {
         Args: { p_match_id: string }

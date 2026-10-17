@@ -106,12 +106,22 @@ struct TakeCardView: View {
     var startsOpen = false
 
     @State private var toggled = false
+    @State private var reporting = false
+    /// Set once the viewer reports this take: the server now hides it from them, so it goes at once.
+    @State private var reported = false
+
+    /// Somebody else's words can be reported; your own, and a take that only holds picks, cannot.
+    private var canReport: Bool { !comment.isViewer && !comment.body.isEmpty }
 
     private var picksShown: Bool { startsOpen != toggled }
 
     private var hasPicks: Bool { comment.response != nil || boldPredictions != nil || picksContent != nil }
 
     var body: some View {
+        if !reported { card }
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Avatar(name: comment.author, url: comment.authorAvatarURL, size: 28)
@@ -149,11 +159,22 @@ struct TakeCardView: View {
                     TicketView(post: post, response: response)
                 }
             }
-            if comment.reaction != nil || showsReplyCount || footer != nil || (collapsesPicks && hasPicks) {
+            if comment.reaction != nil || showsReplyCount || footer != nil || (collapsesPicks && hasPicks) || canReport {
                 HStack(spacing: 14) {
                     if let reaction = comment.reaction { TakeBallVoteView(takeId: comment.id, initial: reaction) }
                     if showsReplyCount { replyRow }
                     if let footer { footer() }
+                    if canReport {
+                        Button { reporting = true } label: {
+                            Image(systemName: "flag")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Theme.fgMuted)
+                                .frame(width: 22, height: 32)
+                                .contentShape(Rectangle().inset(by: -8))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Report \(comment.author)’s take")
+                    }
                     Spacer(minLength: 0)
                     if collapsesPicks, hasPicks {
                         Button { toggled.toggle() } label: {
@@ -173,7 +194,11 @@ struct TakeCardView: View {
         .well()
         // A link and a button inside it would fight for the same tap, so the
         // card is only ever combined into one element when it has neither.
-        .accessibilityElement(children: comment.reaction == nil && threadDestination == nil && !collapsesPicks ? .combine : .contain)
+        .accessibilityElement(children: comment.reaction == nil && threadDestination == nil && !collapsesPicks && !canReport ? .combine : .contain)
+        .sheet(isPresented: $reporting) {
+            ReportSheet(target: .take(comment.id), subject: "this take", onSent: { reported = true })
+                .presentationBackground(Theme.surface)
+        }
     }
 
     @ViewBuilder

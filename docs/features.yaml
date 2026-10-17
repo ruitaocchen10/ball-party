@@ -210,6 +210,17 @@ features:
     ios: done
     note: Server read is friends_who_answered (migration 0209). Shown on the All and Friends pills only. The picks stay hidden until the prompt locks and then live in the prompt's thread (huddle.friend-takes).
 
+  - id: moderation.report-block
+    summary: Report a take, reply or profile; blocking and reporting hide content; a word filter and an admin report queue
+    web: done
+    ios: done
+    note: 'Migration 0220 (App Store guideline 1.2). A flag on every take and reply (not your own, not an answer with no words) and a Report button on another player''s profile open a reason form (harassment, hate, sexual, violence, spam, other, plus a note). A reported take disappears for its reporter at once (RLS, comment_visible); reporting twice is a no-op. Blocking now hides the blocked player''s takes from the blocker and the blocker''s from them, on both clients. Takes containing a term in private.banned_terms are refused (content_not_allowed); the list is edited in SQL and starts short. The admin reviews /admin/reports (dismiss, remove take, ban player: removes all their takes and stops sign-in). Admin tooling is web only by design. Known gap: RPCs that read takes as the owner (friend activity, reply counts) do not apply the block or report hiding; display names and usernames are not word-filtered, only reportable.'
+  - id: moderation.terms
+    summary: Terms of use, linked from sign-in and the profile menu
+    web: done
+    ios: done
+    note: /terms is public. Sign-in and sign-up show "By continuing you agree to our Terms and Privacy Policy" with links on both clients (the agreement is a notice, not a recorded checkbox), and the iOS Profile menu links Terms of use.
+
   # --- Leaderboard -----------------------------------------------------------
   - id: leaderboard.ball-knower
     summary: Ball Knower leaderboard by week, month, year and all time

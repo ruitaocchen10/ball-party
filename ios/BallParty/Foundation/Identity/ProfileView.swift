@@ -60,6 +60,9 @@ struct ProfileView: View {
             Link(destination: SiteLinks.privacyPolicy) {
                 Label("Privacy policy", systemImage: "hand.raised")
             }
+            Link(destination: SiteLinks.terms) {
+                Label("Terms of use", systemImage: "doc.text")
+            }
             Link(destination: SiteLinks.support) {
                 Label("Support", systemImage: "questionmark.circle")
             }

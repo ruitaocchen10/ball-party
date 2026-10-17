@@ -129,8 +129,9 @@ final class IdentityConstantsTests: XCTestCase {
         XCTAssertFalse(store.isConfirmed(b))
     }
 
-    func test_siteLinks_pointAtTheWebsPrivacyAndSupportRoutes() {
+    func test_siteLinks_pointAtTheWebsPrivacyTermsAndSupportRoutes() {
         XCTAssertEqual(SiteLinks.privacyPolicy.absoluteString, "https://ballparty.social/privacy")
+        XCTAssertEqual(SiteLinks.terms.absoluteString, "https://ballparty.social/terms")
         XCTAssertEqual(SiteLinks.support.absoluteString, "https://ballparty.social/support")
     }
 }

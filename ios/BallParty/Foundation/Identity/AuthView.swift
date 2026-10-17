@@ -130,6 +130,12 @@ struct AuthView: View {
             }
             .buttonStyle(.ghost)
             .disabled(viewModel.isBusy)
+
+            Text("By continuing you agree to our [Terms](\(SiteLinks.terms.absoluteString)), including the rules on what you can post, and our [Privacy Policy](\(SiteLinks.privacyPolicy.absoluteString)).")
+                .font(.sans(12))
+                .foregroundStyle(Theme.fgMuted)
+                .tint(Theme.fg)
+                .padding(.top, 4)
         }
     }
 }
