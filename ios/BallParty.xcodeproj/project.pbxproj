@@ -72,6 +72,7 @@
 		751BA1859A029EA5C71C9616 /* OFL-Barlow.txt in Resources */ = {isa = PBXBuildFile; fileRef = 53802AC25628552A5AD509D7 /* OFL-Barlow.txt */; };
 		75476BEA2728BB02F0FBDC76 /* HigherOrLowerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F502B722BC00DD48CB5B6564 /* HigherOrLowerClient.swift */; };
 		798D7C39883FED3B0EE50C4A /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2E8724BBFABEF13087046B9 /* LobbyView.swift */; };
+		7A1C0DE1A2B3C4D5E6F70F01 /* LobbyGameInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0DE1A2B3C4D5E6F70F02 /* LobbyGameInfo.swift */; };
 		7A1C0DE1A2B3C4D5E6F70861 /* LobbyGameCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0DE1A2B3C4D5E6F70862 /* LobbyGameCarousel.swift */; };
 		7B5218E514D1DD9BF2F20B0C /* QbSeasonBuilderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FCA926760CBA12B82F27E93 /* QbSeasonBuilderViewModel.swift */; };
 		7C11EB614DE3A2B15C84C767 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 22E9476B19287E93B3829EFB /* Assets.xcassets */; };
@@ -325,6 +326,7 @@
 		E0E13C467022F862423E0B66 /* PromptDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptDetailView.swift; sourceTree = "<group>"; };
 		E1ED474535F9547864F48E5B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		E2E8724BBFABEF13087046B9 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyView.swift; sourceTree = "<group>"; };
+		7A1C0DE1A2B3C4D5E6F70F02 /* LobbyGameInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyGameInfo.swift; sourceTree = "<group>"; };
 		7A1C0DE1A2B3C4D5E6F70862 /* LobbyGameCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyGameCarousel.swift; sourceTree = "<group>"; };
 		E4009D6CBF6F7B19C037FACB /* QbSeasonBuilderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderModels.swift; sourceTree = "<group>"; };
 		7A1C0DE1A2B3C4D5E6F70812 /* GameTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameTabs.swift; sourceTree = "<group>"; };
@@ -624,6 +626,7 @@
 			children = (
 				E2E8724BBFABEF13087046B9 /* LobbyView.swift */,
 				7A1C0DE1A2B3C4D5E6F70862 /* LobbyGameCarousel.swift */,
+				7A1C0DE1A2B3C4D5E6F70F02 /* LobbyGameInfo.swift */,
 				163C9C8FF9325011E269D5F0 /* LobbyViewModel.swift */,
 				669C2A35E7839D1D31ECC38E /* LobbyClient.swift */,
 				F41E000000000000000A0042 /* RoomInvitesClient.swift */,
@@ -983,6 +986,7 @@
 				5E1A7C0D9B3F4A2E8C6D1F0A /* RankedRow.swift in Sources */,
 				798D7C39883FED3B0EE50C4A /* LobbyView.swift in Sources */,
 				7A1C0DE1A2B3C4D5E6F70861 /* LobbyGameCarousel.swift in Sources */,
+				7A1C0DE1A2B3C4D5E6F70F01 /* LobbyGameInfo.swift in Sources */,
 				88873EABB68D7F9E6369EADC /* MatchView.swift in Sources */,
 				C005EF7AFF2931CCCEA88FBD /* MatchViewModel.swift in Sources */,
 				6D9C2E90ABD5C8B7641089A1 /* AuctionModels.swift in Sources */,

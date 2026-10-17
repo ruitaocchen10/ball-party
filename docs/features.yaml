@@ -238,6 +238,11 @@ features:
     web: done
     ios: done
     note: iOS opens https://ballparty.social/lobby/<code> as a Universal Link and joins from the Party tab (not when already in a room), and sharing is the link: on iOS the room's invite bar is gone, and the invite sheet (opened from any open seat) starts with the link with Copy and Share, above the friend list. Like the friend invite link, it works only once the apple-app-site-association file (webapp/public/.well-known) is deployed; not yet tested on a device. There is no join code to type on either client: the link token (`lobbies.code`, 16 random characters since migration 0198) is only ever inside a link. Rooms opened before 0198 keep their five-character code until they close. A player stays in a room until they leave it or it closes, so reopening the app steps back into it (iOS asks for the player's one open room once per launch, the way the web's Party page does; a link or an inbox join arriving with the screen wins).
+  - id: rooms.game-info
+    summary: Before hosting, the Party page shows the games a room can play, each with a description
+    web: missing
+    ios: done
+    note: iOS shows a two-column grid of game cards under the Start a party card; the info button on a card opens a sheet saying what the game is. The cards are informational (the host picks the game inside the room). The Start a party card is the whole button. Copy is written from docs/games/<game>/rules.md and lives in the iOS app (MatchGame.about).
   - id: friends.room-invites
     summary: Invite friends into a room from the lobby; accept or decline from the Party page
     web: done
