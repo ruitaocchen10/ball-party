@@ -97,15 +97,53 @@ enum RankSubject: Equatable {
         }
     }
 
-    /// The small line over a team's name: its city.
-    var city: String? {
-        if case .team(let code, _) = self { NFLTeams.city(for: code) } else { nil }
+    /// The small line over the headline: a team's city, a player's first name.
+    var lead: String? {
+        switch self {
+        case .team(let code, _): return NFLTeams.city(for: code)
+        case .player(let name, _, _, _):
+            let words = name.split(whereSeparator: \.isWhitespace)
+            return words.count > 1 ? String(words[0]) : nil
+        }
+    }
+}
+
+// MARK: - Player cell
+
+/// A player's headshot over his club's logo, which fills the cell and is cropped by it.
+/// The photo is cropped from the top and sits on the bottom edge; a player with none gets
+/// the generated avatar.
+struct PlayerCell: View {
+    let name: String
+    let url: URL?
+    let team: String
+    let width: CGFloat
+    let height: CGFloat
+
+    var body: some View {
+        Color.clear
+            .frame(width: width, height: height)
+            .overlay {
+                TeamLogo(code: team, size: width).opacity(0.55).shadow(color: .black.opacity(0.5), radius: 4, y: 3)
+            }
+            .overlay(alignment: .bottom) { headshot }
+            .clipped()
     }
 
-    /// The small line under a player's surname.
-    var detail: String? {
-        guard case .player(_, let position, let team, _) = self, !position.isEmpty else { return nil }
-        return "\(position) · \(team)"
+    private var headshot: some View {
+        AsyncImage(url: url.map { NFLHeadshot.resized($0, width: NFLHeadshot.width(forPoints: width)) }) { phase in
+            if let image = phase.image {
+                image.resizable().scaledToFill().frame(width: width, height: height, alignment: .top).clipped()
+            } else if phase.error != nil || url == nil {
+                GeneratedAvatarView(name: name)
+                    .frame(width: height * 0.7, height: height * 0.7)
+                    .clipShape(Circle())
+                    .padding(.bottom, height * 0.15)
+            } else {
+                Color.clear
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -116,7 +154,8 @@ enum RankSubject: Equatable {
 /// A team's logo sits at the left of the row, large, so the row reads as the club; a
 /// full-width row names it too, and a half-width one has no room to. A quarter-width row
 /// has the logo behind its whole width.
-/// A player is a portrait and a surname. The movement tab at the end is always there
+/// A player is a headshot over the club's logo, then a first name over a surname, the same
+/// way a team is a city over a name. The movement tab at the end is always there
 /// when there is something to compare against.
 ///
 /// `onRemove` puts an X at the trailing edge (tapping the whole row instead, where a team
@@ -233,12 +272,8 @@ struct RankedRow: View {
         case .team:
             Color.clear.frame(maxWidth: .infinity)
         case .player(let name, _, _, let url):
-            HStack(spacing: compact ? 4 : 8) {
-                Portrait(name: name, url: url, size: compact ? 34 : 44)
-                title(subject.title)
-            }
-            .padding(.leading, compact ? 5 : 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            PlayerCell(name: name, url: url, team: subject.teamCode, width: compact ? 60 : 100, height: height)
+            title(subject.title)
         }
     }
 
@@ -246,11 +281,11 @@ struct RankedRow: View {
         TeamLogo(code: code, size: size).shadow(color: .black.opacity(0.5), radius: 4, y: 3)
     }
 
-    /// A team's city in small type over its name in large; a player's surname over position and team.
+    /// A team's city, or a player's first name, in small type over the name in large.
     private func title(_ text: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let city = subject.city {
-                Text(city)
+            if let lead = subject.lead {
+                Text(lead)
                     .font(.mono(compact ? 8 : 10, weight: .semibold))
                     .textCase(.uppercase)
                     .foregroundStyle(.white.opacity(0.75))
@@ -263,9 +298,6 @@ struct RankedRow: View {
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
-            if let detail = subject.detail {
-                Text(detail).font(.mono(9)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
-            }
         }
         .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, alignment: .leading)

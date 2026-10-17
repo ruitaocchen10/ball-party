@@ -55,6 +55,14 @@ func teamFill(_ code: String?) -> LinearGradient {
     return LinearGradient(colors: [primary, primary.deepened(by: 0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
+/// The fill behind a call about several clubs: one club's color running into the other's.
+/// One club (or none) is `teamFill`.
+func teamFill(codes: [String]) -> LinearGradient {
+    let colors = codes.compactMap(NFLTeams.primaryColor(for:))
+    guard colors.count > 1, let first = colors.first, let last = colors.last else { return teamFill(codes.first) }
+    return LinearGradient(colors: [first.deepened(by: 0.7), last.deepened(by: 0.7)], startPoint: .leading, endPoint: .trailing)
+}
+
 private extension Color {
     /// The same hue with its brightness scaled by `factor`.
     func deepened(by factor: CGFloat) -> Color {

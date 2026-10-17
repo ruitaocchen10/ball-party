@@ -11,9 +11,10 @@ import SwiftUI
 
 // MARK: - A prediction
 
-/// One prediction as a poster line: the call in the heading face, with its tag
-/// as faded art behind the right edge — both clubs for a matchup, the logo for a
-/// team, the headshot for a player — and named underneath.
+/// One prediction as a card in the shared ticket cut and border: the call in the heading
+/// face over the tagged club's colors (both clubs' for a matchup), with the tag as art at
+/// the right edge — both logos for a matchup, the logo for a team, the headshot over the
+/// club's logo for a player — and named underneath.
 struct BoldQuote<Actions: View>: View {
     let text: String
     let target: BoldTarget
@@ -25,15 +26,14 @@ struct BoldQuote<Actions: View>: View {
         ZStack(alignment: .trailing) {
             art(tag)
                 .frame(width: 120)
-                .opacity(0.2)
                 .clipped()
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 8) {
                 Text("“\(text)”")
-                    .slabTitle(24)
+                    .slabTitle(16, color: .white)
                     .lineSpacing(0)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(target.type.title) · \(tag.label)").monoLabel(9, tracking: 0.1)
+                Text("\(target.type.title) · \(tag.label)").monoLabel(9, tracking: 0.1, color: .white.opacity(0.75))
                 actions
             }
             .padding(.leading, 16)
@@ -41,24 +41,27 @@ struct BoldQuote<Actions: View>: View {
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
         }
-        .background(Theme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
-        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(Theme.line, lineWidth: 1))
-        .clipped()
+        .background(teamFill(codes: tag.player.map { [$0.team] } ?? tag.teamCodes))
+        .clipShape(TicketShape.choice)
+        .overlay { TicketShape.choice.stroke(Color.white.opacity(0.2), lineWidth: 1) }
         .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder
     private func art(_ tag: BoldTargetDescription) -> some View {
         if target.type == .player {
-            Portrait(name: tag.label, url: tag.player?.headshotURL, size: 96)
+            PlayerCell(name: tag.label, url: tag.player?.headshotURL, team: tag.player?.team ?? "", width: 120, height: 88)
         } else if tag.teamCodes.count > 1 {
             HStack(spacing: -22) {
-                ForEach(tag.teamCodes, id: \.self) { TeamLogo(code: $0, size: 64) }
+                ForEach(tag.teamCodes, id: \.self) { logo($0, size: 64) }
             }
         } else if let code = tag.teamCodes.first {
-            TeamLogo(code: code, size: 96)
+            logo(code, size: 96)
         }
+    }
+
+    private func logo(_ code: String, size: CGFloat) -> some View {
+        TeamLogo(code: code, size: size).shadow(color: .black.opacity(0.5), radius: 4, y: 3)
     }
 }
 
@@ -102,12 +105,11 @@ struct BoldComposer: View {
                                     viewModel.removePrediction(at: index, from: post.id)
                                     editingIndex = nil
                                 }
-                                .foregroundStyle(Theme.hiddenText)
                                 .accessibilityLabel("Remove prediction: \(draft.body)")
                             }
                             .font(.mono(11, weight: .semibold))
                             .textCase(.uppercase)
-                            .foregroundStyle(Theme.fg)
+                            .foregroundStyle(.white)
                             .buttonStyle(.plain)
                             .frame(minHeight: 32)
                         }

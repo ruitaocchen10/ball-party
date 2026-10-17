@@ -39,9 +39,9 @@ final class ListLogicTests: XCTestCase {
         let player = ListPlayer(id: "p1", name: "Amon-Ra St. Brown", position: "WR", team: "DET")
         let subject = ListLogic.rankSubject(item: "p1", itemKind: .player, players: ["p1": player])
         XCTAssertEqual(subject.title, "St. Brown")
-        XCTAssertEqual(subject.detail, "WR · DET")
+        XCTAssertEqual(subject.lead, "Amon-Ra", "the first name sits over the surname")
         XCTAssertEqual(subject.teamCode, "DET")
-        XCTAssertNil(ListLogic.rankSubject(item: "gone", itemKind: .player, players: [:]).detail, "an unknown player has no position to show")
+        XCTAssertNil(ListLogic.rankSubject(item: "gone", itemKind: .player, players: [:]).lead, "an unknown player has no first name to show")
         XCTAssertEqual(RankSubject.team(code: "KC", name: "Chiefs").title, "Chiefs")
     }
 
