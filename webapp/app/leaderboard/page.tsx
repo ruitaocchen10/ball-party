@@ -65,7 +65,7 @@ export default async function LeaderboardPage(props: { searchParams: Promise<Rec
       <Sidebar displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <DashboardHeader displayName={displayName} email={email} avatarUrl={avatarUrl} />
       <PageShell variant="dashboard">
-        <PageHeader title="Leaderboard" />
+        <PageHeader eyebrow="Ranks" title="Leaderboard" description="Ball Knower points and multiplayer wins, across everyone or just your friends." />
         <div className="mt-4">
           <TabBar
             ariaLabel="Leaderboard"
