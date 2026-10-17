@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import { Select } from "@/components/foundation/ui-kit/Select";
 
 /**
@@ -12,10 +10,21 @@ import { Select } from "@/components/foundation/ui-kit/Select";
  * never be backwards — the same rule iOS's picker keeps. That is a courtesy;
  * whether the range is deep enough to deal from is the dealer's to refuse
  * (`higher_or_lower.start`), not re-decided here.
+ *
+ * Controlled, because it lives in a dialog that unmounts when shut: the card
+ * owns the pick so it survives, and sends it with the form.
  */
-export function SoloSeasonRange({ era }: { era: { seasonMin: number; seasonMax: number } }) {
-  const [from, setFrom] = useState(era.seasonMin);
-  const [to, setTo] = useState(era.seasonMax);
+export function SoloSeasonRange({
+  era,
+  from,
+  to,
+  onChange,
+}: {
+  era: { seasonMin: number; seasonMax: number };
+  from: number;
+  to: number;
+  onChange: (range: { from: number; to: number }) => void;
+}) {
   const seasons = Array.from({ length: era.seasonMax - era.seasonMin + 1 }, (_, index) => era.seasonMin + index);
   const options = seasons.map((season) => ({ value: String(season), label: season }));
 
@@ -33,8 +42,7 @@ export function SoloSeasonRange({ era }: { era: { seasonMin: number; seasonMax: 
             name="season_from"
             value={String(from)}
             onValueChange={(next) => {
-              setFrom(Number(next));
-              if (Number(next) > to) setTo(Number(next));
+              onChange({ from: Number(next), to: Math.max(to, Number(next)) });
             }}
             options={options}
           />
@@ -47,8 +55,7 @@ export function SoloSeasonRange({ era }: { era: { seasonMin: number; seasonMax: 
             name="season_to"
             value={String(to)}
             onValueChange={(next) => {
-              setTo(Number(next));
-              if (Number(next) < from) setFrom(Number(next));
+              onChange({ from: Math.min(from, Number(next)), to: Number(next) });
             }}
             options={options}
           />

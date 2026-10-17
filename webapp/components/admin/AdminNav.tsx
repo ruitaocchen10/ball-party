@@ -13,6 +13,7 @@ const ADMIN_NAV_ITEMS = [
   { href: "/admin/prompts", label: "Compose" },
   { href: "/admin/queue", label: "Queue" },
   { href: "/admin/posts", label: "Posts" },
+  { href: "/admin/reports", label: "Reports" },
   { href: "/admin/design", label: "Design" },
 ];
 

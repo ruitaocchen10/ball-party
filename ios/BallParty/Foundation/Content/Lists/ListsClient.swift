@@ -115,7 +115,9 @@ struct SupabaseListsClient: ListsClient {
     }
 
     private func fetchUpdates(_ params: Updates) async throws -> [ListUpdate] {
-        var updates: [ListUpdate] = try await client.rpc("friend_list_updates", params: params).execute().value
+        var updates: [ListUpdate] = try await SupabaseConfig.retryingAfterRefresh {
+            try await client.rpc("friend_list_updates", params: params).execute().value
+        }
         guard !updates.isEmpty else { return updates }
 
         // Balls are garnish: a failed read costs a card its count, never the card.

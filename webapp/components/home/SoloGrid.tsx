@@ -1,11 +1,9 @@
-import { ChevronDown, Gamepad2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { Gamepad2 } from "lucide-react";
 
 import { GAMES, type Game, type SoloMode } from "@/lib/platform/orchestration/catalog";
 import { playSolo } from "@/lib/platform/lobbies/actions";
-import { SoloSeasonRange } from "./SoloSeasonRange";
+import { SoloPlayControls, type SoloChoice } from "./SoloPlayControls";
 import { Badge } from "@/components/foundation/ui-kit/Badge";
-import { Button } from "@/components/foundation/ui-kit/Button";
 
 /** The seasons on offer for Higher or Lower's era picker; absent when the bounds could not be read. */
 export type SoloEra = { seasonMin: number; seasonMax: number };
@@ -27,12 +25,13 @@ const HIGHER_OR_LOWER_SCORING: readonly SoloMode[] = [
  * second control on a party tile.
  *
  * Cards read as a small games shelf — icon, a "1 player" tag, name, pitch,
- * then Play solo: just "here's what you can play by yourself right now."
+ * then Play beside a settings button that opens the start-time choices in a
+ * dialog: just "here's what you can play by yourself right now."
  *
  * Only a game with `solo: true` and `status: "live"` shows up here. No
  * account-gated fallback: solo carries none of hosting's account requirement. A visitor with no session at all plays as
  * a guest — `playSolo` creates the session — so every card carries its Play
- * solo control.
+ * control.
  */
 export function SoloGrid({ higherOrLowerEra = null }: { higherOrLowerEra?: SoloEra | null }) {
   const games = GAMES.filter((game) => game.solo && game.status === "live");
@@ -40,7 +39,7 @@ export function SoloGrid({ higherOrLowerEra = null }: { higherOrLowerEra?: SoloE
   if (games.length === 0) return <NoSoloGames />;
 
   return (
-    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-2 gap-3">
       {games.map((game) => (
         <li key={game.slug} className="flex">
           <SoloCard game={game} higherOrLowerEra={higherOrLowerEra} />
@@ -53,11 +52,19 @@ export function SoloGrid({ higherOrLowerEra = null }: { higherOrLowerEra?: SoloE
 /**
  * The card itself isn't the control, but it still reacts to a hover anywhere on it
  * (`group` sits here, not just on the button) so the whole card reads as
- * live even though only the Play solo button at the bottom actually is.
+ * live even though only the Play button at the bottom actually is.
  */
 function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: SoloEra | null }) {
+  const choices: SoloChoice[] = [];
+  if (game.soloModes) choices.push({ name: "mode", legend: "Grades", options: game.soloModes });
+  if (game.soloEras) choices.push({ name: "era", legend: "Era", options: game.soloEras });
+  if (game.match === "higher_or_lower") {
+    choices.push({ name: "scoring_mode", legend: "Scoring", options: HIGHER_OR_LOWER_SCORING });
+  }
+  const title = game.name.join(" ");
+
   return (
-    <article className="group flex w-full flex-col rounded-card border border-line bg-surface-raised p-4 transition-colors hover:border-fg-muted">
+    <article className="group flex w-full flex-col rounded-card border border-line bg-surface-raised p-3 sm:p-4 transition-colors hover:border-fg-muted">
       <div className="flex items-start justify-between gap-2">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-chip bg-surface text-fg-muted ring-1 ring-line ring-inset transition-colors group-hover:text-fg">
           <Gamepad2 aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.6} />
@@ -72,86 +79,17 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
           </span>
         ))}
       </h3>
-      <p className="mt-2 text-[13px] leading-5 text-fg-muted">{game.tagline}</p>
+      <p className="mt-2 mb-4 text-[13px] leading-5 text-fg-muted">{game.tagline}</p>
 
-      <form action={playSolo} className="mt-4 border-t border-line pt-3">
+      <form action={playSolo} className="mt-auto border-t border-line pt-3">
         <input type="hidden" name="game" value={game.match ?? ""} />
-        {game.soloModes || game.soloEras ? (
-          <SoloSettings>
-            {game.soloModes ? <RadioChoice name="mode" legend="Grades" options={game.soloModes} /> : null}
-            {game.soloEras ? <RadioChoice name="era" legend="Era" options={game.soloEras} /> : null}
-          </SoloSettings>
-        ) : null}
-        {game.match === "higher_or_lower" ? (
-          <SoloSettings>
-            <RadioChoice name="scoring_mode" legend="Scoring" options={HIGHER_OR_LOWER_SCORING} />
-            {higherOrLowerEra ? <SoloSeasonRange era={higherOrLowerEra} /> : null}
-          </SoloSettings>
-        ) : null}
-        <Button size="sm" type="submit">
-          Play solo
-        </Button>
+        <SoloPlayControls
+          title={title}
+          choices={choices}
+          era={game.match === "higher_or_lower" ? higherOrLowerEra : null}
+        />
       </form>
     </article>
-  );
-}
-
-/**
- * The card's start-time choices, tucked behind a disclosure so a card that has
- * some doesn't tower over one that has none. A native `<details>` rather than
- * client state: it needs no script, and the radios inside stay in the form
- * whether it is open or shut, so a collapsed card still starts a run with the
- * defaults (or whatever was picked before it was closed).
- */
-function SoloSettings({ children }: { children: ReactNode }) {
-  return (
-    <details className="group/settings mb-3">
-      <summary className="flex cursor-pointer list-none items-center justify-between type-label-xs font-semibold text-fg-muted transition-colors marker:hidden hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg [&::-webkit-details-marker]:hidden">
-        Settings
-        <ChevronDown
-          aria-hidden
-          className="h-3.5 w-3.5 transition-transform group-open/settings:rotate-180"
-          strokeWidth={1.75}
-        />
-      </summary>
-      <div className="mt-3">{children}</div>
-    </details>
-  );
-}
-
-/**
- * A choice the run is locked to once it starts, made on the card because
- * there is no screen before the run to make it on. Plain radios so the choice
- * travels with the form under `name` and the card still works with no client
- * script; the first option is the default and starts checked. Shared by
- * `soloModes` (`name="mode"`) and `soloEras` (`name="era"`) — two independent
- * choices of the same shape, so one renderer is both fieldsets.
- */
-function RadioChoice({ name, legend, options }: { name: string; legend: string; options: readonly SoloMode[] }) {
-  return (
-    <fieldset className="mb-3 flex flex-col gap-1.5">
-      <legend className="mb-1.5 type-label-xs font-semibold text-fg-muted">
-        {legend}
-      </legend>
-      {options.map((option, index) => (
-        <label
-          key={option.value}
-          className="flex cursor-pointer items-start gap-2 rounded-chip border border-line px-2.5 py-2 transition-colors has-checked:border-fg has-checked:bg-surface has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-fg"
-        >
-          <input
-            type="radio"
-            name={name}
-            value={option.value}
-            defaultChecked={index === 0}
-            className="mt-0.5 accent-current"
-          />
-          <span className="flex flex-col">
-            <span className="type-label-lg font-bold">{option.label}</span>
-            <span className="text-[12px] leading-4 text-fg-muted">{option.description}</span>
-          </span>
-        </label>
-      ))}
-    </fieldset>
   );
 }
 

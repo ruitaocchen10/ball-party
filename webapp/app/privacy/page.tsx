@@ -39,6 +39,11 @@ export default function PrivacyPage() {
               other players in your lobby or party.
             </li>
             <li>
+              <strong>Reports and blocks.</strong> If you report a take or a profile, or block a player, we store
+              who reported what and why so we can review it and act on it. The player you report is not told who
+              reported them.
+            </li>
+            <li>
               <strong>Gameplay and party data.</strong> Lobby membership, scores, and game state for the games you
               play, so results and rankings work.
             </li>

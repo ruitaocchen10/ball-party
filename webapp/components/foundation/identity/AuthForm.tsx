@@ -126,6 +126,12 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
         </div>
       </form>
 
+      <p className="text-xs leading-5 text-fg-muted">
+        By continuing you agree to our{" "}
+        <Link href="/terms" className="text-fg underline underline-offset-2">Terms</Link>, including the rules on what you can post, and our{" "}
+        <Link href="/privacy" className="text-fg underline underline-offset-2">Privacy Policy</Link>.
+      </p>
+
       <p className="text-sm text-fg-muted">
         {isSignup ? "Already have an account? " : "New here? "}
         <Link

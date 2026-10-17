@@ -17,6 +17,9 @@ struct HuddleServerError: Error, Equatable, Sendable {
         guard let server = error as? HuddleServerError else {
             return "Something went wrong. Check your connection and try again."
         }
+        if server.message.localizedCaseInsensitiveContains("jwt") {
+            return "Your session needs a refresh. Pull down to try again."
+        }
         return messages[server.message] ?? server.message
     }
 
@@ -381,7 +384,7 @@ struct SupabaseHuddleClient: HuddleClient {
     /// `HuddleServerError` rather than on the SDK's error type.
     private func wrapped<T>(_ body: () async throws -> T) async throws -> T {
         do {
-            return try await body()
+            return try await SupabaseConfig.retryingAfterRefresh(body)
         } catch let error as PostgrestError {
             throw HuddleServerError(message: error.message)
         }

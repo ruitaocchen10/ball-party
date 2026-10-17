@@ -65,12 +65,13 @@ enum FieldValidation: Equatable {
 }
 
 /// The public pages App Store review and players expect to reach from inside
-/// the app. These are the web's `/privacy` and `/support` routes
-/// (`webapp/app/privacy`, `webapp/app/support`); the host mirrors `SITE_URL`
+/// the app. These are the web's `/privacy`, `/terms` and `/support` routes
+/// (`webapp/app/privacy`, `webapp/app/terms`, `webapp/app/support`); the host mirrors `SITE_URL`
 /// in `webapp/lib/seo/site.ts`.
 enum SiteLinks {
     static let home = URL(string: "https://ballparty.social")!
     static let privacyPolicy = URL(string: "https://ballparty.social/privacy")!
+    static let terms = URL(string: "https://ballparty.social/terms")!
     static let support = URL(string: "https://ballparty.social/support")!
 }
 

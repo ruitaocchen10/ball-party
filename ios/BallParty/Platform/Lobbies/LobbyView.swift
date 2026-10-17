@@ -226,6 +226,8 @@ private struct LobbyEntryView: View {
 
                 startCard
 
+                GameInfoSection()
+
                 if let message = viewModel.errorMessage {
                     ErrorBanner(message: message)
                 }
@@ -235,33 +237,56 @@ private struct LobbyEntryView: View {
         .refreshable { await inbox.load() }
     }
 
-    /// The primary path, so it is the big raised card.
+    /// The primary path, so it is the big raised card. The whole card is the
+    /// button.
     private var startCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("You host").monoLabel(11, weight: .bold, tracking: 0.14, color: Theme.surface.opacity(0.6))
-            Text("Start a party").slabTitle(34, color: Theme.surface)
-            Text("Opens a room. Invite friends or send them the link, and pick a game once they're in.")
-                .font(.sans(14))
-                .foregroundStyle(Theme.surface.opacity(0.75))
-            Button {
-                Task { await viewModel.createRoom() }
-            } label: {
-                HStack(spacing: 8) {
-                    if viewModel.isBusy { LoadingSpinner(size: 16) }
-                    Text("Start a party")
+        Button {
+            Task { await viewModel.createRoom() }
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                ZStack {
+                    if viewModel.isBusy {
+                        LoadingSpinner(size: 18)
+                    } else {
+                        Image(systemName: "party.popper")
+                            .font(.system(size: 22, weight: .regular))
+                            .foregroundStyle(Theme.fg)
+                    }
                 }
+                .frame(width: 44, height: 44)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.chipRadius))
+                .padding(.bottom, 8)
+                .accessibilityHidden(true)
+                Text("Start a party").slabTitle(38, color: Theme.surface)
+                    .padding(.bottom, 2)
+                Text("Opens a room. Invite friends or send them the link, and pick a game once they're in.")
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.surface.opacity(0.75))
+                    .multilineTextAlignment(.leading)
             }
-            .buttonStyle(.dark)
-            .disabled(viewModel.isBusy)
-            .padding(.top, 12)
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: Theme.cardRadius)
+                    .fill(Theme.fg)
+                    .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 10)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: Theme.cardRadius)
-                .fill(Theme.fg)
-                .shadow(color: .black.opacity(0.4), radius: 12, x: 0, y: 10)
-        }
+        .buttonStyle(StartCardPressStyle())
+        .disabled(viewModel.isBusy)
+        .accessibilityLabel("Start a party")
+        .accessibilityHint("Opens a room you can invite friends to")
+    }
+}
+
+/// A press dips the card, the way the dark button's hover does.
+private struct StartCardPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

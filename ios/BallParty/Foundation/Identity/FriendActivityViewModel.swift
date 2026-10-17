@@ -20,9 +20,11 @@ struct SupabaseFriendActivityClient: FriendActivityClient {
     }
 
     func activity(limit: Int, before: String?) async throws -> [FriendActivityEvent] {
-        let page: FriendActivityPage = try await client
-            .rpc("friend_activity", params: Params(p_limit: limit, p_before: before))
-            .execute().value
+        let page: FriendActivityPage = try await SupabaseConfig.retryingAfterRefresh {
+            try await client
+                .rpc("friend_activity", params: Params(p_limit: limit, p_before: before))
+                .execute().value
+        }
         return page.events
     }
 
@@ -32,9 +34,11 @@ struct SupabaseFriendActivityClient: FriendActivityClient {
 
     func answerers(postIds: [UUID]) async throws -> [FriendAnswerer] {
         guard !postIds.isEmpty else { return [] }
-        return try await client
-            .rpc("friends_who_answered", params: AnswererParams(p_post_ids: postIds))
-            .execute().value
+        return try await SupabaseConfig.retryingAfterRefresh {
+            try await client
+                .rpc("friends_who_answered", params: AnswererParams(p_post_ids: postIds))
+                .execute().value
+        }
     }
 }
 

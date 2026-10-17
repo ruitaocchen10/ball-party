@@ -4,6 +4,7 @@ import { MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
+import { ReportTakeButton } from "@/components/foundation/moderation/ReportButton";
 import { AuthorIdentity } from "./AuthorIdentity";
 import { TakeBallVote } from "./TakeBallVote";
 import { relativeTime } from "@/lib/foundation/content/prompts/logic";
@@ -51,7 +52,8 @@ export function TakeCard({
 }) {
   const [takeExpanded, setTakeExpanded] = useState(!collapsedByDefault || expandedByDefault);
   const canCollapseTake = (collapsedByDefault || expandedByDefault) && Boolean(children);
-  const hasBottomRow = Boolean(comment.reaction || commentHref || canCollapseTake || footer);
+  const canReport = !isYou && Boolean(comment.id) && Boolean(comment.body.trim());
+  const hasBottomRow = Boolean(comment.reaction || commentHref || canCollapseTake || footer || canReport);
 
   return (
     <article className="relative rounded-card border border-line bg-surface-raised shadow-[0_10px_24px_rgb(0_0_0/0.4)]">
@@ -75,6 +77,7 @@ export function TakeCard({
             </Link>
           ) : null}
           {footer ? <span className="min-w-0">{footer}</span> : null}
+          {canReport ? <ReportTakeButton takeId={comment.id} authorName={comment.author} /> : null}
           {canCollapseTake ? (
             <button
               type="button"

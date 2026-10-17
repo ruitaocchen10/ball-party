@@ -69,6 +69,12 @@ final class OtherProfileViewModel: ObservableObject {
         return RelationshipAction.primary(for: lookup.relationship)
     }
 
+    /// Anyone but yourself can be reported, whatever your relationship.
+    var canReport: Bool {
+        guard let relationship = lookup?.relationship else { return false }
+        return relationship != .selfUser && relationship != .unknown
+    }
+
     /// Smaller actions beside the lead button.
     var secondaryActions: [(action: RelationshipAction, title: String)] {
         guard let relationship = lookup?.relationship else { return [] }

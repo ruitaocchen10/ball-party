@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0DE0000000000000000B003 /* ReportClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE0000000000000000A003 /* ReportClientTests.swift */; };
+		C0DE0000000000000000B002 /* ReportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE0000000000000000A002 /* ReportSheet.swift */; };
+		C0DE0000000000000000B001 /* ReportClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE0000000000000000A001 /* ReportClient.swift */; };
+		B2C3D4E5F60718293A4B5C6D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* PrivacyInfo.xcprivacy */; };
 		C9E4B03F6D815207F3A6C9E4 /* RankBoard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F5C14A7E926318A4B7D0F5 /* RankBoard.swift */; };
 		A7C2E91D4B6F3085D1E4A7C2 /* ReorderDrag.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D3FA2E5C704196E2F5B8D3 /* ReorderDrag.swift */; };
 		049039634109B21268632190 /* QbSeasonBuilderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4009D6CBF6F7B19C037FACB /* QbSeasonBuilderModels.swift */; };
@@ -72,6 +76,7 @@
 		751BA1859A029EA5C71C9616 /* OFL-Barlow.txt in Resources */ = {isa = PBXBuildFile; fileRef = 53802AC25628552A5AD509D7 /* OFL-Barlow.txt */; };
 		75476BEA2728BB02F0FBDC76 /* HigherOrLowerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F502B722BC00DD48CB5B6564 /* HigherOrLowerClient.swift */; };
 		798D7C39883FED3B0EE50C4A /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2E8724BBFABEF13087046B9 /* LobbyView.swift */; };
+		7A1C0DE1A2B3C4D5E6F70F01 /* LobbyGameInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0DE1A2B3C4D5E6F70F02 /* LobbyGameInfo.swift */; };
 		7A1C0DE1A2B3C4D5E6F70861 /* LobbyGameCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0DE1A2B3C4D5E6F70862 /* LobbyGameCarousel.swift */; };
 		7B5218E514D1DD9BF2F20B0C /* QbSeasonBuilderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FCA926760CBA12B82F27E93 /* QbSeasonBuilderViewModel.swift */; };
 		7C11EB614DE3A2B15C84C767 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 22E9476B19287E93B3829EFB /* Assets.xcassets */; };
@@ -202,6 +207,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		C0DE0000000000000000A003 /* ReportClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportClientTests.swift; sourceTree = "<group>"; };
+		C0DE0000000000000000A002 /* ReportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportSheet.swift; sourceTree = "<group>"; };
+		C0DE0000000000000000A001 /* ReportClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportClient.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D0F5C14A7E926318A4B7D0F5 /* RankBoard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankBoard.swift; sourceTree = "<group>"; };
 		B8D3FA2E5C704196E2F5B8D3 /* ReorderDrag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReorderDrag.swift; sourceTree = "<group>"; };
 		016E6BC6E0E39A918F04E15F /* MatchStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchStatus.swift; sourceTree = "<group>"; };
@@ -325,6 +334,7 @@
 		E0E13C467022F862423E0B66 /* PromptDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptDetailView.swift; sourceTree = "<group>"; };
 		E1ED474535F9547864F48E5B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		E2E8724BBFABEF13087046B9 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyView.swift; sourceTree = "<group>"; };
+		7A1C0DE1A2B3C4D5E6F70F02 /* LobbyGameInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyGameInfo.swift; sourceTree = "<group>"; };
 		7A1C0DE1A2B3C4D5E6F70862 /* LobbyGameCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyGameCarousel.swift; sourceTree = "<group>"; };
 		E4009D6CBF6F7B19C037FACB /* QbSeasonBuilderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbSeasonBuilderModels.swift; sourceTree = "<group>"; };
 		7A1C0DE1A2B3C4D5E6F70812 /* GameTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameTabs.swift; sourceTree = "<group>"; };
@@ -411,6 +421,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		C0DE0000000000000000C001 /* Moderation */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE0000000000000000A001 /* ReportClient.swift */,
+				C0DE0000000000000000A002 /* ReportSheet.swift */,
+			);
+			path = Moderation;
+			sourceTree = "<group>";
+		};
 		002808F176D5FAEB24981F5B /* Realtime */ = {
 			isa = PBXGroup;
 			children = (
@@ -483,6 +502,7 @@
 				0E5B06101F9DA4507EEDA1C9 /* FakeHuddleClient.swift */,
 				F5A1000000000000C0000000 /* ListTests.swift */,
 				F5A1000000000000C0000001 /* FakeListsClient.swift */,
+				C0DE0000000000000000A003 /* ReportClientTests.swift */,
 				A1B2C3D4E5F60718293A4B06 /* ProfileViewModelTests.swift */,
 				F963803C3E41D9DDFF08B1BF /* ProfileStatsTests.swift */,
 				C0DE1EAD00000000000000A4 /* LeaderboardModelsTests.swift */,
@@ -520,6 +540,7 @@
 				49B09AADCEC3F81C695016EB /* UIKit */,
 				517F03783EC8EC94BBCB8D31 /* Identity */,
 				F41E000000000000000C0001 /* Notifications */,
+				C0DE0000000000000000C001 /* Moderation */,
 				D3253EB249D6D3F78E52DD2F /* Content */,
 			);
 			path = Foundation;
@@ -624,6 +645,7 @@
 			children = (
 				E2E8724BBFABEF13087046B9 /* LobbyView.swift */,
 				7A1C0DE1A2B3C4D5E6F70862 /* LobbyGameCarousel.swift */,
+				7A1C0DE1A2B3C4D5E6F70F02 /* LobbyGameInfo.swift */,
 				163C9C8FF9325011E269D5F0 /* LobbyViewModel.swift */,
 				669C2A35E7839D1D31ECC38E /* LobbyClient.swift */,
 				F41E000000000000000A0042 /* RoomInvitesClient.swift */,
@@ -733,6 +755,7 @@
 				3E5261B818DE4AF134B8761E /* Foundation */,
 				20B084BADD8616DD75ABE461 /* Games */,
 				88F216FC65AE0789C61B4333 /* Info.plist */,
+				A1B2C3D4E5F60718293A4B5C /* PrivacyInfo.xcprivacy */,
 				2189F0B2AE7E5D1314F1A1B5 /* Resources */,
 				47EF13BD49BE517F4D7A32A0 /* Runtime */,
 			);
@@ -885,6 +908,7 @@
 				439F9854A4183B2C12996603 /* OFL-BebasNeue.txt in Resources */,
 				A223659E9A8CE5144CA39829 /* OFL-JetBrainsMono.txt in Resources */,
 				7C11EB614DE3A2B15C84C767 /* Assets.xcassets in Resources */,
+				B2C3D4E5F60718293A4B5C6D /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -933,6 +957,7 @@
 				5287614E79BF16F2EB918984 /* MatchClockTests.swift in Sources */,
 				334E6F05EE834AD8FAFEAB2B /* SoloRunViewModelTests.swift in Sources */,
 				F4FC2AB5616DE1E8EF1B97A6 /* FakeHuddleClient.swift in Sources */,
+				C0DE0000000000000000B003 /* ReportClientTests.swift in Sources */,
 				F5A1000000000000D0000000 /* ListTests.swift in Sources */,
 				F5A1000000000000D0000001 /* FakeListsClient.swift in Sources */,
 				A1B2C3D4E5F60718293A4B05 /* ProfileViewModelTests.swift in Sources */,
@@ -983,6 +1008,7 @@
 				5E1A7C0D9B3F4A2E8C6D1F0A /* RankedRow.swift in Sources */,
 				798D7C39883FED3B0EE50C4A /* LobbyView.swift in Sources */,
 				7A1C0DE1A2B3C4D5E6F70861 /* LobbyGameCarousel.swift in Sources */,
+				7A1C0DE1A2B3C4D5E6F70F01 /* LobbyGameInfo.swift in Sources */,
 				88873EABB68D7F9E6369EADC /* MatchView.swift in Sources */,
 				C005EF7AFF2931CCCEA88FBD /* MatchViewModel.swift in Sources */,
 				6D9C2E90ABD5C8B7641089A1 /* AuctionModels.swift in Sources */,
@@ -1004,6 +1030,8 @@
 				F41E000000000000000B004B /* DeviceTokenClient.swift in Sources */,
 				F41E000000000000000B004C /* PushPayload.swift in Sources */,
 				F41E000000000000000B004D /* PushCoordinator.swift in Sources */,
+				C0DE0000000000000000B001 /* ReportClient.swift in Sources */,
+				C0DE0000000000000000B002 /* ReportSheet.swift in Sources */,
 				F41E000000000000000B004E /* PushAppDelegate.swift in Sources */,
 				F41E000000000000000B004F /* PushPrePromptView.swift in Sources */,
 				F41E000000000000000B0043 /* RoomInvitesViewModels.swift in Sources */,
