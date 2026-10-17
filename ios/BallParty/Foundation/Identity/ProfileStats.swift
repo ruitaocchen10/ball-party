@@ -76,16 +76,16 @@ struct KnowerHighlight: Equatable, Sendable {
 }
 
 extension KnowerHighlight {
-    /// "Rookie" through "Ball god", from a lifetime percentile: mirrors the
+    /// "Benchwarmer" through "Hall of Famer", from a lifetime percentile: mirrors the
     /// web's `KnowerStatus`. Only meaningful for the lifetime window.
     var status: String {
         guard let percentile else { return "Unranked" }
         switch percentile {
-        case ..<20: return "Rookie"
-        case ..<40: return "Casual"
-        case ..<60: return "Fan"
-        case ..<80: return "Ball knower"
-        default: return "Ball god"
+        case ..<20: return "Benchwarmer"
+        case ..<40: return "Role Player"
+        case ..<60: return "Starter"
+        case ..<80: return "All-Pro"
+        default: return "Hall of Famer"
         }
     }
 

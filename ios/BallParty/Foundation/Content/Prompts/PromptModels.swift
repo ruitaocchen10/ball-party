@@ -370,23 +370,6 @@ struct PowerRankingConsensusEntry: Equatable, Sendable {
     let averageRank: Double
 }
 
-/// How a team moved between the viewer's last two Power Rankings ballots.
-enum PowerRankingMovement: Equatable, Sendable {
-    /// Ranked before, and by this many places higher now.
-    case up(Int)
-    case down(Int)
-    case unchanged
-    /// Not on the viewer's previous ballot (or they have none).
-    case new
-
-    /// `previous` is the team's 1-based place last time, `current` its place now.
-    init(previous: Int?, current: Int) {
-        guard let previous else { self = .new; return }
-        let places = previous - current
-        self = places > 0 ? .up(places) : places < 0 ? .down(-places) : .unchanged
-    }
-}
-
 // MARK: - Rows
 
 struct PromptPostRow: Decodable, Equatable, Sendable {

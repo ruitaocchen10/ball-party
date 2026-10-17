@@ -1,9 +1,8 @@
 import SwiftUI
 
-// The prompt art: the ticket-stub matchup covers the web draws in
-// `PromptTicket.tsx` and `MatchupPicker.tsx`, so a game pick looks the same on
-// both. A game pick is a poster while it is being decided — big logos, the
-// venue, the kickoff — and a compact strip once it is a call somebody made.
+// The game picks: the ticket-cut matchup tiles the web draws in
+// `MatchupPicker.tsx`, so a game pick looks the same on both. One tile per game,
+// whether it is being decided or is a call somebody made.
 //
 // Presentation only, like `PromptComponents`: whether a slot is a matchup
 // (`PromptSlot.matchup`), what may be tapped and what a tap does is the
@@ -28,54 +27,6 @@ struct TicketShape: Shape {
         path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + cutY))
         path.closeSubpath()
         return path
-    }
-}
-
-/// The dark ticket a prompt's art sits on: a soft pool of light from above and
-/// faint vertical ruling, in the ticket silhouette.
-struct PromptTicket<Content: View>: View {
-    /// A hairline round the edge, for a ticket that sits in a grid.
-    var ringed = false
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        content
-            .frame(maxWidth: .infinity)
-            .background { TicketSurface() }
-            .clipShape(TicketShape())
-            .overlay {
-                if ringed { TicketShape().stroke(Theme.line, lineWidth: 1) }
-            }
-    }
-}
-
-private struct TicketSurface: View {
-    private static let cream = Color(hex: 0xFFFDF7)
-
-    var body: some View {
-        GeometryReader { proxy in
-            // `radial-gradient(circle at 50% -15%, … transparent 46%)`: a circle
-            // that reaches the far corner, faded out at 46% of the way there.
-            let reach = (pow(proxy.size.width / 2, 2) + pow(proxy.size.height * 1.15, 2)).squareRoot() * 0.46
-            ZStack {
-                Theme.surface
-                RadialGradient(
-                    colors: [Self.cream.opacity(0.09), .clear],
-                    center: UnitPoint(x: 0.5, y: -0.15), startRadius: 0, endRadius: reach
-                )
-                Canvas { context, size in
-                    // One hairline at every fifth of the width.
-                    for step in 1...5 {
-                        let x = size.width * CGFloat(step) / 5
-                        context.fill(
-                            Path(CGRect(x: x - 1, y: 0, width: 1, height: size.height)),
-                            with: .color(Self.cream.opacity(0.035))
-                        )
-                    }
-                }
-            }
-        }
-        .accessibilityHidden(true)
     }
 }
 
@@ -140,174 +91,6 @@ extension PromptSlot {
     var winnerId: UUID? { correctOptionIds?.first }
 }
 
-// MARK: - Featured poster
-
-/// One game as a poster: the two teams either side of an "@", the kickoff and
-/// venue underneath, a Primetime tag along the top when it is one. The side a
-/// player picks floods with its team's colour.
-struct MatchupPoster: View {
-    let away: PromptOption
-    let home: PromptOption
-    var game: NFLGame?
-    /// The viewer's call.
-    var selected: UUID?
-    /// Makes the two sides tappable. `nil` is a cover: look, don't touch.
-    var onSelect: ((UUID) -> Void)?
-
-    private var interactive: Bool { onSelect != nil }
-
-    var body: some View {
-        PromptTicket {
-            VStack(spacing: 0) {
-                ZStack(alignment: .top) {
-                    HStack(spacing: 0) {
-                        tint(for: away)
-                        tint(for: home)
-                    }
-                    VStack(spacing: 0) {
-                        if game?.primetime == true {
-                            PrimetimeChip().padding(.top, 8)
-                        }
-                        ZStack {
-                            HStack(spacing: 0) {
-                                side(away)
-                                side(home)
-                            }
-                            atMark
-                        }
-                        .overlay { Theme.fg.opacity(0.2).frame(width: 1).accessibilityHidden(true) }
-                    }
-                }
-                footer
-            }
-        }
-        .modifier(CoverAccessibility(enabled: !interactive, label: coverLabel))
-    }
-
-    private var coverLabel: String {
-        "\(away.label) at \(home.label). \(MatchupText.kickoff(game?.kickoff))"
-    }
-
-    // The colour of a side once picked, thrown across the top of the poster as
-    // well as the side itself.
-    @ViewBuilder
-    private func tint(for option: PromptOption) -> some View {
-        if selected == option.id, let color = option.teamCode.flatMap(NFLTeams.primaryColor(for:)) {
-            LinearGradient(colors: [color, Theme.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
-        } else {
-            Color.clear
-        }
-    }
-
-    private var atMark: some View {
-        Text("@")
-            .font(.sans(13, weight: .bold))
-            .foregroundStyle(Theme.fg)
-            .frame(width: 36, height: 36)
-            .overlay(Circle().stroke(Theme.fg.opacity(0.3), lineWidth: 1))
-            .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 4)
-            .accessibilityHidden(true)
-    }
-
-    private var footer: some View {
-        VStack(spacing: 4) {
-            Text(MatchupText.kickoff(game?.kickoff))
-                .monoLabel(9, tracking: 0.14, color: Theme.fg.opacity(0.7))
-            Text(MatchupText.venue(game))
-                .monoLabel(9, tracking: 0.14, color: Theme.fg.opacity(0.5))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 10)
-        .padding(.bottom, 12)
-        .overlay(alignment: .top) { Theme.fg.opacity(0.2).frame(height: 1) }
-        .padding(.horizontal, 14)
-    }
-
-    @ViewBuilder
-    private func side(_ option: PromptOption) -> some View {
-        let isSelected = selected == option.id
-        let ink = isSelected ? Theme.fg : Theme.fg
-        let face = VStack(spacing: 6) {
-            if let code = option.teamCode {
-                TeamLogo(code: code, size: 64)
-                    .shadow(color: .black.opacity(0.35), radius: 4, x: 0, y: 7)
-            }
-            Text(option.label)
-                .slabTitle(24, color: ink)
-                .lineSpacing(0)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.7)
-            if interactive {
-                Text(isSelected ? "Your call" : "Pick winner")
-                    .monoLabel(9, tracking: 0.12, color: ink.opacity(0.8))
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 128)
-        .padding(.vertical, 8)
-        .padding(.horizontal, 8)
-
-        if let onSelect {
-            Button { onSelect(option.id) } label: { face.contentShape(Rectangle()) }
-                .buttonStyle(.plain)
-                .accessibilityLabel(option.label)
-                .accessibilityAddTraits(isSelected ? .isSelected : [])
-        } else {
-            face
-        }
-    }
-}
-
-private struct CoverAccessibility: ViewModifier {
-    let enabled: Bool
-    let label: String
-
-    func body(content: Content) -> some View {
-        if enabled {
-            content.accessibilityElement(children: .ignore).accessibilityLabel(label)
-        } else {
-            content
-        }
-    }
-}
-
-/// The hexagonal "Primetime" tag that sits on a poster's top edge.
-private struct PrimetimeChip: View {
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "moon.stars.fill").font(.system(size: 9, weight: .semibold))
-            Text("Primetime")
-        }
-        .font(.mono(8, weight: .bold))
-        .tracking(8 * 0.12)
-        .textCase(.uppercase)
-        .foregroundStyle(Theme.surface)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 5)
-        .background(Theme.fg)
-        .clipShape(Hexagon())
-        .overlay(Hexagon().stroke(Theme.fg.opacity(0.6), lineWidth: 1))
-        .shadow(color: .black.opacity(0.32), radius: 5, x: 0, y: 4)
-        .accessibilityLabel("Primetime game")
-    }
-
-    private struct Hexagon: Shape {
-        func path(in rect: CGRect) -> Path {
-            var path = Path()
-            path.move(to: CGPoint(x: rect.minX + 8, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.maxX - 8, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.maxX - 8, y: rect.maxY))
-            path.addLine(to: CGPoint(x: rect.minX + 8, y: rect.maxY))
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.midY))
-            path.closeSubpath()
-            return path
-        }
-    }
-}
-
 // MARK: - Compact strip
 
 /// One game as a strip: an oversized logo cropped behind each side, so a page
@@ -322,75 +105,24 @@ struct MatchupTile: View {
     /// The winner, once the slot is graded; `nil` until then.
     var winner: UUID?
     var onSelect: ((UUID) -> Void)?
-    /// The cropped logo's size; smaller shows more of each mark.
-    var logoSize: CGFloat = 104
 
     var body: some View {
-        PromptTicket(ringed: true) {
-            VStack(spacing: 0) {
-                ZStack {
-                    HStack(spacing: 0) {
-                        side(away)
-                        Theme.line.frame(width: 1)
-                        side(home)
-                    }
-                    Text("@")
-                        .font(.mono(10, weight: .bold))
-                        .foregroundStyle(Theme.fgMuted)
-                        .frame(width: 24, height: 24)
-                        .background(Theme.surface, in: Circle())
-                        .overlay(Circle().stroke(Theme.line, lineWidth: 1))
-                        .accessibilityHidden(true)
-                }
-                .frame(height: 64)
-                Theme.line.opacity(0.7).frame(height: 1).padding(.horizontal, 8).padding(.top, 8)
-                    .accessibilityHidden(true)
-            }
+        TwoSidedFace {
+            side(away)
+        } home: {
+            side(home)
         }
+        .choiceTile(badge: false)
     }
 
     @ViewBuilder
     private func side(_ option: PromptOption) -> some View {
         let isSelected = selected == option.id
-        let passed = selected != nil && !isSelected
         let verdict: Bool? = isSelected ? winner.map { $0 == option.id } : nil
-        // The logo sits in an overlay, not in the layout: it is far bigger than
-        // the strip and cropped by it, so it must not set the side's width.
-        let face = Color.clear
-            .frame(maxWidth: .infinity)
-            .frame(height: 64)
-            .background {
-                if isSelected, let color = option.teamCode.flatMap(NFLTeams.primaryColor(for:)) {
-                    LinearGradient(colors: [color, Theme.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
-                } else {
-                    Theme.surface.opacity(0.85)
-                }
-            }
-            .overlay {
-                if let code = option.teamCode {
-                    TeamLogo(code: code, size: logoSize)
-                        .grayscale(passed ? 1 : 0)
-                        .opacity(passed ? 0.4 : 1)
-                }
-            }
-            .overlay(alignment: .topTrailing) {
-                // A filled badge: the grade colours alone vanish into a dark
-                // or team-coloured side.
-                if let verdict {
-                    Image(systemName: verdict ? "checkmark" : "xmark")
-                        .font(.system(size: 9, weight: .black))
-                        .foregroundStyle(Theme.fg)
-                        .frame(width: 16, height: 16)
-                        .background(verdict ? Theme.gradeElite : Theme.gradeRough, in: Circle())
-                        .padding(5)
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
-            .overlay {
-                if let verdict {
-                    RoundedRectangle(cornerRadius: Theme.cardRadius).strokeBorder(verdict ? Theme.gradeElite : Theme.gradeRough, lineWidth: 1)
-                }
-            }
+        let face = ChoiceHalf(
+            code: option.teamCode, flooded: isSelected, receded: selected != nil && !isSelected,
+            mark: ChoiceMark(selected: isSelected, verdict: verdict)
+        )
 
         if let onSelect {
             Button { onSelect(option.id) } label: { face.contentShape(Rectangle()) }
@@ -419,7 +151,7 @@ struct MatchupTile: View {
 /// A Game Picks game's four choices — each team "by <7" and "by 7+" — in a grid
 /// of two: the web's `MarginPicker`. The same view makes the call (`onSelect`),
 /// shows one, and — once the server has graded the slot — marks it right or
-/// wrong. The cover above it is `MatchupPoster`'s.
+/// wrong.
 struct MarginChoices: View {
     let slot: PromptSlot
     let game: MarginGame
@@ -451,7 +183,6 @@ struct MarginChoices: View {
         let isSelected = selected == choice.id
         let passed = selected != nil && !isSelected
         let verdict: Bool? = reveals && isSelected ? slot.isCorrect(choice.id) : nil
-        let color = choice.teamCode.flatMap(NFLTeams.primaryColor(for:))
         let ink: Color = isSelected ? Color(hex: 0xFFFDF7) : Theme.fg
         let face = HStack(spacing: 8) {
             if let code = choice.teamCode {
@@ -464,7 +195,7 @@ struct MarginChoices: View {
                     .font(.slab(17, relativeTo: .body))
                     .textCase(.uppercase)
                     .foregroundStyle(ink)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 if let sublabel = choice.sublabel {
                     Text(sublabel).monoLabel(8, tracking: 0.06, color: ink.opacity(0.7)).lineLimit(1)
@@ -474,31 +205,15 @@ struct MarginChoices: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        // The fill goes on after the tile's height, or it stops short of the border.
+        .frame(maxWidth: .infinity, minHeight: ChoiceTile.height, alignment: .leading)
         .background {
-            if isSelected, let color {
-                LinearGradient(colors: [color, Theme.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
-            } else {
-                Theme.surfaceRaised.opacity(passed ? 0.85 : 1)
-            }
+            if isSelected { teamFill(choice.teamCode) } else { Theme.surfaceRaised.opacity(passed ? 0.85 : 1) }
         }
-        .clipShape(TicketShape(cutX: 12, cutY: 8))
-        .overlay {
-            TicketShape(cutX: 12, cutY: 8)
-                .stroke(ring(verdict: verdict, selected: isSelected), lineWidth: 2)
-        }
-        .overlay(alignment: .topTrailing) {
-            if let verdict {
-                Image(systemName: verdict ? "checkmark" : "xmark")
-                    .font(.system(size: 11, weight: .black))
-                    .foregroundStyle(verdict ? Theme.gradeElite : Theme.gradeRough)
-                    .padding(6)
-                    .accessibilityHidden(true)
-            }
-        }
+        .choiceTile(mark: ChoiceMark(selected: isSelected, verdict: verdict))
 
         if let onSelect {
-            Button { onSelect(choice.id) } label: { face.contentShape(Rectangle()) }
+            Button { onSelect(choice.id) } label: { face }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(choice.label). \(choice.sublabel ?? "")")
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -507,10 +222,5 @@ struct MarginChoices: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(choice.label)\(isSelected ? ", your call" : "")")
         }
-    }
-
-    private func ring(verdict: Bool?, selected: Bool) -> Color {
-        if let verdict { return verdict ? Theme.gradeElite : Theme.gradeRough }
-        return selected ? Theme.fg.opacity(0.7) : Theme.line
     }
 }

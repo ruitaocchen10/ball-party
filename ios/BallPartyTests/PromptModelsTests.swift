@@ -98,11 +98,11 @@ final class PromptModelsTests: XCTestCase {
         XCTAssertEqual(asStrings, asNumbers)
     }
 
-    func test_powerRankingMovement_readsPlacesGainedLostOrNew() {
-        XCTAssertEqual(PowerRankingMovement(previous: 5, current: 2), .up(3))
-        XCTAssertEqual(PowerRankingMovement(previous: 2, current: 5), .down(3))
-        XCTAssertEqual(PowerRankingMovement(previous: 4, current: 4), .unchanged)
-        XCTAssertEqual(PowerRankingMovement(previous: nil, current: 1), .new)
+    func test_rankMovement_readsPlacesGainedLostOrNew() {
+        XCTAssertEqual(RankMovement(previous: 5, current: 2), .up(3))
+        XCTAssertEqual(RankMovement(previous: 2, current: 5), .down(3))
+        XCTAssertEqual(RankMovement(previous: 4, current: 4), .unchanged)
+        XCTAssertEqual(RankMovement(previous: nil, current: 1), .new)
     }
 
     func test_slotRow_decodesACorrectAnswerArrayAndItsAbsence() throws {

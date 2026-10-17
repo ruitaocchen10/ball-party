@@ -76,11 +76,11 @@ it("keeps both compact matchup logos in color until a winner is picked", () => {
       { id: "buf", label: "Bills", teamCode: "BUF" },
     ],
   };
-  const { container, rerender } = render(<MatchupPicker slot={teamSlot} variant="compact" mode="picker" />);
+  const { container, rerender } = render(<MatchupPicker slot={teamSlot} mode="picker" />);
 
   for (const logo of container.querySelectorAll("img")) expect(logo.className).not.toContain("grayscale");
 
-  rerender(<MatchupPicker slot={teamSlot} variant="compact" mode="picker" response={["kc"]} />);
+  rerender(<MatchupPicker slot={teamSlot} mode="picker" response={["kc"]} />);
   const [chiefs, bills] = [...container.querySelectorAll("img")];
   expect(chiefs.className).not.toContain("grayscale");
   expect(bills.className).toContain("grayscale");
@@ -231,7 +231,7 @@ const marginSlot: Slot = {
 
 it("lays a Game Picks slot out as four choices and reports the one picked", async () => {
   const onChange = vi.fn();
-  render(<MatchupPicker slot={marginSlot} variant="featured" mode="picker" onChange={onChange} />);
+  render(<MatchupPicker slot={marginSlot} mode="picker" onChange={onChange} />);
 
   expect(screen.getAllByRole("radio")).toHaveLength(4);
   await userEvent.setup().click(screen.getByText("Bills by 7+"));
@@ -239,12 +239,12 @@ it("lays a Game Picks slot out as four choices and reports the one picked", asyn
 });
 
 it("marks a graded Game Picks choice right or wrong", () => {
-  const { rerender } = render(<MatchupPicker slot={{ ...marginSlot, correct: ["buf-p"] }} variant="compact" mode="revealed" response={["buf-p"]} />);
+  const { rerender } = render(<MatchupPicker slot={{ ...marginSlot, correct: ["buf-p"] }} mode="revealed" response={["buf-p"]} />);
   expect(screen.getByLabelText("Correct")).toBeInTheDocument();
 
-  rerender(<MatchupPicker slot={{ ...marginSlot, correct: ["buf-p"] }} variant="compact" mode="revealed" response={["buf-u"]} />);
+  rerender(<MatchupPicker slot={{ ...marginSlot, correct: ["buf-p"] }} mode="revealed" response={["buf-u"]} />);
   expect(screen.getByLabelText("Incorrect")).toBeInTheDocument();
 
-  rerender(<MatchupPicker slot={{ ...marginSlot, correct: [] }} variant="compact" mode="revealed" response={["buf-u"]} />);
+  rerender(<MatchupPicker slot={{ ...marginSlot, correct: [] }} mode="revealed" response={["buf-u"]} />);
   expect(screen.queryByLabelText("Incorrect")).not.toBeInTheDocument();
 });

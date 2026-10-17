@@ -279,7 +279,7 @@ final class ProfileViewModel: ObservableObject {
     /// makes (`highlights.knower.lifetime.percentile`).
     private var lifetimeKnowerHighlight: KnowerHighlight { knowerHighlights[.lifetime] ?? .empty }
 
-    /// "Rookie" through "Ball god", from the lifetime percentile — mirrors the web's `KnowerStatus`.
+    /// "Benchwarmer" through "Hall of Famer", from the lifetime percentile — mirrors the web's `KnowerStatus`.
     var knowerStatus: String { lifetimeKnowerHighlight.status }
 
     /// What sits under the status, mirroring `KnowerStatus`'s detail line.

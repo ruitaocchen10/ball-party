@@ -21,6 +21,7 @@ features:
     summary: Power Rankings ballot and consensus top five
     web: done
     ios: done
+    note: 'On iOS a team is added from the Available teams pool by a tap (it goes to the end) or by pressing and holding it and dragging it onto the place it should take; ranked rows are reordered by pressing and holding them. The row carries the movement since your last ballot at every density (an arrow over the number of places), the team's logo at the left, and its city in small type over its name in large; a team in a top-10 or top-32 ballot is removed by tapping its row, a top-5 row has an X. Web drags a team between the pool and the board with its own sizes; the iOS row, tile and 64pt height spec is not on web yet.'
   - id: huddle.weekly-awards
     summary: Weekly Awards prompts
     web: done
@@ -38,6 +39,11 @@ features:
     web: done
     ios: done
     note: 'BPP-22. The chip reads Closes in 2d while open, then Completed (you answered), Locked, Resolved or Void. Art is one banner height for every kind (112px, 128px on wider web screens): a game is a broadcast graphic (each club color and an oversized logo bleeding off its edge, names big in the middle over kickoff and venue), a weekly slate is the game count as a headline beside the clubs of its first four games instead of a pager, Power Rankings is the six cover teams at mixed sizes, the first three climbing beside a green block arrow and the last three falling beside a red one, Weekly Awards is six medals, one per award (football, shield, trophy, flame, thumbs down, an L), Bold Predictions is six exclamation speech bubbles, blue on the left and red on the right, and the rest keep their covers as wordless banners. Layout gap: a pick-one prompt shows its candidates as headshot tiles on web and as a row of round badges on iOS.'
+  - id: huddle.game-pick-tile
+    summary: A game pick is a choice tile (a strip with both clubs, tap a side), the same for one game and for a slate; a winner-and-margin game is its four margin choices
+    web: done
+    ios: done
+    note: 'The big matchup poster on the answer page is gone on both clients (it had a kickoff, venue and Primetime footer; the web never passed it the game, so it read Game time TBD). The feed card''s banner still shows kickoff, venue and Primetime. Tile look (cut, border, height, selected and graded marks) is the shared choice-tile style on iOS (`ChoiceTile.swift`). Layout gap: the web tiles still use their own sizes, not the iOS 64pt height, until the web adopts the same spec.'
   - id: huddle.bold-predictions
     summary: Bold Predictions prompts
     web: done
@@ -160,7 +166,7 @@ features:
     summary: Build and edit a list (Power Rankings 5, 10 or 32; QB, RB and WR top 10), laid out like a prompt answer, pick up then place, save with a take, share with friends by default
     web: done
     ios: done
-    note: 'Moving is drag and drop: drag a row onto the place it should take, and drag a benched team onto a place to bring it in (the last team drops to the bench). iOS drags by press and hold and is drag only (VoiceOver gets Move up and Move down actions). Web also keeps pick up then tap a row to place, or Up, Down, To #1 and To bottom, because mobile browsers do not drag reliably. Nothing saves until Save. Position lists start empty and fill from the player search. The page is laid out like a prompt answer page: a header, your card (author line, an optional take of 280 characters, the board, a "Share this update with friends" checkbox on by default and one Save button) and an About this list rail; off saves quietly and the version still shows in history. The server decides refusals (one saved edit per list per 24 hours, a prompt that is open, no change); the client shows its message. While a ranking prompt is open the list is read-only and links to the prompt. Rules: docs/architecture/ranking-lists.md.'
+    note: 'Moving is drag and drop: drag a row onto the place it should take, and a benched team comes in by dragging it onto a place (the last team drops to the bench) or, on iOS, by tapping its + (it takes the last place). iOS drags by press and hold anywhere on a row or tile, and VoiceOver gets Move up and Move down actions on a row. Web also keeps pick up then tap a row to place, or Up, Down, To #1 and To bottom, because mobile browsers do not drag reliably. Nothing saves until Save. Position lists start empty and fill from the player search. The page is laid out like a prompt answer page: a header, your card (author line, an optional take of 280 characters, the board, a "Share this update with friends" checkbox on by default and one Save button) and an About this list rail; off saves quietly and the version still shows in history. The server decides refusals (one saved edit per list per 24 hours, a prompt that is open, no change); the client shows its message. While a ranking prompt is open the list is read-only and links to the prompt. Rules: docs/architecture/ranking-lists.md.'
   - id: lists.history
     summary: Version history for a list, newest first, with what moved and the note (own lists at /lists/<kind>, others at /u/<username>/lists/<kind>)
     web: done

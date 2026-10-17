@@ -112,9 +112,9 @@ final class FriendsModelsTests: XCTestCase {
 
     func testKnowerStatusBandsMatchTheOwnProfile() {
         XCTAssertEqual(KnowerHighlight(totalPoints: 0, percentile: nil).status, "Unranked")
-        XCTAssertEqual(KnowerHighlight(totalPoints: 1, percentile: 19).status, "Rookie")
-        XCTAssertEqual(KnowerHighlight(totalPoints: 1, percentile: 50).status, "Fan")
-        XCTAssertEqual(KnowerHighlight(totalPoints: 1, percentile: 80).status, "Ball god")
+        XCTAssertEqual(KnowerHighlight(totalPoints: 1, percentile: 19).status, "Benchwarmer")
+        XCTAssertEqual(KnowerHighlight(totalPoints: 1, percentile: 50).status, "Starter")
+        XCTAssertEqual(KnowerHighlight(totalPoints: 1, percentile: 80).status, "Hall of Famer")
     }
 
     func testInviteLinkUsesTheSiteAndCode() {
