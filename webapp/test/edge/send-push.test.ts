@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { classify, createSender, hostFor, signProviderToken } from "../../../supabase/functions/send-push/apns.ts";
 import { drain, type Outbox } from "../../../supabase/functions/send-push/drain.ts";
-import { buildPayload, collapseId, type PushJob } from "../../../supabase/functions/send-push/payload.ts";
+import { buildAlert, buildPayload, clip, collapseId, type PushJob } from "../../../supabase/functions/send-push/payload.ts";
 
 const job = (overrides: Partial<PushJob> = {}): PushJob => ({
   id: 1,
@@ -24,7 +24,7 @@ describe("payload", () => {
     expect(buildPayload(job())).toMatchObject({ kind: "friend_request", item_key: "n:abc", aps: { badge: 3, sound: "default" } });
   });
 
-  it("puts nothing private in the alert", () => {
+  it("falls back to fixed copy without facts, with nothing private in it", () => {
     for (const kind of ["friend_request", "take_reply", "room_invite", "new_prompt"] as const) {
       const { aps } = buildPayload(job({ kind })) as { aps: { alert: { title: string; body: string } } };
       expect(`${aps.alert.title} ${aps.alert.body}`).not.toMatch(/@|:|[0-9a-f]{8}-/);
@@ -40,6 +40,69 @@ describe("payload", () => {
   it("collapses on the inbox item, or the prompt", () => {
     expect(collapseId(job())).toBe("n:abc");
     expect(collapseId(job({ kind: "new_prompt", item_key: null, post_id: "p1" }))).toBe("prompt:p1");
+  });
+});
+
+describe("alert copy", () => {
+  const prompt = (info: NonNullable<PushJob["info"]>) => buildAlert(job({ kind: "new_prompt", item_key: null, post_id: "p1", info }));
+
+  it("names the person on friend, reply and invite alerts", () => {
+    expect(buildAlert(job({ info: { actor_name: "Sam" } }))).toEqual({ title: "New friend request", body: "Sam wants to be friends." });
+    expect(buildAlert(job({ kind: "room_invite", info: { actor_name: "Sam" } })).body).toBe("Sam invited you to a room.");
+    expect(buildAlert(job({ kind: "take_reply", info: { actor_name: "Sam", reply_count: 1 } })).body).toBe("Sam replied to your take.");
+  });
+
+  it("folds several replies into one alert", () => {
+    expect(buildAlert(job({ kind: "take_reply", info: { actor_name: "Sam", reply_count: 3 } }))).toEqual({
+      title: "New replies to your take",
+      body: "3 new replies, the latest from Sam.",
+    });
+  });
+
+  it("caps a long name so the sentence survives", () => {
+    const { body } = buildAlert(job({ info: { actor_name: "a".repeat(40) } }));
+    expect(body).toBe(`${"a".repeat(14)}\u2026 wants to be friends.`);
+  });
+
+  it("titles a game pick with the matchup and puts the time and points in the body", () => {
+    expect(
+      prompt({ template_kind: "game_pick", away_team: "KC", home_team: "BUF", kickoff: "2026-11-01T01:20:00Z", points: 10 }),
+    ).toEqual({ title: "KC @ BUF", body: "Pick the winner before kickoff (Sat 9:20 PM ET). 10 pts." });
+  });
+
+  it("keeps the longest matchup title short enough for a lock screen", () => {
+    const { title } = prompt({ template_kind: "game_pick", away_team: "JAX", home_team: "PHI" });
+    expect(title.length).toBeLessThanOrEqual(20);
+  });
+
+  it("names the week and the lock time on the weekly kinds", () => {
+    const lock_at = "2026-11-04T17:00:00Z";
+    expect(prompt({ template_kind: "weekly_picks", week: 9, lock_at })).toEqual({
+      title: "Week 9 picks are open",
+      body: "Lock in your picks before Wed 12:00 PM ET.",
+    });
+    expect(prompt({ template_kind: "weekly_awards", week: 8, lock_at }).title).toBe("Week 8 awards");
+    expect(prompt({ template_kind: "power_rankings", week: 9, lock_at }).title).toBe("Week 9 power rankings");
+    expect(prompt({ template_kind: "bold_predictions", lock_at }).title).toBe("Bold Predictions are open");
+  });
+
+  it("uses the caption for a kind with no template, clipped", () => {
+    expect(prompt({ template_kind: "custom_multi", caption: "x".repeat(200) }).body).toHaveLength(90);
+    expect(prompt({ template_kind: "custom_multi" })).toEqual({ title: "New prompt", body: "A new prompt just dropped." });
+  });
+
+  it("clips on whitespace-normalised text", () => {
+    expect(clip("  a   b  ", 10)).toBe("a b");
+  });
+
+  it("keeps every title within a lock-screen line", () => {
+    const infos = [
+      { template_kind: "weekly_picks", week: 18, lock_at: "2026-11-04T17:00:00Z" },
+      { template_kind: "weekly_awards", week: 18 },
+      { template_kind: "power_rankings", week: 18 },
+      { template_kind: "bold_predictions" },
+    ];
+    for (const info of infos) expect(prompt(info).title.length).toBeLessThanOrEqual(35);
   });
 });
 

@@ -3,7 +3,7 @@
 -- never fail the action behind it.
 
 begin;
-select plan(37);
+select plan(39);
 \ir support/harness.psql
 
 insert into tests.fx (k, v) values
@@ -61,6 +61,7 @@ select is(jsonb_array_length((select batch from claimed)), 1, 'the sender claims
 select is(jsonb_array_length((select batch -> 0 -> 'devices' from claimed)), 2, 'with all of the recipient''s devices');
 select is((select batch -> 0 ->> 'badge' from claimed), '1', 'and their unread count as the badge');
 select is((select batch -> 0 ->> 'kind' from claimed), 'friend_request', 'and the kind');
+select is((select batch -> 0 -> 'info' ->> 'actor_name' from claimed), 'PoBob', 'and who it is from, for the alert copy (0219)');
 select is(jsonb_array_length(public.claim_push_batch()), 0, 'a claimed push is not handed out twice');
 select public.finish_push(((select batch -> 0 ->> 'id' from claimed))::bigint, 'sent');
 select ok((select sent_at is not null from public.push_outbox where recipient_id = tests.who('alice')), 'finishing records it as sent');
@@ -171,6 +172,11 @@ select is((select count(*)::integer from public.push_outbox where kind = 'new_pr
 select is((select count(*)::integer from public.push_outbox where kind = 'new_prompt' and post_id = tests.who('post')), 0,
   'and not when the admin chose to skip the push');
 
+select is(
+  (select private.push_info(o) from public.push_outbox o where o.kind = 'new_prompt' and o.post_id = tests.who('post2') limit 1)
+    - array['lock_at', 'week'],
+  '{"template_kind": "game_pick", "caption": "cap"}'::jsonb,
+  'a prompt''s alert facts are its kind and caption, plus a game''s matchup when it has one (0219)');
 select is(jsonb_array_length(public.claim_push_batch(2)), 2, 'the sender can take a batch at a time');
 select is(jsonb_array_length(public.claim_push_batch(10)), 1, 'and the rest after');
 

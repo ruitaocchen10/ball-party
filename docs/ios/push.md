@@ -79,8 +79,23 @@ TypeScript on web-standard APIs).
 
 ### Payload contract
 
-Alerts use fixed, generic copy (no names or take text on a lock screen). Keys beside
-`aps` that the app reads (`PushPayload`):
+Alert copy is built in `supabase/functions/send-push/payload.ts` from the facts
+`claim_push_batch` returns as `info` (`private.push_info`, migration 0219). The title
+says what happened and the body carries the detail, because a lock screen cuts a title
+at about 35-45 characters; names are capped at 15 and captions at 90.
+
+| kind | title | body |
+| --- | --- | --- |
+| `friend_request` | New friend request | `Sam wants to be friends.` |
+| `take_reply` | New reply to your take (New replies… for several) | `Sam replied to your take.` / `3 new replies, the latest from Sam.` |
+| `room_invite` | Room invite | `Sam invited you to a room.` |
+| `new_prompt`, game pick | `KC @ BUF` | `Pick the winner before kickoff (Sun 4:25 PM ET). 10 pts.` |
+| `new_prompt`, weekly picks / awards / power rankings | `Week 7 picks are open` / `Week 6 awards` / `Week 7 power rankings` | `… before Wed 12:00 PM ET.` |
+| `new_prompt`, Bold Predictions | Bold Predictions are open | `Call your shots before Sat 1:00 PM ET.` |
+
+Take text never goes in an alert. With no `info` (or no name) the old fixed copy is
+used ("Open Ball Party to respond."). Times are US Eastern, as everywhere else in the
+product. Keys beside `aps` that the app reads (`PushPayload`):
 
 | key | meaning |
 | --- | --- |
