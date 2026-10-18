@@ -14,7 +14,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-import { checkUsernameAvailable, claimUsername, updateProfile } from "./actions";
+import { checkUsernameAvailable, updateProfile } from "./actions";
 
 function form(fields: Record<string, string>) {
   const data = new FormData();
@@ -51,19 +51,6 @@ describe("checkUsernameAvailable", () => {
     const result = await checkUsernameAvailable("abc");
     expect(result.available).toBeNull();
     expect(rpc).not.toHaveBeenCalled();
-  });
-});
-
-describe("claimUsername", () => {
-  it("returns the stored name", async () => {
-    rpc.mockResolvedValue({ data: "Tay_QB", error: null });
-    await expect(claimUsername("Tay_QB")).resolves.toEqual({ error: null, username: "Tay_QB" });
-    expect(rpc).toHaveBeenCalledWith("claim_username", { p_username: "Tay_QB" });
-  });
-
-  it("translates the RPC's errors", async () => {
-    rpc.mockResolvedValue({ data: null, error: { message: "username_taken" } });
-    await expect(claimUsername("Tay_QB")).resolves.toEqual({ error: "That username is taken.", username: null });
   });
 });
 

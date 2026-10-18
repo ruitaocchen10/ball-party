@@ -142,69 +142,8 @@ private extension URL {
     }
 }
 
-/// The one-time "this is your username" prompt for accounts that were given a
-/// generated one. Keeping, changing or dismissing it all count as dealt with:
-/// the flag is per user and per device (`UsernameConfirmationStore`), the
-/// same client-side dismissal the web keeps in localStorage.
-@MainActor
-final class UsernameConfirmViewModel: ObservableObject, Identifiable {
-    let id = UUID()
-    let field: UsernameFieldModel
-    @Published private(set) var isSaving = false
-    @Published private(set) var finished = false
-    @Published var notice: String?
-
-    private let userId: UUID
-    private let store: UsernameConfirmationStore
-
-    init(field: UsernameFieldModel, userId: UUID, store: UsernameConfirmationStore) {
-        self.field = field
-        self.userId = userId
-        self.store = store
-    }
-
-    /// The prompt to show this user, or `nil` when they already dealt with it
-    /// or the username couldn't be read (a failed read must not nag).
-    static func make(
-        client: ProfileClient, userId: UUID, store: UsernameConfirmationStore = .standard
-    ) async -> UsernameConfirmViewModel? {
-        guard !store.isConfirmed(userId) else { return nil }
-        guard let username = (try? await client.profile(userId: userId))?.username else { return nil }
-        return UsernameConfirmViewModel(
-            field: UsernameFieldModel(client: client, username: username), userId: userId, store: store
-        )
-    }
-
-    /// "Keep it" — accepts the username as it is.
-    func keep() {
-        store.markConfirmed(userId)
-        finished = true
-    }
-
-    /// "Save" — claims whatever is typed (nothing to do if unchanged).
-    func save() async {
-        notice = nil
-        isSaving = true
-        defer { isSaving = false }
-        do {
-            _ = try await field.claimIfChanged()
-            store.markConfirmed(userId)
-            finished = true
-        } catch let error as UsernameError {
-            notice = error.message
-        } catch {
-            notice = UsernameError.other.message
-        }
-    }
-
-    /// The sheet went away (swipe or buttons). Seen once is enough.
-    func dismissed() {
-        store.markConfirmed(userId)
-    }
-}
-
 /// A username text field with a debounced availability check. Shared by the
-/// edit-profile sheet and the one-time confirm prompt. The check
+/// edit-profile sheet. The check
 /// (`username_available`) is advisory, so a failed or stale one never blocks a
 /// save; `claim_username` is authoritative and its refusal is what the player
 /// finally sees.

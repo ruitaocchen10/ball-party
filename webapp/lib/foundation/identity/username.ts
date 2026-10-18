@@ -26,26 +26,3 @@ export function usernameClaimError(error: { message?: string; code?: string } | 
   if (message.includes("guests_cannot_have_username")) return "Create an account to pick a username.";
   return "We couldn’t save that username. Please try again.";
 }
-
-/**
- * There is no server-side "has confirmed" flag, so the one-time prompt for
- * accounts that were given a generated username is dismissed per browser.
- */
-const confirmedKey = (userId: string) => `bp.username-confirmed.${userId}`;
-
-export function isUsernameConfirmed(userId: string): boolean {
-  try {
-    return window.localStorage.getItem(confirmedKey(userId)) === "1";
-  } catch {
-    // Storage blocked: treat as confirmed so we never nag on every page load.
-    return true;
-  }
-}
-
-export function markUsernameConfirmed(userId: string) {
-  try {
-    window.localStorage.setItem(confirmedKey(userId), "1");
-  } catch {
-    // Nothing to do; the prompt may show again.
-  }
-}

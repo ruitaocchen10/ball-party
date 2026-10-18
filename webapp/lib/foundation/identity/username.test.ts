@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isUsernameConfirmed, markUsernameConfirmed, usernameClaimError, usernameFormatHint } from "./username";
+import { usernameClaimError, usernameFormatHint } from "./username";
 
 describe("usernameFormatHint", () => {
   it("accepts well-formed names", () => {
@@ -22,14 +22,5 @@ describe("usernameClaimError", () => {
     expect(usernameClaimError({ message: "invalid_username" })).toMatch(/letters/);
     expect(usernameClaimError({ message: "rate_limited" })).toMatch(/too often/);
     expect(usernameClaimError({ message: "boom" })).toMatch(/couldn’t save/);
-  });
-});
-
-describe("username confirmation flag", () => {
-  it("is per user and persists once marked", () => {
-    expect(isUsernameConfirmed("u1")).toBe(false);
-    markUsernameConfirmed("u1");
-    expect(isUsernameConfirmed("u1")).toBe(true);
-    expect(isUsernameConfirmed("u2")).toBe(false);
   });
 });

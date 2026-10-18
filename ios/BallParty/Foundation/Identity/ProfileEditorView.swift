@@ -178,52 +178,7 @@ private struct AvatarPresetPicker: View {
     }
 }
 
-/// The one-time "confirm your username" sheet, shown over the app after
-/// sign-in to accounts that were given a generated username.
-struct UsernameConfirmView: View {
-    @ObservedObject var viewModel: UsernameConfirmViewModel
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Pick your username").slabTitle(34)
-                .accessibilityAddTraits(.isHeader)
-            Text("Friends find you by your username. We picked one for you; keep it or change it now. You can change it later in Edit profile.")
-                .font(.sans(15))
-                .foregroundStyle(Theme.fgMuted)
-
-            UsernameFieldView(field: viewModel.field)
-
-            if let notice = viewModel.notice {
-                Text(notice).font(.sans(14)).foregroundStyle(Theme.hiddenText)
-            }
-
-            Button {
-                Task { await viewModel.save() }
-            } label: {
-                Text(viewModel.isSaving ? "Saving…" : "Save")
-            }
-            .buttonStyle(.solid)
-            .disabled(viewModel.isSaving)
-
-            Button("Keep current username") { viewModel.keep() }
-                .buttonStyle(.quiet)
-                .frame(maxWidth: .infinity)
-                .disabled(viewModel.isSaving)
-        }
-        .padding(24)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .screenBackground()
-        .presentationDetents([.medium, .large])
-        .onChange(of: viewModel.finished) { _, finished in
-            if finished { dismiss() }
-        }
-        .onDisappear { viewModel.dismissed() }
-    }
-}
-
-/// The username field with its live availability hint. Shared by the editor
-/// and the one-time confirm prompt.
+/// The username field with its live availability hint.
 struct UsernameFieldView: View {
     @ObservedObject var field: UsernameFieldModel
 

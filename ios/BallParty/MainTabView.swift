@@ -14,7 +14,6 @@ struct MainTabView: View {
 
     @State private var selection: Tab = .home
     /// The one-time "confirm your username" sheet; nil once dealt with.
-    @State private var usernamePrompt: UsernameConfirmViewModel?
     /// Pending room invites. Held here rather than on the Party tab so the bell
     /// on every tab can show the count.
     @StateObject private var inbox = RoomInvitesInboxViewModel(
@@ -78,11 +77,11 @@ struct MainTabView: View {
                 }, landing: inboxLanding)
                 .presentationBackground(Theme.surface)
             }
-            // One sheet at a time: a request made while the inbox or the username
-            // sheet is up would be dropped, so the pre-prompt waits (its flag stays
-            // set) and appears once they are gone.
+            // One sheet at a time: a request made while the inbox
+            // is up would be dropped, so the pre-prompt waits (its flag stays
+            // set) and appears once it is gone.
             .sheet(isPresented: Binding(
-                get: { push.showingPrePrompt && !showingInbox && usernamePrompt == nil },
+                get: { push.showingPrePrompt && !showingInbox },
                 set: { if !$0 { push.showingPrePrompt = false } }
             )) {
                 PushPrePromptView(coordinator: push)
@@ -101,15 +100,6 @@ struct MainTabView: View {
             // A photo changed on the Profile tab shows once you leave it.
             .onChange(of: selection) { old, _ in
                 if old == .profile { Task { await loadAvatar(userId: user.id, email: user.email) } }
-            }
-            .task(id: user.id) {
-                usernamePrompt = await UsernameConfirmViewModel.make(
-                    client: SupabaseProfileClient(client: SupabaseConfig.client), userId: user.id
-                )
-            }
-            .sheet(item: $usernamePrompt) { prompt in
-                UsernameConfirmView(viewModel: prompt)
-                    .presentationBackground(Theme.surface)
             }
         }
     }

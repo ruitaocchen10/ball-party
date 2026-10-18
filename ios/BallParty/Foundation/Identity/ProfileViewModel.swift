@@ -84,27 +84,6 @@ enum UsernameRPC {
     }
 }
 
-/// Remembers, per user and on this device only, that the one-time "confirm
-/// your username" prompt has been dealt with (kept, changed or dismissed).
-/// Same client-side flag the web keeps in localStorage.
-struct UsernameConfirmationStore: @unchecked Sendable {
-    let defaults: UserDefaults
-
-    static let standard = UsernameConfirmationStore(defaults: .standard)
-
-    static func key(for userId: UUID) -> String {
-        "username-confirmed.\(userId.uuidString.lowercased())"
-    }
-
-    func isConfirmed(_ userId: UUID) -> Bool {
-        defaults.bool(forKey: Self.key(for: userId))
-    }
-
-    func markConfirmed(_ userId: UUID) {
-        defaults.set(true, forKey: Self.key(for: userId))
-    }
-}
-
 struct SupabaseProfileClient: ProfileClient {
     let client: SupabaseClient
 

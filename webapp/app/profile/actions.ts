@@ -10,8 +10,6 @@ import { usernameClaimError, usernameFormatHint } from "@/lib/foundation/identit
 export type ProfileUpdateState = { error: string | null; saved: boolean };
 
 export type UsernameAvailability = { available: boolean | null; error: string | null };
-export type ClaimUsernameState = { error: string | null; username: string | null };
-
 /**
  * Asks the `username_available` RPC (the only authority on the rules) whether
  * the caller could claim this name. `available` is null when we couldn't find
@@ -32,20 +30,6 @@ export async function checkUsernameAvailable(username: string): Promise<Username
     };
   }
   return { available, error: null };
-}
-
-/** Claims a username on its own (the one-time confirm prompt). */
-export async function claimUsername(username: string): Promise<ClaimUsernameState> {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  if (!canViewProfile(data?.claims)) return { error: "Create an account to pick a username.", username: null };
-
-  const { data: stored, error } = await supabase.rpc("claim_username", { p_username: username });
-  if (error) return { error: usernameClaimError(error), username: null };
-
-  revalidatePath("/profile");
-  revalidatePath("/", "layout");
-  return { error: null, username: stored };
 }
 
 export async function updateProfile(
