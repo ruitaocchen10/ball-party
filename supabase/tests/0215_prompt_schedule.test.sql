@@ -34,7 +34,9 @@ end $$;
 
 -- The cadence needs a real week: games Thursday to Monday, with a London
 -- game early on Sunday. The week starts on the first Thursday 4 to 10 days
--- from now, so every opening time falls inside the pre-fill horizon.
+-- from now, so every opening time falls inside the pre-fill horizon. The
+-- played game is 10 days back so its own weekly awards (the Tuesday after,
+-- locking Wednesday noon) have already locked whatever day the suite runs.
 create function tests.base() returns date language sql stable as $$
   select d + ((4 - extract(dow from d)::int + 7) % 7)
     from (select (now() at time zone 'America/New_York')::date + 4 as d) x
@@ -50,7 +52,7 @@ insert into public.nfl_games (id, season, week, kickoff, away_team, home_team, p
   ('2026_05_DAL_PHI', 2026, 5, tests.et(tests.base() + 3, '13:00'), 'DAL', 'PHI', false),
   ('2026_05_SF_SEA',  2026, 5, tests.et(tests.base() + 3, '20:20'), 'SF',  'SEA', true),
   ('2026_05_NYG_WAS', 2026, 5, tests.et(tests.base() + 4, '20:15'), 'NYG', 'WAS', true),
-  ('2026_04_MIA_NE',  2026, 4, now() - interval '3 days',          'MIA', 'NE',  true),
+  ('2026_04_MIA_NE',  2026, 4, now() - interval '10 days',         'MIA', 'NE',  true),
   ('2026_09_SF_SEA',  2026, 9, now() + interval '40 days',         'SF',  'SEA', true);
 delete from prompts_private.schedule_slots;
 
