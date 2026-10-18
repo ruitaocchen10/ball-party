@@ -195,6 +195,11 @@ features:
     web: done
     ios: done
     note: iOS opens https://ballparty.social/friends/invite/<code> as a Universal Link. That works only once the apple-app-site-association file (webapp/public/.well-known) is deployed and the Associated Domains capability is enabled for com.ballparty.app; not yet tested on a device.
+  - id: friends.invite-bar
+    summary: A one-row "Invite your friends" bar on Home, below the filter pills, that shares your friend invite link
+    web: done
+    ios: done
+    note: Shown to every real account, however many friends they have, on every Home pill, directly below the filter pills. There is no way to dismiss it. Invite opens the system share sheet with the existing invite link (web falls back to copying it where there is no share sheet). It adds no server rules, and a friend who opens the link still taps Add friend (friends.requests-search-invite).
   - id: friends.profiles
     summary: View another player's profile (public, friends-only and not-found states) with friend actions
     web: done

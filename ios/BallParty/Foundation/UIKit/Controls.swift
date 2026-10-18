@@ -19,17 +19,26 @@ struct BPButtonStyle: ButtonStyle {
         case dark
     }
 
+    /// `.sm` is the compact mono button for a card footer or a bar, where the
+    /// full slab button would out-shout what it sits beside (the web's `size="sm"`).
+    enum Size {
+        case md
+        case sm
+    }
+
     var variant: Variant = .solid
+    var size: Size = .md
     /// Full width is the common case; turn it off to sit inline beside a field.
     var fullWidth = true
 
     func makeBody(configuration: Configuration) -> some View {
-        BPButtonBody(configuration: configuration, variant: variant, fullWidth: fullWidth)
+        BPButtonBody(configuration: configuration, variant: variant, size: size, fullWidth: fullWidth)
     }
 
     private struct BPButtonBody: View {
         let configuration: Configuration
         let variant: Variant
+        let size: Size
         let fullWidth: Bool
 
         @Environment(\.isEnabled) private var isEnabled
@@ -38,13 +47,13 @@ struct BPButtonStyle: ButtonStyle {
         var body: some View {
             let pressed = configuration.isPressed && isEnabled
             configuration.label
-                .font(.slab(18, relativeTo: .body))
-                .tracking(0.72)
+                .font(size == .sm ? .mono(11, weight: .bold) : .slab(18, relativeTo: .body))
+                .tracking(size == .sm ? 1.1 : 0.72)
                 .textCase(.uppercase)
                 .foregroundStyle(foreground)
                 .tint(foreground)
-                .padding(.horizontal, 16)
-                .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 48)
+                .padding(.horizontal, size == .sm ? 14 : 16)
+                .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: size == .sm ? 36 : 48)
                 .background(background(pressed: pressed), in: RoundedRectangle(cornerRadius: Theme.cardRadius))
                 .overlay {
                     if variant == .ghost {
@@ -468,7 +477,7 @@ struct StatTile: View {
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 1) {
             Text(caption).monoLabel(9, weight: .bold, tracking: 0.12)
             Text(value).slabTitle(26).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
         }
