@@ -111,10 +111,10 @@ features:
     web: done
     ios: done
   - id: account.username
-    summary: Unique username (3-20 letters, digits, underscore), optional at signup, editable in edit-profile with a live availability check; existing accounts confirm their generated name once
+    summary: Unique username (3-20 letters, digits, underscore), optional at signup, editable in edit-profile with a live availability check
     web: done
     ios: done
-    note: Signup cannot check availability (no session until the email is confirmed), so the chosen name is claimed at first sign-in. The confirm prompt is remembered per device, not on the server.
+    note: Signup cannot check availability (no session until the email is confirmed), so the chosen name is claimed at first sign-in: on web by the /auth/confirm route from the signup metadata, on iOS only when signup returns a session. Known gap: with email confirmation on, iOS does not send the typed username with signup, so the chosen name is dropped and the generated one kept. The one-time confirm prompt was removed because every production account already has a username.
   - id: account.private-profile
     summary: Private profile setting (only friends can open your profile; you stay searchable and ranked)
     web: done

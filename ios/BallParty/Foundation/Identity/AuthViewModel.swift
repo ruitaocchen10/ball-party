@@ -23,7 +23,6 @@ final class AuthViewModel: ObservableObject {
     @Published var notice: Notice?
 
     private let backend: AuthBackend
-    private let confirmations: UsernameConfirmationStore
     /// Runs while the session still exists, so the server can drop this device
     /// from the signed-out account's pushes.
     private let beforeSignOut: @MainActor () async -> Void
@@ -37,11 +36,9 @@ final class AuthViewModel: ObservableObject {
 
     init(
         backend: AuthBackend,
-        confirmations: UsernameConfirmationStore = .standard,
         beforeSignOut: @escaping @MainActor () async -> Void = { await PushCoordinator.shared.willSignOut() }
     ) {
         self.backend = backend
-        self.confirmations = confirmations
         self.beforeSignOut = beforeSignOut
         session = backend.currentSession
         authStateTask = Task { [backend] in
@@ -72,8 +69,7 @@ final class AuthViewModel: ObservableObject {
     /// the display name. Availability can't be checked before signing up
     /// (`username_available` needs a session), so only the format is checked
     /// here; the claim happens right after the session exists, and a refusal
-    /// (taken, reserved) leaves the generated name for the one-time confirm
-    /// prompt to offer changing.
+    /// (taken, reserved) leaves the generated name, which Edit profile can change.
     func signUp(displayName: String, username: String = "", email: String, password: String) async {
         notice = nil
 
@@ -92,14 +88,8 @@ final class AuthViewModel: ObservableObject {
         do {
             let response = try await backend.signUp(email: normalizedEmail, password: password, displayName: name)
             if let session = response.session {
-                // Claim before publishing the session so the confirm prompt,
-                // which appears with the signed-in UI, already knows the
-                // player picked their name.
-                // A blank field or a refused claim leaves the generated name
-                // and no flag, so the prompt shows it to the player.
-                if let chosenUsername, (try? await backend.claimUsername(chosenUsername)) != nil {
-                    confirmations.markConfirmed(session.user.id)
-                }
+                // A refused claim keeps the generated name.
+                if let chosenUsername { _ = try? await backend.claimUsername(chosenUsername) }
                 self.session = session
             } else {
                 // Email confirmations are on (see supabase/config.toml) — no

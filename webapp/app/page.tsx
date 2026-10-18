@@ -7,7 +7,6 @@ import { HuddleFeed } from "@/components/home/HuddleFeed";
 import { QuickActions } from "@/components/home/QuickActions";
 import { SearchQueryProvider } from "@/components/home/search-context";
 import { InviteBar } from "@/components/foundation/friends/InviteBar";
-import { UsernamePrompt } from "@/components/foundation/identity/UsernamePrompt";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
 import { Sidebar } from "@/components/foundation/ui-kit/Sidebar";
@@ -99,13 +98,6 @@ export default async function Home(props: PageProps<"/">) {
         variant="dashboard"
         rail={<div className="hidden xl:block"><QuickActions room={room} /></div>}
       >
-        {canViewProfile(claims) && profileResult.data?.username ? (
-          <UsernamePrompt
-            userId={claims!.sub}
-            currentUsername={profileResult.data.username}
-            preferredUsername={preferredUsername(claims)}
-          />
-        ) : null}
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
         <PageHeader eyebrow="Social" title="The huddle" />
         {hasFriendsFilter ? <HomeFilters active={filter} /> : null}
@@ -160,12 +152,6 @@ function HomeFilters({ active }: { active: HomeFilter }) {
       ))}
     </nav>
   );
-}
-
-/** The username typed at signup (kept in user metadata until the email is confirmed), if it differs from the assigned one. */
-function preferredUsername(claims: { user_metadata?: unknown } | undefined) {
-  const metadata = claims?.user_metadata as { username?: unknown } | undefined;
-  return typeof metadata?.username === "string" ? metadata.username : null;
 }
 
 /** Older single- and weekly-pick rows remain readable while their data is migrated to `picks`. */

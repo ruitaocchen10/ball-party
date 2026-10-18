@@ -48,7 +48,7 @@ Every take and reply has a Report flag (not your own), and another player's prof
 
 Multiplayer needs a real account; guests are refused at `join_lobby` and `start_run`. Solo play works as a guest on web. iOS never carries a guest session. Guests cannot have friends or a username.
 
-Every non-guest account has a unique username (3-20 letters, digits or underscores, case-insensitive): generated from the display name at signup, optionally chosen there, and confirmed once by existing users in a prompt. Settings has a **Private profile** switch (`set_profile_private`): only friends can open a private profile, but its name, username and photo stay searchable and it still ranks.
+Every non-guest account has a unique username (3-20 letters, digits or underscores, case-insensitive): generated from the display name at signup, optionally chosen there (claimed on the first confirmed sign-in), and changeable in Edit profile. Settings has a **Private profile** switch (`set_profile_private`): only friends can open a private profile, but its name, username and photo stay searchable and it still ranks.
 
 ## Not built yet
 

@@ -20,8 +20,15 @@ export async function GET(request: NextRequest) {
 
   if (tokenHash && type) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+    const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
     if (!error) {
+      // The username typed at signup waits in user metadata (the database
+      // assigns a generated one meanwhile). Claim it now that there is a
+      // session; a taken or reserved name just keeps the generated one.
+      const preferred = data.user?.user_metadata?.username;
+      if (type === "signup" && typeof preferred === "string") {
+        await supabase.rpc("claim_username", { p_username: preferred });
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

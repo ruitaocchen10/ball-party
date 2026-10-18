@@ -74,12 +74,6 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.notice)
     }
 
-    private func makeStore() -> (UsernameConfirmationStore, cleanup: () -> Void) {
-        let suite = "auth-username-tests-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        return (UsernameConfirmationStore(defaults: defaults), { defaults.removePersistentDomain(forName: suite) })
-    }
-
     func test_signUp_withAnInvalidUsername_rejectsWithoutCallingBackend() async {
         let backend = FakeAuthBackend()
         let viewModel = AuthViewModel(backend: backend)
@@ -90,42 +84,34 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertTrue(backend.signUpCalls.isEmpty)
     }
 
-    func test_signUp_withAUsername_claimsItAfterTheSessionAndMarksItConfirmed() async {
-        let (store, cleanup) = makeStore()
-        defer { cleanup() }
+    func test_signUp_withAUsername_claimsItAfterTheSession() async {
         let backend = FakeAuthBackend()
         let session = makeSession()
         backend.signUpResult = .success(.session(session))
-        let viewModel = AuthViewModel(backend: backend, confirmations: store)
+        let viewModel = AuthViewModel(backend: backend)
 
         await viewModel.signUp(displayName: "Rui", username: " @rui_k ", email: "player@example.com", password: "password123")
 
         XCTAssertEqual(backend.claimUsernameCalls, ["rui_k"])
         XCTAssertNotNil(viewModel.session)
-        XCTAssertTrue(store.isConfirmed(session.user.id))
     }
 
-    func test_signUp_whenTheUsernameClaimIsRefused_stillSignsInAndLeavesThePromptForLater() async {
-        let (store, cleanup) = makeStore()
-        defer { cleanup() }
+    func test_signUp_whenTheUsernameClaimIsRefused_stillSignsIn() async {
         let backend = FakeAuthBackend()
         let session = makeSession()
         backend.signUpResult = .success(.session(session))
         backend.claimUsernameResult = .failure(UsernameError.taken)
-        let viewModel = AuthViewModel(backend: backend, confirmations: store)
+        let viewModel = AuthViewModel(backend: backend)
 
         await viewModel.signUp(displayName: "Rui", username: "rui_k", email: "player@example.com", password: "password123")
 
         XCTAssertNotNil(viewModel.session)
-        XCTAssertFalse(store.isConfirmed(session.user.id))
     }
 
     func test_signUp_withABlankUsername_doesNotClaimAnything() async {
-        let (store, cleanup) = makeStore()
-        defer { cleanup() }
         let backend = FakeAuthBackend()
         backend.signUpResult = .success(.session(makeSession()))
-        let viewModel = AuthViewModel(backend: backend, confirmations: store)
+        let viewModel = AuthViewModel(backend: backend)
 
         await viewModel.signUp(displayName: "Rui", username: "  ", email: "player@example.com", password: "password123")
 

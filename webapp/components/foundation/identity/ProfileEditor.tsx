@@ -9,7 +9,6 @@ import { AnimatedMessage } from "@/components/foundation/ui-kit/AnimatedMessage"
 import { Field, Input } from "@/components/foundation/ui-kit/Input";
 import { Modal, ModalTitle } from "@/components/foundation/ui-kit/Modal";
 import { createClient } from "@/lib/supabase/client";
-import { markUsernameConfirmed } from "@/lib/foundation/identity/username";
 import { PresetAvatarPicker } from "./PresetAvatarPicker";
 import { UsernameField } from "./UsernameField";
 import { Button } from "@/components/foundation/ui-kit/Button";
@@ -62,11 +61,6 @@ function ProfileEditorDialog({ displayName, avatarUrl, userId, username, onClose
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [usernameValue, setUsernameValue] = useState(username ?? "");
   const nameInput = useRef<HTMLInputElement>(null);
-
-  // Saving the editor with a username in it counts as confirming it.
-  useEffect(() => {
-    if (state.saved) markUsernameConfirmed(userId);
-  }, [state.saved, userId]);
 
   // Uploads straight to Storage from the browser. The avatars bucket's RLS
   // policy limits a write to the signed-in user's own prefix.

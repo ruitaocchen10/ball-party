@@ -114,21 +114,6 @@ final class IdentityConstantsTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(String.self, from: Data("\"Sam_99\"".utf8)), "Sam_99")
     }
 
-    func test_usernameConfirmationStore_isPerUser() {
-        let suite = "username-confirm-tests-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let store = UsernameConfirmationStore(defaults: defaults)
-        let a = UUID()
-        let b = UUID()
-
-        XCTAssertFalse(store.isConfirmed(a))
-        store.markConfirmed(a)
-
-        XCTAssertTrue(store.isConfirmed(a))
-        XCTAssertFalse(store.isConfirmed(b))
-    }
-
     func test_siteLinks_pointAtTheWebsPrivacyTermsAndSupportRoutes() {
         XCTAssertEqual(SiteLinks.privacyPolicy.absoluteString, "https://ballparty.social/privacy")
         XCTAssertEqual(SiteLinks.terms.absoluteString, "https://ballparty.social/terms")
