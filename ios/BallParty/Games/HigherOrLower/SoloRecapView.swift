@@ -108,7 +108,7 @@ struct SoloRecapView: View {
                 .foregroundStyle(Theme.surface)
                 .frame(width: 22, height: 22)
                 .background(Theme.fg, in: Circle())
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(card.displayName)
                     .slabTitle(15)
                     .lineLimit(2)

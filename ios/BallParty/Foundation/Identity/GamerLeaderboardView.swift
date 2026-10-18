@@ -221,7 +221,7 @@ struct BoardEntryRowView: View {
                 .slabTitle(top ? 30 : 24, color: top || onPanel ? primary : secondary)
                 .frame(minWidth: 36, alignment: .leading)
             Avatar(name: row.displayName, url: row.avatarURL, size: 32)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(row.isMe ? "\(row.displayName) · You" : row.displayName)
                     .font(.sans(16, weight: row.isMe ? .semibold : .medium))
                     .foregroundStyle(primary)
@@ -249,7 +249,7 @@ struct BoardYouRow: View {
             Text(rank.map(String.init) ?? "")
                 .slabTitle(24, color: Theme.panelFg)
                 .frame(minWidth: 36, alignment: .leading)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text("You").font(.sans(16, weight: .semibold)).foregroundStyle(Theme.panelFg)
                 Text(detail).monoLabel(9, tracking: 0.1, color: Theme.panelMuted)
             }

@@ -117,7 +117,7 @@ private struct GameCard: View {
                 .padding(.top, 14)
                 .accessibilityAddTraits(.isHeader)
             Text(game.playersLabel).monoLabel(10, weight: .semibold, tracking: 0.1)
-                .padding(.top, 2)
+                .padding(.top, 1)
             Text(game.tagline)
                 .font(.sans(15))
                 .foregroundStyle(Theme.fgMuted)
@@ -182,7 +182,7 @@ private struct GameSettingsSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text("Adjust settings").monoLabel(10, weight: .bold, tracking: 0.14)
                     Text(game.label).slabTitle(24)
                         .accessibilityAddTraits(.isHeader)

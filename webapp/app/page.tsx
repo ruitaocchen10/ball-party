@@ -6,6 +6,7 @@ import { DashboardHeader } from "@/components/home/DashboardHeader";
 import { HuddleFeed } from "@/components/home/HuddleFeed";
 import { QuickActions } from "@/components/home/QuickActions";
 import { SearchQueryProvider } from "@/components/home/search-context";
+import { InviteBar } from "@/components/foundation/friends/InviteBar";
 import { UsernamePrompt } from "@/components/foundation/identity/UsernamePrompt";
 import { EmptyState } from "@/components/foundation/ui-kit/EmptyState";
 import { ErrorBanner } from "@/components/foundation/ui-kit/ErrorBanner";
@@ -54,7 +55,7 @@ export default async function Home(props: PageProps<"/">) {
   // The Huddle is readable before a player has an account or a temporary
   // lobby session. The per-player queries remain conditional, but the public
   // feed and its optional schedule treatment always load.
-  const [profileResult, room, { posts, gameContexts, answerers }, friends, activity, listUpdates] = await Promise.all([
+  const [profileResult, room, { posts, gameContexts, answerers }, friends, activity, listUpdates, inviteCodeResult] = await Promise.all([
     viewer
       ? supabase.from("profiles").select("display_name, avatar_url, username").eq("id", claims!.sub).single()
       : Promise.resolve({ data: null }),
@@ -72,7 +73,10 @@ export default async function Home(props: PageProps<"/">) {
     wantsFriends ? supabase.rpc("list_friends") : null,
     wantsFriends ? supabase.rpc("friend_activity", { p_limit: ACTIVITY_PAGE_SIZE, ...(before ? { p_before: before } : {}) }) : null,
     wantsUpdates ? fetchListUpdates(supabase, { limit: LIST_UPDATE_PAGE_SIZE, before }) : Promise.resolve([]),
+    // The invite bar is on every pill for a real account; the code is created on first use.
+    hasFriendsFilter ? supabase.rpc("get_my_friend_code") : null,
   ]);
+  const inviteCode = inviteCodeResult?.data ?? null;
   const listPlayers = await fetchListPlayers(supabase, listUpdates.filter((update) => update.itemKind === "player").flatMap((update) => [...update.items, ...(update.previousItems ?? [])]));
 
   const { displayName, email, avatarUrl } = chromeIdentity(claims, profileResult.data);
@@ -105,6 +109,7 @@ export default async function Home(props: PageProps<"/">) {
         {errorText ? <ErrorBanner>{errorText}</ErrorBanner> : null}
         <PageHeader eyebrow="Social" title="The huddle" />
         {hasFriendsFilter ? <HomeFilters active={filter} /> : null}
+        {inviteCode ? <InviteBar code={inviteCode} /> : null}
         {friends?.error || activity?.error ? (
           <EmptyState title="Couldn't load friend activity" className="mt-6">Try again in a moment.</EmptyState>
         ) : (

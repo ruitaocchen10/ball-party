@@ -70,7 +70,7 @@ struct InboxView: View {
             } label: {
                 HStack(spacing: 12) {
                     Avatar(name: item.actorName, url: item.actorAvatarURL, size: 36)
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 1) {
                         Text(item.title)
                             .font(.sans(16, weight: .semibold))
                             .foregroundStyle(item.isDead ? Theme.fgMuted : Theme.fg)

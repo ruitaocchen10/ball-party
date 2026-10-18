@@ -471,7 +471,7 @@ private struct SoldHeadline: View {
     var body: some View {
         if let winnerId = lot.winnerId {
             let winner = viewModel.seats.first { $0.userId == winnerId }?.name ?? "Unknown buyer"
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text("Sold to").monoLabel(10, weight: .bold, tracking: 0.12, color: Theme.panelMuted)
                 HStack(alignment: .firstTextBaseline) {
                     Text(winner).slabTitle(22, color: Theme.panelFg).lineLimit(1)
@@ -972,7 +972,7 @@ private struct BoardTabView: View {
     private var current: some View {
         HStack(spacing: 10) {
             Text("Now").monoLabel(10, weight: .bold, tracking: 0.06, color: Theme.hiddenText).frame(width: 36, alignment: .leading)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text("Lot \(min(turn.currentLot, lotCount))").slabTitle(17)
                 Text(currentCaption).monoLabel(10, tracking: 0.08, color: Theme.hiddenText)
             }
@@ -997,13 +997,13 @@ private struct BoardTabView: View {
             HStack(spacing: 10) {
                 Text(lot.slot ?? "—").monoLabel(10, weight: .bold, tracking: 0.06, color: Theme.fg)
                     .frame(width: 36, alignment: .leading)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(lot.displayName).slabTitle(17).lineLimit(1)
                     Text("\(winner ?? "No bids") · \(lot.season) · \(lot.team)")
                         .monoLabel(10, tracking: 0.05).lineLimit(1)
                 }
                 Spacer(minLength: 4)
-                VStack(alignment: .trailing, spacing: 2) {
+                VStack(alignment: .trailing, spacing: 1) {
                     Text(formatPoints(lot.points)).font(.mono(15, weight: .bold)).foregroundStyle(Theme.fg).monospacedDigit()
                     Text(lot.price.map { "$\($0)" } ?? "—").monoLabel(10, tracking: 0.05)
                 }
@@ -1073,7 +1073,7 @@ private struct AuctionFinalView: View {
                     .font(.mono(16, weight: .bold))
                     .foregroundStyle(row.rank == 1 ? (onPanel ? Theme.hiddenInk : Theme.hiddenText) : Theme.fgMuted)
                     .frame(width: 40, alignment: .leading)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 6) {
                         Text(row.name)
                             .slabTitle(24, color: onPanel ? Theme.panelFg : Theme.fg)

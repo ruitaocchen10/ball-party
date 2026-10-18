@@ -7,6 +7,7 @@ struct HuddleScreen: View {
     @StateObject private var viewModel: HuddleViewModel
     @StateObject private var activity: FriendActivityViewModel
     @StateObject private var listUpdates: ListUpdatesViewModel
+    @StateObject private var inviteBar: InviteBarViewModel
     @State private var filter: HomeFilter = .all
     private let friendsClient: FriendsClient
 
@@ -19,6 +20,7 @@ struct HuddleScreen: View {
         )
         let friends = SupabaseFriendsClient(client: SupabaseConfig.client)
         friendsClient = friends
+        _inviteBar = StateObject(wrappedValue: InviteBarViewModel(client: friends))
         _activity = StateObject(
             wrappedValue: FriendActivityViewModel(
                 client: SupabaseFriendActivityClient(client: SupabaseConfig.client),
@@ -31,7 +33,7 @@ struct HuddleScreen: View {
     }
 
     var body: some View {
-        HuddleFeedView(viewModel: viewModel, activity: activity, listUpdates: listUpdates, filter: $filter, client: friendsClient)
+        HuddleFeedView(viewModel: viewModel, activity: activity, listUpdates: listUpdates, inviteBar: inviteBar, filter: $filter, client: friendsClient)
             .screenBackground()
             .screenHeader("Home") { RootBell() }
     }
@@ -41,6 +43,7 @@ struct HuddleFeedView: View {
     @ObservedObject var viewModel: HuddleViewModel
     @ObservedObject var activity: FriendActivityViewModel
     @ObservedObject var listUpdates: ListUpdatesViewModel
+    @ObservedObject var inviteBar: InviteBarViewModel
     @Binding var filter: HomeFilter
     let client: FriendsClient
     @Environment(\.scenePhase) private var scenePhase
@@ -52,6 +55,7 @@ struct HuddleFeedView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
+                InviteBar(viewModel: inviteBar)
                 switch viewModel.phase {
                 case .loading:
                     LoadingState(label: "Loading the feed…")
@@ -85,7 +89,8 @@ struct HuddleFeedView: View {
         async let moments: Void = activity.load()
         async let answered: Void = activity.loadAnswerers(postIds: viewModel.posts.map(\.id))
         async let updates: Void = listUpdates.load()
-        _ = await (moments, answered, updates)
+        async let invite: Void = inviteBar.load()
+        _ = await (moments, answered, updates, invite)
     }
 
     private var entries: [HomeFeedEntry] {
@@ -217,7 +222,7 @@ private struct PostCard: View {
                     Text(post.caption)
                         .font(.sans(13))
                         .foregroundStyle(Theme.fgMuted)
-                        .padding(.top, 2)
+                        .padding(.top, 1)
                 }
                 if post.status == .void, let reason = post.voidReason {
                     Text(reason)

@@ -65,7 +65,7 @@ struct HeaderStat: View {
     var urgent = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 1) {
             Text(caption)
                 .monoLabel(9, tracking: 0.1, color: urgent ? Theme.hiddenText : Theme.fgMuted)
                 .lineLimit(1)

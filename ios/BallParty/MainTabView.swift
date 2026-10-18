@@ -300,7 +300,7 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
                 .font(.sans(13))
                 .foregroundStyle(Theme.fgMuted)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 8)
+                .padding(.top, 1)
 
             Spacer(minLength: 16)
 
@@ -324,7 +324,6 @@ private struct SoloGameCard<Options: View, Destination: View>: View {
                 }
             }
             .padding(.top, 12)
-            .overlay(alignment: .top) { LineRule() }
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -397,7 +396,7 @@ private struct StackedChoice<Option: Identifiable & Hashable>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(legend).monoLabel(9, weight: .semibold, tracking: 0.1)
-                .padding(.bottom, 2)
+                .padding(.bottom, 1)
             ForEach(options) { option in
                 let isSelected = option == selection
                 Button {
@@ -408,7 +407,7 @@ private struct StackedChoice<Option: Identifiable & Hashable>: View {
                             .font(.system(size: 15))
                             .foregroundStyle(isSelected ? Theme.fg : Theme.fgMuted)
                             .padding(.top, 1)
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 1) {
                             Text(option[keyPath: label]).monoLabel(11, weight: .bold, tracking: 0.1, color: Theme.fg)
                             Text(option[keyPath: summary])
                                 .font(.sans(13))
@@ -446,7 +445,7 @@ private struct EraChoice: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Era").monoLabel(9, weight: .semibold, tracking: 0.1)
-                .padding(.bottom, 2)
+                .padding(.bottom, 1)
             HStack(spacing: 6) {
                 ForEach(QbEra.allCases) { era in
                     let isSelected = era == selection
@@ -482,7 +481,7 @@ private struct SeasonRangeChoice: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Era").monoLabel(9, weight: .semibold, tracking: 0.1)
-                .padding(.bottom, 2)
+                .padding(.bottom, 1)
             HStack(spacing: 12) {
                 SeasonMenu(title: "From", selection: $format.seasonFrom, choices: format.seasonChoices)
                 SeasonMenu(title: "To", selection: $format.seasonTo, choices: format.seasonChoices)

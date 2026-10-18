@@ -203,7 +203,7 @@ struct TakeCardView: View {
 
     @ViewBuilder
     private func contextStrip(_ title: String) -> some View {
-        let strip = VStack(alignment: .leading, spacing: 2) {
+        let strip = VStack(alignment: .leading, spacing: 1) {
             Text("Answering").monoLabel(9, tracking: 0.1)
             Text(title)
                 .font(.sans(15, weight: .medium))

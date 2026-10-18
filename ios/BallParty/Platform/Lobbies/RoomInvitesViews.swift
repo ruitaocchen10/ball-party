@@ -188,7 +188,7 @@ struct RoomInvitesInboxSection: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 12) {
                 Avatar(name: invite.senderName, url: invite.senderAvatarURL, size: 36)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text("\(invite.senderName) invited you")
                         .font(.sans(16, weight: .semibold))
                         .foregroundStyle(Theme.fg)

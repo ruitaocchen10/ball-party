@@ -39,7 +39,7 @@ struct AuthView: View {
                 Text("Ball").slabTitle(104)
                 Text("Party").slabTitle(104)
             }
-            .padding(.top, 2)
+            .padding(.top, 1)
             .padding(.bottom, -4)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Ball Party")

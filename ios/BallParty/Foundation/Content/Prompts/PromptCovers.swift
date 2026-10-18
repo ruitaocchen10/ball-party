@@ -302,7 +302,7 @@ struct MatchupBanner: View {
                     Text("@").font(.sans(13, weight: .bold)).foregroundStyle(Theme.fgMuted).accessibilityHidden(true)
                     Text(home.label).slabTitle(22).lineLimit(1).minimumScaleFactor(0.6)
                 }
-                VStack(spacing: 2) {
+                VStack(spacing: 1) {
                     Text(MatchupText.kickoff(game?.kickoff)).monoLabel(9, tracking: 0.14, color: Theme.fg.opacity(0.7)).lineLimit(1).minimumScaleFactor(0.8)
                     Text(MatchupText.venue(game)).monoLabel(9, tracking: 0.14, color: Theme.fg.opacity(0.5)).lineLimit(1).minimumScaleFactor(0.8)
                 }

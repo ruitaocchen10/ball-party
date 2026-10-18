@@ -258,7 +258,7 @@ private struct LobbyEntryView: View {
                 .padding(.bottom, 8)
                 .accessibilityHidden(true)
                 Text("Start a party").slabTitle(38, color: Theme.surface)
-                    .padding(.bottom, 2)
+                    .padding(.bottom, 1)
                 Text("Opens a room. Invite friends or send them the link, and pick a game once they're in.")
                     .font(.sans(14))
                     .foregroundStyle(Theme.surface.opacity(0.75))
@@ -518,7 +518,7 @@ private struct LobbyRoomView: View {
                     Text("Host")
                         .monoLabel(8, weight: .bold, tracking: 0.1, color: Theme.fg)
                         .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 1)
                         .background(ink, in: RoundedRectangle(cornerRadius: 3))
                 }
             }

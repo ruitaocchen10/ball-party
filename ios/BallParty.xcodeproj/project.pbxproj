@@ -158,8 +158,10 @@
 		FEFEB3810EA48B5213A7CD68 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A865AEEE5F77E725C7C0A7B /* ThemeTests.swift */; };
 		1A71C0DE0000000000000020 /* FriendInviteViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A71C0DE0000000000000010 /* FriendInviteViewModel.swift */; };
 		1A71C0DE0000000000000021 /* FriendInviteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A71C0DE0000000000000011 /* FriendInviteView.swift */; };
+		1A71C0DE0000000000000025 /* InviteBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A71C0DE0000000000000023 /* InviteBar.swift */; };
 		7B00F0071100000000000002 /* RoomLinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B00F0071100000000000001 /* RoomLinkTests.swift */; };
 		1A71C0DE0000000000000022 /* FriendInviteViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A71C0DE0000000000000012 /* FriendInviteViewModelTests.swift */; };
+		1A71C0DE0000000000000026 /* InviteBarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A71C0DE0000000000000024 /* InviteBarTests.swift */; };
 		6D9C2E90ABD5C8B7641089A1 /* AuctionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E631169AEA3C6B88BF8BB49 /* AuctionModels.swift */; };
 		B9D26ED28D1D61D188B8D84E /* AuctionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3AE4D3EA3796BA1905A4A3F /* AuctionClient.swift */; };
 		050806843618C46C642FEDDE /* AuctionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F68B96EC8974E831C97A91BF /* AuctionViewModel.swift */; };
@@ -363,8 +365,10 @@
 		FFC8A96142A0621FD8ABEA33 /* IdentityConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityConstants.swift; sourceTree = "<group>"; };
 		1A71C0DE0000000000000010 /* FriendInviteViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInviteViewModel.swift; sourceTree = "<group>"; };
 		1A71C0DE0000000000000011 /* FriendInviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInviteView.swift; sourceTree = "<group>"; };
+		1A71C0DE0000000000000023 /* InviteBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteBar.swift; sourceTree = "<group>"; };
 		7B00F0071100000000000001 /* RoomLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomLinkTests.swift; sourceTree = "<group>"; };
 		1A71C0DE0000000000000012 /* FriendInviteViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendInviteViewModelTests.swift; sourceTree = "<group>"; };
+		1A71C0DE0000000000000024 /* InviteBarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteBarTests.swift; sourceTree = "<group>"; };
 		9E631169AEA3C6B88BF8BB49 /* AuctionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionModels.swift; sourceTree = "<group>"; };
 		A3AE4D3EA3796BA1905A4A3F /* AuctionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionClient.swift; sourceTree = "<group>"; };
 		F68B96EC8974E831C97A91BF /* AuctionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuctionViewModel.swift; sourceTree = "<group>"; };
@@ -515,6 +519,7 @@
 				F41E000000000000000A000A /* FriendsViewModelTests.swift */,
 				7B00F0071100000000000001 /* RoomLinkTests.swift */,
 				1A71C0DE0000000000000012 /* FriendInviteViewModelTests.swift */,
+				1A71C0DE0000000000000024 /* InviteBarTests.swift */,
 				F41E000000000000000A000B /* OtherProfileViewModelTests.swift */,
 				654281683BBD84CF804F6ED6 /* BeamAvatarTests.swift */,
 				C6A3E82B4F1D0975E3B72A58 /* GeneratedAvatarTests.swift */,
@@ -623,6 +628,7 @@
 				F41E000000000000000A0004 /* FriendsView.swift */,
 				1A71C0DE0000000000000010 /* FriendInviteViewModel.swift */,
 				1A71C0DE0000000000000011 /* FriendInviteView.swift */,
+				1A71C0DE0000000000000023 /* InviteBar.swift */,
 				F41E000000000000000A0005 /* OtherProfileViewModel.swift */,
 				F41E000000000000000A0006 /* OtherProfileView.swift */,
 				F41E000000000000000A0007 /* StatsCard.swift */,
@@ -972,6 +978,7 @@
 				F41E000000000000000B000A /* FriendsViewModelTests.swift in Sources */,
 				7B00F0071100000000000002 /* RoomLinkTests.swift in Sources */,
 				1A71C0DE0000000000000022 /* FriendInviteViewModelTests.swift in Sources */,
+				1A71C0DE0000000000000026 /* InviteBarTests.swift in Sources */,
 				F41E000000000000000B000B /* OtherProfileViewModelTests.swift in Sources */,
 				7D9F3D2753A09525262CB6CE /* BeamAvatarTests.swift in Sources */,
 				2F7D0A9C5E1B84363A6D91F0 /* GeneratedAvatarTests.swift in Sources */,
@@ -1065,6 +1072,7 @@
 				F41E000000000000000B0004 /* FriendsView.swift in Sources */,
 				1A71C0DE0000000000000020 /* FriendInviteViewModel.swift in Sources */,
 				1A71C0DE0000000000000021 /* FriendInviteView.swift in Sources */,
+				1A71C0DE0000000000000025 /* InviteBar.swift in Sources */,
 				F41E000000000000000B0005 /* OtherProfileViewModel.swift in Sources */,
 				F41E000000000000000B0006 /* OtherProfileView.swift in Sources */,
 				F41E000000000000000B0007 /* StatsCard.swift in Sources */,
