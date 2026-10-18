@@ -166,7 +166,7 @@ private struct StandingsRail: View {
                         size: 28,
                         isMine: player.userId == viewModel.viewerId
                     )
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 1) {
                         HStack(spacing: 4) {
                             Text(player.name).slabTitle(18).lineLimit(1)
                             if player.userId == viewModel.viewerId {
@@ -176,7 +176,7 @@ private struct StandingsRail: View {
                         Text(viewModel.status(of: player)).monoLabel(10, tracking: 0.07)
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: 1) {
                         Text("\(player.correctCount) correct")
                             .monoLabel(10, weight: .bold, tracking: 0.05, color: Theme.fg)
                             .monospacedDigit()
@@ -237,7 +237,7 @@ private struct MatchFinalView: View {
                 .font(.mono(16, weight: .bold))
                 .foregroundStyle(row.rank == 1 ? (onPanel ? Theme.hiddenInk : Theme.hiddenText) : Theme.fgMuted)
                 .frame(width: 40, alignment: .leading)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     Text(row.name)
                         .slabTitle(24, color: onPanel ? Theme.panelFg : Theme.fg)

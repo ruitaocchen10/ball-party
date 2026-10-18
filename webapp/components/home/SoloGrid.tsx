@@ -81,7 +81,7 @@ function SoloCard({ game, higherOrLowerEra }: { game: Game; higherOrLowerEra: So
       </h3>
       <p className="mt-2 mb-4 text-[13px] leading-5 text-fg-muted">{game.tagline}</p>
 
-      <form action={playSolo} className="mt-auto border-t border-line pt-3">
+      <form action={playSolo} className="mt-auto pt-3">
         <input type="hidden" name="game" value={game.match ?? ""} />
         <SoloPlayControls
           title={title}

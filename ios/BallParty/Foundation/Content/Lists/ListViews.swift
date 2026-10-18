@@ -138,7 +138,7 @@ struct ListStartCard: View {
                 .frame(height: PromptArt.height)
                 .background(Theme.surface)
                 .clipped()
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(ListLogic.title(kind: kind.id, itemKind: kind.itemKind, size: kind.sizes.first ?? 10))
                     .slabTitle(24, color: Theme.panelFg).lineSpacing(0)
                 Text(kind.isTeams
@@ -150,7 +150,7 @@ struct ListStartCard: View {
                     Text("Start your list")
                 }
                 .buttonStyle(.solid)
-                .padding(.top, 8)
+                .padding(.top, 13)
             }
             .padding(16)
         }

@@ -370,7 +370,7 @@ struct PersonRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Avatar(name: player.displayName, url: player.avatarURL, size: 40)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(player.displayName)
                     .font(.sans(16, weight: .semibold))
                     .foregroundStyle(Theme.fg)

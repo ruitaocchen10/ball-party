@@ -323,7 +323,7 @@ struct SlotPicker: View {
                 } label: {
                     HStack(spacing: 12) {
                         OptionBadge(option: option, onPanel: isChosen)
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 1) {
                             Text(option.label)
                                 .font(.sans(17, weight: .semibold))
                                 .foregroundStyle(isChosen ? Theme.panelFg : Theme.fg)

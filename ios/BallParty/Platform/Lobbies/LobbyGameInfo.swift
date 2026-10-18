@@ -89,7 +89,7 @@ private struct GameInfoCard: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .padding(2)
+                .padding(1)
                 .accessibilityLabel("About \(game.label)")
             }
             .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))

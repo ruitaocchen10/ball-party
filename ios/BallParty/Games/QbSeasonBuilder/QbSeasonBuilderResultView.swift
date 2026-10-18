@@ -156,7 +156,7 @@ private struct PlayerBuildPanel: View {
         ]
         return LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)], spacing: 12) {
             ForEach(stats, id: \.0) { name, value in
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(name).monoLabel(10, tracking: 0.13)
                     Text(value).slabTitle(26).monospacedDigit()
                 }
@@ -224,7 +224,7 @@ private struct BreakdownPanel: View {
                 ForEach(Array(result.breakdown.enumerated()), id: \.offset) { index, part in
                     if index > 0 { LineRule() }
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 1) {
                             Text(part.label).monoLabel(11, weight: .bold, tracking: 0.1, color: Theme.fg)
                             Text("\(result.weightPercent(of: part))% of the score · better than \(Int((part.percentile * 100).rounded()))% of real seasons")
                                 .font(.sans(13))

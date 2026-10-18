@@ -107,7 +107,7 @@ struct WeeklyAwardsPicker: View {
             } else if let option {
                 AwardOptionIcon(option: option, slot: slot, size: 32)
             }
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(slot.label).monoLabel(10, tracking: 0.08, color: Theme.fgMuted)
                 Text(summary ?? "Not picked yet")
                     .font(.slab(18, relativeTo: .body))

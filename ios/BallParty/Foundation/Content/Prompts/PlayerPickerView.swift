@@ -72,7 +72,7 @@ struct PlayerPickerView: View {
     private func row(_ player: NFLPlayer) -> some View {
         HStack(spacing: 12) {
             Portrait(name: player.name, url: player.headshotURL, size: 36)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(player.name).font(.sans(16, weight: .semibold)).foregroundStyle(Theme.fg)
                 Text(([player.summary] + [player.statusLabel].compactMap { $0 }).joined(separator: " · "))
                     .monoLabel(10, tracking: 0.08)
@@ -89,7 +89,7 @@ struct PlayerPickerView: View {
     private func chosen(_ player: NFLPlayer) -> some View {
         HStack(spacing: 12) {
             Portrait(name: player.name, url: player.headshotURL, size: 44)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(player.name).font(.sans(17, weight: .bold)).foregroundStyle(Theme.panelFg)
                 Text(player.summary).monoLabel(10, tracking: 0.08, color: Theme.panelMuted)
             }

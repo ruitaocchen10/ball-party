@@ -24,7 +24,7 @@ struct GameMomentCard: View {
             } label: {
                 HStack(spacing: 8) {
                     Avatar(name: event.actor.displayName, url: event.actor.avatarURL, size: 28)
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 1) {
                         Text(event.actor.displayName).font(.sans(15, weight: .semibold)).foregroundStyle(Theme.fg)
                         if let username = event.actor.username.nonEmpty {
                             Text("@" + username).font(.mono(10)).foregroundStyle(Theme.fgMuted)

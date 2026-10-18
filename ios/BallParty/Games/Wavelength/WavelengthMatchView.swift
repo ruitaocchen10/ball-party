@@ -366,7 +366,7 @@ private struct WavelengthBoardPanel: View {
         PanelCard {
             VStack(spacing: 12) {
                 if let clue {
-                    VStack(spacing: 2) {
+                    VStack(spacing: 1) {
                         Text("The clue").monoLabel(10, tracking: 0.13, color: Theme.panelMuted)
                         Text("“\(clue ?? "Waiting for the clue…")”")
                             .slabTitle(30, color: Theme.panelFg)

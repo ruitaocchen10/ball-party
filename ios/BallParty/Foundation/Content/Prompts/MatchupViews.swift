@@ -190,7 +190,7 @@ struct MarginChoices: View {
                     .grayscale(passed ? 1 : 0)
                     .opacity(passed ? 0.4 : 1)
             }
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(choice.label)
                     .font(.slab(17, relativeTo: .body))
                     .textCase(.uppercase)

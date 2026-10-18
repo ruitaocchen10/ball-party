@@ -324,7 +324,7 @@ struct ListUpdateScreen: View {
                 ForEach(viewModel.thread.replies) { reply in
                     HStack(alignment: .top, spacing: 10) {
                         Avatar(name: reply.authorName, url: reply.avatarURL, size: 32)
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 1) {
                             HStack(spacing: 4) {
                                 Text(reply.isViewer ? "You" : reply.authorName).font(.sans(14, weight: .bold)).foregroundStyle(Theme.fg)
                                 Text(reply.createdAt, style: .relative).font(.mono(10)).foregroundStyle(Theme.fgMuted)

@@ -416,7 +416,7 @@ struct QbSlotRow: View {
                 if let name = pick.displayName {
                     Portrait(name: name, url: pick.headshotURL, size: 28)
                 }
-                VStack(alignment: .trailing, spacing: 2) {
+                VStack(alignment: .trailing, spacing: 1) {
                     Text(pick.displayName ?? QbFranchises.name(for: pick.franchiseCode))
                         .font(.sans(13))
                         .foregroundStyle(Theme.fg)
