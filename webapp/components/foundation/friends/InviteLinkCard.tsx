@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ConfirmAction } from "@/components/foundation/friends/ConfirmAction";
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Input } from "@/components/foundation/ui-kit/Input";
+import { track } from "@/lib/foundation/analytics/client";
 import { friendErrorMessage, friendInvitePath } from "@/lib/foundation/friends/friends";
 import { createClient } from "@/lib/supabase/client";
 
@@ -23,6 +24,7 @@ export function InviteLinkCard({ code: initialCode }: { code: string }) {
   async function copy() {
     try {
       await navigator.clipboard.writeText(link);
+      track("invite_link_shared", { kind: "friend" });
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

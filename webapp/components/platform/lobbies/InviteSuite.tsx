@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/foundation/ui-kit/Button";
+import { track } from "@/lib/foundation/analytics/client";
 import { InviteFriendsModal } from "@/components/platform/lobbies/InviteFriendsModal";
 
 /**
@@ -28,6 +29,7 @@ export function InviteSuite({ code, lobbyId }: { code: string; lobbyId: string }
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({ title: "Join my Ball Party room", text: "Join my Ball Party room", url });
+        track("invite_link_shared", { kind: "room" });
       } catch {
         // Cancelled share sheet — not an error worth surfacing.
       }
@@ -35,6 +37,7 @@ export function InviteSuite({ code, lobbyId }: { code: string; lobbyId: string }
     }
     try {
       await navigator.clipboard.writeText(url);
+      track("invite_link_shared", { kind: "room" });
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 1800);
     } catch {

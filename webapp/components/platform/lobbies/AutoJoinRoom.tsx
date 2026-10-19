@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { track } from "@/lib/foundation/analytics/client";
 import { createClient } from "@/lib/supabase/client";
 import { joinLobbyFromBrowser } from "@/lib/platform/lobbies/client";
 import { lobbyErrorMessage } from "@/lib/platform/lobbies/messages";
@@ -23,6 +24,7 @@ export function AutoJoinRoom({ code }: { code: string }) {
         setError(lobbyErrorMessage(joinError.message));
         return;
       }
+      track("party_joined", {});
       router.refresh();
     });
     return () => { active = false; };

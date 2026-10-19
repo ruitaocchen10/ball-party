@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AuthorAvatar } from "@/components/foundation/content/prompts/AuthorIdentity";
 import { Button, ButtonLink } from "@/components/foundation/ui-kit/Button";
+import { track } from "@/lib/foundation/analytics/client";
 import {
   SEND_RESULT_COPY,
   friendErrorMessage,
@@ -41,7 +42,9 @@ export function FriendInviteCard({ code, owner }: { code: string; owner: InviteO
       setError(friendErrorMessage(rpcError.message));
       return;
     }
-    setResult(parseSendResult(data));
+    const sendResult = parseSendResult(data);
+    track("invite_accepted", { kind: "friend", result: sendResult });
+    setResult(sendResult);
   }
 
   return (

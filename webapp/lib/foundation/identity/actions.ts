@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { trackServer } from "@/lib/foundation/analytics/server";
 import { safeNextPath } from "@/lib/foundation/identity/next";
 import { createClient } from "@/lib/supabase/server";
 import { usernameFormatHint } from "@/lib/foundation/identity/username";
@@ -54,7 +55,7 @@ export async function signInWithEmail(
     guestClaim = data ?? null;
   }
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: signedIn, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     // Deliberately vague on bad credentials so the form can't be used to test
@@ -74,6 +75,8 @@ export async function signInWithEmail(
   if (guestClaim) {
     await supabase.rpc("record_guest_account_collision", { p_nonce: guestClaim });
   }
+
+  await trackServer(signedIn.user?.id, "signed_in", { method: "email" });
 
   revalidatePath("/", "layout");
   redirect(next);

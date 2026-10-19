@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { track } from "@/lib/foundation/analytics/client";
 import { nflTeamName, type NflScheduleGame } from "@/lib/foundation/content/nfl/schedule";
 import { promptErrorMessage } from "@/lib/foundation/content/prompts/messages";
 import type { PlayerResult } from "@/lib/foundation/content/prompts/players";
@@ -79,5 +80,6 @@ export async function submitBoldPredictions(
     p_post_id: postId,
     p_predictions: predictions.map(({ body, target }) => ({ body, target_type: target.type, target_id: target.id })),
   });
+  if (!error) track("prompt_answered", { post_id: postId });
   return { error: error ? promptErrorMessage(error.message) : null };
 }

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { trackServerAs } from "@/lib/foundation/analytics/server";
 import { createClient } from "@/lib/supabase/server";
 import { canCreateLobby, isGuestViewer, isSignedInViewer } from "@/lib/foundation/identity/viewer";
 import { guestSessionFinishedHref } from "@/lib/foundation/identity/guest-lifecycle";
@@ -84,6 +85,8 @@ export async function createLobby() {
 
   // redirect() unwinds by throwing, so it must never sit inside a try/catch.
   if (error) redirect(withError("/party", error));
+
+  await trackServerAs(supabase, "party_created", {});
 
   revalidatePath("/", "layout");
   redirect(`/lobby/${data.code}`);
@@ -190,6 +193,8 @@ export async function startRun(formData: FormData) {
     });
   if (dealError) redirect(withError(`/lobby/${code}`, dealError));
 
+  await trackServerAs(supabase, "game_started", { game, solo: false });
+
   revalidatePath("/", "layout");
   redirect(`/match/${match.id}`);
 }
@@ -293,6 +298,8 @@ export async function playSolo(formData: FormData) {
     });
   if (dealError) redirect(withError("/solo", dealError));
 
+  await trackServerAs(supabase, "game_started", { game, solo: true });
+
   revalidatePath("/", "layout");
   redirect(`/match/${match.id}`);
 }
@@ -337,6 +344,8 @@ export async function joinLobby(formData: FormData) {
   const result = await joinLobbyRpc(supabase, code);
 
   if (result.error) redirect(withError(`/lobby/${code}`, result.error));
+
+  await trackServerAs(supabase, "party_joined", {});
 
   revalidatePath("/", "layout");
   redirect(`/lobby/${code}`);

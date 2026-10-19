@@ -350,6 +350,16 @@ features:
     summary: Privacy policy and support pages
     web: done
     ios: done
+  - id: analytics.usage-events
+    summary: Product usage analytics (PostHog) for the events in docs/analytics/events.json
+    web: done
+    ios: missing
+    note: 'The iOS half is built but ships in a separate change. Read docs/analytics.md. Same event names and properties on both clients, checked against docs/analytics/events.json by a test on each. Differences: push_enabled is iOS only (the web has no push); invite_link_shared counts a completed share or copy on web, but the tap that opens the share sheet on iOS (SwiftUI ShareLink reports no completion). Web sends lobby, game and sign-in events from server actions (lib/foundation/analytics/server.ts) because they end in a redirect.'
+  - id: analytics.opt-out
+    summary: Share usage data switch, to opt out of usage analytics
+    web: done
+    ios: missing
+    note: 'Web: Settings (guests see it too). iOS (separate change): Profile menu, Privacy. The choice is kept on the browser or device it is set on, not on the account, so opting out on one does not opt out the other.'
   - id: admin.prompts
     summary: Author, resolve, void and delete prompts
     web: done

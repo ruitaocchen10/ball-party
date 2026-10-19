@@ -1,6 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { trackServer } from "@/lib/foundation/analytics/server";
 import { safeNextPath } from "@/lib/foundation/identity/next";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,6 +30,9 @@ export async function GET(request: NextRequest) {
       if (type === "signup" && typeof preferred === "string") {
         await supabase.rpc("claim_username", { p_username: preferred });
       }
+      // Sign-up is counted here, not where the form is submitted: until the
+      // link is clicked there is no real account to attribute it to.
+      if (type === "signup") await trackServer(data.user?.id, "signed_up", { method: "email" });
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

@@ -1,3 +1,4 @@
+import { track } from "@/lib/foundation/analytics/client";
 import type { Slot, TemplateKind } from "@/lib/foundation/content/prompts/types";
 import type { createClient } from "@/lib/supabase/client";
 import { promptErrorMessage } from "@/lib/foundation/content/prompts/messages";
@@ -22,6 +23,7 @@ export async function submitPromptResponse(
     p_choices: choices,
     ...(comment ? { p_comment: comment } : {}),
   });
+  if (!error) track("prompt_answered", { post_id: postId });
   return { error: error ? promptErrorMessage(error.message) : null };
 }
 
@@ -39,6 +41,7 @@ export async function postComment(
     p_body: body,
     ...(parentCommentId ? { p_parent_comment_id: parentCommentId } : {}),
   });
+  if (!error) track("take_posted", { post_id: postId, is_reply: Boolean(parentCommentId) });
   return { error: error ? promptErrorMessage(error.message) : null };
 }
 

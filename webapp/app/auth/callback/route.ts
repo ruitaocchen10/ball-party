@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { trackServer } from "@/lib/foundation/analytics/server";
 import { safeNextPath } from "@/lib/foundation/identity/next";
 import { createClient } from "@/lib/supabase/server";
+
+const NEW_ACCOUNT_WINDOW_MS = 2 * 60 * 1000;
 
 /**
  * OAuth (PKCE) landing point. Google redirects here with `?code=`, which we
@@ -26,7 +29,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
     // Surfaced rather than swallowed: the two realistic causes here — a missing
@@ -39,6 +42,12 @@ export async function GET(request: NextRequest) {
     });
     return fail(origin, error.message);
   }
+
+  // The exchange is the same for a first Google sign-in and a return one, so a
+  // sign-up is an account created within the last couple of minutes.
+  const createdAt = data.user?.created_at ? Date.parse(data.user.created_at) : NaN;
+  const isNewAccount = Date.now() - createdAt < NEW_ACCOUNT_WINDOW_MS;
+  await trackServer(data.user?.id, isNewAccount ? "signed_up" : "signed_in", { method: "google" });
 
   // Behind Vercel's load balancer `origin` is the internal host, so prefer
   // the forwarded one in production or the redirect leaves the site.
