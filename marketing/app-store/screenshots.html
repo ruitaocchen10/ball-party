@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ball Party App Store Screenshots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500&family=Bebas+Neue&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  /* Each .slide is a true 6.9" iPhone App Store canvas (1320 x 2868).
+     The page scales them down to view; add ?export to render them at full size. */
+  :root {
+    --surface: #111311;
+    --fg: #e8e3d6;
+    --fg-muted: #8f8b7f;
+    --soft: #bdb8aa;
+    --red: #c9382c;
+    --red-text: #ff5a4a;
+    --scale: 0.3;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: #070807;
+    font-family: "Barlow", system-ui, sans-serif;
+    color: var(--fg);
+    padding: 24px;
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    justify-content: center;
+  }
+  .frame {
+    width: calc(1320px * var(--scale));
+    height: calc(2868px * var(--scale));
+    overflow: hidden;
+    border-radius: 16px;
+    flex: none;
+  }
+  .slide {
+    width: 1320px;
+    height: 2868px;
+    transform: scale(var(--scale));
+    transform-origin: top left;
+    position: relative;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .slide::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(900px 700px at 85% 8%, var(--glow, rgba(201,56,44,.34)), transparent 70%),
+      radial-gradient(900px 700px at 8% 40%, var(--glow2, rgba(40,70,160,.26)), transparent 70%);
+  }
+  .copy {
+    position: relative;
+    padding: 150px 96px 0;
+  }
+  .kicker {
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 500;
+    font-size: 40px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--red-text);
+    margin-bottom: 36px;
+  }
+  h1 {
+    font-family: "Bebas Neue", Impact, sans-serif;
+    font-weight: 400;
+    font-size: 178px;
+    line-height: .92;
+    letter-spacing: .005em;
+    text-transform: uppercase;
+  }
+  .sub {
+    margin-top: 44px;
+    font-size: 58px;
+    line-height: 1.25;
+    color: var(--soft);
+    max-width: 1000px;
+  }
+  /* Device: bezel + screen. The phone bleeds off the bottom edge. */
+  .phone {
+    position: absolute;
+    left: 150px;
+    top: 1060px;
+    width: 1020px;
+    padding: 20px;
+    border-radius: 150px 150px 0 0;
+    background: #050605;
+    box-shadow:
+      0 0 0 4px #2a2d29,
+      0 0 0 10px #0b0c0b,
+      0 80px 160px rgba(0,0,0,.65);
+  }
+  /* Same Dynamic Island on every slide: the simulator only draws it on some captures. */
+  .phone::after {
+    content: "";
+    position: absolute;
+    top: 51px;
+    left: 50%;
+    width: 212px;
+    height: 80px;
+    transform: translateX(-50%);
+    background: #000;
+    border-radius: 40px;
+  }
+  .phone img {
+    display: block;
+    width: 100%;
+    border-radius: 132px 132px 0 0;
+  }
+  /* ?export: render each slide at the 6.1"/6.3" iPhone size App Store Connect asks for
+     (1206 x 2622), one per page, for screenshotting. Scaled to the height; the
+     sub-pixel overhang on the right is clipped by the frame. */
+  .export { --scale: calc(2622 / 2868); padding: 0; background: var(--surface); }
+  .export .row { gap: 0; }
+  .export .frame { width: 1206px; height: 2622px; border-radius: 0; }
+</style>
+</head>
+<body>
+<div class="row" id="row">
+
+  <div class="frame"><section class="slide" id="feed">
+    <div class="copy">
+      <div class="kicker">Friends feed</div>
+      <h1>The group chat,<br>but it keeps score</h1>
+      <p class="sub">Lock in your pick, then see how your friends called it.</p>
+    </div>
+    <div class="phone"><img src="shots/feed.png" alt="Home feed showing friends' completed prompts"></div>
+  </section></div>
+
+  <div class="frame"><section class="slide" id="rankings" style="--glow: rgba(40,70,160,.34); --glow2: rgba(201,56,44,.26)">
+    <div class="copy">
+      <div class="kicker">Power rankings</div>
+      <h1>Rank the league.<br>Defend the list</h1>
+      <p class="sub">Build your top 10. Friends can see every move and reply.</p>
+    </div>
+    <div class="phone"><img src="shots/rankings.png" alt="Power rankings list with movement arrows"></div>
+  </section></div>
+
+  <div class="frame"><section class="slide" id="games">
+    <div class="copy">
+      <div class="kicker">Auction team builder</div>
+      <h1>Bid blind.<br>Build your roster</h1>
+      <p class="sub">Hidden fantasy points, a tight budget, and friends trying to outbid you.</p>
+    </div>
+    <div class="phone"><img src="shots/auction_a.png" alt="Auction team builder with a standing bid and your turn"></div>
+  </section></div>
+
+</div>
+<script>
+  if (location.search.includes("export")) {
+    document.body.classList.add("export");
+    document.getElementById("row").style.flexDirection = "column";
+    // ?export&only=<slide id> renders a single slide, for one PNG per slide.
+    const only = new URLSearchParams(location.search).get("only");
+    if (only) {
+      document.querySelectorAll(".frame").forEach((f) => {
+        if (f.querySelector(".slide").id !== only) f.remove();
+      });
+    }
+  }
+</script>
+</body>
+</html>
