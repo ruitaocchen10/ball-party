@@ -34,23 +34,38 @@ Contact address on both pages is `testytesttesty9021@gmail.com`.
 **Subtitle** (30 char max): `Sports takes, stat games, wins`
 
 **Promotional text** (170 char max, editable without a new build):
-> Post your NFL picks and Power Rankings, then see who called it. Plus two stat-driven solo games: QB Season Builder and Higher or Lower.
+> A fresh slate of NFL prompts every week. Make your picks, rank the league, and bid against friends in the auction. Who really knows ball?
 
 **Description:**
 ```
-Ball Party is the group chat that keeps score.
+The group chat, but it keeps score.
 
-Post your picks on this week's NFL games and your Power Rankings ballot, then see who actually called it once the picks lock — every take gets graded.
+Ball Party is where NFL fans prove they know ball. Make your calls, argue about them with friends, and see who was right.
 
-Play stat-driven games on your own:
+EVERY WEEK, GO ON THE RECORD
+Answer weekly prompts: pick game winners, hand out weekly awards, make bold predictions and rank the league. Prompts lock when the games start, so every call counts.
 
-• QB Season Builder — spin a random team's season six times and build one quarterback from the best trait offered at every stop.
-• Higher or Lower — call whether the next card's fantasy total is higher or lower and keep the streak alive.
+SEE WHO CALLED IT
+Your feed shows which friends answered each prompt. Give a ball for a great take and take one away for a bad one. Your balls and correct picks build your Ball Knower score on the leaderboard.
 
-Sign in with Apple, Google, or email — no ads, just the takes and the games.
+RANK THE LEAGUE
+Keep a living power ranking and top 10 lists for QBs, RBs and WRs. Share your updates with friends and defend your list when they reply.
+
+PLAY STAT GAMES
+• Higher or Lower: call whether the next player's season beat the last, solo or with friends.
+• QB Season Builder: spin team-seasons and build the best quarterback you can.
+• Auction Team Builder: bid on mystery players against 1 to 3 friends. Their fantasy points stay hidden until the lot sells.
+• 2v2 Wavelength: give a one-shot clue and find the hidden target, co-op or head to head.
+
+BRING YOUR FRIENDS
+Start a party room, invite friends, and pick a game. Climb the leaderboards for Ball Knower points, multiplayer wins and solo high scores.
+
+Sign in with Apple, Google or email.
+
+Ball Party is not affiliated with or endorsed by the NFL or any NFL team.
 ```
 
-*(Party Mode — lobbies, playing mini-games live with friends Mario-Party style — is built server-side but not yet turned on in the iOS app; the Party tab currently shows a "coming soon" placeholder. Leave it out of the description until that ships, or App Review will flag it as advertising a feature the build doesn't have.)*
+*(Only describe what the build has. Party mode, a run of several minigames with a target score, is not built, and neither is Cards Against Humanity, so keep both out of the description. The games listed above match the catalog in `docs/app.md`.)*
 
 **Keywords** (100 char max, comma-separated, no spaces needed):
 `sports,nfl,trivia,fantasy football,stats,picks,rankings,quiz,football`
@@ -67,42 +82,74 @@ Sign in with Apple, Google, or email — no ads, just the takes and the games.
 
 Based on an audit of the iOS code: auth is Supabase (email/password, Sign in
 with Apple, Google OAuth); no analytics/crash/ad SDK is linked into the iOS
-target; no camera, photo library, contacts, location, or microphone API is
-used anywhere in `ios/BallParty`.
+target; no camera, contacts, location, or microphone API is used anywhere in
+`ios/BallParty`. Two features do collect data beyond the account: the profile
+editor uploads an avatar chosen with `PhotosPicker`, and push notifications
+register a device token (`register_device_token`).
+
+Answer App Store Connect to match `ios/BallParty/PrivacyInfo.xcprivacy`, which
+declares the same set. If the two disagree, Apple can flag the mismatch.
 
 | Data type | Collected? | Linked to identity | Used for |
 | --- | --- | --- | --- |
 | Contact Info → Email Address | Yes | Yes | App Functionality (account) |
+| Contact Info → Name (display name) | Yes | Yes | App Functionality |
 | Identifiers → User ID | Yes | Yes | App Functionality |
-| Identifiers → Name (display name) | Yes | Yes | App Functionality |
-| User Content → Other User Content (takes, picks, draft results) | Yes | Yes | App Functionality |
-| Everything else (Location, Contacts, Photos, Health, Financial Info, Browsing/Search History, Usage Data, Diagnostics, etc.) | No | — | — |
+| Identifiers → Device ID (push token) | Yes | Yes | App Functionality |
+| User Content → Photos or Videos (profile avatar) | Yes | Yes | App Functionality |
+| User Content → Other User Content (takes, replies, ranking lists, reports) | Yes | Yes | App Functionality |
+| User Content → Gameplay Content (match results, scores, streaks) | Yes | Yes | App Functionality |
+| Everything else (Location, Contacts, Health, Financial Info, Browsing/Search History, Usage Data, Diagnostics, etc.) | No | — | — |
 | **Data used to track you** | **No** | — | — |
 
 None of it is used for tracking, and it isn't sold. If you add analytics
-(even Vercel Analytics-style pageviews) to the iOS binary later, revisit this
-table — right now that only runs in the webapp, not the app.
+(even Vercel Analytics-style pageviews) to the iOS binary later, or any other
+data collection, revisit this table and `PrivacyInfo.xcprivacy` together; right
+now analytics only runs in the webapp, not the app.
 
 ## Age rating questionnaire
 
-Nothing in the game content (sports trivia/stats, no user-generated media,
-no chat with strangers beyond takes/picks visible to lobby members) should
-trigger anything above the default **4+** rating. Answer "None"/"No" to all
-of: cartoon/fantasy/realistic violence, mature themes, gambling, horror,
-alcohol/tobacco/drugs. Say **Yes** to "Unrestricted Web Access" only if any
-in-app browser sheet can hit arbitrary URLs (check `ASWebAuthenticationSession`
-usage in `AuthBackend`/`AuthViewModel` — it's OAuth-only, opens Apple/Google's
-own domains, so "No" is correct here too).
+The game content (sports trivia and stats) is mild, but the app has
+**user-generated content**: players post takes and replies that other players
+read, and profiles are searchable by username. Answer the questionnaire's
+user-generated-content and messaging questions truthfully (Yes), and let Apple
+compute the rating from the answers; do not assume 4+.
+
+What the app has for that, which Apple's UGC guideline (1.2) expects: a Report
+button on every take, reply and profile, blocking, a banned-terms filter on new
+takes, and an admin report queue (see "Safety and moderation" in `docs/app.md`).
+Mention them in the review notes.
+
+Answer "None"/"No" to the rest: cartoon/fantasy/realistic violence, mature
+themes, gambling (no money is involved; revisit if that ever changes), horror,
+alcohol/tobacco/drugs. "Unrestricted Web Access" is **No**: the only in-app web
+sessions are the OAuth sheets (`ASWebAuthenticationSession` in
+`AuthBackend`/`AuthViewModel`, Apple/Google's own domains), and the Privacy,
+Terms and Support links open in Safari.
+
+The questionnaire's wording changes between Apple releases, so check the
+current form rather than relying on this list.
 
 ## Screenshots
 
-Required set for iPhone-only: **6.9" display** (1320×2868), 3–10 images. Capture
-them from an iPhone 18 Pro Max (or any 6.9") simulator or device: `Cmd+R` in
-Xcode, sign in with a demo account (email/password; Apple and Google sign-in
-can't be scripted in Simulator, and need a local backend from
-`npm --prefix webapp run db:reset`), then `Cmd+S` on each screen: Home/Huddle, one
-game in progress, a finished take or result. Leave the Party tab out while it is
-a placeholder.
+The current set is three captioned, framed slides: friends feed, power rankings
+and Auction Team Builder. They are built in `marketing/app-store/screenshots.html`
+from simulator captures in `marketing/app-store/shots/`, and the exported PNGs are
+in `marketing/app-store/export/`.
+
+**Size.** The "iPhone with Dynamic Island (medium display)" slot in App Store
+Connect rejected 1320×2868 ("File dimensions are invalid"). It accepts 1206×2622
+or 1179×2556 portrait, so the page exports at **1206×2622** with no alpha.
+
+**Recapturing.** Run the app on an iPhone 18 Pro Max simulator against the local
+stack (`npm --prefix webapp run db:reset`), sign in as `demo@ballparty.local` /
+`ball-party-demo` (Apple and Google sign-in can't be scripted in Simulator), set
+the clock with `xcrun simctl status_bar <udid> override --time 9:41 ...`, and
+capture with `xcrun simctl io <udid> screenshot`. The auction needs 2 to 4
+players: seat seeded friends by calling `join_lobby` as each user from SQL, and
+place their bids with `auction.place_bid`. Then re-render each slide in headless
+Chrome at `screenshots.html?export&only=<feed|rankings|games>` with a
+1206×2622 window.
 
 ## What only you can do
 
