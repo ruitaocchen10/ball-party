@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { Barlow, Bebas_Neue, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
+import { AnalyticsIdentity } from "@/components/foundation/analytics/AnalyticsIdentity";
 import { MotionProvider } from "@/components/foundation/ui-kit/MotionProvider";
 import { NoFlashSidebarScript } from "@/components/foundation/ui-kit/NoFlashSidebarScript";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo/site";
@@ -66,6 +67,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <MotionProvider>{children}</MotionProvider>
         <Analytics />
+        <AnalyticsIdentity />
       </body>
     </html>
   );

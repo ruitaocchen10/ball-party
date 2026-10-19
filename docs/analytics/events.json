@@ -1,0 +1,15 @@
+{
+  "_comment": "The analytics event names and properties both clients send to PostHog. webapp/lib/foundation/analytics/events.test.ts and ios/BallPartyTests/AnalyticsTests.swift compare their own copy against this file. Read docs/analytics.md before changing it.",
+  "events": [
+    { "name": "signed_up", "platforms": ["web", "ios"], "properties": ["method"] },
+    { "name": "signed_in", "platforms": ["web", "ios"], "properties": ["method"] },
+    { "name": "party_created", "platforms": ["web", "ios"], "properties": [] },
+    { "name": "party_joined", "platforms": ["web", "ios"], "properties": [] },
+    { "name": "game_started", "platforms": ["web", "ios"], "properties": ["game", "solo"] },
+    { "name": "prompt_answered", "platforms": ["web", "ios"], "properties": ["post_id"] },
+    { "name": "take_posted", "platforms": ["web", "ios"], "properties": ["post_id", "is_reply"] },
+    { "name": "invite_link_shared", "platforms": ["web", "ios"], "properties": ["kind"] },
+    { "name": "invite_accepted", "platforms": ["web", "ios"], "properties": ["kind", "result"] },
+    { "name": "push_enabled", "platforms": ["ios"], "properties": [] }
+  ]
+}

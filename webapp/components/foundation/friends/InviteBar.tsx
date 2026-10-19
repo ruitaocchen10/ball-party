@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/foundation/ui-kit/Button";
 import { Card } from "@/components/foundation/ui-kit/Card";
+import { track } from "@/lib/foundation/analytics/client";
 import { friendInvitePath } from "@/lib/foundation/friends/friends";
 
 /**
@@ -22,6 +23,7 @@ export function InviteBar({ code }: { code: string }) {
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({ title: "Ball Party", text: "Add me on Ball Party.", url });
+        track("invite_link_shared", { kind: "friend" });
       } catch (shareError) {
         // Closing the share sheet is not a failure.
         if (!(shareError instanceof DOMException && shareError.name === "AbortError")) {
@@ -32,6 +34,7 @@ export function InviteBar({ code }: { code: string }) {
     }
     try {
       await navigator.clipboard.writeText(url);
+      track("invite_link_shared", { kind: "friend" });
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

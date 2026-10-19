@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AnalyticsToggle } from "@/components/foundation/analytics/AnalyticsToggle";
 import { AccountCredentials } from "@/components/foundation/identity/AccountCredentials";
 import { DeleteAccountSection } from "@/components/foundation/identity/DeleteAccountSection";
 import { GuestUpgrade } from "@/components/foundation/identity/GuestUpgrade";
@@ -47,7 +48,10 @@ export default async function SettingsPage() {
           </SettingsCard>
 
           <SettingsCard title="Privacy">
-            <PrivateProfileToggle initialPrivate={profile?.is_private ?? false} />
+            <div className="grid gap-5">
+              <PrivateProfileToggle initialPrivate={profile?.is_private ?? false} />
+              <AnalyticsToggle />
+            </div>
           </SettingsCard>
 
           <SettingsCard title="Danger zone">
@@ -79,6 +83,7 @@ function GuestSettings() {
           <h1 className="mt-3 font-slab text-[36px] leading-[.96] uppercase sm:text-[46px]">Make it yours</h1>
           <p className="mt-4 text-[15px] leading-6 text-fg-muted">Your name is just for the current game. Create an account to get settings for credentials and more.</p>
           <div className="mt-6"><GuestUpgrade /></div>
+          <div className="mt-8"><AnalyticsToggle /></div>
         </section>
       </PageShell>
     </>

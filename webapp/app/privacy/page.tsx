@@ -3,7 +3,7 @@ import { PageShell } from "@/components/foundation/ui-kit/PageShell";
 
 export const metadata = { title: "Privacy Policy" };
 
-const LAST_UPDATED = "September 28, 2026";
+const LAST_UPDATED = "October 19, 2026";
 
 /** Standalone legal page: no Sidebar/DashboardHeader, since App Review and
  *  logged-out visitors both need to reach this without an account. */
@@ -47,10 +47,17 @@ export default function PrivacyPage() {
               <strong>Gameplay and party data.</strong> Lobby membership, scores, and game state for the games you
               play, so results and rankings work.
             </li>
+            <li>
+              <strong>Usage analytics.</strong> Which features you use, such as creating or joining a party,
+              starting a game, answering a prompt or sharing an invite link, along with the pages you visit on the
+              website and basic device details (app version, device model, operating system). These events are
+              linked to your account ID, not to your email or anything you type.
+            </li>
           </ul>
           <p className="mt-3">
-            We don&rsquo;t collect your location, contacts, photos, camera, or microphone. We don&rsquo;t run
-            third-party analytics or advertising SDKs inside the iOS app, and we don&rsquo;t sell your data.
+            We don&rsquo;t collect your location, contacts, photos, camera, or microphone, and we don&rsquo;t work
+            out where you are from your IP address. We don&rsquo;t run advertising SDKs, and we don&rsquo;t sell
+            your data.
           </p>
         </section>
 
@@ -61,16 +68,16 @@ export default function PrivacyPage() {
             <li>Creating and authenticating your account, and letting you sign in on more than one device.</li>
             <li>Showing your takes, picks, and rankings to you and to the other players in a shared game or lobby.</li>
             <li>Operating core gameplay — scoring, matchmaking within a lobby, and party progress.</li>
-            <li>Basic, aggregated usage measurement of the website (page views) so we know what&rsquo;s used. This
-              does not run inside the iOS app.</li>
+            <li>Understanding which features are used and where people get stuck, so we can improve the product
+              (usage analytics, in the website and the iOS app).</li>
           </ul>
         </section>
 
         <section>
           <h2 className="text-lg font-semibold text-fg">Who we share it with</h2>
           <p className="mt-3">
-            We use Supabase to host our database, authentication, and file storage, and Apple/Google only as
-            sign-in providers you choose to use. We don&rsquo;t share your data with advertisers, data brokers, or
+            We use Supabase to host our database, authentication, and file storage, PostHog to process usage
+            analytics, and Apple/Google only as sign-in providers you choose to use. We don&rsquo;t share your data with advertisers, data brokers, or
             any other third party, and no data collected in the app is used to track you across other companies&rsquo;
             apps or websites.
           </p>
@@ -80,6 +87,11 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-fg">Your choices</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>Edit your display name and profile at any time from Settings.</li>
+            <li>
+              Turn off usage analytics with the &ldquo;Share usage data&rdquo; switch: in Settings on the website,
+              or under Profile &rarr; Privacy in the iOS app. The choice applies to the browser or device you set
+              it on.
+            </li>
             <li>
               Delete your account from Settings, which removes your display name and profile photo and permanently
               blocks the account from signing in. Your past match results and takes stay on record under
