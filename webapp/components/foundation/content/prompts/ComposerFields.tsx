@@ -61,8 +61,8 @@ export function defaultBoldLockAt(games: NflScheduleGame[], season: number, week
   return firstKickoff ? new Date(firstKickoff.getTime() - BOLD_LOCK_LEAD_MS) : null;
 }
 
-/** Default value of a Game Picks post; a Weekly Picks game stays at 10. */
-export const GAME_PICK_POINTS = 20;
+/** Default value of a Game Picks post; a Weekly Picks game is 5. */
+export const GAME_PICK_POINTS = 10;
 
 /** One game, one pick: the winner and whether they win by under 7 or by 7+ (exactly 7 is 7+). */
 export function buildGamePickSlots(game: NflScheduleGame): Slot[] {
@@ -92,7 +92,7 @@ export function buildWeeklyPickSlots(game: NflScheduleGame): Slot[] {
       id: `slot-${game.id}`,
       label: `${game.label} — winner`,
       shape: "pick",
-      points: 10,
+      points: 5,
       options: [
         { id: game.away, label: nflTeamName(game.away), teamCode: game.away },
         { id: game.home, label: nflTeamName(game.home), teamCode: game.home },

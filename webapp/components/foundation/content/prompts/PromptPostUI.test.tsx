@@ -191,7 +191,7 @@ it("publishes a single game as game_pick with one slot", async () => {
   expect(published.resolutionSource).toEqual({ provider: "nflverse", rule: "winner" });
 
   const [slot] = published.slots;
-  expect(slot.points).toBe(20);
+  expect(slot.points).toBe(10);
   expect(slot.options.map((o: { teamCode: string; margin: string; label: string }) => [o.teamCode, o.margin, o.label])).toEqual([
     [composerGames[0].away, "under_7", expect.stringMatching(/ by <7$/)],
     [composerGames[0].away, "7_plus", expect.stringMatching(/ by 7\+$/)],
@@ -200,7 +200,7 @@ it("publishes a single game as game_pick with one slot", async () => {
   ]);
 });
 
-it("keeps Weekly Picks games winner-only at 10 points", async () => {
+it("keeps Weekly Picks games winner-only at 5 points", async () => {
   const user = userEvent.setup();
   const onPublish = vi.fn().mockResolvedValue({ id: "new-post" });
   render(<PromptPostComposer displayName="Admin" games={composerGames} players={[]} onPublish={onPublish} />);
@@ -209,7 +209,7 @@ it("keeps Weekly Picks games winner-only at 10 points", async () => {
   await user.click(screen.getAllByRole("button", { name: "Publish now" })[0]);
 
   for (const slot of onPublish.mock.calls[0][0].slots) {
-    expect(slot.points).toBe(10);
+    expect(slot.points).toBe(5);
     expect(slot.options).toHaveLength(2);
   }
 });
